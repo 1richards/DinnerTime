@@ -14,7 +14,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **FOUN-03**: User can set dietary preferences for the household
 - [ ] **FOUN-04**: User can set household size and family member profiles (adults vs kids)
 - [ ] **FOUN-05**: User can set cuisine preferences and disliked ingredients
-- [ ] **FOUN-06**: All user data syncs to cloud storage reliably
+- [x] **FOUN-06**: All user data syncs to cloud storage reliably
 - [ ] **FOUN-07**: App works offline for cached data (recipes, pantry, meal plans)
 
 ### Pantry Scanning
@@ -140,7 +140,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FOUN-03 | Phase 2 | Pending |
 | FOUN-04 | Phase 2 | Pending |
 | FOUN-05 | Phase 2 | Pending |
-| FOUN-06 | Phase 1 | Pending |
+| FOUN-06 | Phase 1 | Complete |
 | FOUN-07 | Phase 10 | Pending |
 | PANT-01 | Phase 3 | Pending |
 | PANT-02 | Phase 3 | Pending |
