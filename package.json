@@ -1,0 +1,13 @@
+{
+  "name": "dinnertime",
+  "private": true,
+  "scripts": {
+    "mobile": "pnpm --filter @dinnertime/mobile",
+    "server": "pnpm --filter @dinnertime/server",
+    "dev:server": "pnpm --filter @dinnertime/server dev",
+    "test": "pnpm -r test"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
