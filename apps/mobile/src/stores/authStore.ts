@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { Session, User } from '@supabase/supabase-js';
+import type { SkillLevel } from '../types/preferences';
 
 export interface Profile {
   id: string;
   display_name: string | null;
   household_size: number;
+  skill_level: SkillLevel;
   dietary_preferences: string[];
   cuisine_preferences: string[];
   disliked_ingredients: string[];
