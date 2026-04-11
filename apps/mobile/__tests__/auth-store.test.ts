@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock supabase module before importing the store
-const mockOnAuthStateChange = vi.fn();
-const mockSignOut = vi.fn();
-const mockFrom = vi.fn();
+// Use vi.hoisted so mock variables are available before vi.mock factory runs
+const { mockOnAuthStateChange, mockSignOut, mockFrom } = vi.hoisted(() => ({
+  mockOnAuthStateChange: vi.fn(),
+  mockSignOut: vi.fn(),
+  mockFrom: vi.fn(),
+}));
 
 vi.mock('../src/lib/supabase', () => ({
   supabase: {
