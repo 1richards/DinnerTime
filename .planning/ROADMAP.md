@@ -33,7 +33,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. User can create an account with email/password and log in
   2. User session persists across app restarts without re-login
   3. User data syncs to the cloud and survives app reinstall
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 01-01-PLAN.md — Scaffold pnpm monorepo, Expo mobile app, Hono server with route stubs, Supabase migration
+- [ ] 01-02-PLAN.md — Auth flow (LargeSecureStore, Zustand store, login/register screens, onboarding, tabs)
+- [ ] 01-03-PLAN.md — EAS build config and end-to-end visual verification checkpoint
 **UI hint**: yes
 
 ### Phase 2: Household Preferences
@@ -158,7 +162,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Project Setup & Auth | 0/TBD | Not started | - |
+| 1. Project Setup & Auth | 0/3 | Planning complete | - |
 | 2. Household Preferences | 0/TBD | Not started | - |
 | 3. Pantry Scanning | 0/TBD | Not started | - |
 | 4. Fridge-to-Dinner Suggestions | 0/TBD | Not started | - |
