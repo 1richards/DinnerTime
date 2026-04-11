@@ -46,6 +46,16 @@ function RootNavigator() {
 
       <Stack.Protected guard={isLoggedIn && isOnboarded}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="settings"
+          options={{
+            headerShown: true,
+            title: 'Settings',
+            headerStyle: { backgroundColor: '#FFFBF5' },
+            headerTintColor: '#1F2937',
+            headerShadowVisible: false,
+          }}
+        />
       </Stack.Protected>
     </Stack>
   );

@@ -1,4 +1,5 @@
-import { Tabs } from 'expo-router';
+import { Tabs, router } from 'expo-router';
+import { Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
@@ -25,6 +26,11 @@ export default function TabLayout() {
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
+          ),
+          headerRight: () => (
+            <Pressable onPress={() => router.push('/settings')} className="mr-4" hitSlop={8}>
+              <Ionicons name="settings-outline" size={24} color="#1F2937" />
+            </Pressable>
           ),
         }}
       />
