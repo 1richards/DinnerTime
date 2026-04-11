@@ -49,7 +49,11 @@ Plans:
   2. User can configure household size with adult and kid profiles
   3. User can specify cuisine preferences and a list of disliked ingredients
   4. Preferences persist across sessions and are available to downstream features
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 02-01-PLAN.md — Database migration (household_members table, skill_level column), TypeScript types, data constants (ingredients, dietary options)
+- [ ] 02-02-PLAN.md — Preferences Zustand store with CRUD, auto-save hooks, ingredient search hook (TDD)
+- [ ] 02-03-PLAN.md — Settings UI (all sections), gear icon navigation, visual verification checkpoint
 **UI hint**: yes
 
 ### Phase 3: Pantry Scanning
@@ -163,7 +167,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Project Setup & Auth | 3/3 | Complete   | 2026-04-11 |
-| 2. Household Preferences | 0/TBD | Not started | - |
+| 2. Household Preferences | 0/3 | Not started | - |
 | 3. Pantry Scanning | 0/TBD | Not started | - |
 | 4. Fridge-to-Dinner Suggestions | 0/TBD | Not started | - |
 | 5. Recipe Import | 0/TBD | Not started | - |
