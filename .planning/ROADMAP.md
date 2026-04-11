@@ -12,7 +12,7 @@ DinnerTime delivers value in a dependency-driven sequence: foundation infrastruc
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Project Setup & Auth** - Scaffold the app, backend, database, and user authentication
+- [x] **Phase 1: Project Setup & Auth** - Scaffold the app, backend, database, and user authentication (completed 2026-04-11)
 - [ ] **Phase 2: Household Preferences** - Users configure their household, dietary needs, and cuisine preferences
 - [ ] **Phase 3: Pantry Scanning** - AI-powered photo scanning to build and maintain a pantry inventory
 - [ ] **Phase 4: Fridge-to-Dinner Suggestions** - AI recommends meals based on what is in the pantry
@@ -162,7 +162,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Project Setup & Auth | 0/3 | Planning complete | - |
+| 1. Project Setup & Auth | 3/3 | Complete   | 2026-04-11 |
 | 2. Household Preferences | 0/TBD | Not started | - |
 | 3. Pantry Scanning | 0/TBD | Not started | - |
 | 4. Fridge-to-Dinner Suggestions | 0/TBD | Not started | - |
