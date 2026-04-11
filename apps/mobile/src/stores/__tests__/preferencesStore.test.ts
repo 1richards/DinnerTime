@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { DietaryOption } from '../../types/preferences';
 
 // Mock supabase using vi.hoisted() for variable hoisting with vi.mock
 const mockSupabase = vi.hoisted(() => {
@@ -14,7 +15,8 @@ const mockSupabase = vi.hoisted(() => {
   };
 
   return {
-    from: vi.fn(() => chainable()),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    from: vi.fn((_table?: string): any => chainable()),
   };
 });
 
@@ -71,7 +73,8 @@ describe('preferencesStore', () => {
       profilesChain.eq = vi.fn(() => profilesChain);
       profilesChain.single = vi.fn(() => Promise.resolve({ data: mockProfile, error: null }));
 
-      mockSupabase.from.mockImplementation((table: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockSupabase.from as any).mockImplementation((table: string) => {
         if (table === 'household_members') return membersChain;
         if (table === 'profiles') return profilesChain;
         return membersChain;
@@ -94,8 +97,8 @@ describe('preferencesStore', () => {
         name: 'Bob',
         member_type: 'adult' as const,
         age_range: null,
-        dietary_restrictions: [] as string[],
-        dietary_allergies: [] as string[],
+        dietary_restrictions: [] as DietaryOption[],
+        dietary_allergies: [] as DietaryOption[],
         disliked_ingredients: [] as string[],
       };
 

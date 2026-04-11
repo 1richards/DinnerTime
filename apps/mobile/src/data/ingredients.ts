@@ -290,13 +290,16 @@ export const INGREDIENTS: string[] = [
 /**
  * Search the ingredient list by case-insensitive substring match.
  * Returns up to 10 matching results.
+ * Optionally excludes items already selected (case-insensitive comparison).
  */
-export function searchIngredients(query: string): string[] {
+export function searchIngredients(query: string, excludedItems: string[] = []): string[] {
   if (!query.trim()) return [];
   const lowerQuery = query.toLowerCase();
+  const excludedLower = new Set(excludedItems.map((item) => item.toLowerCase()));
   const results: string[] = [];
   for (const ingredient of INGREDIENTS) {
-    if (ingredient.toLowerCase().includes(lowerQuery)) {
+    const lowerIngredient = ingredient.toLowerCase();
+    if (lowerIngredient.includes(lowerQuery) && !excludedLower.has(lowerIngredient)) {
       results.push(ingredient);
       if (results.length >= 10) break;
     }
