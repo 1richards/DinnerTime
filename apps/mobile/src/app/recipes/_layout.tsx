@@ -14,6 +14,9 @@ export default function RecipesLayout() {
       <Stack.Screen name="import-photo" options={{ title: 'Take Photo' }} />
       <Stack.Screen name="import-manual" options={{ title: 'Type Recipe' }} />
       <Stack.Screen name="review" options={{ title: 'Review Recipe' }} />
+      <Stack.Screen name="discover" options={{ title: 'Discover' }} />
+      <Stack.Screen name="[id]/index" options={{ title: 'Recipe' }} />
+      <Stack.Screen name="[id]/edit" options={{ title: 'Edit Recipe' }} />
     </Stack>
   );
 }

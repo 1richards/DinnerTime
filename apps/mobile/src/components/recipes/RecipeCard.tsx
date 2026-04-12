@@ -40,7 +40,15 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
         elevation: 2,
       }}
     >
-      <View className="flex-row items-start justify-between mb-2">
+      <View className="absolute top-3 right-3 z-10">
+        <Ionicons
+          name={recipe.is_favorite ? 'heart' : 'heart-outline'}
+          size={20}
+          color={recipe.is_favorite ? '#EF4444' : '#9CA3AF'}
+        />
+      </View>
+
+      <View className="flex-row items-start justify-between mb-2 pr-7">
         <Text
           className="text-base font-semibold text-warmGray-900 flex-1 mr-2"
           numberOfLines={2}

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useDeferredValue } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecipeStore } from '../../stores/recipeStore';
 import { RecipeCard } from '../../components/recipes/RecipeCard';
+import { SearchBar } from '../../components/recipes/SearchBar';
+import { ChipToggle } from '../../components/ui/ChipToggle';
 import { Button } from '../../components/ui/Button';
 import type { Recipe } from '../../types/recipe';
 
@@ -36,14 +38,47 @@ function ImportFab() {
 export default function RecipesScreen() {
   const { recipes, isLoading, fetchRecipes, error } = useRecipeStore();
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const deferredQuery = useDeferredValue(searchQuery);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
   useEffect(() => {
-    fetchRecipes();
-  }, [fetchRecipes]);
+    fetchRecipes({
+      q: deferredQuery || undefined,
+      favoritesOnly: showFavoritesOnly,
+    });
+  }, [deferredQuery, showFavoritesOnly, fetchRecipes]);
 
   const handleCardPress = (recipe: Recipe) => {
-    // Detail view navigation to be added later
-    console.log('Recipe tapped:', recipe.title);
+    router.push(`/recipes/${recipe.id}`);
   };
+
+  const header = (
+    <View className="px-4 pt-2 pb-3">
+      <Text className="text-2xl font-bold text-warmGray-900">My Recipes</Text>
+      <Text className="text-sm text-warmGray-500 mt-0.5 mb-3">
+        {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'}
+      </Text>
+      <SearchBar value={searchQuery} onChange={setSearchQuery} />
+      <View className="flex-row items-center gap-2 mt-3">
+        <ChipToggle
+          label="Favorites"
+          selected={showFavoritesOnly}
+          onToggle={() => setShowFavoritesOnly((v) => !v)}
+          colorScheme="red"
+        />
+        <Pressable
+          onPress={() => router.push('/recipes/discover')}
+          className="flex-row items-center px-4 py-2 rounded-full bg-amber-100 border border-amber-200"
+        >
+          <Ionicons name="sparkles" size={14} color="#B45309" />
+          <Text className="text-sm font-medium text-amber-800 ml-1">
+            Discover
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
 
   if (isLoading && recipes.length === 0) {
     return (
@@ -59,7 +94,12 @@ export default function RecipesScreen() {
     );
   }
 
-  if (!isLoading && recipes.length === 0) {
+  if (
+    !isLoading &&
+    recipes.length === 0 &&
+    !deferredQuery &&
+    !showFavoritesOnly
+  ) {
     return (
       <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
         <View className="flex-1 items-center justify-center px-6">
@@ -85,26 +125,32 @@ export default function RecipesScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
-      <View className="px-4 pt-2 pb-3">
-        <Text className="text-2xl font-bold text-warmGray-900">
-          My Recipes
-        </Text>
-        <Text className="text-sm text-warmGray-500 mt-0.5">
-          {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'}
-        </Text>
-      </View>
-
       <FlatList
         data={recipes}
         keyExtractor={(item) => item.id}
+        ListHeaderComponent={header}
         renderItem={({ item }) => (
           <RecipeCard recipe={item} onPress={handleCardPress} />
         )}
+        ListEmptyComponent={
+          <View className="items-center mt-12 px-6">
+            <Text className="text-base text-warmGray-500 text-center">
+              {showFavoritesOnly
+                ? 'No favorites yet. Tap the heart on a recipe to favorite it.'
+                : 'No recipes match your search.'}
+            </Text>
+          </View>
+        }
         contentContainerStyle={{ paddingTop: 8, paddingBottom: 120 }}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
-            onRefresh={fetchRecipes}
+            onRefresh={() =>
+              fetchRecipes({
+                q: deferredQuery || undefined,
+                favoritesOnly: showFavoritesOnly,
+              })
+            }
             tintColor="#F97316"
           />
         }
