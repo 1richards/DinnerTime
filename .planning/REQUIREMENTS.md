@@ -37,10 +37,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Recipe System
 
-- [ ] **RECP-01**: User can import a recipe by pasting a URL
-- [ ] **RECP-02**: User can import a recipe by photographing a cookbook page or handwritten card
-- [ ] **RECP-03**: User can import a recipe by photographing a screenshot
-- [ ] **RECP-04**: User can manually enter a recipe with AI assistance to structure it
+- [x] **RECP-01**: User can import a recipe by pasting a URL
+- [x] **RECP-02**: User can import a recipe by photographing a cookbook page or handwritten card
+- [x] **RECP-03**: User can import a recipe by photographing a screenshot
+- [x] **RECP-04**: User can manually enter a recipe with AI assistance to structure it
 - [x] **RECP-05**: Imported recipes are parsed into structured format (title, ingredients with quantities/units, steps, times, servings)
 - [ ] **RECP-06**: User can view, edit, and delete recipes in their library
 - [ ] **RECP-07**: User can search recipes by keyword
@@ -154,10 +154,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MEAL-02 | Phase 4 | Complete |
 | MEAL-03 | Phase 4 | Complete |
 | MEAL-04 | Phase 4 | Complete |
-| RECP-01 | Phase 5 | Pending |
-| RECP-02 | Phase 5 | Pending |
-| RECP-03 | Phase 5 | Pending |
-| RECP-04 | Phase 5 | Pending |
+| RECP-01 | Phase 5 | Complete |
+| RECP-02 | Phase 5 | Complete |
+| RECP-03 | Phase 5 | Complete |
+| RECP-04 | Phase 5 | Complete |
 | RECP-05 | Phase 5 | Complete |
 | RECP-06 | Phase 6 | Pending |
 | RECP-07 | Phase 6 | Pending |
