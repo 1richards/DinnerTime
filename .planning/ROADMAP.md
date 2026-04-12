@@ -54,6 +54,7 @@ Plans:
 - [ ] 02-01-PLAN.md — Database migration (household_members table, skill_level column), TypeScript types, data constants (ingredients, dietary options)
 - [ ] 02-02-PLAN.md — Preferences Zustand store with CRUD, auto-save hooks, ingredient search hook (TDD)
 - [ ] 02-03-PLAN.md — Settings UI (all sections), gear icon navigation, visual verification checkpoint
+
 **UI hint**: yes
 
 ### Phase 3: Pantry Scanning
@@ -66,7 +67,12 @@ Plans:
   3. Pantry inventory persists and reconciles correctly across multiple scan sessions
   4. Items not seen in 7+ days are visually marked as uncertain
   5. User can manually mark any item as used or depleted
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 03-01-PLAN.md — Database migration (pantry_items table), TypeScript types, Anthropic SDK config, dependency install
+- [ ] 03-02-PLAN.md — Backend vision service (Claude API) and pantry reconciliation service with routes (TDD)
+- [ ] 03-03-PLAN.md — Pantry Zustand store with scan review workflow and confidence decay hook (TDD)
+- [ ] 03-04-PLAN.md — Scan flow UI (camera, review screen) and pantry inventory tab with visual verification
 **UI hint**: yes
 
 ### Phase 4: Fridge-to-Dinner Suggestions
@@ -168,7 +174,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 |-------|----------------|--------|-----------|
 | 1. Project Setup & Auth | 3/3 | Complete   | 2026-04-11 |
 | 2. Household Preferences | 3/3 | Complete   | 2026-04-11 |
-| 3. Pantry Scanning | 0/TBD | Not started | - |
+| 3. Pantry Scanning | 0/4 | Not started | - |
 | 4. Fridge-to-Dinner Suggestions | 0/TBD | Not started | - |
 | 5. Recipe Import | 0/TBD | Not started | - |
 | 6. Recipe Library | 0/TBD | Not started | - |
