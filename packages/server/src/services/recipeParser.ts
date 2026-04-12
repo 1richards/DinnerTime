@@ -20,7 +20,7 @@ export interface ParsedRecipe {
   total_time_minutes: number | null;
   servings: number | null;
   source_url: string | null;
-  source_type: 'url' | 'photo' | 'manual';
+  source_type: 'url' | 'photo' | 'manual' | 'ai';
   image_url: string | null;
 }
 
