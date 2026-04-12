@@ -156,7 +156,15 @@ Plans:
   3. User can check off, add, and edit items on the shopping list
   4. User can send the shopping list to Instacart and land on a ready-to-order page
   5. User can view past orders, reorder with one tap, and see AI-suggested variations
-**Plans**: TBD
+**Plans**: 7 plans
+Plans:
+- [ ] 08-01-PLAN.md — Migration (shopping_lists/items/orders) + shared TS types (server + mobile)
+- [ ] 08-02-PLAN.md — shoppingList service: consolidateIngredients + subtractPantry + suggestVariations (TDD)
+- [ ] 08-03-PLAN.md — ingredientCategories: static map + Claude Haiku hybrid classifier (TDD)
+- [ ] 08-04-PLAN.md — InstacartClient: Stub + Real + env-gated factory (TDD)
+- [ ] 08-05-PLAN.md — /api/v1/shopping routes: generate, CRUD, order, reorder, variations
+- [ ] 08-06-PLAN.md — Mobile shoppingStore with optimistic updates (TDD)
+- [ ] 08-07-PLAN.md — Shopping tab UI, orders, order detail, visual verification
 **UI hint**: yes
 
 ### Phase 9: Voice Cooking Mode
@@ -200,6 +208,6 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 5. Recipe Import | 2/4 | In Progress|  |
 | 6. Recipe Library | 3/5 | In Progress|  |
 | 7. Meal Planning | 0/5 | Not started | - |
-| 8. Shopping & Instacart | 0/TBD | Not started | - |
+| 8. Shopping & Instacart | 0/7 | Not started | - |
 | 9. Voice Cooking Mode | 0/TBD | Not started | - |
 | 10. Skill Progression & Offline | 0/TBD | Not started | - |

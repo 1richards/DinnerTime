@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 5 of 5
-status: completed
-stopped_at: Completed 07-05-PLAN.md
-last_updated: "2026-04-12T19:26:34.533Z"
-last_activity: 2026-04-12 -- Completed 07-05 plan tab UI
+current_plan: 1 of 7 (complete)
+status: executing
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-04-12T21:22:27.112Z"
+last_activity: 2026-04-12 -- Completed 08-01 shopping schema & types
 progress:
   total_phases: 10
   completed_phases: 7
-  total_plans: 27
-  completed_plans: 27
-  percent: 100
+  total_plans: 34
+  completed_plans: 28
+  percent: 82
 ---
 
 # Project State
@@ -22,16 +22,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Open the fridge, take a photo, get dinner ideas -- zero mental effort from "what do we have?" to "what should we cook?"
-**Current focus:** Phase 7: Meal Planning
+**Current focus:** Phase 8: Shopping & Instacart
 
 ## Current Position
 
-Phase: 7 of 10 (Meal Planning) -- COMPLETE
-Current Plan: 5 of 5
-Status: Phase Complete
-Last activity: 2026-04-12 -- Completed 07-05 plan tab UI
+Phase: 8 of 10 (Shopping & Instacart) -- IN PROGRESS
+Current Plan: 1 of 7 (complete)
+Status: In Progress
+Last activity: 2026-04-12 -- Completed 08-01 shopping schema & types
 
-Progress: [██████████] 100%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -78,6 +78,7 @@ Progress: [██████████] 100%
 | Phase 07-meal-planning P04 | 2min | 2 tasks | 2 files |
 | Phase 07-meal-planning P03 | 5min | 3 tasks | 6 files |
 | Phase 07-meal-planning P05 | 3 min | 3 tasks | 6 files |
+| Phase 08-shopping-instacart P01 | 1min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,10 @@ Recent decisions affecting current work:
 - [Phase 07-meal-planning]: Native Modal over bottom-sheet library for SwapSheet/CookConfirm
 - [Phase 07-meal-planning]: Client currentMondayIso uses UTC to mirror server mondayOf (zero timezone drift)
 - [Phase 07-meal-planning]: Cook flow snapshots entry.ingredients_needed pre-call for pantry delta display
+- [Phase 08-shopping-instacart]: [Phase 08-01]: GroceryCategory stored as TEXT with application-level enum (not Postgres ENUM) for easier evolution
+- [Phase 08-shopping-instacart]: [Phase 08-01]: shopping_orders.shopping_list_id ON DELETE SET NULL preserves order history across list deletion
+- [Phase 08-shopping-instacart]: [Phase 08-01]: shopping_list_items.category defaults to 'other' (not NULL) so downstream grouping never hits NULL
+- [Phase 08-shopping-instacart]: [Phase 08-01]: Mobile type file omits ConsolidatedItem and InstacartLineItem (server-internal only)
 
 ### Pending Todos
 
@@ -166,6 +171,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T19:25:52.713Z
-Stopped at: Completed 07-05-PLAN.md
+Last session: 2026-04-12T21:22:03.937Z
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None

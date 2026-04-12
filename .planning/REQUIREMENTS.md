@@ -60,13 +60,13 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Shopping
 
-- [ ] **SHOP-01**: Shopping list auto-generates from a meal plan by consolidating all ingredients
-- [ ] **SHOP-02**: Shopping list subtracts items already in pantry inventory
-- [ ] **SHOP-03**: Shopping list items are grouped by category (produce, dairy, protein, etc.)
-- [ ] **SHOP-04**: User can check off items, add items, and edit the shopping list
-- [ ] **SHOP-05**: User can send shopping list to Instacart for one-tap ordering
-- [ ] **SHOP-06**: User can view past orders and reorder with one tap
-- [ ] **SHOP-07**: AI suggests creative variations when reordering ("try harissa this time")
+- [x] **SHOP-01**: Shopping list auto-generates from a meal plan by consolidating all ingredients
+- [x] **SHOP-02**: Shopping list subtracts items already in pantry inventory
+- [x] **SHOP-03**: Shopping list items are grouped by category (produce, dairy, protein, etc.)
+- [x] **SHOP-04**: User can check off items, add items, and edit the shopping list
+- [x] **SHOP-05**: User can send shopping list to Instacart for one-tap ordering
+- [x] **SHOP-06**: User can view past orders and reorder with one tap
+- [x] **SHOP-07**: AI suggests creative variations when reordering ("try harissa this time")
 
 ### Voice Cooking
 
@@ -171,13 +171,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLAN-05 | Phase 7 | Complete |
 | PLAN-06 | Phase 7 | Complete |
 | PLAN-07 | Phase 7 | Complete |
-| SHOP-01 | Phase 8 | Pending |
-| SHOP-02 | Phase 8 | Pending |
-| SHOP-03 | Phase 8 | Pending |
-| SHOP-04 | Phase 8 | Pending |
-| SHOP-05 | Phase 8 | Pending |
-| SHOP-06 | Phase 8 | Pending |
-| SHOP-07 | Phase 8 | Pending |
+| SHOP-01 | Phase 8 | Complete |
+| SHOP-02 | Phase 8 | Complete |
+| SHOP-03 | Phase 8 | Complete |
+| SHOP-04 | Phase 8 | Complete |
+| SHOP-05 | Phase 8 | Complete |
+| SHOP-06 | Phase 8 | Complete |
+| SHOP-07 | Phase 8 | Complete |
 | VOIC-01 | Phase 9 | Pending |
 | VOIC-02 | Phase 9 | Pending |
 | VOIC-03 | Phase 9 | Pending |
