@@ -44,9 +44,9 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **RECP-05**: Imported recipes are parsed into structured format (title, ingredients with quantities/units, steps, times, servings)
 - [ ] **RECP-06**: User can view, edit, and delete recipes in their library
 - [ ] **RECP-07**: User can search recipes by keyword
-- [ ] **RECP-08**: User can favorite recipes
+- [x] **RECP-08**: User can favorite recipes
 - [ ] **RECP-09**: User can adjust serving sizes and ingredient quantities scale accordingly
-- [ ] **RECP-10**: User can browse AI-suggested recipes from the internet based on preferences
+- [x] **RECP-10**: User can browse AI-suggested recipes from the internet based on preferences
 
 ### Meal Planning
 
@@ -161,9 +161,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RECP-05 | Phase 5 | Complete |
 | RECP-06 | Phase 6 | Pending |
 | RECP-07 | Phase 6 | Pending |
-| RECP-08 | Phase 6 | Pending |
+| RECP-08 | Phase 6 | Complete |
 | RECP-09 | Phase 6 | Pending |
-| RECP-10 | Phase 6 | Pending |
+| RECP-10 | Phase 6 | Complete |
 | PLAN-01 | Phase 7 | Pending |
 | PLAN-02 | Phase 7 | Pending |
 | PLAN-03 | Phase 7 | Pending |
