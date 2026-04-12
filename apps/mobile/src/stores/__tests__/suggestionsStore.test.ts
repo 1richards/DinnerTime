@@ -6,7 +6,7 @@ const mockSupabase = vi.hoisted(() => ({
     getSession: vi.fn(() =>
       Promise.resolve({
         data: { session: { access_token: 'test-token' } },
-        error: null,
+        error: null as Error | null,
       })
     ),
   },
@@ -119,7 +119,7 @@ describe('suggestionsStore', () => {
 
     it('sets error on auth failure', async () => {
       mockSupabase.auth.getSession.mockResolvedValueOnce({
-        data: { session: null },
+        data: { session: null as unknown as { access_token: string } },
         error: new Error('No session'),
       });
 
