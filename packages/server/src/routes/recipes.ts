@@ -10,7 +10,23 @@ import {
   getRecipes,
   getRecipeById,
   findRecipeBySourceUrl,
+  updateRecipe,
+  deleteRecipe,
 } from '../services/recipeStore.js';
+
+// Fields a client is allowed to patch. Anything else in the body is ignored.
+const PATCHABLE_FIELDS = [
+  'title',
+  'description',
+  'ingredients',
+  'steps',
+  'prep_time_minutes',
+  'cook_time_minutes',
+  'total_time_minutes',
+  'servings',
+  'is_favorite',
+  'image_url',
+] as const;
 
 const recipes = new Hono();
 
@@ -23,11 +39,68 @@ recipes.get('/', async (c) => {
   const supabase = c.get('supabase');
   const user = c.get('user');
 
+  const q = c.req.query('q');
+  const favorites = c.req.query('favorites');
+
   try {
-    const data = await getRecipes(supabase, user.id);
+    const data = await getRecipes(supabase, user.id, {
+      q,
+      favoritesOnly: favorites === 'true',
+    });
     return c.json({ data });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to fetch recipes';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
+ * PATCH /:id - Update whitelisted fields on a recipe.
+ * Unknown fields in the body are silently dropped.
+ */
+recipes.patch('/:id', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const id = c.req.param('id');
+
+  let body: Record<string, unknown>;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  const patch = Object.fromEntries(
+    Object.entries(body).filter(([k]) =>
+      (PATCHABLE_FIELDS as readonly string[]).includes(k)
+    )
+  );
+
+  try {
+    const data = await updateRecipe(supabase, user.id, id, patch);
+    if (!data) {
+      return c.json({ error: 'Recipe not found' }, 404);
+    }
+    return c.json({ data });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update recipe';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
+ * DELETE /:id - Remove a recipe owned by the authenticated user.
+ */
+recipes.delete('/:id', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const id = c.req.param('id');
+
+  try {
+    await deleteRecipe(supabase, user.id, id);
+    return c.body(null, 204);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to delete recipe';
     return c.json({ error: message }, 500);
   }
 });
