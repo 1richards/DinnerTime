@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { usePantryStore } from '../../stores/pantryStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useSuggestionsStore } from '../../stores/suggestionsStore';
 import type { FoodCategory, ReviewItem, SourceLocation } from '../../types/pantry';
 
 const CATEGORY_OPTIONS: FoodCategory[] = [
@@ -71,7 +72,25 @@ export default function ReviewScreen() {
       // Get source location from route params or default to fridge
       const sourceLocation: SourceLocation = 'fridge';
       await confirmScan(profile.id, sourceLocation);
-      router.replace('/(tabs)/pantry');
+
+      Alert.alert(
+        'Pantry Updated!',
+        `${acceptedCount} items added. Want dinner ideas?`,
+        [
+          {
+            text: 'Later',
+            style: 'cancel',
+            onPress: () => router.replace('/(tabs)/pantry'),
+          },
+          {
+            text: 'Get Dinner Ideas',
+            onPress: () => {
+              useSuggestionsStore.getState().setAutoFetch(true);
+              router.replace('/(tabs)');
+            },
+          },
+        ]
+      );
     } catch {
       Alert.alert('Error', 'Failed to save items. Please try again.');
     } finally {
