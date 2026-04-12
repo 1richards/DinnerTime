@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 2 of 7 (complete)
+current_plan: 3 of 7 (complete)
 status: executing
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-04-12T21:26:14.898Z"
-last_activity: 2026-04-12 -- Completed 08-04 stubbable Instacart client
+stopped_at: Completed 08-03-PLAN.md
+last_updated: "2026-04-12T21:27:00.000Z"
+last_activity: 2026-04-12 -- Completed 08-03 ingredient categorization
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 34
-  completed_plans: 30
+  completed_plans: 31
   percent: 85
 ---
 
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 8 of 10 (Shopping & Instacart) -- IN PROGRESS
-Current Plan: 2 of 7 (complete)
+Current Plan: 3 of 7 (complete)
 Status: In Progress
-Last activity: 2026-04-12 -- Completed 08-04 stubbable Instacart client
+Last activity: 2026-04-12 -- Completed 08-03 ingredient categorization
 
 Progress: [█████████░] 85%
 
@@ -81,6 +81,7 @@ Progress: [█████████░] 85%
 | Phase 08-shopping-instacart P01 | 1min | 2 tasks | 3 files |
 | Phase 08-shopping-instacart P04 | 2min | 2 tasks | 2 files |
 | Phase 08-shopping-instacart P02 | 4min | 2 tasks | 2 files |
+| Phase 08-shopping-instacart P03 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -167,6 +168,8 @@ Recent decisions affecting current work:
 - [Phase 08-shopping-instacart]: [Phase 08-02]: consolidateIngredients nulls unit on mismatch and takes max(qty) (no conversion)
 - [Phase 08-shopping-instacart]: [Phase 08-02]: subtractPantry re-normalizes item.name defensively to decouple from producer normalization
 - [Phase 08-shopping-instacart]: [Phase 08-02]: Mocked @anthropic-ai/sdk default export (recipeDiscovery pattern) rather than config/anthropic wrapper
+- [Phase 08-shopping-instacart]: [Phase 08-03]: Hybrid categorizer — ~170-entry STATIC_MAP + Haiku fallback, enum-constrained tool schema (Pitfall 5 mitigation), zero-unknown path skips Claude
+- [Phase 08-shopping-instacart]: [Phase 08-03]: classifyItems defaults AI-omitted unknowns to 'other' at hybrid layer; classifyBatchWithHaiku stays a pure translator
 
 ### Pending Todos
 
@@ -180,6 +183,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T21:26:07.071Z
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-04-12T21:26:56.995Z
+Stopped at: Completed 08-03-PLAN.md
 Resume file: None
