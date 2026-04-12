@@ -1,4 +1,46 @@
+import { anthropic } from '../config/anthropic.js';
 import type { GroceryCategory } from '../types/shopping.js';
+
+const GROCERY_CATEGORY_ENUM: GroceryCategory[] = [
+  'produce',
+  'dairy',
+  'protein',
+  'pantry',
+  'bakery',
+  'frozen',
+  'beverages',
+  'condiments',
+  'spices',
+  'other',
+];
+
+/**
+ * Tool schema for Claude Haiku classification. The strict `enum` on
+ * `category` is the Pitfall 5 mitigation: it constrains model output to the
+ * ten valid GroceryCategory values so we never receive freeform text.
+ */
+const classifyIngredientsTool = {
+  name: 'classify_ingredients',
+  description:
+    'Classify each ingredient into exactly one grocery category. Every input name MUST appear in the output.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      classifications: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            category: { type: 'string', enum: GROCERY_CATEGORY_ENUM },
+          },
+          required: ['name', 'category'],
+        },
+      },
+    },
+    required: ['classifications'],
+  },
+};
 
 /**
  * Static map of ~150 common ingredients to grocery categories. O(1) zero-cost
@@ -219,4 +261,87 @@ export function classifyStatic(normName: string): GroceryCategory | null {
     if (hit) return hit;
   }
   return null;
+}
+
+/**
+ * Classify a batch of unknown ingredients via a single Claude Haiku call with
+ * forced tool use. Returns a map of input name → category. Names absent from
+ * the model's response are NOT defaulted here — callers (see classifyItems)
+ * should decide how to handle misses.
+ *
+ * Empty input short-circuits to `{}` without any API call, which is the
+ * zero-unknown fast path that keeps static-only lists cost-free.
+ */
+export async function classifyBatchWithHaiku(
+  unknownItems: string[],
+): Promise<Record<string, GroceryCategory>> {
+  if (unknownItems.length === 0) return {};
+
+  const response = await anthropic.messages.create({
+    model: 'claude-haiku-4-latest',
+    max_tokens: 1024,
+    tools: [classifyIngredientsTool],
+    tool_choice: { type: 'tool', name: 'classify_ingredients' },
+    messages: [
+      {
+        role: 'user',
+        content: `Classify each of these ingredients into a grocery store category. Return EVERY name exactly as given.\n\nIngredients:\n${unknownItems
+          .map((n) => `- ${n}`)
+          .join('\n')}`,
+      },
+    ],
+  });
+
+  const toolBlock = response.content.find(
+    (b: { type: string }) => b.type === 'tool_use',
+  );
+  if (!toolBlock || toolBlock.type !== 'tool_use') {
+    throw new Error('Claude did not return a tool_use response');
+  }
+
+  const input = toolBlock.input as {
+    classifications?: Array<{ name: string; category: GroceryCategory }>;
+  };
+  const result: Record<string, GroceryCategory> = {};
+  for (const entry of input.classifications ?? []) {
+    result[entry.name] = entry.category;
+  }
+  return result;
+}
+
+/**
+ * Hybrid classification entry point. Routes callers should invoke once per
+ * shopping list generation; results are persisted on
+ * shopping_list_items.category so this never runs twice for the same list
+ * (research Pitfall 5).
+ *
+ * Strategy:
+ *   1. classifyStatic for each normalized name; collect misses.
+ *   2. If any misses, single classifyBatchWithHaiku call resolves them.
+ *   3. Merge into a name→category map. Unknowns the model omitted default to 'other'.
+ */
+export async function classifyItems(
+  items: Array<{ normalizedName: string }>,
+): Promise<Record<string, GroceryCategory>> {
+  const result: Record<string, GroceryCategory> = {};
+  const unknowns: string[] = [];
+
+  for (const { normalizedName } of items) {
+    if (result[normalizedName] !== undefined) continue;
+    const hit = classifyStatic(normalizedName);
+    if (hit) {
+      result[normalizedName] = hit;
+    } else {
+      unknowns.push(normalizedName);
+    }
+  }
+
+  if (unknowns.length > 0) {
+    const aiResolved = await classifyBatchWithHaiku(unknowns);
+    for (const name of unknowns) {
+      result[name] = aiResolved[name] ?? 'other';
+    }
+  }
+
+  return result;
 }
