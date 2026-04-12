@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-04-12T07:34:04.366Z"
-last_activity: 2026-04-12 -- Completed 03-01 pantry scanning foundation (deps, types, migration, Anthropic config)
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-04-12T07:34:50.015Z"
+last_activity: 2026-04-12 -- Completed 03-03 pantry state management (Zustand store, confidence decay hook)
 progress:
   total_phases: 10
   completed_phases: 2
@@ -57,6 +57,7 @@ Progress: [███████░░░] 70%
 | Phase 02 P02 | 3min | 2 tasks | 6 files |
 | Phase 02 P03 | 5min | 3 tasks | 13 files |
 | Phase 03 P01 | 1min | 2 tasks | 7 files |
+| Phase 03 P02 | 2min | 2 tasks | 5 files |
 | Phase 03 P03 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
@@ -85,6 +86,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Allergies use red chip color to visually distinguish from soft dietary preferences
 - [Phase 03]: Anthropic client as lazy singleton using env getter pattern for testability
 - [Phase 03]: PantryItem quantity as number (not integer) to support fractional amounts like 0.5 lb
+- [Phase 03]: ScanResult type defined locally in vision.ts (server does not share types with mobile)
+- [Phase 03]: Reconciliation uses select-then-insert/update pattern for clarity over Supabase upsert
 - [Phase 03]: Backend API calls use fetch with Supabase auth token for scan/confirm endpoints
 - [Phase 03]: Confidence decay: 7-day grace period, linear 0.05/day reduction, floor at 0.1
 
@@ -100,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T07:34:04.365Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-04-12T07:34:50.013Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
