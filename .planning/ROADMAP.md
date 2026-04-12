@@ -100,7 +100,12 @@ Plans:
   2. User can photograph a cookbook page, handwritten card, or screenshot and get a structured recipe card
   3. User can manually enter a recipe and AI helps structure it (ingredients parsed, steps numbered)
   4. All imported recipes are stored with title, ingredients (with quantities/units), steps, cook time, and servings
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 05-01-PLAN.md — Database migration (recipes table), TypeScript type contracts, cheerio install
+- [ ] 05-02-PLAN.md — Recipe parser service with JSON-LD extraction, Claude Vision, Claude text parsing, API routes (TDD)
+- [ ] 05-03-PLAN.md — Mobile recipe Zustand store with import, save, and fetch actions (TDD)
+- [ ] 05-04-PLAN.md — Import flow UI (method picker, URL/photo/manual screens, review/edit), recipe list tab, visual verification
 **UI hint**: yes
 
 ### Phase 6: Recipe Library
@@ -180,7 +185,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 2. Household Preferences | 3/3 | Complete   | 2026-04-11 |
 | 3. Pantry Scanning | 4/4 | Complete   | 2026-04-12 |
 | 4. Fridge-to-Dinner Suggestions | 0/3 | Not started | - |
-| 5. Recipe Import | 0/TBD | Not started | - |
+| 5. Recipe Import | 0/4 | Not started | - |
 | 6. Recipe Library | 0/TBD | Not started | - |
 | 7. Meal Planning | 0/TBD | Not started | - |
 | 8. Shopping & Instacart | 0/TBD | Not started | - |
