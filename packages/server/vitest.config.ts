@@ -11,6 +11,7 @@ export default defineConfig({
       SUPABASE_ANON_KEY: 'test-anon-key',
       SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
       PORT: '3000',
+      ANTHROPIC_API_KEY: 'test-key',
     },
   },
 });

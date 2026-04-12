@@ -20,6 +20,9 @@ export const env = {
   get SUPABASE_SERVICE_ROLE_KEY() {
     return requireEnv('SUPABASE_SERVICE_ROLE_KEY');
   },
+  get ANTHROPIC_API_KEY() {
+    return requireEnv('ANTHROPIC_API_KEY');
+  },
   get PORT() {
     return parseInt(optionalEnv('PORT', '3000'), 10);
   },
