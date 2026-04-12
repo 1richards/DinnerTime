@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Project Setup & Auth** - Scaffold the app, backend, database, and user authentication (completed 2026-04-11)
 - [x] **Phase 2: Household Preferences** - Users configure their household, dietary needs, and cuisine preferences (completed 2026-04-11)
-- [ ] **Phase 3: Pantry Scanning** - AI-powered photo scanning to build and maintain a pantry inventory
+- [x] **Phase 3: Pantry Scanning** - AI-powered photo scanning to build and maintain a pantry inventory (completed 2026-04-12)
 - [ ] **Phase 4: Fridge-to-Dinner Suggestions** - AI recommends meals based on what is in the pantry
 - [ ] **Phase 5: Recipe Import** - Users bring recipes into the app from URLs, photos, and manual entry
 - [ ] **Phase 6: Recipe Library** - Users organize, search, favorite, and discover recipes
@@ -174,7 +174,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 |-------|----------------|--------|-----------|
 | 1. Project Setup & Auth | 3/3 | Complete   | 2026-04-11 |
 | 2. Household Preferences | 3/3 | Complete   | 2026-04-11 |
-| 3. Pantry Scanning | 1/4 | In Progress|  |
+| 3. Pantry Scanning | 4/4 | Complete   | 2026-04-12 |
 | 4. Fridge-to-Dinner Suggestions | 0/TBD | Not started | - |
 | 5. Recipe Import | 0/TBD | Not started | - |
 | 6. Recipe Library | 0/TBD | Not started | - |
