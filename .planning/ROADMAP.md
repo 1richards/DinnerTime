@@ -118,7 +118,13 @@ Plans:
   3. User can favorite recipes and filter to see only favorites
   4. User can adjust serving size and see ingredient quantities scale proportionally
   5. User can browse AI-suggested recipes from the internet based on their preferences
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 06-01-PLAN.md — Migration (is_favorite column, source_type 'ai'), recipe type extensions, install fraction.js
+- [ ] 06-02-PLAN.md — Server CRUD completion: PATCH/DELETE routes, search + favorites query params (TDD)
+- [ ] 06-03-PLAN.md — Mobile scaleIngredient helper and recipeStore update/delete/favorite/search actions (TDD)
+- [ ] 06-04-PLAN.md — Backend recipe discovery service + POST /recipes/discover route with Claude tool use (TDD)
+- [ ] 06-05-PLAN.md — Recipe library UI: search, detail, edit, delete, serving scaling, discover screen, visual verification
 **UI hint**: yes
 
 ### Phase 7: Meal Planning
