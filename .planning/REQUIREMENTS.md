@@ -23,10 +23,10 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **PANT-02**: User can take a photo of their pantry shelves and AI identifies items
 - [ ] **PANT-03**: User can take a photo of their freezer and AI identifies items
 - [ ] **PANT-04**: AI shows detected items with confidence scores for user confirmation
-- [ ] **PANT-05**: User can correct, remove, or add items the AI missed in a scan
+- [x] **PANT-05**: User can correct, remove, or add items the AI missed in a scan
 - [x] **PANT-06**: Pantry inventory persists and updates across multiple scans (reconciliation)
-- [ ] **PANT-07**: Items get confidence decay — items not seen in 7+ days marked as uncertain
-- [ ] **PANT-08**: User can manually mark items as used or depleted
+- [x] **PANT-07**: Items get confidence decay — items not seen in 7+ days marked as uncertain
+- [x] **PANT-08**: User can manually mark items as used or depleted
 
 ### Meal Suggestions
 
@@ -146,10 +146,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PANT-02 | Phase 3 | Pending |
 | PANT-03 | Phase 3 | Pending |
 | PANT-04 | Phase 3 | Pending |
-| PANT-05 | Phase 3 | Pending |
+| PANT-05 | Phase 3 | Complete |
 | PANT-06 | Phase 3 | Complete |
-| PANT-07 | Phase 3 | Pending |
-| PANT-08 | Phase 3 | Pending |
+| PANT-07 | Phase 3 | Complete |
+| PANT-08 | Phase 3 | Complete |
 | MEAL-01 | Phase 4 | Pending |
 | MEAL-02 | Phase 4 | Pending |
 | MEAL-03 | Phase 4 | Pending |
