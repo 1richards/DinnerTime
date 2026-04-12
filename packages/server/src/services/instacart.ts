@@ -20,7 +20,6 @@ export class StubInstacartClient implements InstacartClient {
   }
 }
 
-// RealInstacartClient implemented in Task 2 — minimal stub so tests can reference it.
 export class RealInstacartClient implements InstacartClient {
   constructor(
     private apiKey: string,
@@ -28,9 +27,39 @@ export class RealInstacartClient implements InstacartClient {
   ) {}
 
   async createShoppingListPage(
-    _params: InstacartCreatePageParams,
+    params: InstacartCreatePageParams,
   ): Promise<{ products_link_url: string }> {
-    throw new Error('RealInstacartClient not yet implemented');
+    const {
+      title,
+      line_items,
+      expires_in = 30,
+      partner_linkback_url,
+    } = params;
+    const body: Record<string, unknown> = {
+      title,
+      link_type: 'shopping_list',
+      expires_in,
+      line_items,
+    };
+    if (partner_linkback_url) {
+      body.landing_page_configuration = { partner_linkback_url };
+    }
+    const res = await fetch(
+      `${this.baseUrl}/idp/v1/products/products_link`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      },
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Instacart API ${res.status}: ${text}`);
+    }
+    return (await res.json()) as { products_link_url: string };
   }
 }
 
