@@ -57,24 +57,93 @@ export async function saveRecipe(
   return data as RecipeRow;
 }
 
+export interface GetRecipesOptions {
+  q?: string;
+  favoritesOnly?: boolean;
+}
+
 /**
- * List all recipes for a user, ordered by most recent first.
+ * Escape Postgres ILIKE wildcards (%, _) and backslashes so user-supplied
+ * search terms can't expand into wildcard patterns.
+ */
+function escapeIlikePattern(input: string): string {
+  return input.replace(/[%_\\]/g, '\\$&');
+}
+
+/**
+ * List recipes for a user, ordered by most recent first.
+ *
+ * Supports optional keyword search (ILIKE on title) and favorites-only filter.
+ * Wildcard characters in `q` are escaped so they are treated as literals.
  */
 export async function getRecipes(
   supabase: SupabaseClient,
-  profileId: string
+  profileId: string,
+  opts: GetRecipesOptions = {}
 ): Promise<RecipeRow[]> {
-  const { data, error } = await supabase
-    .from('recipes')
-    .select()
-    .eq('profile_id', profileId)
-    .order('created_at', { ascending: false });
+  let query = supabase.from('recipes').select().eq('profile_id', profileId);
+
+  if (opts.q && opts.q.trim().length > 0) {
+    const escaped = escapeIlikePattern(opts.q);
+    query = query.ilike('title', `%${escaped}%`);
+  }
+
+  if (opts.favoritesOnly) {
+    query = query.eq('is_favorite', true);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
     throw new Error(`Failed to fetch recipes: ${error.message}`);
   }
 
   return (data ?? []) as RecipeRow[];
+}
+
+/**
+ * Update whitelisted fields on a recipe owned by the given user.
+ * Returns the updated row, or null when no matching row exists.
+ */
+export async function updateRecipe(
+  supabase: SupabaseClient,
+  profileId: string,
+  recipeId: string,
+  patch: Record<string, unknown>
+): Promise<RecipeRow | null> {
+  const { data, error } = await supabase
+    .from('recipes')
+    .update(patch)
+    .eq('id', recipeId)
+    .eq('profile_id', profileId)
+    .select()
+    .single();
+
+  if (error) {
+    if ((error as { code?: string }).code === 'PGRST116') return null;
+    throw new Error(`Failed to update recipe: ${error.message}`);
+  }
+
+  return data as RecipeRow;
+}
+
+/**
+ * Delete a recipe owned by the given user.
+ */
+export async function deleteRecipe(
+  supabase: SupabaseClient,
+  profileId: string,
+  recipeId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('recipes')
+    .delete()
+    .eq('id', recipeId)
+    .eq('profile_id', profileId);
+
+  if (error) {
+    throw new Error(`Failed to delete recipe: ${error.message}`);
+  }
 }
 
 /**
