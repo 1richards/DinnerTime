@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 6 of 7 (complete)
+current_plan: 7 of 7 (complete)
 status: executing
-stopped_at: Completed 08-06-PLAN.md
-last_updated: "2026-04-12T21:35:53.091Z"
-last_activity: 2026-04-10 -- Completed 08-06 mobile shoppingStore
+stopped_at: Completed 08-07-PLAN.md
+last_updated: "2026-04-12T21:40:46.042Z"
+last_activity: 2026-04-10 -- Completed 08-07 shopping UI + Instacart handoff
 progress:
   total_phases: 10
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 34
-  completed_plans: 33
+  completed_plans: 34
   percent: 97
 ---
 
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 8 of 10 (Shopping & Instacart) -- IN PROGRESS
-Current Plan: 6 of 7 (complete)
+Current Plan: 7 of 7 (complete)
 Status: In Progress
-Last activity: 2026-04-10 -- Completed 08-06 mobile shoppingStore
+Last activity: 2026-04-10 -- Completed 08-07 shopping UI + Instacart handoff
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -84,6 +84,7 @@ Progress: [██████████] 97%
 | Phase 08-shopping-instacart P03 | 3min | 2 tasks | 2 files |
 | Phase 08-shopping-instacart P05 | 6min | 2 tasks | 2 files |
 | Phase 08-shopping-instacart P06 | 6min | 2 tasks | 2 files |
+| Phase 08-shopping-instacart P07 | 3min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -178,6 +179,9 @@ Recent decisions affecting current work:
 - [Phase 08-shopping-instacart]: [Phase 08-05]: /generate gracefully degrades classifyItems failure to 'other' for all items with a console warning
 - [Phase 08-shopping-instacart]: [Phase 08-06]: shoppingStore mirrors mealPlanStore authedFetch pattern verbatim; snapshot rollback for all item mutations; createOrder throws without currentList
 - [Phase 08-shopping-instacart]: [Phase 08-06]: fetchVariations returns [] on failure (read-only best-effort) instead of throwing
+- [Phase 08-shopping-instacart]: [Phase 08-07]: Mobile ShoppingOrder type extended with optional items_snapshot via ShoppingOrderSnapshotItem; Instacart wire types stay server-internal via index signature
+- [Phase 08-shopping-instacart]: [Phase 08-07]: Shopping tab groups items via useMemo + fixed CATEGORY_ORDER render (produce → protein → dairy → pantry → bakery → frozen → condiments → spices → beverages → other)
+- [Phase 08-shopping-instacart]: [Phase 08-07]: Order button disabled when items.length===0 OR all checked; Reorder uses router.replace('/shopping') to avoid back-stack pollution
 
 ### Pending Todos
 
@@ -191,6 +195,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T21:35:53.090Z
-Stopped at: Completed 08-06-PLAN.md
+Last session: 2026-04-12T21:40:46.041Z
+Stopped at: Completed 08-07-PLAN.md
 Resume file: None
