@@ -73,7 +73,7 @@ export const usePantryStore = create<PantryState>((set, get) => ({
       }
 
       const data = await response.json();
-      const reviewItems: ReviewItem[] = (data.items ?? []).map(
+      const reviewItems: ReviewItem[] = (data.data ?? []).map(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (item: any, index: number) => ({
           id: `scan-${Date.now()}-${index}`,
@@ -143,7 +143,7 @@ export const usePantryStore = create<PantryState>((set, get) => ({
     }
 
     const data = await response.json();
-    const confirmedItems = (data.items ?? []) as PantryItem[];
+    const confirmedItems = (data.data ?? []) as PantryItem[];
 
     set((state) => ({
       items: [...state.items, ...confirmedItems],

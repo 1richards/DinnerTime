@@ -260,7 +260,7 @@ describe('pantryStore', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ items: [confirmedPantryItem] }),
+        json: () => Promise.resolve({ data: [confirmedPantryItem] }),
       });
 
       await usePantryStore.getState().confirmScan('profile-1', 'fridge');
