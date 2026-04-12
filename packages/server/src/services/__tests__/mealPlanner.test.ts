@@ -601,7 +601,10 @@ describe('regenerateDay', () => {
           return {
             select: () => ({
               eq: () => ({
-                eq: () => ({ maybeSingle: () => ({ data: null, error: null }) }),
+                eq: () => ({
+                  maybeSingle: () => ({ data: null, error: null }),
+                  single: () => ({ data: planRow, error: null }),
+                }),
                 single: () => ({ data: planRow, error: null }),
               }),
             }),

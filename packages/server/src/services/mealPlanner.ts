@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { anthropic } from '../config/anthropic.js';
-import type { Difficulty, MealPlan, MealPlanEntry } from '../types/mealPlan.js';
+import type { Difficulty, MealPlan, MealPlanEntry, MealPlanIngredient } from '../types/mealPlan.js';
+import { matchIngredientsToPantry } from './ingredientMatching.js';
+import type { PantryItem } from './pantry.js';
 
 // ---------- Context Types ----------
 
@@ -435,5 +437,272 @@ export async function generateMealPlan(
     created_at: newPlanRow.created_at,
     updated_at: newPlanRow.updated_at,
     entries,
+  };
+}
+
+// ---------- regenerateDay ----------
+
+/**
+ * Regenerate a single day's meal plan entry, excluding the current title.
+ * Re-fetches pantry/prefs/recipes (Pitfall 2: never use snapshot).
+ */
+export async function regenerateDay(
+  supabase: SupabaseClient,
+  profileId: string,
+  planId: string,
+  dayOfWeek: number,
+): Promise<MealPlanEntry> {
+  // 1. Load the existing entry (verify plan belongs to profile via RLS + explicit join filter)
+  const { data: planCheck, error: planErr } = await supabase
+    .from('meal_plans')
+    .select('id, profile_id, week_start')
+    .eq('id', planId)
+    .eq('profile_id', profileId)
+    .single();
+
+  if (planErr || !planCheck) {
+    throw new Error(`Plan not found or not owned by profile: ${planErr?.message ?? 'no data'}`);
+  }
+
+  const planInfo = planCheck as { id: string; profile_id: string; week_start: string };
+
+  const { data: currentEntry, error: entryErr } = await supabase
+    .from('meal_plan_entries')
+    .select()
+    .eq('meal_plan_id', planId)
+    .eq('day_of_week', dayOfWeek)
+    .single();
+
+  if (entryErr || !currentEntry) {
+    throw new Error(`Entry not found for day ${dayOfWeek}: ${entryErr?.message ?? 'no data'}`);
+  }
+
+  const existing = currentEntry as MealPlanEntry;
+  const excludedTitle = existing.title;
+
+  // 2. Re-fetch fresh pantry (Pitfall 2)
+  const { data: pantryItems, error: pantryError } = await supabase
+    .from('pantry_items')
+    .select()
+    .eq('profile_id', profileId)
+    .eq('status', 'available');
+
+  if (pantryError) {
+    throw new Error(`Failed to fetch pantry: ${pantryError.message}`);
+  }
+
+  // 3. Re-fetch household members + profile + recipe library
+  const { data: members, error: membersError } = await supabase
+    .from('household_members')
+    .select()
+    .eq('profile_id', profileId);
+  if (membersError) throw new Error(`Failed to fetch members: ${membersError.message}`);
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('cuisine_preferences, skill_level')
+    .eq('id', profileId)
+    .single();
+  if (profileError) throw new Error(`Failed to fetch profile: ${profileError.message}`);
+
+  const { data: recipes, error: recipesError } = await supabase
+    .from('recipes')
+    .select('id, title')
+    .eq('profile_id', profileId)
+    .limit(100);
+  if (recipesError) throw new Error(`Failed to fetch recipes: ${recipesError.message}`);
+
+  // 4. Build scoped prompt
+  const memberRows = (members ?? []) as HouseholdMemberRow[];
+  const profileRow = profile as ProfileRow;
+  const context: MealPlanContext = {
+    pantryItems: ((pantryItems ?? []) as PantryRow[]).map((p) => ({
+      name: p.name,
+      quantity: p.quantity,
+      unit: p.unit,
+      category: p.category,
+    })),
+    preferences: {
+      allergies: [...new Set(memberRows.flatMap((m) => m.dietary_allergies ?? []))],
+      restrictions: [...new Set(memberRows.flatMap((m) => m.dietary_restrictions ?? []))],
+      cuisines: profileRow.cuisine_preferences ?? [],
+      dislikes: [...new Set(memberRows.flatMap((m) => m.disliked_ingredients ?? []))],
+      kidFriendlyNeeded: memberRows.some((m) => m.member_type === 'kid'),
+      householdSize: memberRows.length,
+    },
+    recipeLibrary: (recipes ?? []) as RecipeLibraryEntry[],
+    recentMealTitles: [],
+    weekStart: planInfo.week_start,
+  };
+
+  const basePrompt = buildMealPlanPrompt(context);
+  const scopedPrompt = `${basePrompt}
+
+REGENERATION CONTEXT:
+- Replace ONLY day_of_week=${dayOfWeek} with ONE new alternative.
+- EXCLUDE the current title and do NOT return it: "${excludedTitle}"
+- Return the full 7-day array; we will only use the entry for day ${dayOfWeek}.`;
+
+  // 5. Call Claude
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4096,
+    tools: [generateMealPlanTool],
+    tool_choice: { type: 'tool', name: 'generate_meal_plan' },
+    messages: [{ role: 'user', content: scopedPrompt }],
+  });
+
+  const toolBlock = response.content.find((b: { type: string }) => b.type === 'tool_use');
+  if (!toolBlock || toolBlock.type !== 'tool_use') {
+    throw new Error('Claude did not return a tool_use response');
+  }
+
+  const { days } = (toolBlock as { input: { days: ClaudeMealDay[] } }).input;
+  if (!Array.isArray(days) || days.length === 0) {
+    throw new Error('INVALID_PLAN_LENGTH: regenerate returned no days');
+  }
+
+  // Pick the day matching dayOfWeek, or fall back to first
+  const replacement =
+    days.find((d) => dayStringToIndex(d.day_of_week) === dayOfWeek) ?? days[0];
+
+  if (replacement.title === excludedTitle) {
+    throw new Error(`Regeneration returned the excluded title: ${excludedTitle}`);
+  }
+
+  // 6. Update the entry row in place
+  const patch = {
+    recipe_id: replacement.recipe_id ?? null,
+    title: replacement.title,
+    description: replacement.description,
+    ingredients: (replacement.ingredients_used ?? []).map((name) => ({ name })),
+    ingredients_needed: (replacement.ingredients_needed ?? []).map((name) => ({ name })),
+    estimated_time_minutes: replacement.estimated_time_minutes,
+    difficulty: replacement.difficulty,
+    kid_friendly: replacement.kid_friendly,
+    why_suggested: replacement.why_suggested,
+  };
+
+  const { data: updated, error: updateError } = await supabase
+    .from('meal_plan_entries')
+    .update(patch)
+    .eq('id', existing.id)
+    .select()
+    .single();
+
+  if (updateError || !updated) {
+    throw new Error(`Failed to update entry: ${updateError?.message ?? 'no data'}`);
+  }
+
+  return updated as MealPlanEntry;
+}
+
+// ---------- markCooked ----------
+
+export interface PantryDelta {
+  pantryItemId: string;
+  newQuantity: number;
+  status: string;
+}
+
+export interface MarkCookedResult {
+  entry: MealPlanEntry;
+  pantryDelta: PantryDelta[];
+}
+
+/**
+ * Mark a meal plan entry as cooked and deduct matched pantry items.
+ * Idempotent: a second call on an already-cooked entry throws ALREADY_COOKED (409).
+ */
+export async function markCooked(
+  supabase: SupabaseClient,
+  profileId: string,
+  planId: string,
+  dayOfWeek: number,
+): Promise<MarkCookedResult> {
+  // 1. Load entry
+  const { data: entryData, error: entryError } = await supabase
+    .from('meal_plan_entries')
+    .select()
+    .eq('meal_plan_id', planId)
+    .eq('day_of_week', dayOfWeek)
+    .single();
+
+  if (entryError || !entryData) {
+    throw new Error(`Entry not found: ${entryError?.message ?? 'no data'}`);
+  }
+
+  const entry = entryData as MealPlanEntry;
+
+  if (entry.status === 'cooked') {
+    const err = new Error('ALREADY_COOKED: entry already marked as cooked') as Error & {
+      code?: string;
+      status?: number;
+    };
+    err.code = 'ALREADY_COOKED';
+    err.status = 409;
+    throw err;
+  }
+
+  // 2. Load pantry
+  const { data: pantryRows, error: pantryError } = await supabase
+    .from('pantry_items')
+    .select()
+    .eq('profile_id', profileId)
+    .eq('status', 'available');
+
+  if (pantryError) {
+    throw new Error(`Failed to fetch pantry: ${pantryError.message}`);
+  }
+
+  const pantryItems = (pantryRows ?? []) as PantryItem[];
+
+  // 3. Match ingredients to pantry
+  const ingredients = (entry.ingredients ?? []) as MealPlanIngredient[];
+  const { matches } = matchIngredientsToPantry(ingredients, pantryItems);
+
+  // 4. Apply pantry updates
+  const pantryDelta: PantryDelta[] = [];
+  for (const match of matches) {
+    const pantryItem = pantryItems.find((p) => p.id === match.pantryItemId);
+    if (!pantryItem) continue;
+
+    const newQuantity = Math.max(0, pantryItem.quantity - match.deductQuantity);
+    const newStatus = match.willDeplete ? 'used' : 'available';
+
+    const { error: updateError } = await supabase
+      .from('pantry_items')
+      .update({ quantity: newQuantity, status: newStatus })
+      .eq('id', pantryItem.id);
+
+    if (updateError) {
+      throw new Error(`Failed to update pantry item ${pantryItem.id}: ${updateError.message}`);
+    }
+
+    pantryDelta.push({
+      pantryItemId: pantryItem.id,
+      newQuantity,
+      status: newStatus,
+    });
+  }
+
+  // 5. Mark entry cooked
+  const { data: updatedEntryData, error: updateEntryError } = await supabase
+    .from('meal_plan_entries')
+    .update({ status: 'cooked', cooked_at: new Date().toISOString() })
+    .eq('meal_plan_id', planId)
+    .eq('day_of_week', dayOfWeek)
+    .select()
+    .single();
+
+  if (updateEntryError || !updatedEntryData) {
+    throw new Error(
+      `Failed to update entry status: ${updateEntryError?.message ?? 'no data'}`,
+    );
+  }
+
+  return {
+    entry: updatedEntryData as MealPlanEntry,
+    pantryDelta,
   };
 }
