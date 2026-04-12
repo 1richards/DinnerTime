@@ -84,7 +84,11 @@ Plans:
   2. Suggestions respect the household's dietary preferences and disliked ingredients
   3. Suggestions include kid-friendly options when the household has children
   4. User can trigger suggestions immediately after a pantry scan in a seamless flow
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 04-01-PLAN.md — AI suggestion service with Claude tool_use, prompt assembly, dietary/kid-friendly logic, API endpoint (TDD)
+- [ ] 04-02-PLAN.md — Mobile suggestion types and Zustand store with authenticated fetch
+- [ ] 04-03-PLAN.md — Suggestions UI (cards, skeleton, list), home tab integration, post-scan navigation flow
 **UI hint**: yes
 
 ### Phase 5: Recipe Import
@@ -175,7 +179,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 1. Project Setup & Auth | 3/3 | Complete   | 2026-04-11 |
 | 2. Household Preferences | 3/3 | Complete   | 2026-04-11 |
 | 3. Pantry Scanning | 4/4 | Complete   | 2026-04-12 |
-| 4. Fridge-to-Dinner Suggestions | 0/TBD | Not started | - |
+| 4. Fridge-to-Dinner Suggestions | 0/3 | Not started | - |
 | 5. Recipe Import | 0/TBD | Not started | - |
 | 6. Recipe Library | 0/TBD | Not started | - |
 | 7. Meal Planning | 0/TBD | Not started | - |
