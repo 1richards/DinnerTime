@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-04-12T18:42:44.785Z"
-last_activity: 2026-04-10 -- Completed 06-02 server recipe CRUD + search + favorites
+stopped_at: Completed 06-04-PLAN.md
+last_updated: "2026-04-12T18:48:04.166Z"
+last_activity: 2026-04-10 -- Completed 06-03 mobile scale helper + recipe store extensions
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 22
-  completed_plans: 20
-  percent: 82
+  completed_plans: 21
+  percent: 91
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 6 of 10 (Recipe Library) -- IN PROGRESS
-Plan: 4 of 5 in current phase (06-01, 06-02, 06-03 complete; Wave 2 parallel)
+Plan: 5 of 5 in current phase (06-01, 06-02, 06-03, 06-04 complete)
 Status: In Progress
-Last activity: 2026-04-10 -- Completed 06-03 mobile scale helper + recipe store extensions
+Last activity: 2026-04-12 -- Completed 06-04 AI recipe discovery service + POST /discover route (RECP-10)
 
-Progress: [█████████░] 91%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Progress: [█████████░] 91%
 | Phase 06-recipe-library P01 | 4min | 2 tasks | 3 files |
 | Phase 06-recipe-library P03 | 3min | 2 tasks | 5 files |
 | Phase 06-recipe-library P02 | 3min | 2 tasks | 6 files |
+| Phase 06-recipe-library P04 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,9 @@ Recent decisions affecting current work:
 - [Phase 06-recipe-library]: [Phase 06-03]: formatQuantity short-circuits integer and zero before Fraction to avoid mixed-form quirks
 - [Phase 06-recipe-library]: [Phase 06]: ILIKE wildcards escaped server-side via /[%_\\]/g before %-wrapping to neutralize user search injection
 - [Phase 06-recipe-library]: [Phase 06]: PATCH /recipes/:id uses 10-field whitelist; unknown body keys silently dropped
+- [Phase 06-recipe-library]: [Phase 06-04]: Flat DiscoveryPreferences DTO decouples recipeDiscovery service from Supabase schema (unit-testable without mocks)
+- [Phase 06-recipe-library]: [Phase 06-04]: Extended ParsedRecipe.source_type union with 'ai' variant (minimum-scope for RECP-10)
+- [Phase 06-recipe-library]: [Phase 06-04]: POST /discover assembles preferences inline (mirrors suggestions.ts) -- no shared loadPreferences helper
 
 ### Pending Todos
 
@@ -132,6 +136,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T18:42:40.080Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-04-12T18:48:04.165Z
+Stopped at: Completed 06-04-PLAN.md
 Resume file: None
