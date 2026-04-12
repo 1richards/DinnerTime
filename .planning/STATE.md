@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 5 of 7 (complete)
+current_plan: 6 of 7 (complete)
 status: executing
-stopped_at: Completed 08-05-PLAN.md
-last_updated: "2026-04-10T00:00:00.000Z"
-last_activity: 2026-04-10 -- Completed 08-05 shopping routes (Hono API)
+stopped_at: Completed 08-06-PLAN.md
+last_updated: "2026-04-12T21:35:53.091Z"
+last_activity: 2026-04-10 -- Completed 08-06 mobile shoppingStore
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 34
-  completed_plans: 31
-  percent: 85
+  completed_plans: 33
+  percent: 97
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 8 of 10 (Shopping & Instacart) -- IN PROGRESS
-Current Plan: 5 of 7 (complete)
+Current Plan: 6 of 7 (complete)
 Status: In Progress
-Last activity: 2026-04-10 -- Completed 08-05 shopping routes (Hono API)
+Last activity: 2026-04-10 -- Completed 08-06 mobile shoppingStore
 
-Progress: [█████████░] 85%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -83,6 +83,7 @@ Progress: [█████████░] 85%
 | Phase 08-shopping-instacart P02 | 4min | 2 tasks | 2 files |
 | Phase 08-shopping-instacart P03 | 3min | 2 tasks | 2 files |
 | Phase 08-shopping-instacart P05 | 6min | 2 tasks | 2 files |
+| Phase 08-shopping-instacart P06 | 6min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,8 @@ Recent decisions affecting current work:
 - [Phase 08-shopping-instacart]: [Phase 08-05]: Reorder items default category='other' (fast path, no re-classify) — user re-categorizes via /variations or manual edit
 - [Phase 08-shopping-instacart]: [Phase 08-05]: Instacart client errors map to HTTP 502 INSTACART_ERROR (bad upstream) not 500
 - [Phase 08-shopping-instacart]: [Phase 08-05]: /generate gracefully degrades classifyItems failure to 'other' for all items with a console warning
+- [Phase 08-shopping-instacart]: [Phase 08-06]: shoppingStore mirrors mealPlanStore authedFetch pattern verbatim; snapshot rollback for all item mutations; createOrder throws without currentList
+- [Phase 08-shopping-instacart]: [Phase 08-06]: fetchVariations returns [] on failure (read-only best-effort) instead of throwing
 
 ### Pending Todos
 
@@ -188,6 +191,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-10T00:00:00.000Z
-Stopped at: Completed 08-05-PLAN.md
+Last session: 2026-04-12T21:35:53.090Z
+Stopped at: Completed 08-06-PLAN.md
 Resume file: None
