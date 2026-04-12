@@ -197,4 +197,178 @@ describe('mealPlanStore', () => {
       expect(state.error).toBe('network down');
     });
   });
+
+  describe('swapDay', () => {
+    it('replaces entry at day and clears swappingDay on success', async () => {
+      const plan = makePlan();
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      const replacement = makeEntry(3, {
+        id: 'entry-3-new',
+        title: 'New Dinner 3',
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: replacement }),
+      });
+
+      await useMealPlanStore.getState().swapDay(3);
+
+      const state = useMealPlanStore.getState();
+      expect(state.swappingDay).toBeNull();
+      const entryForDay3 = state.currentPlan?.entries.find(
+        (e) => e.day_of_week === 3
+      );
+      expect(entryForDay3?.title).toBe('New Dinner 3');
+      // Other days unchanged
+      const entryForDay0 = state.currentPlan?.entries.find(
+        (e) => e.day_of_week === 0
+      );
+      expect(entryForDay0?.title).toBe('Dinner 0');
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/meal-plans/plan-1/entries/3/regenerate'),
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+
+    it('leaves entry unchanged on server error and sets error', async () => {
+      const plan = makePlan();
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: 'Upstream failure' }),
+      });
+
+      await useMealPlanStore.getState().swapDay(3);
+
+      const state = useMealPlanStore.getState();
+      expect(state.swappingDay).toBeNull();
+      expect(state.error).toBe('Upstream failure');
+      const entryForDay3 = state.currentPlan?.entries.find(
+        (e) => e.day_of_week === 3
+      );
+      expect(entryForDay3?.title).toBe('Dinner 3');
+    });
+  });
+
+  describe('markCooked', () => {
+    it('optimistically sets status=cooked before awaiting server', async () => {
+      const plan = makePlan();
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      let resolveFetch!: (v: unknown) => void;
+      mockFetch.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFetch = resolve;
+          })
+      );
+
+      const promise = useMealPlanStore.getState().markCooked(2);
+      // Allow microtasks for auth + set() to flush
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const midState = useMealPlanStore.getState();
+      const entryDay2 = midState.currentPlan?.entries.find(
+        (e) => e.day_of_week === 2
+      );
+      expect(entryDay2?.status).toBe('cooked');
+      expect(midState.cookingDay).toBe(2);
+
+      // Resolve with server truth
+      resolveFetch({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            data: makeEntry(2, {
+              status: 'cooked',
+              cooked_at: '2026-04-10T13:00:00Z',
+            }),
+          }),
+      });
+      await promise;
+
+      const finalState = useMealPlanStore.getState();
+      const finalEntry = finalState.currentPlan?.entries.find(
+        (e) => e.day_of_week === 2
+      );
+      expect(finalEntry?.cooked_at).toBe('2026-04-10T13:00:00Z');
+      expect(finalState.cookingDay).toBeNull();
+    });
+
+    it('rolls back on 500', async () => {
+      const plan = makePlan();
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: 'Server error' }),
+      });
+
+      await useMealPlanStore.getState().markCooked(2);
+
+      const state = useMealPlanStore.getState();
+      const entry = state.currentPlan?.entries.find(
+        (e) => e.day_of_week === 2
+      );
+      expect(entry?.status).toBe('planned');
+      expect(state.cookingDay).toBeNull();
+      expect(state.error).toBe('Server error');
+    });
+
+    it('does not rollback on 409 ALREADY_COOKED', async () => {
+      const plan = makePlan();
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        json: () =>
+          Promise.resolve({ error: 'already cooked', code: 'ALREADY_COOKED' }),
+      });
+
+      await useMealPlanStore.getState().markCooked(2);
+
+      const state = useMealPlanStore.getState();
+      const entry = state.currentPlan?.entries.find(
+        (e) => e.day_of_week === 2
+      );
+      // Optimistic state retained (server confirms cooked)
+      expect(entry?.status).toBe('cooked');
+      expect(state.cookingDay).toBeNull();
+      expect(state.error).toBe('already_cooked');
+    });
+
+    it('replaces entry with server response on success (cooked_at populated)', async () => {
+      const plan = makePlan();
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      const serverEntry = makeEntry(4, {
+        status: 'cooked',
+        cooked_at: '2026-04-10T14:30:00Z',
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: serverEntry }),
+      });
+
+      await useMealPlanStore.getState().markCooked(4);
+
+      const state = useMealPlanStore.getState();
+      const entry = state.currentPlan?.entries.find(
+        (e) => e.day_of_week === 4
+      );
+      expect(entry?.cooked_at).toBe('2026-04-10T14:30:00Z');
+      expect(entry?.status).toBe('cooked');
+      expect(state.cookingDay).toBeNull();
+      expect(state.error).toBeNull();
+    });
+  });
 });
