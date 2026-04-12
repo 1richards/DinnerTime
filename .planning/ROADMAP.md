@@ -177,7 +177,13 @@ Plans:
   3. User can set timers with voice and hear recipe steps read aloud via TTS
   4. User can ask conversational questions while cooking (substitutions, technique explanations) and get useful answers
   5. Basic voice commands (next/back/repeat/timer) respond in under 1 second
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 09-01-PLAN.md — Install voice deps, iOS permission plugin, Cooking types, cookingStore (TDD)
+- [ ] 09-02-PLAN.md — intentRouter + timerParser pure modules with perf test (TDD)
+- [ ] 09-03-PLAN.md — Backend POST /api/v1/cooking/ask Hono route with Claude Sonnet (TDD)
+- [ ] 09-04-PLAN.md — useStepSpeaker + useVoiceListener + askAssistant hooks/client
+- [ ] 09-05-PLAN.md — Cook screen UI, components, recipe-detail entry, device verification checkpoint
 **UI hint**: yes
 
 ### Phase 10: Skill Progression & Offline
@@ -209,5 +215,5 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 6. Recipe Library | 3/5 | In Progress|  |
 | 7. Meal Planning | 0/5 | Not started | - |
 | 8. Shopping & Instacart | 0/7 | Not started | - |
-| 9. Voice Cooking Mode | 0/TBD | Not started | - |
+| 9. Voice Cooking Mode | 0/5 | Not started | - |
 | 10. Skill Progression & Offline | 0/TBD | Not started | - |
