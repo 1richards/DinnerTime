@@ -34,13 +34,9 @@ describe('normalizeIngredientName', () => {
     expect(normalizeIngredientName('TOMATO')).toBe('tomato');
   });
 
-  it('Test 8c: removes naive trailing s for plural', () => {
-    expect(normalizeIngredientName('Tomatoes')).toBe('tomatoe');
-    // Actually we want "tomatoes" -> "tomato" after trailing 's' naive strip.
-    // The behavior documented in plan is "singular/plural" via trailing 's' removal.
-    // We pick: strip trailing 's' only (not 'es'). "tomatoes" -> "tomatoe".
-    // To still match against "tomato", comparisons should use normalized on BOTH sides.
-    // Adjust test below to reflect actual strategy: both sides normalized identically.
+  it('Test 8c: strips trailing es/s for plural', () => {
+    expect(normalizeIngredientName('Tomatoes')).toBe('tomato');
+    expect(normalizeIngredientName('carrots')).toBe('carrot');
   });
 });
 
