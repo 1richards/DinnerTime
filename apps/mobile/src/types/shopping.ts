@@ -34,6 +34,14 @@ export interface ShoppingListItem {
   created_at: string;
 }
 
+export interface ShoppingOrderSnapshotItem {
+  name: string;
+  quantity?: number | null;
+  unit?: string | null;
+  // Instacart fields are server-internal; we only display name/qty/unit
+  [key: string]: unknown;
+}
+
 export interface ShoppingOrder {
   id: string;
   profile_id: string;
@@ -41,6 +49,7 @@ export interface ShoppingOrder {
   instacart_url: string;
   expires_at: string | null;
   placed_at: string;
+  items_snapshot?: ShoppingOrderSnapshotItem[];
 }
 
 export interface VariationSuggestion {
