@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Completed 02-03-PLAN.md (Phase 02 complete)
-last_updated: "2026-04-11T20:37:55.558Z"
-last_activity: 2026-04-11 -- Completed 02-03 settings UI with family member CRUD and preference sections
+status: executing
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-04-12T07:29:27.157Z"
+last_activity: 2026-04-12 -- Completed 03-01 pantry scanning foundation (deps, types, migration, Anthropic config)
 progress:
   total_phases: 10
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
-  percent: 100
+  total_plans: 10
+  completed_plans: 7
+  percent: 70
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Open the fridge, take a photo, get dinner ideas -- zero mental effort from "what do we have?" to "what should we cook?"
-**Current focus:** Phase 2: Household Preferences (COMPLETE)
+**Current focus:** Phase 3: Pantry Scanning
 
 ## Current Position
 
-Phase: 2 of 10 (Household Preferences)
-Plan: 3 of 3 in current phase (02-03 complete -- phase complete)
-Status: Phase Complete
-Last activity: 2026-04-11 -- Completed 02-03 settings UI with family member CRUD and preference sections
+Phase: 3 of 10 (Pantry Scanning)
+Plan: 1 of 4 in current phase (03-01 complete)
+Status: In Progress
+Last activity: 2026-04-12 -- Completed 03-01 pantry scanning foundation (deps, types, migration, Anthropic config)
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [██████████] 100%
 | Phase 02 P01 | 2min | 2 tasks | 5 files |
 | Phase 02 P02 | 3min | 2 tasks | 6 files |
 | Phase 02 P03 | 5min | 3 tasks | 13 files |
+| Phase 03 P01 | 1min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ Recent decisions affecting current work:
 - [Phase 02]: useDeferredValue (React 19) for ingredient search instead of manual debounce
 - [Phase 02]: Dietary summary section is read-only aggregation; per-member editing in MemberFormModal
 - [Phase 02]: Allergies use red chip color to visually distinguish from soft dietary preferences
+- [Phase 03]: Anthropic client as lazy singleton using env getter pattern for testability
+- [Phase 03]: PantryItem quantity as number (not integer) to support fractional amounts like 0.5 lb
 
 ### Pending Todos
 
@@ -94,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-11T20:34:00.000Z
-Stopped at: Completed 02-03-PLAN.md (Phase 02 complete)
+Last session: 2026-04-12T07:29:27.155Z
+Stopped at: Completed 03-01-PLAN.md
 Resume file: None

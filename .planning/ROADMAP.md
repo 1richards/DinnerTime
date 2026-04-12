@@ -174,7 +174,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 |-------|----------------|--------|-----------|
 | 1. Project Setup & Auth | 3/3 | Complete   | 2026-04-11 |
 | 2. Household Preferences | 3/3 | Complete   | 2026-04-11 |
-| 3. Pantry Scanning | 0/4 | Not started | - |
+| 3. Pantry Scanning | 1/4 | In Progress|  |
 | 4. Fridge-to-Dinner Suggestions | 0/TBD | Not started | - |
 | 5. Recipe Import | 0/TBD | Not started | - |
 | 6. Recipe Library | 0/TBD | Not started | - |
