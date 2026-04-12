@@ -56,6 +56,8 @@ describe('recipeStore', () => {
       importedRecipe: null,
       isDuplicate: false,
       existingRecipe: null,
+      searchQuery: '',
+      showFavoritesOnly: false,
     });
     vi.clearAllMocks();
     mockFetch.mockReset();
@@ -262,6 +264,202 @@ describe('recipeStore', () => {
       const state = useRecipeStore.getState();
       expect(state.error).toBe('Fetch failed');
       expect(state.isLoading).toBe(false);
+    });
+  });
+
+  describe('fetchRecipes with query options', () => {
+    it('forwards q query param to server', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [mockRecipe] }),
+      });
+
+      await useRecipeStore.getState().fetchRecipes({ q: 'pasta' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/recipes?q=pasta'),
+        expect.objectContaining({ method: 'GET' })
+      );
+    });
+
+    it('forwards favoritesOnly as favorites=true', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [mockRecipe] }),
+      });
+
+      await useRecipeStore.getState().fetchRecipes({ favoritesOnly: true });
+
+      const url = (mockFetch.mock.calls[0] as unknown[])[0] as string;
+      expect(url).toContain('favorites=true');
+    });
+
+    it('combines q and favoritesOnly', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      await useRecipeStore
+        .getState()
+        .fetchRecipes({ q: 'pasta', favoritesOnly: true });
+
+      const url = (mockFetch.mock.calls[0] as unknown[])[0] as string;
+      expect(url).toContain('q=pasta');
+      expect(url).toContain('favorites=true');
+    });
+  });
+
+  describe('updateRecipe', () => {
+    it('optimistically updates recipe then replaces with server response', async () => {
+      useRecipeStore.setState({ recipes: [mockRecipe] });
+      const updated: Recipe = { ...mockRecipe, title: 'New Title' };
+
+      let resolveFetch: (v: unknown) => void = () => {};
+      mockFetch.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        })
+      );
+
+      const promise = useRecipeStore
+        .getState()
+        .updateRecipe('rec-1', { title: 'New Title' });
+
+      // Optimistic update visible immediately
+      expect(useRecipeStore.getState().recipes[0].title).toBe('New Title');
+
+      resolveFetch({
+        ok: true,
+        json: () => Promise.resolve({ data: updated }),
+      });
+      await promise;
+
+      const state = useRecipeStore.getState();
+      expect(state.recipes[0].title).toBe('New Title');
+      expect(state.error).toBeNull();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/recipes/rec-1'),
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+          }),
+          body: JSON.stringify({ title: 'New Title' }),
+        })
+      );
+    });
+
+    it('rolls back on server error and sets error state', async () => {
+      useRecipeStore.setState({ recipes: [mockRecipe] });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'Update failed' }),
+      });
+
+      await useRecipeStore
+        .getState()
+        .updateRecipe('rec-1', { title: 'Bad' });
+
+      const state = useRecipeStore.getState();
+      expect(state.recipes[0].title).toBe('Spaghetti Bolognese');
+      expect(state.error).toBe('Update failed');
+    });
+  });
+
+  describe('deleteRecipe', () => {
+    it('optimistically removes recipe and calls DELETE', async () => {
+      useRecipeStore.setState({ recipes: [mockRecipe] });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: null }),
+      });
+
+      await useRecipeStore.getState().deleteRecipe('rec-1');
+
+      const state = useRecipeStore.getState();
+      expect(state.recipes).toHaveLength(0);
+      expect(state.error).toBeNull();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/recipes/rec-1'),
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+
+    it('rolls back on server error', async () => {
+      useRecipeStore.setState({ recipes: [mockRecipe] });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'Delete failed' }),
+      });
+
+      await useRecipeStore.getState().deleteRecipe('rec-1');
+
+      const state = useRecipeStore.getState();
+      expect(state.recipes).toHaveLength(1);
+      expect(state.recipes[0].id).toBe('rec-1');
+      expect(state.error).toBe('Delete failed');
+    });
+  });
+
+  describe('toggleFavorite', () => {
+    it('flips is_favorite optimistically and PATCHes server', async () => {
+      useRecipeStore.setState({
+        recipes: [{ ...mockRecipe, is_favorite: false }],
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({ data: { ...mockRecipe, is_favorite: true } }),
+      });
+
+      await useRecipeStore.getState().toggleFavorite('rec-1');
+
+      const state = useRecipeStore.getState();
+      expect(state.recipes[0].is_favorite).toBe(true);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/recipes/rec-1'),
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({ is_favorite: true }),
+        })
+      );
+    });
+
+    it('rolls back favorite toggle on server error', async () => {
+      useRecipeStore.setState({
+        recipes: [{ ...mockRecipe, is_favorite: false }],
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'Toggle failed' }),
+      });
+
+      await useRecipeStore.getState().toggleFavorite('rec-1');
+
+      const state = useRecipeStore.getState();
+      expect(state.recipes[0].is_favorite).toBe(false);
+      expect(state.error).toBe('Toggle failed');
+    });
+  });
+
+  describe('search state setters', () => {
+    it('setSearchQuery updates searchQuery', () => {
+      useRecipeStore.getState().setSearchQuery('pasta');
+      expect(useRecipeStore.getState().searchQuery).toBe('pasta');
+    });
+
+    it('setShowFavoritesOnly updates showFavoritesOnly', () => {
+      useRecipeStore.getState().setShowFavoritesOnly(true);
+      expect(useRecipeStore.getState().showFavoritesOnly).toBe(true);
     });
   });
 
