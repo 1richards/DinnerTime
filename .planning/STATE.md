@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 4 of 5
 status: executing
-stopped_at: Completed 07-04-PLAN.md
-last_updated: "2026-04-12T19:18:40.602Z"
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-04-12T19:22:15.784Z"
 last_activity: 2026-04-10 -- Completed 07-04 mobile meal plan store (TDD)
 progress:
   total_phases: 10
   completed_phases: 6
   total_plans: 27
-  completed_plans: 25
+  completed_plans: 26
   percent: 93
 ---
 
@@ -76,6 +76,7 @@ Progress: [█████████░] 93%
 | Phase 07-meal-planning P01 | 4min | 2 tasks | 3 files |
 | Phase 07-meal-planning P02 | 5min | 2 tasks | 2 files |
 | Phase 07-meal-planning P04 | 2min | 2 tasks | 2 files |
+| Phase 07-meal-planning P03 | 5min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,11 @@ Recent decisions affecting current work:
 - [Phase 07-meal-planning]: [Phase 07-04]: EMPTY_PANTRY server error mapped to 'Add at least 3 pantry items first' at store boundary
 - [Phase 07-meal-planning]: [Phase 07-04]: 409 ALREADY_COOKED retains optimistic cooked state and signals via error='already_cooked' (no rollback)
 - [Phase 07-meal-planning]: [Phase 07-04]: authedFetch helper centralizes /api/v1 prefix + auth header for mealPlanStore actions
+- [Phase 07-meal-planning]: [Phase 07-03]: normalizeIngredientName strips trailing 'es' then 's' so 'Tomatoes' collapses to match pantry 'tomato'
+- [Phase 07-meal-planning]: [Phase 07-03]: regenerateDay re-fetches pantry/members/profile/recipes on every call (Pitfall 2) -- never trusts snapshot
+- [Phase 07-meal-planning]: [Phase 07-03]: markCooked idempotency via status guard throwing Error with code=ALREADY_COOKED/status=409
+- [Phase 07-meal-planning]: [Phase 07-03]: Route layer maps service error.code to HTTP (EMPTY_PANTRY->400, INVALID_PLAN_LENGTH->502, ALREADY_COOKED->409)
+- [Phase 07-meal-planning]: [Phase 07-03]: mondayOf uses UTC exclusively so server timezone drift cannot shift the active week
 
 ### Pending Todos
 
@@ -155,6 +161,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T19:18:40.600Z
-Stopped at: Completed 07-04-PLAN.md
+Last session: 2026-04-12T19:22:15.782Z
+Stopped at: Completed 07-03-PLAN.md
 Resume file: None
