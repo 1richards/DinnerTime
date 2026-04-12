@@ -31,8 +31,8 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Meal Suggestions
 
 - [x] **MEAL-01**: User can get AI dinner suggestions based on current pantry inventory
-- [ ] **MEAL-02**: Suggestions respect dietary preferences and disliked ingredients
-- [ ] **MEAL-03**: Suggestions account for kid-friendly meals (familiar flavors, no challenging textures)
+- [x] **MEAL-02**: Suggestions respect dietary preferences and disliked ingredients
+- [x] **MEAL-03**: Suggestions account for kid-friendly meals (familiar flavors, no challenging textures)
 - [x] **MEAL-04**: User can get suggestions immediately after a pantry scan ("fridge → dinner ideas" flow)
 
 ### Recipe System
@@ -151,8 +151,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PANT-07 | Phase 3 | Complete |
 | PANT-08 | Phase 3 | Complete |
 | MEAL-01 | Phase 4 | Complete |
-| MEAL-02 | Phase 4 | Pending |
-| MEAL-03 | Phase 4 | Pending |
+| MEAL-02 | Phase 4 | Complete |
+| MEAL-03 | Phase 4 | Complete |
 | MEAL-04 | Phase 4 | Complete |
 | RECP-01 | Phase 5 | Pending |
 | RECP-02 | Phase 5 | Pending |

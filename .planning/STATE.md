@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-04-12T07:58:00.538Z"
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-04-12T07:59:25.112Z"
 last_activity: 2026-04-12 -- Completed 04-02 suggestions store (types + Zustand store for dinner suggestions)
 progress:
   total_phases: 10
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Open the fridge, take a photo, get dinner ideas -- zero mental effort from "what do we have?" to "what should we cook?"
-**Current focus:** Phase 3: Pantry Scanning
+**Current focus:** Phase 4: Fridge-to-Dinner Suggestions
 
 ## Current Position
 
@@ -60,6 +60,7 @@ Progress: [█████████░] 92%
 | Phase 03 P02 | 2min | 2 tasks | 5 files |
 | Phase 03 P03 | 3min | 2 tasks | 4 files |
 | Phase 03 P04 | 3min | 3 tasks | 10 files |
+| Phase 04 P01 | 3min | 2 tasks | 3 files |
 | Phase 04 P02 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
@@ -93,6 +94,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Backend API calls use fetch with Supabase auth token for scan/confirm endpoints
 - [Phase 03]: Confidence decay: 7-day grace period, linear 0.05/day reduction, floor at 0.1
 - [Phase 03]: Expand-to-act pattern for item Used/Gone actions instead of swipe gestures
+- [Phase 04]: Replicated confidence decay logic server-side for prompt assembly (keeps server self-contained)
+- [Phase 04]: Prompt separates HARD CONSTRAINTS (allergies, NEVER) from SOFT PREFERENCES (dietary restrictions)
+- [Phase 04]: Empty pantry guard at <3 items returns 400 without calling Claude API
 - [Phase 04]: Suggestions store follows pantryStore pattern exactly with local getApiBaseUrl and getAuthToken helpers
 
 ### Pending Todos
@@ -107,6 +111,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T07:58:00.536Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-04-12T07:59:25.110Z
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None
