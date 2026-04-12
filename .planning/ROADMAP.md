@@ -137,7 +137,13 @@ Plans:
   3. Plans avoid repeating recent meals and balance complexity across the week
   4. User can swap any individual meal in the plan for a different suggestion
   5. User can view the meal plan in a weekly calendar layout
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 07-01-PLAN.md — Migration (meal_plans + meal_plan_entries), shared MealPlan/MealPlanEntry types
+- [ ] 07-02-PLAN.md — mealPlanner service: buildMealPlanPrompt + generateMealPlan + generate_meal_plan tool (TDD)
+- [ ] 07-03-PLAN.md — ingredientMatching + regenerateDay + markCooked + meal-plans routes (TDD)
+- [ ] 07-04-PLAN.md — Mobile mealPlanStore with optimistic swap/cook and rollback (TDD)
+- [ ] 07-05-PLAN.md — Plan tab UI: DayRow, SwapSheet, CookConfirm, visual verification
 **UI hint**: yes
 
 ### Phase 8: Shopping & Instacart
@@ -193,7 +199,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 4. Fridge-to-Dinner Suggestions | 0/3 | Not started | - |
 | 5. Recipe Import | 2/4 | In Progress|  |
 | 6. Recipe Library | 3/5 | In Progress|  |
-| 7. Meal Planning | 0/TBD | Not started | - |
+| 7. Meal Planning | 0/5 | Not started | - |
 | 8. Shopping & Instacart | 0/TBD | Not started | - |
 | 9. Voice Cooking Mode | 0/TBD | Not started | - |
 | 10. Skill Progression & Offline | 0/TBD | Not started | - |
