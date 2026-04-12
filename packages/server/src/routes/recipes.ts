@@ -13,6 +13,10 @@ import {
   updateRecipe,
   deleteRecipe,
 } from '../services/recipeStore.js';
+import {
+  discoverRecipes,
+  type DiscoveryPreferences,
+} from '../services/recipeDiscovery.js';
 
 // Fields a client is allowed to patch. Anything else in the body is ignored.
 const PATCHABLE_FIELDS = [
@@ -101,6 +105,82 @@ recipes.delete('/:id', async (c) => {
     return c.body(null, 204);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to delete recipe';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
+ * POST /discover - AI-generated recipe suggestions (RECP-10).
+ *
+ * Loads household preferences + existing library titles, calls Claude Sonnet
+ * via the recipeDiscovery service, and returns a list of ParsedRecipe.
+ * Does NOT persist anything -- saving is an explicit user action via POST /.
+ */
+recipes.post('/discover', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+
+  // Body is optional; empty/invalid JSON should not 400 this endpoint.
+  const body = await c.req
+    .json<{ prompt?: string }>()
+    .catch(() => ({} as { prompt?: string }));
+
+  try {
+    // Load household members (allergies / restrictions / dislikes)
+    const { data: members, error: membersError } = await supabase
+      .from('household_members')
+      .select()
+      .eq('profile_id', user.id);
+
+    if (membersError) {
+      throw new Error(`Failed to fetch household members: ${membersError.message}`);
+    }
+
+    // Load profile (cuisine preferences)
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('cuisine_preferences, skill_level')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      throw new Error(`Failed to fetch profile: ${profileError.message}`);
+    }
+
+    const memberRows = (members ?? []) as Array<{
+      dietary_allergies?: string[] | null;
+      dietary_restrictions?: string[] | null;
+      disliked_ingredients?: string[] | null;
+    }>;
+
+    // Dedupe allergies / restrictions / dislikes across all members
+    const preferences: DiscoveryPreferences = {
+      allergies: [
+        ...new Set(memberRows.flatMap((m) => m.dietary_allergies ?? [])),
+      ],
+      dietary_restrictions: [
+        ...new Set(memberRows.flatMap((m) => m.dietary_restrictions ?? [])),
+      ],
+      disliked_ingredients: [
+        ...new Set(memberRows.flatMap((m) => m.disliked_ingredients ?? [])),
+      ],
+      cuisine_preferences:
+        (profile as { cuisine_preferences?: string[] | null })?.cuisine_preferences ?? [],
+    };
+
+    // Existing library titles feed the AVOID list to prevent duplicates
+    const library = await getRecipes(supabase, user.id);
+    const existingTitles = library.map((r) => r.title);
+
+    const data = await discoverRecipes({
+      preferences,
+      existingTitles,
+      prompt: body.prompt,
+    });
+
+    return c.json({ data });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to discover recipes';
     return c.json({ error: message }, 500);
   }
 });
