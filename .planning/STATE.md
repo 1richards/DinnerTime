@@ -4,15 +4,15 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 2 of 7 (complete)
 status: executing
-stopped_at: Completed 08-04-PLAN.md
-last_updated: "2026-04-12T21:24:24Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-04-12T21:26:14.898Z"
 last_activity: 2026-04-12 -- Completed 08-04 stubbable Instacart client
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 34
-  completed_plans: 29
-  percent: 82
+  completed_plans: 30
+  percent: 85
 ---
 
 # Project State
@@ -80,6 +80,7 @@ Progress: [█████████░] 85%
 | Phase 07-meal-planning P05 | 3 min | 3 tasks | 6 files |
 | Phase 08-shopping-instacart P01 | 1min | 2 tasks | 3 files |
 | Phase 08-shopping-instacart P04 | 2min | 2 tasks | 2 files |
+| Phase 08-shopping-instacart P02 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,9 @@ Recent decisions affecting current work:
 - [Phase 08-shopping-instacart]: [Phase 08-04]: Stub slugifies via encodeURIComponent(title.toLowerCase().replace(/\s+/g, '-')) for deterministic URL-safe stub URLs
 - [Phase 08-shopping-instacart]: [Phase 08-04]: RealInstacartClient takes (apiKey, baseUrl) via constructor injection; default expires_in=30 days; landing_page_configuration only when partner_linkback_url provided
 - [Phase 08-shopping-instacart]: [Phase 08-04]: Error path throws `Instacart API <status>: <text>` so upstream handlers can log both
+- [Phase 08-shopping-instacart]: [Phase 08-02]: consolidateIngredients nulls unit on mismatch and takes max(qty) (no conversion)
+- [Phase 08-shopping-instacart]: [Phase 08-02]: subtractPantry re-normalizes item.name defensively to decouple from producer normalization
+- [Phase 08-shopping-instacart]: [Phase 08-02]: Mocked @anthropic-ai/sdk default export (recipeDiscovery pattern) rather than config/anthropic wrapper
 
 ### Pending Todos
 
@@ -176,6 +180,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T21:24:24Z
-Stopped at: Completed 08-04-PLAN.md
+Last session: 2026-04-12T21:26:07.071Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
