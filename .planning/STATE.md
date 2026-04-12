@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 2 of 5 (07-01 done; starting 07-02)
+current_plan: 3 of 5
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-04-12T19:07:32.520Z"
-last_activity: 2026-04-10 -- Completed 07-01 meal plan schema and shared types
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-04-12T19:14:20.279Z"
+last_activity: 2026-04-10 -- Completed 07-02 meal planner service (TDD)
 progress:
   total_phases: 10
   completed_phases: 6
   total_plans: 27
-  completed_plans: 23
-  percent: 85
+  completed_plans: 24
+  percent: 89
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 7 of 10 (Meal Planning) -- IN PROGRESS
-Current Plan: 2 of 5 (07-01 done; starting 07-02)
+Current Plan: 3 of 5
 Status: In Progress
-Last activity: 2026-04-10 -- Completed 07-01 meal plan schema and shared types
+Last activity: 2026-04-10 -- Completed 07-02 meal planner service (TDD)
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [█████████░] 85%
 | Phase 06-recipe-library P04 | 3min | 2 tasks | 5 files |
 | Phase 06-recipe-library P05 | 4min | 3 tasks | 10 files |
 | Phase 07-meal-planning P01 | 4min | 2 tasks | 3 files |
+| Phase 07-meal-planning P02 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,11 @@ Recent decisions affecting current work:
 - [Phase 07-meal-planning]: [Phase 07-01]: meal_plan_entries RLS uses EXISTS subquery through parent meal_plans.profile_id
 - [Phase 07-meal-planning]: [Phase 07-01]: Status enum lives on meal_plan_entries only, not on parent meal_plans
 - [Phase 07-meal-planning]: [Phase 07-01]: day_of_week uses 0=Monday (SMALLINT 0-6) for ISO week alignment
+- [Phase 07-meal-planning]: [Phase 07-02]: Claude tool schema enforces minItems:7/maxItems:7 on days array (Pitfall 1 mitigation)
+- [Phase 07-meal-planning]: [Phase 07-02]: day_of_week is string enum mon..sun at API boundary, SMALLINT 0..6 at DB via dayStringToIndex
+- [Phase 07-meal-planning]: [Phase 07-02]: Regenerate flow uses delete-then-insert on meal_plans (cascades entries) not upsert
+- [Phase 07-meal-planning]: [Phase 07-02]: buildMealPlanPrompt pure over MealPlanContext DTO (not DB rows) for zero-mock unit tests
+- [Phase 07-meal-planning]: [Phase 07-02]: Recipe library capped at 100 and recent meals capped at 21 for prompt context budget
 
 ### Pending Todos
 
@@ -145,6 +151,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T19:07:32.518Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-04-12T19:14:13.716Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None

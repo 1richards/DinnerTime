@@ -52,8 +52,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **PLAN-01**: User can generate a weekly dinner plan with AI
 - [x] **PLAN-02**: AI meal plans consider pantry inventory, preferences, and recipe library
-- [ ] **PLAN-03**: AI meal plans avoid repeating recent meals (variety constraints)
-- [ ] **PLAN-04**: AI meal plans balance complexity across the week (simpler meals on weeknights)
+- [x] **PLAN-03**: AI meal plans avoid repeating recent meals (variety constraints)
+- [x] **PLAN-04**: AI meal plans balance complexity across the week (simpler meals on weeknights)
 - [x] **PLAN-05**: User can swap individual meals in a generated plan
 - [x] **PLAN-06**: User can view meal plan in a weekly calendar view
 - [x] **PLAN-07**: Cooking a planned meal auto-deducts ingredients from pantry inventory
@@ -166,8 +166,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RECP-10 | Phase 6 | Complete |
 | PLAN-01 | Phase 7 | Complete |
 | PLAN-02 | Phase 7 | Complete |
-| PLAN-03 | Phase 7 | Pending |
-| PLAN-04 | Phase 7 | Pending |
+| PLAN-03 | Phase 7 | Complete |
+| PLAN-04 | Phase 7 | Complete |
 | PLAN-05 | Phase 7 | Complete |
 | PLAN-06 | Phase 7 | Complete |
 | PLAN-07 | Phase 7 | Complete |
