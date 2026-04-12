@@ -42,6 +42,7 @@ const mockRecipe: Recipe = {
   id: 'rec-1',
   profile_id: 'prof-1',
   ...mockParsedRecipe,
+  is_favorite: false,
   created_at: '2026-04-10T00:00:00Z',
   updated_at: '2026-04-10T00:00:00Z',
 };

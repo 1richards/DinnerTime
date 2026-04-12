@@ -12,12 +12,14 @@ const SOURCE_LABELS: Record<Recipe['source_type'], string> = {
   url: 'URL',
   photo: 'Photo',
   manual: 'Manual',
+  ai: 'AI',
 };
 
 const SOURCE_COLORS: Record<Recipe['source_type'], string> = {
   url: 'bg-blue-100 text-blue-700',
   photo: 'bg-purple-100 text-purple-700',
   manual: 'bg-green-100 text-green-700',
+  ai: 'bg-amber-100 text-amber-700',
 };
 
 export function RecipeCard({ recipe, onPress }: RecipeCardProps) {

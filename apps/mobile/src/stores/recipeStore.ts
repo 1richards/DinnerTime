@@ -2,6 +2,11 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import type { ParsedRecipe, Recipe } from '../types/recipe';
 
+interface FetchRecipesOptions {
+  q?: string;
+  favoritesOnly?: boolean;
+}
+
 interface RecipeState {
   recipes: Recipe[];
   isLoading: boolean;
@@ -10,12 +15,19 @@ interface RecipeState {
   importedRecipe: ParsedRecipe | null;
   isDuplicate: boolean;
   existingRecipe: Recipe | null;
+  searchQuery: string;
+  showFavoritesOnly: boolean;
 
   importFromUrl: (url: string) => Promise<void>;
   importFromPhoto: (image: string) => Promise<void>;
   importFromText: (text: string) => Promise<void>;
   saveRecipe: (recipe: ParsedRecipe) => Promise<void>;
-  fetchRecipes: () => Promise<void>;
+  fetchRecipes: (opts?: FetchRecipesOptions) => Promise<void>;
+  updateRecipe: (id: string, patch: Partial<Recipe>) => Promise<void>;
+  deleteRecipe: (id: string) => Promise<void>;
+  toggleFavorite: (id: string) => Promise<void>;
+  setSearchQuery: (q: string) => void;
+  setShowFavoritesOnly: (v: boolean) => void;
   clearImport: () => void;
 }
 
@@ -31,7 +43,7 @@ const getAuthToken = async (): Promise<string> => {
   return data.session.access_token;
 };
 
-export const useRecipeStore = create<RecipeState>((set) => ({
+export const useRecipeStore = create<RecipeState>((set, get) => ({
   recipes: [],
   isLoading: false,
   isImporting: false,
@@ -39,6 +51,8 @@ export const useRecipeStore = create<RecipeState>((set) => ({
   importedRecipe: null,
   isDuplicate: false,
   existingRecipe: null,
+  searchQuery: '',
+  showFavoritesOnly: false,
 
   importFromUrl: async (url: string) => {
     set({
@@ -211,11 +225,17 @@ export const useRecipeStore = create<RecipeState>((set) => ({
     }
   },
 
-  fetchRecipes: async () => {
+  fetchRecipes: async (opts?: FetchRecipesOptions) => {
     set({ isLoading: true, error: null });
     try {
       const token = await getAuthToken();
-      const response = await fetch(`${getApiBaseUrl()}/api/v1/recipes`, {
+      const params = new URLSearchParams();
+      if (opts?.q) params.append('q', opts.q);
+      if (opts?.favoritesOnly) params.append('favorites', 'true');
+      const qs = params.toString();
+      const url = `${getApiBaseUrl()}/api/v1/recipes${qs ? `?${qs}` : ''}`;
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -245,6 +265,138 @@ export const useRecipeStore = create<RecipeState>((set) => ({
       });
     }
   },
+
+  updateRecipe: async (id: string, patch: Partial<Recipe>) => {
+    const snapshot = get().recipes;
+    set({
+      recipes: snapshot.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+      error: null,
+    });
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(
+        `${getApiBaseUrl()}/api/v1/recipes/${id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(patch),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        set({
+          recipes: snapshot,
+          error: err.error ?? 'Failed to update recipe',
+        });
+        return;
+      }
+
+      const body = await response.json();
+      const updated: Recipe = body.data;
+      set((state) => ({
+        recipes: state.recipes.map((r) => (r.id === id ? updated : r)),
+        error: null,
+      }));
+    } catch (err) {
+      set({
+        recipes: snapshot,
+        error: err instanceof Error ? err.message : 'Failed to update recipe',
+      });
+    }
+  },
+
+  deleteRecipe: async (id: string) => {
+    const snapshot = get().recipes;
+    set({
+      recipes: snapshot.filter((r) => r.id !== id),
+      error: null,
+    });
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(
+        `${getApiBaseUrl()}/api/v1/recipes/${id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        set({
+          recipes: snapshot,
+          error: err.error ?? 'Failed to delete recipe',
+        });
+        return;
+      }
+    } catch (err) {
+      set({
+        recipes: snapshot,
+        error: err instanceof Error ? err.message : 'Failed to delete recipe',
+      });
+    }
+  },
+
+  toggleFavorite: async (id: string) => {
+    const snapshot = get().recipes;
+    const current = snapshot.find((r) => r.id === id);
+    if (!current) return;
+    const nextValue = !current.is_favorite;
+
+    set({
+      recipes: snapshot.map((r) =>
+        r.id === id ? { ...r, is_favorite: nextValue } : r
+      ),
+      error: null,
+    });
+
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(
+        `${getApiBaseUrl()}/api/v1/recipes/${id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ is_favorite: nextValue }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        set({
+          recipes: snapshot,
+          error: err.error ?? 'Failed to toggle favorite',
+        });
+        return;
+      }
+
+      const body = await response.json();
+      const updated: Recipe = body.data;
+      set((state) => ({
+        recipes: state.recipes.map((r) => (r.id === id ? updated : r)),
+        error: null,
+      }));
+    } catch (err) {
+      set({
+        recipes: snapshot,
+        error:
+          err instanceof Error ? err.message : 'Failed to toggle favorite',
+      });
+    }
+  },
+
+  setSearchQuery: (q: string) => set({ searchQuery: q }),
+  setShowFavoritesOnly: (v: boolean) => set({ showFavoritesOnly: v }),
 
   clearImport: () => {
     set({
