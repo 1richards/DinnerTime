@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-04-PLAN.md
-last_updated: "2026-04-12T18:48:04.166Z"
-last_activity: 2026-04-10 -- Completed 06-03 mobile scale helper + recipe store extensions
+stopped_at: Completed 06-05-PLAN.md
+last_updated: "2026-04-12T18:53:55.461Z"
+last_activity: 2026-04-12 -- Completed 06-05 recipe library UI (detail, edit, scaling, discover) -- Phase 6 complete
 progress:
   total_phases: 10
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 22
-  completed_plans: 21
-  percent: 91
+  completed_plans: 22
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 6 of 10 (Recipe Library) -- IN PROGRESS
-Plan: 5 of 5 in current phase (06-01, 06-02, 06-03, 06-04 complete)
-Status: In Progress
-Last activity: 2026-04-12 -- Completed 06-04 AI recipe discovery service + POST /discover route (RECP-10)
+Phase: 6 of 10 (Recipe Library) -- COMPLETE
+Plan: 5 of 5 complete (06-01, 06-02, 06-03, 06-04, 06-05 done)
+Status: Phase Complete -- Ready for Phase 7 planning
+Last activity: 2026-04-12 -- Completed 06-05 recipe library UI (detail, edit, scaling, discover)
 
-Progress: [██████████] 95%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Progress: [██████████] 95%
 | Phase 06-recipe-library P03 | 3min | 2 tasks | 5 files |
 | Phase 06-recipe-library P02 | 3min | 2 tasks | 6 files |
 | Phase 06-recipe-library P04 | 3min | 2 tasks | 5 files |
+| Phase 06-recipe-library P05 | 4min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,9 @@ Recent decisions affecting current work:
 - [Phase 06-recipe-library]: [Phase 06-04]: Flat DiscoveryPreferences DTO decouples recipeDiscovery service from Supabase schema (unit-testable without mocks)
 - [Phase 06-recipe-library]: [Phase 06-04]: Extended ParsedRecipe.source_type union with 'ai' variant (minimum-scope for RECP-10)
 - [Phase 06-recipe-library]: [Phase 06-04]: POST /discover assembles preferences inline (mirrors suggestions.ts) -- no shared loadPreferences helper
+- [Phase 06-recipe-library]: [Phase 06-05]: Nested dynamic routes use [id]/index.tsx + [id]/edit.tsx folder (flat [id].tsx collides with sub-routes)
+- [Phase 06-recipe-library]: [Phase 06-05]: Edit screen uses local Draft slice, commits via updateRecipe on Save
+- [Phase 06-recipe-library]: [Phase 06-05]: Discover screen keeps suggestions in local component state; source_type='ai' forced at save time
 
 ### Pending Todos
 
@@ -136,6 +140,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T18:48:04.165Z
-Stopped at: Completed 06-04-PLAN.md
+Last session: 2026-04-12T18:53:55.459Z
+Stopped at: Completed 06-05-PLAN.md
 Resume file: None
