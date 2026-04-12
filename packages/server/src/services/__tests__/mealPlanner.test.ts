@@ -19,6 +19,8 @@ import {
   buildMealPlanPrompt,
   generateMealPlan,
   generateMealPlanTool,
+  regenerateDay,
+  markCooked,
 } from '../mealPlanner.js';
 import type { MealPlanContext } from '../mealPlanner.js';
 
@@ -540,5 +542,357 @@ describe('generateMealPlan', () => {
     expect(byTitle['Roast Chicken']).toBe(4);
     expect(byTitle['Risotto']).toBe(5);
     expect(byTitle['Sunday Stew']).toBe(6);
+  });
+});
+
+// ---------- regenerateDay Tests ----------
+
+describe('regenerateDay', () => {
+  const entryRow = {
+    id: 'entry-3',
+    meal_plan_id: 'plan-1',
+    day_of_week: 3,
+    recipe_id: null,
+    title: 'Old Pasta',
+    description: 'boring',
+    ingredients: [{ name: 'Garlic' }],
+    ingredients_needed: [{ name: 'Pasta' }],
+    estimated_time_minutes: 20,
+    difficulty: 'easy',
+    kid_friendly: true,
+    why_suggested: 'old',
+    status: 'planned',
+    cooked_at: null,
+    created_at: new Date().toISOString(),
+  };
+
+  const planRow = {
+    id: 'plan-1',
+    profile_id: 'profile-1',
+    week_start: '2026-04-13',
+    generated_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const pantry = [
+    { id: 'p1', profile_id: 'profile-1', name: 'Chicken', normalized_name: 'chicken', quantity: 2, unit: 'lb', category: 'protein', source_location: 'fridge', confidence: 0.9, status: 'available', last_seen_at: new Date().toISOString() },
+    { id: 'p2', profile_id: 'profile-1', name: 'Rice', normalized_name: 'rice', quantity: 3, unit: 'cup', category: 'grain', source_location: 'pantry', confidence: 0.9, status: 'available', last_seen_at: new Date().toISOString() },
+    { id: 'p3', profile_id: 'profile-1', name: 'Broccoli', normalized_name: 'broccoli', quantity: 1, unit: 'head', category: 'produce', source_location: 'fridge', confidence: 0.9, status: 'available', last_seen_at: new Date().toISOString() },
+    { id: 'p4', profile_id: 'profile-1', name: 'Garlic', normalized_name: 'garlic', quantity: 4, unit: 'clove', category: 'produce', source_location: 'pantry', confidence: 0.9, status: 'available', last_seen_at: new Date().toISOString() },
+  ];
+
+  const members = [
+    { id: 'm1', profile_id: 'profile-1', name: 'Alice', member_type: 'adult', age_range: null, dietary_restrictions: [], dietary_allergies: [], disliked_ingredients: [] },
+  ];
+  const profile = { cuisine_preferences: ['Italian'], skill_level: 'intermediate' };
+
+  const makeRegenSupabase = () => {
+    const calls: string[] = [];
+    let updatedEntry: any = null;
+    const client = {
+      calls,
+      get updatedEntry() {
+        return updatedEntry;
+      },
+      from: vi.fn().mockImplementation((table: string) => {
+        calls.push(table);
+        if (table === 'meal_plans') {
+          return {
+            select: () => ({
+              eq: () => ({
+                eq: () => ({ maybeSingle: () => ({ data: null, error: null }) }),
+                single: () => ({ data: planRow, error: null }),
+              }),
+            }),
+          };
+        }
+        if (table === 'meal_plan_entries') {
+          return {
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  single: () => ({ data: entryRow, error: null }),
+                  order: () => ({
+                    limit: () => ({ data: [], error: null }),
+                  }),
+                }),
+                order: () => ({
+                  limit: () => ({ data: [], error: null }),
+                }),
+              }),
+            }),
+            update: (patch: any) => ({
+              eq: () => ({
+                select: () => ({
+                  single: () => {
+                    updatedEntry = { ...entryRow, ...patch };
+                    return { data: updatedEntry, error: null };
+                  },
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'pantry_items') {
+          return {
+            select: () => ({
+              eq: () => ({
+                eq: () => ({ data: pantry, error: null }),
+              }),
+            }),
+          };
+        }
+        if (table === 'household_members') {
+          return { select: () => ({ eq: () => ({ data: members, error: null }) }) };
+        }
+        if (table === 'profiles') {
+          return { select: () => ({ eq: () => ({ single: () => ({ data: profile, error: null }) }) }) };
+        }
+        if (table === 'recipes') {
+          return { select: () => ({ eq: () => ({ limit: () => ({ data: [], error: null }) }) }) };
+        }
+        return {};
+      }),
+    };
+    return client;
+  };
+
+  const mockToolUse = (day: any) => ({
+    content: [
+      {
+        type: 'tool_use',
+        id: 'tool_1',
+        name: 'generate_meal_plan',
+        input: { days: [day] },
+      },
+    ],
+  });
+
+  beforeEach(() => {
+    mockCreate.mockReset();
+  });
+
+  it('Test 1: regenerateDay fetches fresh pantry (not snapshot)', async () => {
+    mockCreate.mockResolvedValue(
+      mockToolUse({
+        day_of_week: 'thu',
+        title: 'New Pasta',
+        description: 'better',
+        recipe_id: null,
+        ingredients_used: ['Garlic'],
+        ingredients_needed: [],
+        estimated_time_minutes: 25,
+        difficulty: 'easy',
+        complexity_target: 'weeknight',
+        kid_friendly: true,
+        why_suggested: 'fresh',
+      }),
+    );
+    const supabase = makeRegenSupabase();
+    await regenerateDay(supabase as never, 'profile-1', 'plan-1', 3);
+    expect(supabase.calls).toContain('pantry_items');
+  });
+
+  it('Test 2: regenerateDay prompt includes the excluded title', async () => {
+    mockCreate.mockResolvedValue(
+      mockToolUse({
+        day_of_week: 'thu',
+        title: 'New Pasta',
+        description: 'better',
+        recipe_id: null,
+        ingredients_used: ['Garlic'],
+        ingredients_needed: [],
+        estimated_time_minutes: 25,
+        difficulty: 'easy',
+        complexity_target: 'weeknight',
+        kid_friendly: true,
+        why_suggested: 'fresh',
+      }),
+    );
+    const supabase = makeRegenSupabase();
+    await regenerateDay(supabase as never, 'profile-1', 'plan-1', 3);
+    const call = mockCreate.mock.calls[0][0] as { messages: Array<{ content: string }> };
+    const promptText = call.messages[0].content;
+    expect(promptText).toContain('Old Pasta');
+    expect(promptText).toMatch(/exclud|avoid|not/i);
+  });
+
+  it('Test 3: regenerateDay updates only the target entry and returns it', async () => {
+    mockCreate.mockResolvedValue(
+      mockToolUse({
+        day_of_week: 'thu',
+        title: 'New Pasta',
+        description: 'better',
+        recipe_id: null,
+        ingredients_used: ['Garlic'],
+        ingredients_needed: [],
+        estimated_time_minutes: 25,
+        difficulty: 'easy',
+        complexity_target: 'weeknight',
+        kid_friendly: true,
+        why_suggested: 'fresh',
+      }),
+    );
+    const supabase = makeRegenSupabase();
+    const result = await regenerateDay(supabase as never, 'profile-1', 'plan-1', 3);
+    expect(result.id).toBe('entry-3');
+    expect(result.title).toBe('New Pasta');
+    expect(result.day_of_week).toBe(3);
+  });
+});
+
+// ---------- markCooked Tests ----------
+
+describe('markCooked', () => {
+  const makeEntry = (overrides: Record<string, unknown> = {}) => ({
+    id: 'entry-0',
+    meal_plan_id: 'plan-1',
+    day_of_week: 0,
+    recipe_id: null,
+    title: 'Chicken Rice',
+    description: 'dinner',
+    ingredients: [
+      { name: 'Chicken', quantity: 1 },
+      { name: 'Rice', quantity: 2 },
+    ],
+    ingredients_needed: [],
+    estimated_time_minutes: 25,
+    difficulty: 'easy',
+    kid_friendly: true,
+    why_suggested: '',
+    status: 'planned',
+    cooked_at: null,
+    created_at: new Date().toISOString(),
+    ...overrides,
+  });
+
+  const pantry = [
+    { id: 'p1', profile_id: 'profile-1', name: 'Chicken', normalized_name: 'chicken', quantity: 1, unit: 'lb', category: 'protein', source_location: 'fridge', confidence: 0.9, status: 'available', last_seen_at: new Date().toISOString() },
+    { id: 'p2', profile_id: 'profile-1', name: 'Rice', normalized_name: 'rice', quantity: 5, unit: 'cup', category: 'grain', source_location: 'pantry', confidence: 0.9, status: 'available', last_seen_at: new Date().toISOString() },
+  ];
+
+  const makeCookSupabase = (initialEntry: any) => {
+    let currentEntry = { ...initialEntry };
+    const pantryUpdates: Array<{ id: string; patch: any }> = [];
+    const entryUpdates: any[] = [];
+    const state = {
+      get entry() {
+        return currentEntry;
+      },
+      pantryUpdates,
+      entryUpdates,
+    };
+
+    const client = {
+      state,
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'meal_plan_entries') {
+          return {
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  single: () => ({ data: currentEntry, error: null }),
+                }),
+              }),
+            }),
+            update: (patch: any) => {
+              entryUpdates.push(patch);
+              return {
+                eq: () => ({
+                  eq: () => ({
+                    select: () => ({
+                      single: () => {
+                        currentEntry = { ...currentEntry, ...patch };
+                        return { data: currentEntry, error: null };
+                      },
+                    }),
+                  }),
+                }),
+              };
+            },
+          };
+        }
+        if (table === 'pantry_items') {
+          return {
+            select: () => ({
+              eq: () => ({
+                eq: () => ({ data: pantry, error: null }),
+              }),
+            }),
+            update: (patch: any) => ({
+              eq: (_col: string, id: string) => {
+                pantryUpdates.push({ id, patch });
+                return { error: null };
+              },
+            }),
+          };
+        }
+        if (table === 'meal_plans') {
+          return {
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  single: () => ({
+                    data: { id: 'plan-1', profile_id: 'profile-1', week_start: '2026-04-13' },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        return {};
+      }),
+    };
+    return client;
+  };
+
+  it('Test 4: idempotency — second call on already-cooked entry throws ALREADY_COOKED 409', async () => {
+    const supabase = makeCookSupabase(makeEntry({ status: 'cooked', cooked_at: new Date().toISOString() }));
+    await expect(
+      markCooked(supabase as never, 'profile-1', 'plan-1', 0),
+    ).rejects.toMatchObject({ code: 'ALREADY_COOKED' });
+  });
+
+  it('Test 5: deducts matched pantry items by correct quantities', async () => {
+    const supabase = makeCookSupabase(makeEntry());
+    await markCooked(supabase as never, 'profile-1', 'plan-1', 0);
+
+    // Rice: 5 - 2 = 3
+    const riceUpdate = supabase.state.pantryUpdates.find((u) => u.id === 'p2');
+    expect(riceUpdate).toBeDefined();
+    expect(riceUpdate!.patch.quantity).toBe(3);
+  });
+
+  it('Test 6: marks pantry item status=used when willDeplete', async () => {
+    const supabase = makeCookSupabase(makeEntry());
+    await markCooked(supabase as never, 'profile-1', 'plan-1', 0);
+
+    // Chicken: pantry 1, needed 1, willDeplete=true
+    const chickenUpdate = supabase.state.pantryUpdates.find((u) => u.id === 'p1');
+    expect(chickenUpdate).toBeDefined();
+    expect(chickenUpdate!.patch.status).toBe('used');
+  });
+
+  it('Test 7: sets entry.status=cooked and cooked_at non-null', async () => {
+    const supabase = makeCookSupabase(makeEntry());
+    const result = await markCooked(supabase as never, 'profile-1', 'plan-1', 0);
+
+    expect(result.entry.status).toBe('cooked');
+    expect(result.entry.cooked_at).not.toBeNull();
+  });
+
+  it('Test 8: returns pantryDelta array with {pantryItemId, newQuantity, status}', async () => {
+    const supabase = makeCookSupabase(makeEntry());
+    const result = await markCooked(supabase as never, 'profile-1', 'plan-1', 0);
+
+    expect(Array.isArray(result.pantryDelta)).toBe(true);
+    expect(result.pantryDelta.length).toBeGreaterThan(0);
+    for (const d of result.pantryDelta) {
+      expect(d).toHaveProperty('pantryItemId');
+      expect(d).toHaveProperty('newQuantity');
+      expect(d).toHaveProperty('status');
+    }
   });
 });
