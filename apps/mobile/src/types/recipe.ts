@@ -15,11 +15,11 @@ export interface ParsedRecipe {
   total_time_minutes: number | null;
   servings: number | null;
   source_url: string | null;
-  source_type: 'url' | 'photo' | 'manual';
+  source_type: 'url' | 'photo' | 'manual' | 'ai';
   image_url: string | null;
 }
 
-export type ImportSource = 'url' | 'photo' | 'manual';
+export type ImportSource = 'url' | 'photo' | 'manual' | 'ai';
 
 export interface Recipe {
   id: string;
@@ -35,6 +35,7 @@ export interface Recipe {
   source_type: ImportSource;
   source_url: string | null;
   image_url: string | null;
+  is_favorite: boolean;
   created_at: string;
   updated_at: string;
 }
