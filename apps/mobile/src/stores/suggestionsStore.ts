@@ -8,9 +8,11 @@ interface SuggestionsState {
   error: string | null;
   pantryItemCount: number;
   generatedAt: string | null;
+  autoFetch: boolean;
 
   fetchSuggestions: () => Promise<void>;
   clearSuggestions: () => void;
+  setAutoFetch: (value: boolean) => void;
 }
 
 const getApiBaseUrl = (): string => {
@@ -31,6 +33,7 @@ export const useSuggestionsStore = create<SuggestionsState>((set) => ({
   error: null,
   pantryItemCount: 0,
   generatedAt: null,
+  autoFetch: false,
 
   fetchSuggestions: async () => {
     set({ isLoading: true, error: null });
@@ -78,5 +81,9 @@ export const useSuggestionsStore = create<SuggestionsState>((set) => ({
       pantryItemCount: 0,
       generatedAt: null,
     });
+  },
+
+  setAutoFetch: (value: boolean) => {
+    set({ autoFetch: value });
   },
 }));
