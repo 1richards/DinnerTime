@@ -22,6 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 8: Shopping & Instacart** - Auto-generated shopping lists with one-tap Instacart ordering
 - [ ] **Phase 9: Voice Cooking Mode** - Hands-free conversational AI assistant while cooking
 - [x] **Phase 10: Skill Progression & Offline** - Gentle skill coaching, creative variations, and offline support (completed 2026-04-13)
+- [ ] **Phase 11: Hybrid AI Client** - Refactor all AI services behind a provider-agnostic AIClient with per-task Anthropic/Gemini routing
 
 ## Phase Details
 
@@ -206,10 +207,28 @@ Plans:
 
 **UI hint**: yes
 
+### Phase 11: Hybrid AI Client
+**Goal**: All AI services route through a provider-agnostic AIClient interface with per-task Anthropic/Gemini routing, preserving behavior and test coverage
+**Depends on**: Phase 10
+**Requirements**: ARCH-01, ARCH-02, ARCH-03
+**Success Criteria** (what must be TRUE):
+  1. Every AI service and route calls getClientFor(task) instead of importing @anthropic-ai/sdk directly
+  2. Task routing map sends vision + recipe-photo to Anthropic Sonnet 4.6 and everything else to Gemini 3.x per research
+  3. All existing service tests pass using factory-level mocks (no SDK mocks)
+  4. Env-gated smoke test script validates every AITask against live providers
+**Plans**: 5 plans
+Plans:
+- [ ] 11-01-PLAN.md — Foundation: install @google/genai, AIClient interface, AnthropicAdapter + GeminiAdapter, task routing, unit tests
+- [ ] 11-02-PLAN.md — Migrate vision.ts + recipeParser.ts (Anthropic photo paths, Gemini URL/text path)
+- [ ] 11-03-PLAN.md — Migrate suggestions, mealPlanner, recipeDiscovery, progression (drop AnthropicLike DI), shoppingList
+- [ ] 11-04-PLAN.md — Migrate cookingTips, ingredientCategories, routes/cooking.ts /ask endpoint
+- [ ] 11-05-PLAN.md — Delete config/anthropic.ts, add env-gated smoke test script, visual verification checkpoint
+**UI hint**: no
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10 -> 11
 Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 
 | Phase | Plans Complete | Status | Completed |
@@ -224,3 +243,4 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 8. Shopping & Instacart | 0/7 | Not started | - |
 | 9. Voice Cooking Mode | 0/5 | Not started | - |
 | 10. Skill Progression & Offline | 5/5 | Complete    | 2026-04-13 |
+| 11. Hybrid AI Client | 0/5 | Not started | - |

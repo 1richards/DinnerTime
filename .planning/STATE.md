@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 5 of 5
 status: completed
-stopped_at: Completed 10-05-PLAN.md
-last_updated: "2026-04-13T04:45:35.953Z"
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-04-13T06:26:08.758Z"
 last_activity: 2026-04-13 -- Completed 10-05 mobile skill progression UI (SKIL-01..04, FOUN-07)
 progress:
-  total_phases: 10
+  total_phases: 11
   completed_phases: 10
-  total_plans: 44
-  completed_plans: 44
+  total_plans: 49
+  completed_plans: 45
   percent: 100
 ---
 
@@ -95,6 +95,7 @@ Progress: [██████████] 100%
 | Phase 10-skill-progression-offline P04 | 4min | 2 tasks | 11 files |
 | Phase 10-skill-progression-offline P02 | 5min | 2 tasks | 6 files |
 | Phase 10-skill-progression-offline P05 | 5min | 2 tasks | 9 files |
+| Phase 11-hybrid-ai-client P01 | 4min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -231,6 +232,9 @@ Recent decisions affecting current work:
 - [Phase 10-skill-progression-offline]: [Phase 10-05]: Cook screen tip cache lives in useRef<Map> per-session, dropped on unmount — never persisted
 - [Phase 10-skill-progression-offline]: [Phase 10-05]: OfflineBanner mounted in _layout above Stack so it overlays (auth)/onboarding/(tabs)/settings globally
 - [Phase 10-skill-progression-offline]: [Phase 10-05]: Variations button label encodes unlock countdown ('cook N more') so users see affordance before tapping
+- [Phase 11-hybrid-ai-client]: [Phase 11-01]: AIClient interface + AnthropicAdapter + GeminiAdapter + getClientFor factory ship the provider-agnostic scaffold; services still on direct SDKs until Waves 2+
+- [Phase 11-hybrid-ai-client]: [Phase 11-01]: Model IDs centralized in GEMINI_MODELS/ANTHROPIC_MODELS const maps in taskRouting.ts with TODO for -latest alias swap when Gemini 3.x exits preview
+- [Phase 11-hybrid-ai-client]: [Phase 11-01]: GeminiAdapter retries ONCE on MALFORMED_FUNCTION_CALL then throws typed MalformedFunctionCallError; empty candidates surfaces as GeminiSafetyBlockError
 
 ### Pending Todos
 
@@ -244,6 +248,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T04:44:54.111Z
-Stopped at: Completed 10-05-PLAN.md
+Last session: 2026-04-13T06:25:58.072Z
+Stopped at: Completed 11-01-PLAN.md
 Resume file: None
