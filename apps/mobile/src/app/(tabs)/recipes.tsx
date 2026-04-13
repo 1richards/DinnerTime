@@ -11,10 +11,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecipeStore } from '../../stores/recipeStore';
+import { useProgressionStore } from '../../stores/progressionStore';
+import { useNetworkStore } from '../../stores/networkStore';
 import { RecipeCard } from '../../components/recipes/RecipeCard';
 import { SearchBar } from '../../components/recipes/SearchBar';
 import { ChipToggle } from '../../components/ui/ChipToggle';
 import { Button } from '../../components/ui/Button';
+import { SuggestedForYou } from '../../components/SuggestedForYou';
 import type { Recipe } from '../../types/recipe';
 
 function ImportFab() {
@@ -37,24 +40,41 @@ function ImportFab() {
 
 export default function RecipesScreen() {
   const { recipes, isLoading, fetchRecipes, error } = useRecipeStore();
+  const ambitionSuggestions = useProgressionStore((s) => s.ambitionSuggestions);
+  const fetchSuggestions = useProgressionStore((s) => s.fetchSuggestions);
+  const fetchCookStats = useProgressionStore((s) => s.fetchCookStats);
+  const isOnline = useNetworkStore((s) => s.isOnline);
 
   const [searchQuery, setSearchQuery] = useState('');
   const deferredQuery = useDeferredValue(searchQuery);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   useEffect(() => {
+    // Skip network call when offline AND we already have a cached list.
+    // Persisted recipes from 10-04 will still render.
+    if (!isOnline && recipes.length > 0) return;
     fetchRecipes({
       q: deferredQuery || undefined,
       favoritesOnly: showFavoritesOnly,
     });
-  }, [deferredQuery, showFavoritesOnly, fetchRecipes]);
+  }, [deferredQuery, showFavoritesOnly, fetchRecipes, isOnline, recipes.length]);
+
+  // Phase 10: skill progression — fetch ambition suggestions + cook stats once
+  // on mount. Both gracefully no-op when offline.
+  useEffect(() => {
+    if (!isOnline) return;
+    void fetchSuggestions();
+    void fetchCookStats();
+  }, [isOnline, fetchSuggestions, fetchCookStats]);
 
   const handleCardPress = (recipe: Recipe) => {
     router.push(`/recipes/${recipe.id}`);
   };
 
   const header = (
-    <View className="px-4 pt-2 pb-3">
+    <View className="pt-2 pb-3">
+      <SuggestedForYou suggestions={ambitionSuggestions} />
+      <View className="px-4">
       <Text className="text-2xl font-bold text-warmGray-900">My Recipes</Text>
       <Text className="text-sm text-warmGray-500 mt-0.5 mb-3">
         {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'}
@@ -76,6 +96,7 @@ export default function RecipesScreen() {
             Discover
           </Text>
         </Pressable>
+      </View>
       </View>
     </View>
   );

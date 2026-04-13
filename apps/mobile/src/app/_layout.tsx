@@ -5,6 +5,10 @@ import { View, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/authStore';
+import { OfflineBanner } from '../components/OfflineBanner';
+// Importing networkStore here ensures its module-side-effect NetInfo
+// listener is wired at app boot even before any screen mounts.
+import '../stores/networkStore';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,6 +39,9 @@ function RootNavigator() {
   }
 
   return (
+    <View className="flex-1">
+      <OfflineBanner />
+      <View className="flex-1">
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!isLoggedIn}>
         <Stack.Screen name="(auth)" />
@@ -58,6 +65,8 @@ function RootNavigator() {
         />
       </Stack.Protected>
     </Stack>
+      </View>
+    </View>
   );
 }
 

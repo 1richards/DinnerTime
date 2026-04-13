@@ -6,11 +6,13 @@ import {
   Alert,
   ActivityIndicator,
   Pressable,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecipeStore } from '../../../stores/recipeStore';
+import { useProgressionStore } from '../../../stores/progressionStore';
 import { ServingSizeStepper } from '../../../components/recipes/ServingSizeStepper';
 import { ScaledIngredientList } from '../../../components/recipes/ScaledIngredientList';
 import { FavoriteButton } from '../../../components/recipes/FavoriteButton';
@@ -22,6 +24,32 @@ export default function RecipeDetailScreen() {
   const recipe = recipes.find((r) => r.id === id);
 
   const [servings, setServings] = useState<number>(recipe?.servings ?? 1);
+
+  const cookStats = useProgressionStore((s) => s.cookStats);
+  const fetchVariations = useProgressionStore((s) => s.fetchVariations);
+  const [variations, setVariations] = useState<string[] | null>(null);
+  const [variationsOpen, setVariationsOpen] = useState(false);
+  const [variationsLoading, setVariationsLoading] = useState(false);
+  const [variationsLocked, setVariationsLocked] = useState(false);
+
+  const cookCount =
+    cookStats.find((s) => s.recipe_id === id)?.cook_count ?? 0;
+  const variationsLockedByCount = cookCount < 3;
+
+  const handleVariations = async () => {
+    if (!recipe) return;
+    setVariationsLoading(true);
+    setVariationsOpen(true);
+    setVariationsLocked(false);
+    const result = await fetchVariations(recipe.id);
+    if (result === null) {
+      setVariations(null);
+      setVariationsLocked(true);
+    } else {
+      setVariations(result);
+    }
+    setVariationsLoading(false);
+  };
 
   useEffect(() => {
     if (!recipe) {
@@ -152,6 +180,25 @@ export default function RecipeDetailScreen() {
           />
         </View>
 
+        <View className="px-4 mt-3">
+          <Pressable
+            onPress={handleVariations}
+            className="h-12 rounded-xl border border-amber-300 bg-amber-50 items-center justify-center flex-row"
+            testID="creative-variations-button"
+          >
+            <Ionicons
+              name={variationsLockedByCount ? 'lock-closed' : 'sparkles'}
+              size={18}
+              color="#B45309"
+            />
+            <Text className="text-amber-800 font-semibold ml-2">
+              {variationsLockedByCount
+                ? `Creative variations (cook ${3 - cookCount} more)`
+                : 'Creative variations'}
+            </Text>
+          </Pressable>
+        </View>
+
         <View className="px-4 mt-3 flex-row gap-3">
           <View className="flex-1">
             <Button
@@ -169,6 +216,52 @@ export default function RecipeDetailScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={variationsOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setVariationsOpen(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-warmWhite rounded-t-3xl p-6 max-h-[80%]">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-bold text-warmGray-900">
+                Creative variations
+              </Text>
+              <Pressable
+                onPress={() => setVariationsOpen(false)}
+                hitSlop={12}
+              >
+                <Ionicons name="close" size={24} color="#374151" />
+              </Pressable>
+            </View>
+            {variationsLoading ? (
+              <ActivityIndicator size="large" color="#F97316" />
+            ) : variationsLocked ? (
+              <Text className="text-base text-warmGray-600 leading-6">
+                Cook this recipe 3 or more times to unlock creative
+                variations from Claude.
+              </Text>
+            ) : variations && variations.length > 0 ? (
+              <ScrollView>
+                {variations.map((v, i) => (
+                  <View key={i} className="flex-row mb-3">
+                    <Text className="text-warmGray-500 mr-2">•</Text>
+                    <Text className="flex-1 text-base text-warmGray-800 leading-6">
+                      {v}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text className="text-base text-warmGray-600">
+                No variations available right now.
+              </Text>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

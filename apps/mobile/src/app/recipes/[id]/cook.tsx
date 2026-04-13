@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
@@ -7,6 +7,7 @@ import * as Speech from 'expo-speech';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useCookingStore } from '../../../stores/cookingStore';
 import { useRecipeStore } from '../../../stores/recipeStore';
+import { useProgressionStore } from '../../../stores/progressionStore';
 import { useStepSpeaker } from '../../../cooking/useStepSpeaker';
 import { useVoiceListener } from '../../../cooking/useVoiceListener';
 import { askAssistant } from '../../../cooking/askAssistant';
@@ -45,6 +46,11 @@ export default function CookScreen() {
 
   const [askQuestion, setAskQuestion] = useState('');
   const [askLoading, setAskLoading] = useState(false);
+
+  // Phase 10: contextual tip per active step (Haiku-backed, cached server-side).
+  const fetchTip = useProgressionStore((s) => s.fetchTip);
+  const [stepTip, setStepTip] = useState<string>('');
+  const tipCacheRef = useRef<Map<string, string>>(new Map());
 
   // Load recipe if missing (shouldn't normally happen — detail screen caches).
   useEffect(() => {
@@ -120,6 +126,36 @@ export default function CookScreen() {
   );
 
   useVoiceListener(onTranscript, voiceEnabled && !!recipe, hints);
+
+  // Fetch contextual tip when the active step changes; never block cooking on
+  // tip failures (fail silently). Per-session in-memory cache so we don't
+  // re-hit the network on back/forward navigation.
+  useEffect(() => {
+    if (!recipe || !currentStepText) {
+      setStepTip('');
+      return;
+    }
+    const key = `${recipe.id}::${stepIndex}`;
+    const cached = tipCacheRef.current.get(key);
+    if (cached !== undefined) {
+      setStepTip(cached);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const tip = await fetchTip(recipe.id, stepIndex, currentStepText);
+        if (cancelled) return;
+        tipCacheRef.current.set(key, tip);
+        setStepTip(tip);
+      } catch {
+        if (!cancelled) setStepTip('');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [recipe?.id, stepIndex, currentStepText, fetchTip]);
 
   // Timer tick — decrement remainingMs each second, fire done announcement.
   useEffect(() => {
@@ -202,6 +238,18 @@ export default function CookScreen() {
         totalSteps={totalSteps}
         text={currentStepText ?? ''}
       />
+
+      {stepTip.length > 0 && (
+        <View
+          testID="cooking-tip"
+          className="mx-4 mb-2 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200"
+        >
+          <Text className="text-xs font-semibold text-amber-700 mb-1">
+            TIP
+          </Text>
+          <Text className="text-sm text-amber-900 leading-5">{stepTip}</Text>
+        </View>
+      )}
 
       <TimerBar timers={timers} onCancel={removeTimer} />
 
