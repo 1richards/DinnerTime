@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 2 of 5
-status: in_progress
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-04-10T09:45:00.000Z"
-last_activity: 2026-04-10 -- Completed 11-02 vision + recipeParser migration to AIClient abstraction
+current_plan: 4 of 5
+status: executing
+stopped_at: Completed 11-04-PLAN.md
+last_updated: "2026-04-13T16:43:42.732Z"
+last_activity: 2026-04-10 -- Completed 11-04 classification + short-text migration (cookingTips, ingredientCategories, /ask) to AIClient abstraction
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 49
-  completed_plans: 46
+  completed_plans: 47
   percent: 94
 ---
 
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 11 of 11 (Hybrid AI Client) -- IN PROGRESS
-Current Plan: 2 of 5
+Current Plan: 4 of 5
 Status: In Progress
-Last activity: 2026-04-10 -- Completed 11-02 vision + recipeParser migration to AIClient abstraction
+Last activity: 2026-04-10 -- Completed 11-04 classification + short-text migration (cookingTips, ingredientCategories, /ask) to AIClient abstraction
 
 Progress: [█████████░] 94%
 
@@ -97,6 +97,7 @@ Progress: [█████████░] 94%
 | Phase 10-skill-progression-offline P05 | 5min | 2 tasks | 9 files |
 | Phase 11-hybrid-ai-client P01 | 4min | 3 tasks | 11 files |
 | Phase 11-hybrid-ai-client P02 | 8min | 2 tasks | 4 files |
+| Phase 11-hybrid-ai-client P04 | 5min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -239,6 +240,8 @@ Recent decisions affecting current work:
 - [Phase 11-hybrid-ai-client]: [Phase 11-02]: parse_recipe schema simplified — dropped ['X','null'] unions and omitted nullable fields from required; toolOutputToRecipe still defaults to null at JS boundary
 - [Phase 11-hybrid-ai-client]: [Phase 11-02]: Canonical AIClient test mock pattern — vi.hoisted() + vi.mock('../../ai/clientFactory.js') exposing generateText/Structured/analyzeImageStructured; 11-03/11-04 copy verbatim
 - [Phase 11-hybrid-ai-client]: [Phase 11-02]: recipeParser split into callAIParseRecipeText(task, prompt) + callAIParseRecipePhoto(base64, prompt) — URL/text share Gemini path, photo stays on Anthropic
+- [Phase 11-hybrid-ai-client]: [Phase 11-04]: Wave 2 consumers (cookingTips, ingredientCategories, /cooking/ask) migrated to AIClient abstraction routed to Gemini 3.1 flash-lite — cache semantics, enum-constrained classification, and short-answer contract all preserved
+- [Phase 11-hybrid-ai-client]: [Phase 11-04]: Test mocks swap from @anthropic-ai/sdk to ../../ai/clientFactory.js across all three service/route test files — zero vendor SDK coupling in test layer for migrated consumers
 
 ### Pending Todos
 
@@ -252,6 +255,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T16:41:09.702Z
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-04-13T16:43:17.443Z
+Stopped at: Completed 11-04-PLAN.md
 Resume file: None
