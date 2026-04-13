@@ -1,18 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Use vi.hoisted so the mock fn is available before vi.mock hoisting
-const { mockCreate } = vi.hoisted(() => ({
-  mockCreate: vi.fn(),
-}));
+const { mockAnalyzeImageStructured, mockGenerateStructured, mockGenerateText, mockGetClientFor } =
+  vi.hoisted(() => {
+    const mockAnalyzeImageStructured = vi.fn();
+    const mockGenerateStructured = vi.fn();
+    const mockGenerateText = vi.fn();
+    const mockGetClientFor = vi.fn(() => ({
+      generateText: mockGenerateText,
+      generateStructured: mockGenerateStructured,
+      analyzeImageStructured: mockAnalyzeImageStructured,
+    }));
+    return {
+      mockAnalyzeImageStructured,
+      mockGenerateStructured,
+      mockGenerateText,
+      mockGetClientFor,
+    };
+  });
 
-vi.mock('@anthropic-ai/sdk', () => {
-  return {
-    default: class MockAnthropic {
-      messages = { create: mockCreate };
-      constructor() {}
-    },
-  };
-});
+vi.mock('../../ai/clientFactory.js', () => ({
+  getClientFor: mockGetClientFor,
+}));
 
 // Must import after mock setup
 import { buildSuggestionPrompt, getSuggestions } from '../suggestions.js';
@@ -154,7 +162,6 @@ describe('buildSuggestionPrompt', () => {
     ];
     const prompt = buildSuggestionPrompt(basePantryItems, members, defaultProfile);
 
-    // Should appear once, not twice
     const nutMatches = prompt.match(/Nut Allergy/g);
     expect(nutMatches).toHaveLength(1);
   });
@@ -166,7 +173,6 @@ describe('buildSuggestionPrompt', () => {
       normalized_name: 'old yogurt',
       category: 'dairy',
       confidence: 0.3,
-      // 20 days ago -> decays well below 0.5
       last_seen_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
     });
     const items = [...basePantryItems, staleItem];
@@ -241,24 +247,17 @@ describe('getSuggestions', () => {
   };
 
   beforeEach(() => {
-    mockCreate.mockReset();
+    mockGenerateStructured.mockReset();
+    mockGetClientFor.mockClear();
   });
 
-  it('returns DinnerSuggestion[] parsed from Claude tool_use response', async () => {
-    mockCreate.mockResolvedValue({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'suggest_dinners',
-          input: { suggestions: mockSuggestions },
-        },
-      ],
-    });
+  it('returns DinnerSuggestion[] parsed from AIClient structured response', async () => {
+    mockGenerateStructured.mockResolvedValue({ suggestions: mockSuggestions });
 
     const supabase = makeMockSupabase();
     const result = await getSuggestions(supabase as never, 'profile-1');
 
+    expect(mockGetClientFor).toHaveBeenCalledWith('suggestions.dinner');
     expect(result.suggestions).toHaveLength(1);
     expect(result.suggestions[0].title).toBe('Chicken Stir Fry');
     expect(result.suggestions[0].difficulty).toBe('easy');
@@ -277,28 +276,19 @@ describe('getSuggestions', () => {
       'Not enough pantry items'
     );
 
-    // Should NOT have called Claude API
-    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockGenerateStructured).not.toHaveBeenCalled();
   });
 
-  it('calls Claude with tool_choice forcing suggest_dinners', async () => {
-    mockCreate.mockResolvedValue({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'suggest_dinners',
-          input: { suggestions: mockSuggestions },
-        },
-      ],
-    });
+  it('calls AIClient.generateStructured with suggest_dinners tool', async () => {
+    mockGenerateStructured.mockResolvedValue({ suggestions: mockSuggestions });
 
     const supabase = makeMockSupabase();
     await getSuggestions(supabase as never, 'profile-1');
 
-    expect(mockCreate).toHaveBeenCalledOnce();
-    const callArgs = mockCreate.mock.calls[0][0];
-    expect(callArgs.tool_choice).toEqual({ type: 'tool', name: 'suggest_dinners' });
-    expect(callArgs.model).toBe('claude-sonnet-4-20250514');
+    expect(mockGenerateStructured).toHaveBeenCalledOnce();
+    const callArgs = mockGenerateStructured.mock.calls[0][0];
+    expect(callArgs.tool.name).toBe('suggest_dinners');
+    expect(typeof callArgs.user).toBe('string');
+    expect(callArgs.user).toContain('AVAILABLE INGREDIENTS');
   });
 });

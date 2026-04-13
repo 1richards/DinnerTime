@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { anthropic } from '../config/anthropic.js';
+import { getClientFor } from '../ai/clientFactory.js';
+import type { JsonSchema, StructuredTool } from '../ai/types.js';
 import type { Difficulty, MealPlan, MealPlanEntry, MealPlanIngredient } from '../types/mealPlan.js';
 import { matchIngredientsToPantry } from './ingredientMatching.js';
 import type { PantryItem } from './pantry.js';
@@ -39,7 +40,7 @@ export interface MealPlanContext {
 // ---------- Prompt Assembly ----------
 
 /**
- * Build a structured prompt for Claude to generate a 7-day meal plan.
+ * Build a structured prompt for the AI client to generate a 7-day meal plan.
  * Pure function, exported for testing.
  */
 export function buildMealPlanPrompt(context: MealPlanContext): string {
@@ -118,66 +119,66 @@ OUTPUT CONTRACT:
 
 // ---------- Tool Definition ----------
 
-export const generateMealPlanTool = {
-  name: 'generate_meal_plan' as const,
-  description:
-    'Generate a 7-day dinner meal plan (one entry per day Mon-Sun) from pantry, preferences, and recipe library.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      days: {
-        type: 'array',
-        minItems: 7,
-        maxItems: 7,
-        items: {
-          type: 'object',
-          properties: {
-            day_of_week: {
-              type: 'string',
-              enum: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
-              description: 'Day of week (mon=0 through sun=6)',
-            },
-            title: { type: 'string', description: 'Recipe title' },
-            description: { type: 'string', description: '1-2 sentence description' },
-            recipe_id: {
-              type: ['string', 'null'],
-              description: 'Matching recipe_id from RECIPE LIBRARY, or null for new dish',
-            },
-            ingredients_used: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Pantry items this recipe uses',
-            },
-            ingredients_needed: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Items not in pantry that must be bought',
-            },
-            estimated_time_minutes: { type: 'number' },
-            difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
-            complexity_target: {
-              type: 'string',
-              enum: ['weeknight', 'weekend'],
-              description: "weeknight for Mon-Thu, weekend for Fri-Sun",
-            },
-            kid_friendly: { type: 'boolean' },
-            why_suggested: { type: 'string' },
+const generateMealPlanSchema: JsonSchema = {
+  type: 'object',
+  properties: {
+    days: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          day_of_week: {
+            type: 'string',
+            enum: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+            description: 'Day of week (mon=0 through sun=6)',
           },
-          required: [
-            'day_of_week',
-            'title',
-            'description',
-            'estimated_time_minutes',
-            'difficulty',
-            'complexity_target',
-            'kid_friendly',
-            'why_suggested',
-          ],
+          title: { type: 'string', description: 'Recipe title' },
+          description: { type: 'string', description: '1-2 sentence description' },
+          recipe_id: {
+            type: 'string',
+            description: 'Matching recipe_id from RECIPE LIBRARY, or omit for new dish',
+          },
+          ingredients_used: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Pantry items this recipe uses',
+          },
+          ingredients_needed: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Items not in pantry that must be bought',
+          },
+          estimated_time_minutes: { type: 'number' },
+          difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
+          complexity_target: {
+            type: 'string',
+            enum: ['weeknight', 'weekend'],
+            description: "weeknight for Mon-Thu, weekend for Fri-Sun",
+          },
+          kid_friendly: { type: 'boolean' },
+          why_suggested: { type: 'string' },
         },
+        required: [
+          'day_of_week',
+          'title',
+          'description',
+          'estimated_time_minutes',
+          'difficulty',
+          'complexity_target',
+          'kid_friendly',
+          'why_suggested',
+        ],
       },
     },
-    required: ['days'],
   },
+  required: ['days'],
+};
+
+export const generateMealPlanTool: StructuredTool<{ days: ClaudeMealDay[] }> = {
+  name: 'generate_meal_plan',
+  description:
+    'Generate a 7-day dinner meal plan (one entry per day Mon-Sun) from pantry, preferences, and recipe library.',
+  schema: generateMealPlanSchema,
 };
 
 // ---------- DB Row Types (narrow) ----------
@@ -203,7 +204,7 @@ interface ProfileRow {
   skill_level: string;
 }
 
-// ---------- Claude Tool Output Shape ----------
+// ---------- AI Tool Output Shape ----------
 
 interface ClaudeMealDay {
   day_of_week: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
@@ -236,7 +237,7 @@ function dayStringToIndex(day: ClaudeMealDay['day_of_week']): number {
 // ---------- Main Service ----------
 
 /**
- * Fetch context from Supabase, call Claude via generate_meal_plan tool,
+ * Fetch context from Supabase, call the AI client via generate_meal_plan tool,
  * persist meal_plans + 7 meal_plan_entries (regenerating if one exists),
  * and return the resulting MealPlan with populated entries.
  */
@@ -343,24 +344,16 @@ export async function generateMealPlan(
 
   const promptText = buildMealPlanPrompt(context);
 
-  // 7. Call Claude with tool forced
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 4096,
-    tools: [generateMealPlanTool],
-    tool_choice: { type: 'tool', name: 'generate_meal_plan' },
-    messages: [{ role: 'user', content: promptText }],
+  // 7. Call AI client with tool forced
+  const { days } = await getClientFor('mealPlanner.week').generateStructured({
+    user: promptText,
+    tool: generateMealPlanTool,
+    maxTokens: 4096,
   });
 
-  const toolBlock = response.content.find((b) => b.type === 'tool_use');
-  if (!toolBlock || toolBlock.type !== 'tool_use') {
-    throw new Error('Claude did not return a tool_use response');
-  }
-
-  const { days } = toolBlock.input as { days: ClaudeMealDay[] };
   if (!Array.isArray(days) || days.length !== 7) {
     const err = new Error(
-      `INVALID_PLAN_LENGTH: Claude returned ${days?.length ?? 0} days, expected exactly 7 days`,
+      `INVALID_PLAN_LENGTH: AI returned ${days?.length ?? 0} days, expected exactly 7 days`,
     );
     (err as Error & { code?: string }).code = 'INVALID_PLAN_LENGTH';
     throw err;
@@ -544,21 +537,13 @@ REGENERATION CONTEXT:
 - EXCLUDE the current title and do NOT return it: "${excludedTitle}"
 - Return the full 7-day array; we will only use the entry for day ${dayOfWeek}.`;
 
-  // 5. Call Claude
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 4096,
-    tools: [generateMealPlanTool],
-    tool_choice: { type: 'tool', name: 'generate_meal_plan' },
-    messages: [{ role: 'user', content: scopedPrompt }],
+  // 5. Call AI client
+  const { days } = await getClientFor('mealPlanner.week').generateStructured({
+    user: scopedPrompt,
+    tool: generateMealPlanTool,
+    maxTokens: 4096,
   });
 
-  const toolBlock = response.content.find((b: { type: string }) => b.type === 'tool_use');
-  if (!toolBlock || toolBlock.type !== 'tool_use') {
-    throw new Error('Claude did not return a tool_use response');
-  }
-
-  const { days } = (toolBlock as { input: { days: ClaudeMealDay[] } }).input;
   if (!Array.isArray(days) || days.length === 0) {
     throw new Error('INVALID_PLAN_LENGTH: regenerate returned no days');
   }

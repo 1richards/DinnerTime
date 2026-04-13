@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { anthropic } from '../config/anthropic.js';
+import { getClientFor } from '../ai/clientFactory.js';
+import type { JsonSchema, StructuredTool } from '../ai/types.js';
 
 // ---------- Types ----------
 
@@ -59,54 +60,56 @@ interface ProfileRow {
 
 // ---------- Tool Definition ----------
 
-const suggestDinnersTool = {
-  name: 'suggest_dinners' as const,
-  description: 'Suggest dinner recipes based on available ingredients and preferences',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      suggestions: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            title: { type: 'string', description: 'Recipe title' },
-            description: { type: 'string', description: '1-2 sentence description' },
-            ingredients_used: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Pantry items this recipe uses',
-            },
-            ingredients_needed: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Items not in pantry (may need to buy)',
-            },
-            estimated_time_minutes: { type: 'number' },
-            difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
-            kid_friendly: { type: 'boolean' },
-            cuisine_type: { type: 'string' },
-            why_suggested: {
-              type: 'string',
-              description: 'Brief reason this was suggested',
-            },
+const suggestDinnersSchema: JsonSchema = {
+  type: 'object',
+  properties: {
+    suggestions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Recipe title' },
+          description: { type: 'string', description: '1-2 sentence description' },
+          ingredients_used: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Pantry items this recipe uses',
           },
-          required: [
-            'title',
-            'description',
-            'ingredients_used',
-            'ingredients_needed',
-            'estimated_time_minutes',
-            'difficulty',
-            'kid_friendly',
-            'cuisine_type',
-            'why_suggested',
-          ],
+          ingredients_needed: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Items not in pantry (may need to buy)',
+          },
+          estimated_time_minutes: { type: 'number' },
+          difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
+          kid_friendly: { type: 'boolean' },
+          cuisine_type: { type: 'string' },
+          why_suggested: {
+            type: 'string',
+            description: 'Brief reason this was suggested',
+          },
         },
+        required: [
+          'title',
+          'description',
+          'ingredients_used',
+          'ingredients_needed',
+          'estimated_time_minutes',
+          'difficulty',
+          'kid_friendly',
+          'cuisine_type',
+          'why_suggested',
+        ],
       },
     },
-    required: ['suggestions'],
   },
+  required: ['suggestions'],
+};
+
+const suggestDinnersTool: StructuredTool<{ suggestions: DinnerSuggestion[] }> = {
+  name: 'suggest_dinners',
+  description: 'Suggest dinner recipes based on available ingredients and preferences',
+  schema: suggestDinnersSchema,
 };
 
 // ---------- Confidence Decay ----------
@@ -200,7 +203,7 @@ ${hasKids ? '- Include at least 1-2 kid-friendly options (familiar flavors, simp
 // ---------- Main Service ----------
 
 /**
- * Fetch user context from Supabase, assemble prompt, call Claude,
+ * Fetch user context from Supabase, assemble prompt, call the AI client,
  * and return structured dinner suggestions.
  */
 export async function getSuggestions(
@@ -244,31 +247,22 @@ export async function getSuggestions(
     throw new Error(`Failed to fetch profile: ${profileError.message}`);
   }
 
-  // 4. Assemble prompt and call Claude
+  // 4. Assemble prompt and call AI client
   const promptText = buildSuggestionPrompt(
     pantryItems as PantryItemRow[],
     (members ?? []) as HouseholdMemberRow[],
     profile as ProfileRow
   );
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 4096,
-    tools: [suggestDinnersTool],
-    tool_choice: { type: 'tool', name: 'suggest_dinners' },
-    messages: [{ role: 'user', content: promptText }],
+  const ai = getClientFor('suggestions.dinner');
+  const { suggestions } = await ai.generateStructured({
+    user: promptText,
+    tool: suggestDinnersTool,
+    maxTokens: 4096,
   });
 
-  // 5. Parse tool_use response
-  const toolBlock = response.content.find((b) => b.type === 'tool_use');
-  if (!toolBlock || toolBlock.type !== 'tool_use') {
-    throw new Error('Claude did not return a tool_use response');
-  }
-
-  const { suggestions } = toolBlock.input as { suggestions: DinnerSuggestion[] };
-
   return {
-    suggestions,
+    suggestions: suggestions ?? [],
     pantry_item_count: pantryItems.length,
     generated_at: new Date().toISOString(),
   };

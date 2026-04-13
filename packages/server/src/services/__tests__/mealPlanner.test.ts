@@ -1,18 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Hoisted mock for Anthropic SDK (needed because mealPlanner imports anthropic config)
-const { mockCreate } = vi.hoisted(() => ({
-  mockCreate: vi.fn(),
-}));
+const { mockAnalyzeImageStructured, mockGenerateStructured, mockGenerateText, mockGetClientFor } =
+  vi.hoisted(() => {
+    const mockAnalyzeImageStructured = vi.fn();
+    const mockGenerateStructured = vi.fn();
+    const mockGenerateText = vi.fn();
+    const mockGetClientFor = vi.fn(() => ({
+      generateText: mockGenerateText,
+      generateStructured: mockGenerateStructured,
+      analyzeImageStructured: mockAnalyzeImageStructured,
+    }));
+    return {
+      mockAnalyzeImageStructured,
+      mockGenerateStructured,
+      mockGenerateText,
+      mockGetClientFor,
+    };
+  });
 
-vi.mock('@anthropic-ai/sdk', () => {
-  return {
-    default: class MockAnthropic {
-      messages = { create: mockCreate };
-      constructor() {}
-    },
-  };
-});
+vi.mock('../../ai/clientFactory.js', () => ({
+  getClientFor: mockGetClientFor,
+}));
 
 // Must import after mock setup
 import {
@@ -161,15 +169,14 @@ describe('buildMealPlanPrompt', () => {
 // ---------- generateMealPlanTool Tests ----------
 
 describe('generateMealPlanTool', () => {
-  it('Test 1: days array has minItems:7 and maxItems:7', () => {
-    const daysSchema = (generateMealPlanTool.input_schema.properties as Record<string, unknown>)
-      .days as { minItems: number; maxItems: number };
-    expect(daysSchema.minItems).toBe(7);
-    expect(daysSchema.maxItems).toBe(7);
+  it('Test 1: has name generate_meal_plan and schema with days property', () => {
+    expect(generateMealPlanTool.name).toBe('generate_meal_plan');
+    const props = generateMealPlanTool.schema.properties as Record<string, unknown>;
+    expect(props.days).toBeDefined();
   });
 
   it('Test 2: per-day required list includes complexity_target and kid_friendly', () => {
-    const daysSchema = (generateMealPlanTool.input_schema.properties as Record<string, unknown>)
+    const daysSchema = (generateMealPlanTool.schema.properties as Record<string, unknown>)
       .days as { items: { required: string[] } };
     expect(daysSchema.items.required).toContain('complexity_target');
     expect(daysSchema.items.required).toContain('kid_friendly');
@@ -275,71 +282,14 @@ describe('generateMealPlan', () => {
   ];
 
   const basePantryItems = [
-    {
-      id: 'p1',
-      profile_id: 'profile-1',
-      name: 'Chicken Breast',
-      normalized_name: 'chicken breast',
-      quantity: 2,
-      unit: 'lb',
-      category: 'protein',
-      source_location: 'fridge',
-      confidence: 0.9,
-      status: 'available',
-      last_seen_at: new Date().toISOString(),
-    },
-    {
-      id: 'p2',
-      profile_id: 'profile-1',
-      name: 'Rice',
-      normalized_name: 'rice',
-      quantity: 3,
-      unit: 'cup',
-      category: 'grain',
-      source_location: 'pantry',
-      confidence: 0.9,
-      status: 'available',
-      last_seen_at: new Date().toISOString(),
-    },
-    {
-      id: 'p3',
-      profile_id: 'profile-1',
-      name: 'Broccoli',
-      normalized_name: 'broccoli',
-      quantity: 1,
-      unit: 'head',
-      category: 'produce',
-      source_location: 'fridge',
-      confidence: 0.9,
-      status: 'available',
-      last_seen_at: new Date().toISOString(),
-    },
-    {
-      id: 'p4',
-      profile_id: 'profile-1',
-      name: 'Garlic',
-      normalized_name: 'garlic',
-      quantity: 4,
-      unit: 'clove',
-      category: 'produce',
-      source_location: 'pantry',
-      confidence: 0.9,
-      status: 'available',
-      last_seen_at: new Date().toISOString(),
-    },
+    { id: 'p1', profile_id: 'profile-1', name: 'Chicken Breast', normalized_name: 'chicken breast', quantity: 2, unit: 'lb', category: 'protein', source_location: 'fridge', confidence: 0.9, status: 'available', last_seen_at: new Date().toISOString() },
+    { id: 'p2', profile_id: 'profile-1', name: 'Rice', normalized_name: 'rice', quantity: 3, unit: 'cup', category: 'grain', source_location: 'pantry', confidence: 0.9, status: 'available', last_seen_at: new Date().toISOString() },
+    { id: 'p3', profile_id: 'profile-1', name: 'Broccoli', normalized_name: 'broccoli', quantity: 1, unit: 'head', category: 'produce', source_location: 'fridge', confidence: 0.9, status: 'available', last_seen_at: new Date().toISOString() },
+    { id: 'p4', profile_id: 'profile-1', name: 'Garlic', normalized_name: 'garlic', quantity: 4, unit: 'clove', category: 'produce', source_location: 'pantry', confidence: 0.9, status: 'available', last_seen_at: new Date().toISOString() },
   ];
 
   const baseMembers = [
-    {
-      id: 'm1',
-      profile_id: 'profile-1',
-      name: 'Alice',
-      member_type: 'adult',
-      age_range: null,
-      dietary_restrictions: [],
-      dietary_allergies: [],
-      disliked_ingredients: [],
-    },
+    { id: 'm1', profile_id: 'profile-1', name: 'Alice', member_type: 'adult', age_range: null, dietary_restrictions: [], dietary_allergies: [], disliked_ingredients: [] },
   ];
 
   const baseProfile = {
@@ -470,34 +420,25 @@ describe('generateMealPlan', () => {
     };
   };
 
-  const mockToolUseResponse = (days: unknown[]) => ({
-    content: [
-      {
-        type: 'tool_use',
-        id: 'tool_1',
-        name: 'generate_meal_plan',
-        input: { days },
-      },
-    ],
-  });
-
   beforeEach(() => {
-    mockCreate.mockReset();
+    mockGenerateStructured.mockReset();
+    mockGetClientFor.mockClear();
   });
 
   it('Test 3: persists meal_plans + 7 meal_plan_entries and returns MealPlan', async () => {
-    mockCreate.mockResolvedValue(mockToolUseResponse(mockDays));
+    mockGenerateStructured.mockResolvedValue({ days: mockDays });
     const supabase = makeMockSupabase();
     const result = await generateMealPlan(supabase as never, 'profile-1', '2026-04-13');
 
+    expect(mockGetClientFor).toHaveBeenCalledWith('mealPlanner.week');
     expect(insertedPlan).not.toBeNull();
     expect(insertedEntries).toHaveLength(7);
     expect(result.entries).toHaveLength(7);
     expect(result.week_start).toBe('2026-04-13');
   });
 
-  it('Test 4: throws INVALID_PLAN_LENGTH when Claude returns fewer than 7 days', async () => {
-    mockCreate.mockResolvedValue(mockToolUseResponse(mockDays.slice(0, 5)));
+  it('Test 4: throws INVALID_PLAN_LENGTH when AI returns fewer than 7 days', async () => {
+    mockGenerateStructured.mockResolvedValue({ days: mockDays.slice(0, 5) });
     const supabase = makeMockSupabase();
     await expect(
       generateMealPlan(supabase as never, 'profile-1', '2026-04-13'),
@@ -509,18 +450,18 @@ describe('generateMealPlan', () => {
     await expect(
       generateMealPlan(supabase as never, 'profile-1', '2026-04-13'),
     ).rejects.toThrow(/pantry|EMPTY_PANTRY/i);
-    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockGenerateStructured).not.toHaveBeenCalled();
   });
 
   it('Test 6: recent meals query is capped at 21 entries', async () => {
-    mockCreate.mockResolvedValue(mockToolUseResponse(mockDays));
+    mockGenerateStructured.mockResolvedValue({ days: mockDays });
     const supabase = makeMockSupabase();
     await generateMealPlan(supabase as never, 'profile-1', '2026-04-13');
     expect(recentMealsLimitArg).toBe(21);
   });
 
   it('Test 7: regenerate flow deletes existing plan then inserts fresh', async () => {
-    mockCreate.mockResolvedValue(mockToolUseResponse(mockDays));
+    mockGenerateStructured.mockResolvedValue({ days: mockDays });
     const supabase = makeMockSupabase({ existingPlan: { id: 'plan-old' } });
     await generateMealPlan(supabase as never, 'profile-1', '2026-04-13');
     expect(deletedPlanId).toBe('plan-old');
@@ -529,7 +470,7 @@ describe('generateMealPlan', () => {
   });
 
   it('Test 8: day_of_week strings mon..sun are mapped to SMALLINT 0..6 on persistence', async () => {
-    mockCreate.mockResolvedValue(mockToolUseResponse(mockDays));
+    mockGenerateStructured.mockResolvedValue({ days: mockDays });
     const supabase = makeMockSupabase();
     await generateMealPlan(supabase as never, 'profile-1', '2026-04-13');
 
@@ -661,24 +602,16 @@ describe('regenerateDay', () => {
     return client;
   };
 
-  const mockToolUse = (day: any) => ({
-    content: [
-      {
-        type: 'tool_use',
-        id: 'tool_1',
-        name: 'generate_meal_plan',
-        input: { days: [day] },
-      },
-    ],
-  });
+  const mockRegenDays = (day: any) => ({ days: [day] });
 
   beforeEach(() => {
-    mockCreate.mockReset();
+    mockGenerateStructured.mockReset();
+    mockGetClientFor.mockClear();
   });
 
   it('Test 1: regenerateDay fetches fresh pantry (not snapshot)', async () => {
-    mockCreate.mockResolvedValue(
-      mockToolUse({
+    mockGenerateStructured.mockResolvedValue(
+      mockRegenDays({
         day_of_week: 'thu',
         title: 'New Pasta',
         description: 'better',
@@ -695,11 +628,12 @@ describe('regenerateDay', () => {
     const supabase = makeRegenSupabase();
     await regenerateDay(supabase as never, 'profile-1', 'plan-1', 3);
     expect(supabase.calls).toContain('pantry_items');
+    expect(mockGetClientFor).toHaveBeenCalledWith('mealPlanner.week');
   });
 
   it('Test 2: regenerateDay prompt includes the excluded title', async () => {
-    mockCreate.mockResolvedValue(
-      mockToolUse({
+    mockGenerateStructured.mockResolvedValue(
+      mockRegenDays({
         day_of_week: 'thu',
         title: 'New Pasta',
         description: 'better',
@@ -715,15 +649,14 @@ describe('regenerateDay', () => {
     );
     const supabase = makeRegenSupabase();
     await regenerateDay(supabase as never, 'profile-1', 'plan-1', 3);
-    const call = mockCreate.mock.calls[0][0] as { messages: Array<{ content: string }> };
-    const promptText = call.messages[0].content;
-    expect(promptText).toContain('Old Pasta');
-    expect(promptText).toMatch(/exclud|avoid|not/i);
+    const call = mockGenerateStructured.mock.calls[0][0] as { user: string };
+    expect(call.user).toContain('Old Pasta');
+    expect(call.user).toMatch(/exclud|avoid|not/i);
   });
 
   it('Test 3: regenerateDay updates only the target entry and returns it', async () => {
-    mockCreate.mockResolvedValue(
-      mockToolUse({
+    mockGenerateStructured.mockResolvedValue(
+      mockRegenDays({
         day_of_week: 'thu',
         title: 'New Pasta',
         description: 'better',
@@ -862,7 +795,6 @@ describe('markCooked', () => {
     const supabase = makeCookSupabase(makeEntry());
     await markCooked(supabase as never, 'profile-1', 'plan-1', 0);
 
-    // Rice: 5 - 2 = 3
     const riceUpdate = supabase.state.pantryUpdates.find((u) => u.id === 'p2');
     expect(riceUpdate).toBeDefined();
     expect(riceUpdate!.patch.quantity).toBe(3);
@@ -872,7 +804,6 @@ describe('markCooked', () => {
     const supabase = makeCookSupabase(makeEntry());
     await markCooked(supabase as never, 'profile-1', 'plan-1', 0);
 
-    // Chicken: pantry 1, needed 1, willDeplete=true
     const chickenUpdate = supabase.state.pantryUpdates.find((u) => u.id === 'p1');
     expect(chickenUpdate).toBeDefined();
     expect(chickenUpdate!.patch.status).toBe('used');
