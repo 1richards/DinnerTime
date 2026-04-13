@@ -73,7 +73,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **VOIC-01**: User can enter cooking mode for any recipe with step-by-step display
 - [x] **VOIC-02**: User can navigate steps hands-free with voice ("next step," "go back," "repeat")
 - [x] **VOIC-03**: User can set timers with voice ("set a timer for 10 minutes")
-- [ ] **VOIC-04**: User can ask conversational questions while cooking ("can I substitute X for Y?", "what does braise mean?")
+- [x] **VOIC-04**: User can ask conversational questions while cooking ("can I substitute X for Y?", "what does braise mean?")
 - [ ] **VOIC-05**: App reads recipe steps aloud via text-to-speech
 - [x] **VOIC-06**: Screen stays awake during cooking mode with large readable text
 - [x] **VOIC-07**: Basic voice commands (next/back/repeat/timer) respond in under 1 second
@@ -181,7 +181,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VOIC-01 | Phase 9 | Complete |
 | VOIC-02 | Phase 9 | Complete |
 | VOIC-03 | Phase 9 | Complete |
-| VOIC-04 | Phase 9 | Pending |
+| VOIC-04 | Phase 9 | Complete |
 | VOIC-05 | Phase 9 | Pending |
 | VOIC-06 | Phase 9 | Complete |
 | VOIC-07 | Phase 9 | Complete |

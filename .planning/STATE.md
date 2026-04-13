@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 2 of 5 (complete)
+current_plan: 2 of 5
 status: executing
-stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-04-13T00:39:17.946Z"
+stopped_at: Completed 09-03-PLAN.md
+last_updated: "2026-04-13T00:40:34.742Z"
 last_activity: 2026-04-10 -- Completed 09-02 local intent router + timer parser (VOIC-02/03/07)
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 39
-  completed_plans: 36
-  percent: 90
+  completed_plans: 37
+  percent: 92
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 9 of 10 (Voice Cooking Mode) -- IN PROGRESS
-Current Plan: 2 of 5 (complete)
+Current Plan: 2 of 5
 Status: In Progress
 Last activity: 2026-04-10 -- Completed 09-02 local intent router + timer parser (VOIC-02/03/07)
 
@@ -87,6 +87,7 @@ Progress: [█████████░] 92%
 | Phase 08-shopping-instacart P07 | 3min | 3 tasks | 8 files |
 | Phase 09-voice-cooking-mode P01 | 3min | 2 tasks | 5 files |
 | Phase 09-voice-cooking-mode P02 | 3min | 1 tasks | 5 files |
+| Phase 09-voice-cooking-mode P03 | 2min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -189,6 +190,9 @@ Recent decisions affecting current work:
 - [Phase 09-voice-cooking-mode]: [Phase 09-02]: routeIntent checks parseTimerPhrase before nav regexes so 'continue for N minutes' can't miscategorize as next
 - [Phase 09-voice-cooking-mode]: [Phase 09-02]: ask.question preserves original (non-lowercased) transcript so Claude sees user phrasing verbatim
 - [Phase 09-voice-cooking-mode]: [Phase 09-02]: Timer regex allows optional 'an?\s+' so 'half an hour' resolves without a separate code path
+- [Phase 09-voice-cooking-mode]: [Phase 09-03]: /cooking namespace distinct from /voice (voice is future Whisper fallback; cooking is the Claude Q&A endpoint)
+- [Phase 09-voice-cooking-mode]: [Phase 09-03]: System prompt embeds short-answer rule verbatim; current_step_index clamped server-side so stale mobile indices don't 400
+- [Phase 09-voice-cooking-mode]: [Phase 09-03]: INVALID_REQUEST returned for both malformed JSON and missing fields (single error shape for mobile)
 
 ### Pending Todos
 
@@ -202,6 +206,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T00:39:14.171Z
-Stopped at: Completed 09-02-PLAN.md
+Last session: 2026-04-13T00:40:14.563Z
+Stopped at: Completed 09-03-PLAN.md
 Resume file: None
