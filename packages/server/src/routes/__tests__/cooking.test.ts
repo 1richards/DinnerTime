@@ -253,6 +253,113 @@ describe('cooking routes', () => {
     expect(body.answer.endsWith('...')).toBe(true);
   });
 
+  // ----------------------------------------------------------
+  // GET /cooking/tips (Phase 10-03)
+  // ----------------------------------------------------------
+
+  describe('GET /tips', () => {
+    it('401 without auth', async () => {
+      const app = makeApp();
+      const res = await app.request(
+        '/cooking/tips?recipe_id=recipe-1&step_index=0&step_text=Whisk',
+        { method: 'GET' }
+      );
+      expect(res.status).toBe(401);
+    });
+
+    it('400 when recipe_id missing', async () => {
+      const app = makeApp();
+      const res = await app.request(
+        '/cooking/tips?step_index=0&step_text=Whisk',
+        { method: 'GET', headers: { Authorization: 'Bearer t' } }
+      );
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe('INVALID_REQUEST');
+    });
+
+    it('400 when step_index missing or non-numeric', async () => {
+      const app = makeApp();
+      const res = await app.request(
+        '/cooking/tips?recipe_id=recipe-1&step_text=Whisk',
+        { method: 'GET', headers: { Authorization: 'Bearer t' } }
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it('404 when recipe not owned by user', async () => {
+      setTable('recipes', {
+        maybeSingleResult: { data: null, error: null },
+      });
+      const app = makeApp();
+      const res = await app.request(
+        '/cooking/tips?recipe_id=nope&step_index=0&step_text=Whisk',
+        { method: 'GET', headers: { Authorization: 'Bearer t' } }
+      );
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.error).toBe('RECIPE_NOT_FOUND');
+      expect(mockMessagesCreate).not.toHaveBeenCalled();
+    });
+
+    it('200 returns cached tip without calling Claude', async () => {
+      setTable('recipes', {
+        maybeSingleResult: { data: { id: 'recipe-1' }, error: null },
+      });
+      setTable('recipe_step_tips', {
+        maybeSingleResult: { data: { tip: 'cached tip' }, error: null },
+      });
+
+      const app = makeApp();
+      const res = await app.request(
+        '/cooking/tips?recipe_id=recipe-1&step_index=0&step_text=Whisk',
+        { method: 'GET', headers: { Authorization: 'Bearer t' } }
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.tip).toBe('cached tip');
+      expect(mockMessagesCreate).not.toHaveBeenCalled();
+    });
+
+    it('200 returns empty tip when Haiku returns empty (uncertainty)', async () => {
+      setTable('recipes', {
+        maybeSingleResult: { data: { id: 'recipe-1' }, error: null },
+      });
+      setTable('recipe_step_tips', {
+        maybeSingleResult: { data: null, error: null },
+      });
+      mockMessagesCreate.mockResolvedValueOnce(claudeTextResponse(''));
+
+      const app = makeApp();
+      const res = await app.request(
+        '/cooking/tips?recipe_id=recipe-1&step_index=0&step_text=Some+obscure+technique',
+        { method: 'GET', headers: { Authorization: 'Bearer t' } }
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.tip).toBe('');
+    });
+
+    it('502 when Anthropic throws on cache miss', async () => {
+      setTable('recipes', {
+        maybeSingleResult: { data: { id: 'recipe-1' }, error: null },
+      });
+      setTable('recipe_step_tips', {
+        maybeSingleResult: { data: null, error: null },
+      });
+      mockMessagesCreate.mockRejectedValueOnce(new Error('boom'));
+
+      const app = makeApp();
+      const res = await app.request(
+        '/cooking/tips?recipe_id=recipe-1&step_index=0&step_text=Whisk',
+        { method: 'GET', headers: { Authorization: 'Bearer t' } }
+      );
+      expect(res.status).toBe(502);
+      const body = await res.json();
+      expect(body.error).toBe('CLAUDE_ERROR');
+    });
+  });
+
   it('clamps current_step_index out of range to last step', async () => {
     setTable('recipes', {
       maybeSingleResult: { data: RECIPE_ROW, error: null },
