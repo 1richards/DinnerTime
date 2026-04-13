@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 1 of 5
 status: executing
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-04-13T04:32:08.513Z"
+stopped_at: Completed 10-03-PLAN.md
+last_updated: "2026-04-13T04:36:32.247Z"
 last_activity: 2026-04-10 -- Completed 10-01 skill progression foundation (SKIL-01, SKIL-03, FOUN-07)
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 44
-  completed_plans: 40
+  completed_plans: 41
   percent: 91
 ---
 
@@ -91,6 +91,7 @@ Progress: [█████████░] 91%
 | Phase 09-voice-cooking-mode P04 | 4min | 3 tasks | 7 files |
 | Phase 09-voice-cooking-mode P05 | 4min | 3 tasks | 11 files |
 | Phase 10-skill-progression-offline P01 | 2 min | 2 tasks | 6 files |
+| Phase 10-skill-progression-offline P03 | 2 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -210,6 +211,10 @@ Recent decisions affecting current work:
 - [Phase 10-skill-progression-offline]: [Phase 10-01]: recipe_step_tips RLS via EXISTS through recipes.profile_id (no denormalized profile_id)
 - [Phase 10-skill-progression-offline]: [Phase 10-01]: Mobile progression types are a copy of server types (independent evolution, mirrors shopping.ts)
 - [Phase 10-skill-progression-offline]: [Phase 10-01]: netinfo mock lives in global vitest.setup.ts alongside expo-speech mocks
+- [Phase 10-skill-progression-offline]: [Phase 10-03]: Don't cache uncertainty — empty Haiku responses bypass INSERT entirely so future model improvements can backfill
+- [Phase 10-skill-progression-offline]: [Phase 10-03]: Service throws on Anthropic failure; route layer maps to 502 CLAUDE_ERROR (mirrors POST /ask)
+- [Phase 10-skill-progression-offline]: [Phase 10-03]: getOrGenerateTip cache INSERT errors are swallowed (best-effort); the tip is still returned even on race
+- [Phase 10-skill-progression-offline]: [Phase 10-03]: max_tokens=120, temperature=0.3, model='claude-haiku-4-20250514' for cooking tip generation
 
 ### Pending Todos
 
@@ -223,6 +228,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T04:32:01.830Z
-Stopped at: Completed 10-01-PLAN.md
+Last session: 2026-04-13T04:36:32.245Z
+Stopped at: Completed 10-03-PLAN.md
 Resume file: None
