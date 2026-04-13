@@ -196,7 +196,14 @@ Plans:
   3. Contextual cooking tips appear on recipe steps (technique explanations, timing advice)
   4. AI suggests creative variations on frequently-cooked recipes
   5. App works offline for cached data (recipes, pantry inventory, meal plans)
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+- [ ] 10-01-PLAN.md — Migration (recipe_cooks, recipe_step_tips), shared TS types, netinfo install
+- [ ] 10-02-PLAN.md — Progression service (cook stats, ambition ranker, variations) + routes + markCooked hook (TDD)
+- [ ] 10-03-PLAN.md — cookingTips Haiku service with cache + GET /cooking/tips route (TDD)
+- [ ] 10-04-PLAN.md — Mobile offline: networkStore, offlineQueue, Zustand persist on 5 stores (TDD)
+- [ ] 10-05-PLAN.md — UI wiring (progressionStore, suggestions, tips, variations, offline banner) + device verification
+
 **UI hint**: yes
 
 ## Progress
@@ -216,4 +223,4 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 7. Meal Planning | 0/5 | Not started | - |
 | 8. Shopping & Instacart | 0/7 | Not started | - |
 | 9. Voice Cooking Mode | 0/5 | Not started | - |
-| 10. Skill Progression & Offline | 0/TBD | Not started | - |
+| 10. Skill Progression & Offline | 0/5 | Not started | - |

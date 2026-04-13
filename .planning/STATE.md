@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 5 of 5
+current_plan: 1 of 5
 status: executing
-stopped_at: Completed 09-05-PLAN.md
-last_updated: "2026-04-13T04:19:06.175Z"
-last_activity: 2026-04-10 -- Completed 09-05 cooking mode screen + device test (VOIC-01..07)
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-04-13T04:32:08.513Z"
+last_activity: 2026-04-10 -- Completed 10-01 skill progression foundation (SKIL-01, SKIL-03, FOUN-07)
 progress:
   total_phases: 10
   completed_phases: 9
-  total_plans: 39
-  completed_plans: 39
-  percent: 97
+  total_plans: 44
+  completed_plans: 40
+  percent: 91
 ---
 
 # Project State
@@ -22,16 +22,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Open the fridge, take a photo, get dinner ideas -- zero mental effort from "what do we have?" to "what should we cook?"
-**Current focus:** Phase 9: Voice Cooking Mode
+**Current focus:** Phase 10: Skill Progression & Offline
 
 ## Current Position
 
-Phase: 9 of 10 (Voice Cooking Mode) -- IN PROGRESS
-Current Plan: 5 of 5
+Phase: 10 of 10 (Skill Progression & Offline) -- IN PROGRESS
+Current Plan: 1 of 5
 Status: In Progress
-Last activity: 2026-04-10 -- Completed 09-05 cooking mode screen + device test (VOIC-01..07)
+Last activity: 2026-04-10 -- Completed 10-01 skill progression foundation (SKIL-01, SKIL-03, FOUN-07)
 
-Progress: [██████████] 97%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -90,6 +90,7 @@ Progress: [██████████] 97%
 | Phase 09-voice-cooking-mode P03 | 2min | 1 tasks | 3 files |
 | Phase 09-voice-cooking-mode P04 | 4min | 3 tasks | 7 files |
 | Phase 09-voice-cooking-mode P05 | 4min | 3 tasks | 11 files |
+| Phase 10-skill-progression-offline P01 | 2 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -204,6 +205,11 @@ Recent decisions affecting current work:
 - [Phase 09-voice-cooking-mode]: [Phase 09-05]: handleTranscript factored into its own pure module so cook screen tests run under vitest node env without RN renderer
 - [Phase 09-voice-cooking-mode]: [Phase 09-05]: Cook tab repurposed as discovery hub linking to Recipes (avoids touching _layout.tsx)
 - [Phase 09-voice-cooking-mode]: [Phase 09-05]: Timer countdown driven by single setInterval(1s) inside cook.tsx (parent-owned tick)
+- [Phase 10-skill-progression-offline]: [Phase 10-01]: recipe_cooks is an append-only event log so cook count survives meal plan deletion (Pitfall 3)
+- [Phase 10-skill-progression-offline]: [Phase 10-01]: Cook stats aggregated in service code, not a Postgres view -- keeps logic unit-testable
+- [Phase 10-skill-progression-offline]: [Phase 10-01]: recipe_step_tips RLS via EXISTS through recipes.profile_id (no denormalized profile_id)
+- [Phase 10-skill-progression-offline]: [Phase 10-01]: Mobile progression types are a copy of server types (independent evolution, mirrors shopping.ts)
+- [Phase 10-skill-progression-offline]: [Phase 10-01]: netinfo mock lives in global vitest.setup.ts alongside expo-speech mocks
 
 ### Pending Todos
 
@@ -217,6 +223,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T04:18:21.902Z
-Stopped at: Completed 09-05-PLAN.md
+Last session: 2026-04-13T04:32:01.830Z
+Stopped at: Completed 10-01-PLAN.md
 Resume file: None

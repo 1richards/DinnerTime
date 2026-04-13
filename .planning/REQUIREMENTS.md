@@ -15,7 +15,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **FOUN-04**: User can set household size and family member profiles (adults vs kids)
 - [x] **FOUN-05**: User can set cuisine preferences and disliked ingredients
 - [x] **FOUN-06**: All user data syncs to cloud storage reliably
-- [ ] **FOUN-07**: App works offline for cached data (recipes, pantry, meal plans)
+- [x] **FOUN-07**: App works offline for cached data (recipes, pantry, meal plans)
 
 ### Pantry Scanning
 
@@ -80,9 +80,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Skill Progression
 
-- [ ] **SKIL-01**: App tracks which recipes user has cooked and how often
+- [x] **SKIL-01**: App tracks which recipes user has cooked and how often
 - [ ] **SKIL-02**: App gently suggests slightly more ambitious recipes based on cooking history
-- [ ] **SKIL-03**: Contextual cooking tips appear on recipe steps (technique explanations, timing advice)
+- [x] **SKIL-03**: Contextual cooking tips appear on recipe steps (technique explanations, timing advice)
 - [ ] **SKIL-04**: AI suggests creative variations on frequently-cooked recipes to build skills
 
 ## v2 Requirements
@@ -141,7 +141,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FOUN-04 | Phase 2 | Complete |
 | FOUN-05 | Phase 2 | Complete |
 | FOUN-06 | Phase 1 | Complete |
-| FOUN-07 | Phase 10 | Pending |
+| FOUN-07 | Phase 10 | Complete |
 | PANT-01 | Phase 3 | Complete |
 | PANT-02 | Phase 3 | Complete |
 | PANT-03 | Phase 3 | Complete |
@@ -185,9 +185,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VOIC-05 | Phase 9 | Complete |
 | VOIC-06 | Phase 9 | Complete |
 | VOIC-07 | Phase 9 | Complete |
-| SKIL-01 | Phase 10 | Pending |
+| SKIL-01 | Phase 10 | Complete |
 | SKIL-02 | Phase 10 | Pending |
-| SKIL-03 | Phase 10 | Pending |
+| SKIL-03 | Phase 10 | Complete |
 | SKIL-04 | Phase 10 | Pending |
 
 **Coverage:**
