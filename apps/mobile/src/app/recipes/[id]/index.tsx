@@ -145,7 +145,14 @@ export default function RecipeDetailScreen() {
           ))}
         </View>
 
-        <View className="px-4 mt-6 flex-row gap-3">
+        <View className="px-4 mt-6">
+          <Button
+            title="Start Cooking"
+            onPress={() => router.push(`/recipes/${recipe.id}/cook`)}
+          />
+        </View>
+
+        <View className="px-4 mt-3 flex-row gap-3">
           <View className="flex-1">
             <Button
               title="Edit"
