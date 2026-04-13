@@ -282,10 +282,22 @@ function toolOutputToRecipe(
  * Parse a recipe from a URL. Tries JSON-LD extraction first,
  * falls back to AIClient (Gemini) extraction for non-structured pages.
  */
+// Real browser UA — most recipe sites bot-block obvious scrapers.
+// Also send Accept and Accept-Language so we look like a normal browser.
+const BROWSER_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
+  Accept:
+    'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.5',
+  'Accept-Encoding': 'gzip, deflate, br',
+} as const;
+
 export async function parseRecipeFromUrl(url: string): Promise<ParsedRecipe> {
-  // 1. Fetch the page
+  // 1. Fetch the page (with browser-like headers + redirect following)
   const response = await fetch(url, {
-    headers: { 'User-Agent': 'DinnerTime/1.0' },
+    headers: BROWSER_HEADERS,
+    redirect: 'follow',
   });
 
   if (!response.ok) {
