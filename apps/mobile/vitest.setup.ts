@@ -22,3 +22,10 @@ vi.mock('@jamsch/expo-speech-recognition', () => ({
   },
   useSpeechRecognitionEvent: vi.fn(),
 }));
+
+vi.mock('@react-native-community/netinfo', () => ({
+  default: {
+    addEventListener: vi.fn(() => () => {}),
+    fetch: vi.fn(async () => ({ isConnected: true, isInternetReachable: true })),
+  },
+}));
