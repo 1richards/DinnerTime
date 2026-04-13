@@ -58,14 +58,14 @@ function makeSupabaseMock(opts: {
   return supabase as unknown as Parameters<typeof logRecipeCook>[0] & { insertCalls: InsertCall[] };
 }
 
-function makeAnthropicMock(toolInput: unknown) {
+function makeAnthropicMock(toolInput: unknown, toolName = 'rank_recipes') {
   return {
     messages: {
       create: vi.fn().mockResolvedValue({
         content: [
           {
             type: 'tool_use',
-            name: 'rank_recipes',
+            name: toolName,
             input: toolInput,
           },
         ],
@@ -245,9 +245,10 @@ describe('getRecipeVariations', () => {
 
   it('returns string[] variations when cook_count >= 3', async () => {
     const supabase = makeStatsSupabase(3);
-    const anthropic = makeAnthropicMock({
-      variations: ['Try with mushroom stock', 'Add saffron', 'Finish with truffle oil'],
-    });
+    const anthropic = makeAnthropicMock(
+      { variations: ['Try with mushroom stock', 'Add saffron', 'Finish with truffle oil'] },
+      'suggest_variations',
+    );
     const result = await getRecipeVariations(anthropic, supabase, 'profile-1', 'r1');
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(3);

@@ -3,6 +3,7 @@ import { anthropic } from '../config/anthropic.js';
 import type { Difficulty, MealPlan, MealPlanEntry, MealPlanIngredient } from '../types/mealPlan.js';
 import { matchIngredientsToPantry } from './ingredientMatching.js';
 import type { PantryItem } from './pantry.js';
+import { logRecipeCook } from './progression.js';
 
 // ---------- Context Types ----------
 
@@ -699,6 +700,17 @@ export async function markCooked(
     throw new Error(
       `Failed to update entry status: ${updateEntryError?.message ?? 'no data'}`,
     );
+  }
+
+  // 6. Log to recipe_cooks (best-effort, non-fatal -- Phase 10-02)
+  // Only log when the entry references a real recipe; non-recipe entries
+  // (Claude-generated free-form meals) don't have a recipe to track.
+  if (entry.recipe_id) {
+    try {
+      await logRecipeCook(supabase, profileId, entry.recipe_id);
+    } catch (e) {
+      console.warn('[mealPlanner] logRecipeCook threw -- ignoring', e);
+    }
   }
 
   return {
