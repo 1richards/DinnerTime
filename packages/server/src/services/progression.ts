@@ -1,43 +1,24 @@
-// Phase 10-02: Progression service
+// Phase 10-02 / 11-03: Progression service
 //
 // Backend layer for skill progression: cook history logging, aggregated
-// cook stats, Claude Sonnet ambition ranker, and creative variations.
+// cook stats, AI-powered ambition ranker, and creative variations.
 //
 // Design notes:
 //   - Cook history aggregation lives here (not a Postgres view) so it stays
 //     unit-testable -- matches the 10-01 decision.
-//   - rankAmbition / getRecipeVariations take an `anthropic` client as a
-//     parameter (not the module-level singleton) so tests pass a plain mock
-//     object instead of patching the SDK module. Production callers pass
-//     the singleton from config/anthropic.
+//   - rankAmbition / getRecipeVariations route through the AIClient
+//     abstraction (`getClientFor`). Tests mock the factory directly.
 //   - logRecipeCook failures are swallowed: the cook itself succeeded;
 //     missing a stats row is best-effort and must not roll back the cook.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getClientFor } from '../ai/clientFactory.js';
+import type { JsonSchema, StructuredTool } from '../ai/types.js';
 import type {
   AmbitionRankRequest,
   AmbitionSuggestion,
   RecipeCookStats,
 } from '../types/progression.js';
-
-// ---------- Minimal Anthropic client shape ----------
-
-/**
- * Structural type for the subset of the Anthropic SDK we use.
- * Lets tests pass a plain `{ messages: { create: vi.fn() } }` object
- * without importing the full SDK type surface.
- */
-export interface AnthropicLike {
-  messages: {
-    create: (args: unknown) => Promise<{
-      content: Array<{
-        type: string;
-        name?: string;
-        input?: unknown;
-      }>;
-    }>;
-  };
-}
 
 // ---------- logRecipeCook ----------
 
@@ -80,10 +61,6 @@ interface RawCookRow {
 
 /**
  * Aggregate recipe_cooks rows for a profile into per-recipe stats.
- *
- * One query joins recipe_cooks → recipes to pull title alongside the cook
- * timestamp. Aggregation (count, last_cooked_at) is done in JS so the
- * shape stays unit-testable without a real Postgres group-by view.
  */
 export async function getCookStats(
   supabase: SupabaseClient,
@@ -128,9 +105,6 @@ export async function getCookStats(
 /**
  * Heuristic complexity score from research Pattern 4:
  *   complexity = steps.length + ingredients.length + floor(total_time / 15)
- *
- * Pure function, used by both rankAmbition prompt assembly and the
- * empty-history fallback ordering.
  */
 export function computeComplexity(recipe: {
   steps: unknown[];
@@ -145,35 +119,33 @@ export function computeComplexity(recipe: {
 
 // ---------- rankAmbition ----------
 
-const RANK_RECIPES_TOOL = {
-  name: 'rank_recipes' as const,
-  description:
-    'Rank candidate recipes as ambition suggestions for a home cook based on their cook history.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      recommendations: {
-        type: 'array',
-        minItems: 1,
-        maxItems: 3,
-        items: {
-          type: 'object',
-          properties: {
-            recipe_id: { type: 'string' },
-            rationale: { type: 'string' },
-          },
-          required: ['recipe_id', 'rationale'],
+const rankRecipesSchema: JsonSchema = {
+  type: 'object',
+  properties: {
+    recommendations: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          recipe_id: { type: 'string' },
+          rationale: { type: 'string' },
         },
+        required: ['recipe_id', 'rationale'],
       },
     },
-    required: ['recommendations'],
   },
+  required: ['recommendations'],
 };
 
-/**
- * Build the prompt sent to Sonnet for ambition ranking.
- * Pure helper -- exported for future testing if we add prompt tests.
- */
+const rankRecipesTool: StructuredTool<{
+  recommendations?: Array<{ recipe_id: string; rationale: string }>;
+}> = {
+  name: 'rank_recipes',
+  description:
+    'Rank candidate recipes as ambition suggestions for a home cook based on their cook history.',
+  schema: rankRecipesSchema,
+};
+
 export function buildAmbitionPrompt(req: AmbitionRankRequest): string {
   const historyBlock =
     req.history.length > 0
@@ -212,20 +184,9 @@ one from the CANDIDATE RECIPES list above -- do not invent ids.`;
 }
 
 /**
- * Ask Sonnet to rank candidates into 3 ambition suggestions.
- *
- * Pre-filtering: recipes the user has already cooked >=2 times are
- * dropped from the candidate pool before prompt assembly (they aren't
- * "ambition" -- they're routine).
- *
- * Hallucination guard: any recipe_id Sonnet returns that is not in the
- * candidate pool is dropped silently.
- *
- * Empty-history fallback: if Sonnet returns nothing usable, return the
- * 3 candidates with the lowest complexity (gentle starting point).
+ * Ask the AIClient to rank candidates into up to 3 ambition suggestions.
  */
 export async function rankAmbition(
-  anthropic: AnthropicLike,
   req: AmbitionRankRequest,
 ): Promise<AmbitionSuggestion[]> {
   const overcookedIds = new Set(
@@ -238,31 +199,21 @@ export async function rankAmbition(
 
   const prompt = buildAmbitionPrompt({ history: req.history, candidates: filteredCandidates });
 
-  let sonnetPicks: Array<{ recipe_id: string; rationale: string }> = [];
+  let picks: Array<{ recipe_id: string; rationale: string }> = [];
   try {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      tools: [RANK_RECIPES_TOOL],
-      tool_choice: { type: 'tool', name: 'rank_recipes' },
-      messages: [{ role: 'user', content: prompt }],
+    const ai = getClientFor('progression.ambition');
+    const result = await ai.generateStructured({
+      user: prompt,
+      tool: rankRecipesTool,
+      maxTokens: 1024,
     });
-
-    const toolBlock = response.content.find(
-      (b) => b.type === 'tool_use' && b.name === 'rank_recipes',
-    );
-    if (toolBlock && toolBlock.input) {
-      const input = toolBlock.input as {
-        recommendations?: Array<{ recipe_id: string; rationale: string }>;
-      };
-      sonnetPicks = input.recommendations ?? [];
-    }
+    picks = result?.recommendations ?? [];
   } catch (e) {
-    console.warn('[progression] rankAmbition: Sonnet call failed, using fallback', e);
+    console.warn('[progression] rankAmbition: AI call failed, using fallback', e);
   }
 
   // Filter hallucinations (recipe_id not in candidate pool)
-  const valid = sonnetPicks
+  const valid = picks
     .map((p) => {
       const candidate = candidateById.get(p.recipe_id);
       if (!candidate) return null;
@@ -295,21 +246,21 @@ export async function rankAmbition(
 
 // ---------- getRecipeVariations ----------
 
-const VARIATIONS_TOOL = {
-  name: 'suggest_variations' as const,
-  description: 'Suggest 3 creative variations on a recipe the cook has mastered.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      variations: {
-        type: 'array',
-        minItems: 3,
-        maxItems: 3,
-        items: { type: 'string' },
-      },
+const variationsSchema: JsonSchema = {
+  type: 'object',
+  properties: {
+    variations: {
+      type: 'array',
+      items: { type: 'string' },
     },
-    required: ['variations'],
   },
+  required: ['variations'],
+};
+
+const variationsTool: StructuredTool<{ variations?: string[] }> = {
+  name: 'suggest_variations',
+  description: 'Suggest 3 creative variations on a recipe the cook has mastered.',
+  schema: variationsSchema,
 };
 
 interface RecipeRow {
@@ -331,18 +282,12 @@ export class BelowThresholdError extends Error {
 
 /**
  * Return 3 creative variations for a recipe the user has cooked >= 3 times.
- *
- * Throws BelowThresholdError ({ code: 'BELOW_THRESHOLD' }) if the recipe
- * has not been cooked enough times yet -- the route layer maps this to
- * HTTP 400 so the mobile UI can show an "unlock at 3 cooks" prompt.
  */
 export async function getRecipeVariations(
-  anthropic: AnthropicLike,
   supabase: SupabaseClient,
   profileId: string,
   recipeId: string,
 ): Promise<string[]> {
-  // Load the recipe (must be owned by profile)
   const { data: recipeData, error: recipeError } = await supabase
     .from('recipes')
     .select('id, profile_id, title, steps, ingredients, total_time_minutes')
@@ -358,7 +303,6 @@ export async function getRecipeVariations(
 
   const recipe = recipeData as RecipeRow;
 
-  // Check cook count for this recipe
   const stats = await getCookStats(supabase, profileId);
   const recipeStats = stats.find((s) => s.recipe_id === recipeId);
   const cookCount = recipeStats?.cook_count ?? 0;
@@ -367,7 +311,6 @@ export async function getRecipeVariations(
     throw new BelowThresholdError();
   }
 
-  // Call Haiku for variations
   const ingredientList = (recipe.ingredients ?? [])
     .map((ing) => {
       if (typeof ing === 'string') return ing;
@@ -388,21 +331,15 @@ Current ingredients: ${ingredientList || '(unknown)'}
 
 Use the suggest_variations tool to return your picks.`;
 
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-latest',
-    max_tokens: 512,
-    tools: [VARIATIONS_TOOL],
-    tool_choice: { type: 'tool', name: 'suggest_variations' },
-    messages: [{ role: 'user', content: prompt }],
+  const ai = getClientFor('progression.variations');
+  const result = await ai.generateStructured({
+    user: prompt,
+    tool: variationsTool,
+    maxTokens: 512,
   });
 
-  const toolBlock = response.content.find(
-    (b) => b.type === 'tool_use' && b.name === 'suggest_variations',
-  );
-  if (!toolBlock || !toolBlock.input) {
-    throw new Error('Claude did not return a tool_use response for variations');
+  if (!result || !Array.isArray(result.variations)) {
+    throw new Error('AIClient did not return a variations array');
   }
-
-  const input = toolBlock.input as { variations?: string[] };
-  return input.variations ?? [];
+  return result.variations;
 }

@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth.js';
-import { anthropic } from '../config/anthropic.js';
 import {
   computeComplexity,
   getCookStats,
@@ -94,7 +93,7 @@ progression.get('/suggestions', async (c) => {
         }),
       }));
 
-    const suggestions = await rankAmbition(anthropic, { history, candidates });
+    const suggestions = await rankAmbition({ history, candidates });
     return c.json({ data: suggestions });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to fetch suggestions';
@@ -113,7 +112,7 @@ progression.get('/variations/:recipeId', async (c) => {
   const recipeId = c.req.param('recipeId');
 
   try {
-    const variations = await getRecipeVariations(anthropic, supabase, user.id, recipeId);
+    const variations = await getRecipeVariations(supabase, user.id, recipeId);
     return c.json({ data: variations });
   } catch (error) {
     const err = error as Error & { code?: string };

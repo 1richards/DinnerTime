@@ -1,5 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const { mockAnalyzeImageStructured, mockGenerateStructured, mockGenerateText, mockGetClientFor } =
+  vi.hoisted(() => {
+    const mockAnalyzeImageStructured = vi.fn();
+    const mockGenerateStructured = vi.fn();
+    const mockGenerateText = vi.fn();
+    const mockGetClientFor = vi.fn(() => ({
+      generateText: mockGenerateText,
+      generateStructured: mockGenerateStructured,
+      analyzeImageStructured: mockAnalyzeImageStructured,
+    }));
+    return {
+      mockAnalyzeImageStructured,
+      mockGenerateStructured,
+      mockGenerateText,
+      mockGetClientFor,
+    };
+  });
+
+vi.mock('../../ai/clientFactory.js', () => ({
+  getClientFor: mockGetClientFor,
+}));
+
 import {
   logRecipeCook,
   getCookStats,
@@ -56,22 +78,6 @@ function makeSupabaseMock(opts: {
     }),
   };
   return supabase as unknown as Parameters<typeof logRecipeCook>[0] & { insertCalls: InsertCall[] };
-}
-
-function makeAnthropicMock(toolInput: unknown, toolName = 'rank_recipes') {
-  return {
-    messages: {
-      create: vi.fn().mockResolvedValue({
-        content: [
-          {
-            type: 'tool_use',
-            name: toolName,
-            input: toolInput,
-          },
-        ],
-      }),
-    },
-  } as unknown as Parameters<typeof rankAmbition>[0];
 }
 
 // ---------- logRecipeCook ----------
@@ -151,15 +157,20 @@ describe('computeComplexity', () => {
 // ---------- rankAmbition ----------
 
 describe('rankAmbition', () => {
-  it('returns 3 suggestions from Sonnet tool_use response', async () => {
-    const anthropic = makeAnthropicMock({
+  beforeEach(() => {
+    mockGenerateStructured.mockReset();
+    mockGetClientFor.mockClear();
+  });
+
+  it('returns 3 suggestions from AI structured response', async () => {
+    mockGenerateStructured.mockResolvedValue({
       recommendations: [
         { recipe_id: 'c1', rationale: 'Builds knife skills' },
         { recipe_id: 'c2', rationale: 'New cuisine' },
         { recipe_id: 'c3', rationale: 'Stretch goal' },
       ],
     });
-    const result = await rankAmbition(anthropic, {
+    const result = await rankAmbition({
       history: [{ recipe_id: 'h1', title: 'Tacos', complexity: 5, cook_count: 1 }],
       candidates: [
         { recipe_id: 'c1', title: 'Risotto', complexity: 8 },
@@ -167,20 +178,21 @@ describe('rankAmbition', () => {
         { recipe_id: 'c3', title: 'Souffle', complexity: 12 },
       ],
     });
+    expect(mockGetClientFor).toHaveBeenCalledWith('progression.ambition');
     expect(result).toHaveLength(3);
     expect(result[0]).toMatchObject({ recipe_id: 'c1', title: 'Risotto', rationale: 'Builds knife skills' });
     expect(result[1]).toMatchObject({ recipe_id: 'c2', title: 'Pad Thai' });
   });
 
-  it('drops sonnet recommendations whose recipe_id is not in candidates (no hallucinations)', async () => {
-    const anthropic = makeAnthropicMock({
+  it('drops recommendations whose recipe_id is not in candidates (no hallucinations)', async () => {
+    mockGenerateStructured.mockResolvedValue({
       recommendations: [
         { recipe_id: 'c1', rationale: 'ok' },
         { recipe_id: 'GHOST', rationale: 'fake' },
         { recipe_id: 'c2', rationale: 'ok' },
       ],
     });
-    const result = await rankAmbition(anthropic, {
+    const result = await rankAmbition({
       history: [],
       candidates: [
         { recipe_id: 'c1', title: 'A', complexity: 3 },
@@ -191,13 +203,9 @@ describe('rankAmbition', () => {
     expect(result).toHaveLength(2);
   });
 
-  it('falls back to lowest-complexity candidates when history is empty and Sonnet returns nothing usable', async () => {
-    const anthropic = {
-      messages: {
-        create: vi.fn().mockResolvedValue({ content: [] }),
-      },
-    } as unknown as Parameters<typeof rankAmbition>[0];
-    const result = await rankAmbition(anthropic, {
+  it('falls back to lowest-complexity candidates when AI returns nothing usable', async () => {
+    mockGenerateStructured.mockResolvedValue({ recommendations: [] });
+    const result = await rankAmbition({
       history: [],
       candidates: [
         { recipe_id: 'c1', title: 'High', complexity: 20 },
@@ -214,6 +222,11 @@ describe('rankAmbition', () => {
 // ---------- getRecipeVariations ----------
 
 describe('getRecipeVariations', () => {
+  beforeEach(() => {
+    mockGenerateStructured.mockReset();
+    mockGetClientFor.mockClear();
+  });
+
   function makeStatsSupabase(cookCount: number, owned = true) {
     const cookRows = Array.from({ length: cookCount }, (_, i) => ({
       recipe_id: 'r1',
@@ -237,19 +250,18 @@ describe('getRecipeVariations', () => {
 
   it('throws BELOW_THRESHOLD when cook_count < 3', async () => {
     const supabase = makeStatsSupabase(2);
-    const anthropic = makeAnthropicMock({ variations: ['a', 'b'] });
     await expect(
-      getRecipeVariations(anthropic, supabase, 'profile-1', 'r1'),
+      getRecipeVariations(supabase, 'profile-1', 'r1'),
     ).rejects.toMatchObject({ code: 'BELOW_THRESHOLD' });
   });
 
   it('returns string[] variations when cook_count >= 3', async () => {
     const supabase = makeStatsSupabase(3);
-    const anthropic = makeAnthropicMock(
-      { variations: ['Try with mushroom stock', 'Add saffron', 'Finish with truffle oil'] },
-      'suggest_variations',
-    );
-    const result = await getRecipeVariations(anthropic, supabase, 'profile-1', 'r1');
+    mockGenerateStructured.mockResolvedValue({
+      variations: ['Try with mushroom stock', 'Add saffron', 'Finish with truffle oil'],
+    });
+    const result = await getRecipeVariations(supabase, 'profile-1', 'r1');
+    expect(mockGetClientFor).toHaveBeenCalledWith('progression.variations');
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(3);
     expect(result[0]).toContain('mushroom');
@@ -260,15 +272,6 @@ describe('getRecipeVariations', () => {
 
 describe('markCooked → logRecipeCook', () => {
   it('markCooked invokes recipe_cooks insert after successful cook', async () => {
-    // Re-mock anthropic for mealPlanner module
-    vi.resetModules();
-    vi.doMock('@anthropic-ai/sdk', () => ({
-      default: class MockAnthropic {
-        messages = { create: vi.fn() };
-        constructor() {}
-      },
-    }));
-
     const insertCalls: unknown[] = [];
     const fakeEntry = {
       id: 'e1',
