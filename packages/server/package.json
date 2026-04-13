@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "ai:smoke": "tsx scripts/ai-smoke-test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
