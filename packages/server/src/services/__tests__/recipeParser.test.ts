@@ -1,19 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Use vi.hoisted so the mock fn is available before vi.mock hoisting
-const { mockCreate, mockFetch } = vi.hoisted(() => ({
-  mockCreate: vi.fn(),
-  mockFetch: vi.fn(),
-}));
-
-vi.mock('@anthropic-ai/sdk', () => {
+const {
+  mockAnalyzeImageStructured,
+  mockGenerateStructured,
+  mockGenerateText,
+  mockGetClientFor,
+  mockFetch,
+} = vi.hoisted(() => {
+  const mockAnalyzeImageStructured = vi.fn();
+  const mockGenerateStructured = vi.fn();
+  const mockGenerateText = vi.fn();
+  const mockGetClientFor = vi.fn(() => ({
+    generateText: mockGenerateText,
+    generateStructured: mockGenerateStructured,
+    analyzeImageStructured: mockAnalyzeImageStructured,
+  }));
   return {
-    default: class MockAnthropic {
-      messages = { create: mockCreate };
-      constructor() {}
-    },
+    mockAnalyzeImageStructured,
+    mockGenerateStructured,
+    mockGenerateText,
+    mockGetClientFor,
+    mockFetch: vi.fn(),
   };
 });
+
+vi.mock('../../ai/clientFactory.js', () => ({
+  getClientFor: mockGetClientFor,
+}));
 
 // Mock global fetch for URL fetching
 vi.stubGlobal('fetch', mockFetch);
@@ -165,11 +178,13 @@ describe('mapJsonLdToRecipe', () => {
 
 describe('parseRecipeFromUrl', () => {
   beforeEach(() => {
-    mockCreate.mockReset();
+    mockGenerateStructured.mockReset();
+    mockAnalyzeImageStructured.mockReset();
+    mockGetClientFor.mockClear();
     mockFetch.mockReset();
   });
 
-  it('returns ParsedRecipe from JSON-LD without calling Claude for ingredient parsing', async () => {
+  it('returns ParsedRecipe from JSON-LD, routing through recipe.parseUrl', async () => {
     const html = `
       <html><head>
         <script type="application/ld+json">
@@ -183,23 +198,13 @@ describe('parseRecipeFromUrl', () => {
       text: () => Promise.resolve(html),
     });
 
-    // Mock Claude for ingredient parsing (JSON-LD ingredients are strings, need structured parsing)
-    mockCreate.mockResolvedValue({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'parse_recipe',
-          input: {
-            title: 'Quick Pasta',
-            ingredients: [
-              { name: 'pasta', quantity: 2, unit: 'cup', notes: null },
-              { name: 'olive oil', quantity: 1, unit: 'tbsp', notes: null },
-            ],
-            steps: ['Boil pasta', 'Add oil'],
-          },
-        },
+    mockGenerateStructured.mockResolvedValue({
+      title: 'Quick Pasta',
+      ingredients: [
+        { name: 'pasta', quantity: 2, unit: 'cup', notes: null },
+        { name: 'olive oil', quantity: 1, unit: 'tbsp', notes: null },
       ],
+      steps: ['Boil pasta', 'Add oil'],
     });
 
     const result = await parseRecipeFromUrl('https://example.com/pasta');
@@ -209,9 +214,15 @@ describe('parseRecipeFromUrl', () => {
     expect(result.steps).toEqual(['Boil pasta', 'Add oil']);
     expect(result.source_url).toBe('https://example.com/pasta');
     expect(result.source_type).toBe('url');
+    expect(mockGetClientFor).toHaveBeenCalledWith('recipe.parseUrl');
+    expect(mockGenerateStructured).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tool: expect.objectContaining({ name: 'parse_recipe' }),
+      })
+    );
   });
 
-  it('calls Claude for full extraction when no JSON-LD found', async () => {
+  it('calls AIClient for full extraction via recipe.parseUrl when no JSON-LD found', async () => {
     const html = '<html><body><h1>My Recipe</h1><p>Just some text about cooking</p></body></html>';
 
     mockFetch.mockResolvedValue({
@@ -219,25 +230,17 @@ describe('parseRecipeFromUrl', () => {
       text: () => Promise.resolve(html),
     });
 
-    mockCreate.mockResolvedValue({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'parse_recipe',
-          input: {
-            title: 'My Recipe',
-            ingredients: [{ name: 'something', quantity: 1, unit: 'cup', notes: null }],
-            steps: ['Cook it'],
-          },
-        },
-      ],
+    mockGenerateStructured.mockResolvedValue({
+      title: 'My Recipe',
+      ingredients: [{ name: 'something', quantity: 1, unit: 'cup', notes: null }],
+      steps: ['Cook it'],
     });
 
     const result = await parseRecipeFromUrl('https://example.com/recipe');
     expect(result.title).toBe('My Recipe');
-    expect(mockCreate).toHaveBeenCalled();
+    expect(mockGenerateStructured).toHaveBeenCalled();
     expect(result.source_type).toBe('url');
+    expect(mockGetClientFor).toHaveBeenCalledWith('recipe.parseUrl');
   });
 
   it('returns clear error on fetch failure (403/503)', async () => {
@@ -255,67 +258,51 @@ describe('parseRecipeFromUrl', () => {
 
 describe('parseRecipeFromPhoto', () => {
   beforeEach(() => {
-    mockCreate.mockReset();
+    mockAnalyzeImageStructured.mockReset();
+    mockGetClientFor.mockClear();
   });
 
-  it('sends base64 image to Claude Vision and returns ParsedRecipe', async () => {
-    mockCreate.mockResolvedValue({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'parse_recipe',
-          input: {
-            title: 'Handwritten Recipe',
-            ingredients: [
-              { name: 'chicken', quantity: 2, unit: 'lb', notes: 'boneless' },
-            ],
-            steps: ['Season chicken', 'Grill for 20 minutes'],
-          },
-        },
-      ],
+  it('sends base64 image via AIClient.analyzeImageStructured and returns ParsedRecipe', async () => {
+    mockAnalyzeImageStructured.mockResolvedValue({
+      title: 'Handwritten Recipe',
+      ingredients: [{ name: 'chicken', quantity: 2, unit: 'lb', notes: 'boneless' }],
+      steps: ['Season chicken', 'Grill for 20 minutes'],
     });
 
     const result = await parseRecipeFromPhoto('base64imagedata');
     expect(result.title).toBe('Handwritten Recipe');
     expect(result.ingredients).toHaveLength(1);
     expect(result.ingredients[0].name).toBe('chicken');
+    expect(result.ingredients[0].notes).toBe('boneless');
     expect(result.steps).toHaveLength(2);
     expect(result.source_type).toBe('photo');
 
-    // Verify correct Claude call structure
-    const callArgs = mockCreate.mock.calls[0][0];
-    expect(callArgs.messages[0].content[0]).toMatchObject({
-      type: 'image',
-      source: { type: 'base64', media_type: 'image/jpeg', data: 'base64imagedata' },
-    });
-    expect(callArgs.tool_choice).toEqual({ type: 'tool', name: 'parse_recipe' });
+    expect(mockGetClientFor).toHaveBeenCalledWith('recipe.parsePhoto');
+    expect(mockAnalyzeImageStructured).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageBase64: 'base64imagedata',
+        mimeType: 'image/jpeg',
+        tool: expect.objectContaining({ name: 'parse_recipe' }),
+      })
+    );
   });
 });
 
 describe('parseRecipeFromText', () => {
   beforeEach(() => {
-    mockCreate.mockReset();
+    mockGenerateStructured.mockReset();
+    mockGetClientFor.mockClear();
   });
 
-  it('sends freeform text to Claude and returns ParsedRecipe', async () => {
-    mockCreate.mockResolvedValue({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'parse_recipe',
-          input: {
-            title: 'Pasta Carbonara',
-            ingredients: [
-              { name: 'spaghetti', quantity: 1, unit: 'lb', notes: null },
-              { name: 'eggs', quantity: 4, unit: null, notes: null },
-              { name: 'pecorino', quantity: 1, unit: 'cup', notes: 'grated' },
-            ],
-            steps: ['Cook pasta', 'Mix eggs and cheese', 'Combine'],
-          },
-        },
+  it('sends freeform text via AIClient.generateStructured and returns ParsedRecipe', async () => {
+    mockGenerateStructured.mockResolvedValue({
+      title: 'Pasta Carbonara',
+      ingredients: [
+        { name: 'spaghetti', quantity: 1, unit: 'lb', notes: null },
+        { name: 'eggs', quantity: 4, unit: null, notes: null },
+        { name: 'pecorino', quantity: 1, unit: 'cup', notes: 'grated' },
       ],
+      steps: ['Cook pasta', 'Mix eggs and cheese', 'Combine'],
     });
 
     const result = await parseRecipeFromText(
@@ -327,8 +314,11 @@ describe('parseRecipeFromText', () => {
     expect(result.steps).toHaveLength(3);
     expect(result.source_type).toBe('manual');
 
-    // Verify Claude was called with correct tool
-    const callArgs = mockCreate.mock.calls[0][0];
-    expect(callArgs.tool_choice).toEqual({ type: 'tool', name: 'parse_recipe' });
+    expect(mockGetClientFor).toHaveBeenCalledWith('recipe.parseText');
+    expect(mockGenerateStructured).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tool: expect.objectContaining({ name: 'parse_recipe' }),
+      })
+    );
   });
 });

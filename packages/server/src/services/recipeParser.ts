@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
-import { anthropic } from '../config/anthropic.js';
+import { getClientFor } from '../ai/clientFactory.js';
+import type { JsonSchema, StructuredTool } from '../ai/types.js';
 
 // ---------- Types ----------
 
@@ -25,72 +26,50 @@ export interface ParsedRecipe {
 }
 
 // ---------- Tool Definition ----------
+//
+// NOTE: Schema simplified from the legacy Anthropic definition. The old schema
+// used `type: ['string', 'null']` union types which Anthropic tolerated but are
+// not valid in our stricter JsonSchema type or Gemini's parametersJsonSchema.
+// Nullable fields are now omitted from `required` so providers can skip them;
+// toolOutputToRecipe still defaults missing fields to null.
 
-export const parseRecipeTool = {
-  name: 'parse_recipe' as const,
-  description: 'Extract structured recipe data from text or HTML content',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      title: { type: 'string', description: 'Recipe title' },
-      description: {
-        type: ['string', 'null'] as const,
-        description: 'Short recipe description or summary',
-      },
-      ingredients: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            name: { type: 'string', description: 'Ingredient name (e.g., "chicken breast")' },
-            quantity: {
-              type: ['number', 'null'] as const,
-              description: 'Numeric quantity (e.g., 2, 0.5)',
-            },
-            unit: {
-              type: ['string', 'null'] as const,
-              description: 'Unit of measurement (e.g., "cup", "tbsp", "lb")',
-            },
-            notes: {
-              type: ['string', 'null'] as const,
-              description: 'Preparation notes (e.g., "diced", "room temperature")',
-            },
-          },
-          required: ['name', 'quantity', 'unit', 'notes'],
+const parseRecipeSchema: JsonSchema = {
+  type: 'object',
+  properties: {
+    title: { type: 'string', description: 'Recipe title' },
+    description: { type: 'string', description: 'Short recipe description or summary' },
+    ingredients: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Ingredient name (e.g., "chicken breast")' },
+          quantity: { type: 'number', description: 'Numeric quantity (e.g., 2, 0.5)' },
+          unit: { type: 'string', description: 'Unit of measurement (e.g., "cup", "tbsp", "lb")' },
+          notes: { type: 'string', description: 'Preparation notes (e.g., "diced", "room temperature")' },
         },
-      },
-      steps: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'Ordered cooking steps as plain text',
-      },
-      prep_time_minutes: {
-        type: ['number', 'null'] as const,
-        description: 'Preparation time in minutes',
-      },
-      cook_time_minutes: {
-        type: ['number', 'null'] as const,
-        description: 'Cooking time in minutes',
-      },
-      total_time_minutes: {
-        type: ['number', 'null'] as const,
-        description: 'Total time in minutes',
-      },
-      servings: {
-        type: ['number', 'null'] as const,
-        description: 'Number of servings',
-      },
-      source_url: {
-        type: ['string', 'null'] as const,
-        description: 'Original recipe URL if imported from web',
-      },
-      image_url: {
-        type: ['string', 'null'] as const,
-        description: 'URL of recipe hero image',
+        required: ['name'],
       },
     },
-    required: ['title', 'ingredients', 'steps'],
+    steps: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Ordered cooking steps as plain text',
+    },
+    prep_time_minutes: { type: 'number', description: 'Preparation time in minutes' },
+    cook_time_minutes: { type: 'number', description: 'Cooking time in minutes' },
+    total_time_minutes: { type: 'number', description: 'Total time in minutes' },
+    servings: { type: 'number', description: 'Number of servings' },
+    source_url: { type: 'string', description: 'Original recipe URL if imported from web' },
+    image_url: { type: 'string', description: 'URL of recipe hero image' },
   },
+  required: ['title', 'ingredients', 'steps'],
+};
+
+export const parseRecipeTool: StructuredTool<Record<string, unknown>> = {
+  name: 'parse_recipe',
+  description: 'Extract structured recipe data from text or HTML content',
+  schema: parseRecipeSchema,
 };
 
 // ---------- Duration Parser ----------
@@ -237,39 +216,49 @@ export function mapJsonLdToRecipe(
   };
 }
 
-// ---------- Claude Helpers ----------
+// ---------- AIClient Helpers ----------
 
-/**
- * Call Claude with parse_recipe tool and extract the structured result.
- */
-async function callClaudeParseRecipe(
-  messages: Parameters<typeof anthropic.messages.create>[0]['messages']
+async function callAIParseRecipeText(
+  task: 'recipe.parseUrl' | 'recipe.parseText',
+  userPrompt: string
 ): Promise<Record<string, unknown>> {
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 4096,
-    tools: [parseRecipeTool],
-    tool_choice: { type: 'tool', name: 'parse_recipe' },
-    messages,
+  const ai = getClientFor(task);
+  return ai.generateStructured<Record<string, unknown>>({
+    user: userPrompt,
+    tool: parseRecipeTool,
+    maxTokens: 4096,
   });
+}
 
-  const toolBlock = response.content.find((b) => b.type === 'tool_use');
-  if (!toolBlock || toolBlock.type !== 'tool_use') {
-    throw new Error('Claude did not return a tool_use response');
-  }
-
-  return toolBlock.input as Record<string, unknown>;
+async function callAIParseRecipePhoto(
+  base64Image: string,
+  userPrompt: string
+): Promise<Record<string, unknown>> {
+  const ai = getClientFor('recipe.parsePhoto');
+  return ai.analyzeImageStructured<Record<string, unknown>>({
+    user: userPrompt,
+    imageBase64: base64Image,
+    mimeType: 'image/jpeg',
+    tool: parseRecipeTool,
+    maxTokens: 4096,
+  });
 }
 
 /**
- * Convert Claude tool output to ParsedRecipe with proper defaults.
+ * Convert tool output to ParsedRecipe with proper defaults.
  */
 function toolOutputToRecipe(
   input: Record<string, unknown>,
   sourceType: 'url' | 'photo' | 'manual',
   sourceUrl: string | null = null
 ): ParsedRecipe {
-  const ingredients = (input.ingredients as ParsedIngredient[]) || [];
+  const rawIngredients = (input.ingredients as Partial<ParsedIngredient>[]) || [];
+  const ingredients: ParsedIngredient[] = rawIngredients.map((ing) => ({
+    name: (ing.name as string) || '',
+    quantity: (ing.quantity as number) ?? null,
+    unit: (ing.unit as string) ?? null,
+    notes: (ing.notes as string) ?? null,
+  }));
   const steps = (input.steps as string[]) || [];
 
   return {
@@ -291,7 +280,7 @@ function toolOutputToRecipe(
 
 /**
  * Parse a recipe from a URL. Tries JSON-LD extraction first,
- * falls back to Claude extraction for non-structured pages.
+ * falls back to AIClient (Gemini) extraction for non-structured pages.
  */
 export async function parseRecipeFromUrl(url: string): Promise<ParsedRecipe> {
   // 1. Fetch the page
@@ -309,19 +298,17 @@ export async function parseRecipeFromUrl(url: string): Promise<ParsedRecipe> {
   const jsonLd = extractRecipeJsonLd(html);
 
   if (jsonLd) {
-    // Map JSON-LD to our format, then send ingredients through Claude for structured parsing
+    // Map JSON-LD to our format, then send ingredients through AI for structured parsing
     const mapped = mapJsonLdToRecipe(jsonLd, url);
     const ingredientText = (jsonLd.recipeIngredient as string[])?.join('\n') || '';
 
-    const input = await callClaudeParseRecipe([
-      {
-        role: 'user',
-        content: `Parse this recipe into structured format. Convert fractions to decimals for quantities.\n\nTitle: ${mapped.title}\n\nIngredients:\n${ingredientText}\n\nSteps:\n${mapped.steps.join('\n')}`,
-      },
-    ]);
+    const input = await callAIParseRecipeText(
+      'recipe.parseUrl',
+      `Parse this recipe into structured format. Convert fractions to decimals for quantities.\n\nTitle: ${mapped.title}\n\nIngredients:\n${ingredientText}\n\nSteps:\n${mapped.steps.join('\n')}`
+    );
 
     const recipe = toolOutputToRecipe(input, 'url', url);
-    // Preserve JSON-LD metadata that Claude might not return
+    // Preserve JSON-LD metadata that the AI might not return
     recipe.prep_time_minutes = mapped.prep_time_minutes ?? recipe.prep_time_minutes;
     recipe.cook_time_minutes = mapped.cook_time_minutes ?? recipe.cook_time_minutes;
     recipe.total_time_minutes = mapped.total_time_minutes ?? recipe.total_time_minutes;
@@ -331,60 +318,41 @@ export async function parseRecipeFromUrl(url: string): Promise<ParsedRecipe> {
     return recipe;
   }
 
-  // 3. No JSON-LD -- extract visible text and send to Claude
+  // 3. No JSON-LD -- extract visible text and send to AI
   const $ = cheerio.load(html);
   $('script, style, nav, footer, header').remove();
   const visibleText = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 5000);
 
-  const input = await callClaudeParseRecipe([
-    {
-      role: 'user',
-      content: `Extract the recipe from this web page text. Parse into structured format with title, ingredients (with quantities), and steps. Convert fractions to decimals.\n\n${visibleText}`,
-    },
-  ]);
+  const input = await callAIParseRecipeText(
+    'recipe.parseUrl',
+    `Extract the recipe from this web page text. Parse into structured format with title, ingredients (with quantities), and steps. Convert fractions to decimals.\n\n${visibleText}`
+  );
 
   return toolOutputToRecipe(input, 'url', url);
 }
 
 /**
  * Parse a recipe from a photo (base64 image data).
- * Uses Claude Vision with parse_recipe tool.
+ * Uses Anthropic Vision via the AIClient abstraction.
  */
 export async function parseRecipeFromPhoto(base64Image: string): Promise<ParsedRecipe> {
-  const input = await callClaudeParseRecipe([
-    {
-      role: 'user',
-      content: [
-        {
-          type: 'image',
-          source: {
-            type: 'base64',
-            media_type: 'image/jpeg',
-            data: base64Image,
-          },
-        },
-        {
-          type: 'text',
-          text: 'Extract the recipe from this image. Parse into structured format with title, ingredients (with quantities as decimals), and cooking steps.',
-        },
-      ],
-    },
-  ]);
+  const input = await callAIParseRecipePhoto(
+    base64Image,
+    'Extract the recipe from this image. Parse into structured format with title, ingredients (with quantities as decimals), and cooking steps.'
+  );
 
   return toolOutputToRecipe(input, 'photo');
 }
 
 /**
  * Parse a recipe from freeform text.
- * Uses Claude with parse_recipe tool.
+ * Uses Gemini via the AIClient abstraction.
  */
 export async function parseRecipeFromText(text: string): Promise<ParsedRecipe> {
-  const input = await callClaudeParseRecipe([
-    {
-      role: 'user',
-      content: `Parse this recipe text into structured format. Convert fractions to decimals for quantities.\n\n${text}`,
-    },
-  ]);
+  const input = await callAIParseRecipeText(
+    'recipe.parseText',
+    `Parse this recipe text into structured format. Convert fractions to decimals for quantities.\n\n${text}`
+  );
 
   return toolOutputToRecipe(input, 'manual');
 }
