@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 1 of 5
 status: executing
-stopped_at: Completed 10-03-PLAN.md
-last_updated: "2026-04-13T04:36:32.247Z"
+stopped_at: Completed 10-04-PLAN.md
+last_updated: "2026-04-13T04:38:04.683Z"
 last_activity: 2026-04-10 -- Completed 10-01 skill progression foundation (SKIL-01, SKIL-03, FOUN-07)
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 44
-  completed_plans: 41
+  completed_plans: 42
   percent: 91
 ---
 
@@ -92,6 +92,7 @@ Progress: [█████████░] 91%
 | Phase 09-voice-cooking-mode P05 | 4min | 3 tasks | 11 files |
 | Phase 10-skill-progression-offline P01 | 2 min | 2 tasks | 6 files |
 | Phase 10-skill-progression-offline P03 | 2 min | 2 tasks | 5 files |
+| Phase 10-skill-progression-offline P04 | 4min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -215,6 +216,9 @@ Recent decisions affecting current work:
 - [Phase 10-skill-progression-offline]: [Phase 10-03]: Service throws on Anthropic failure; route layer maps to 502 CLAUDE_ERROR (mirrors POST /ask)
 - [Phase 10-skill-progression-offline]: [Phase 10-03]: getOrGenerateTip cache INSERT errors are swallowed (best-effort); the tip is still returned even on race
 - [Phase 10-skill-progression-offline]: [Phase 10-03]: max_tokens=120, temperature=0.3, model='claude-haiku-4-20250514' for cooking tip generation
+- [Phase 10-skill-progression-offline]: [Phase 10-04]: isInternetReachable=null treated as online to avoid false-offline flicker on cold launch
+- [Phase 10-skill-progression-offline]: [Phase 10-04]: offlineQueue executor registry decouples queue lib from store imports — stores register their own replay handlers at module init
+- [Phase 10-skill-progression-offline]: [Phase 10-04]: Global AsyncStorage mock in vitest.setup.ts so persist middleware loads cleanly across every existing store test
 
 ### Pending Todos
 
@@ -228,6 +232,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T04:36:32.245Z
-Stopped at: Completed 10-03-PLAN.md
+Last session: 2026-04-13T04:38:04.681Z
+Stopped at: Completed 10-04-PLAN.md
 Resume file: None
