@@ -12,6 +12,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@jamsch/expo-speech-recognition": "0.2.15",
     "@react-native-async-storage/async-storage": "^3.0.2",
     "@react-native-google-signin/google-signin": "^16.1.2",
     "@react-navigation/bottom-tabs": "^7.15.5",
@@ -28,9 +29,11 @@
     "expo-glass-effect": "~55.0.10",
     "expo-image": "~55.0.8",
     "expo-image-picker": "^55.0.18",
+    "expo-keep-awake": "~55.0.6",
     "expo-linking": "~55.0.12",
     "expo-router": "~55.0.12",
     "expo-secure-store": "~55.0.13",
+    "expo-speech": "~55.0.13",
     "expo-splash-screen": "~55.0.17",
     "expo-status-bar": "~55.0.5",
     "expo-symbols": "~55.0.7",

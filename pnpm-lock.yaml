@@ -10,6 +10,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@jamsch/expo-speech-recognition':
+        specifier: 0.2.15
+        version: 0.2.15(expo@55.0.14)(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
       '@react-native-async-storage/async-storage':
         specifier: ^3.0.2
         version: 3.0.2(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
@@ -58,6 +61,9 @@ importers:
       expo-image-picker:
         specifier: ^55.0.18
         version: 55.0.18(expo@55.0.14)
+      expo-keep-awake:
+        specifier: ~55.0.6
+        version: 55.0.6(expo@55.0.14)(react@19.2.0)
       expo-linking:
         specifier: ~55.0.12
         version: 55.0.12(expo@55.0.14)(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
@@ -65,6 +71,9 @@ importers:
         specifier: ~55.0.12
         version: 55.0.12(@expo/log-box@55.0.10)(@expo/metro-runtime@55.0.9)(@types/react@19.2.14)(expo-constants@55.0.13)(expo-font@55.0.6)(expo-linking@55.0.12)(expo@55.0.14)(react-dom@19.2.0(react@19.2.0))(react-native-gesture-handler@2.30.1(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native-reanimated@4.2.1(react-native-worklets@0.7.2(@babel/core@7.29.0)(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native-safe-area-context@5.6.2(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native-screens@4.23.0(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native-web@0.21.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
       expo-secure-store:
+        specifier: ~55.0.13
+        version: 55.0.13(expo@55.0.14)
+      expo-speech:
         specifier: ~55.0.13
         version: 55.0.13(expo@55.0.14)
       expo-splash-screen:
@@ -1067,6 +1076,14 @@ packages:
   '@istanbuljs/schema@0.1.3':
     resolution: {integrity: sha512-ZXRY4jNvVgSVQ8DL3LTcakaAtXwTVUxE81hslsyD2AtoXW/wVob10HkOJ1X/pAlcI7D+2YoZKg5do8G/w6RYgA==}
     engines: {node: '>=8'}
+
+  '@jamsch/expo-speech-recognition@0.2.15':
+    resolution: {integrity: sha512-VzhR6a1bYnh8Yl704sBbvCmPqkZWzEggzl504myy6GKqQ90Ib+FQsz9FKI8RQbBXf8KHfhJVT3t0AxP6lYyyYw==}
+    deprecated: Package has moved to expo-speech-recognition
+    peerDependencies:
+      expo: '*'
+      react: '*'
+      react-native: '*'
 
   '@jest/create-cache-key-function@29.7.0':
     resolution: {integrity: sha512-4QqS3LY5PBmTRHj9sAg1HLoPzqAI0uOX6wI/TRqHIcOxlFidy6YEmCQJk6FSZjNLGCeubDMfmkWL+qaLKhSGQA==}
@@ -2406,6 +2423,11 @@ packages:
   expo-server@55.0.7:
     resolution: {integrity: sha512-Cc1btFyPsD9P4DT2xd1pG/uR96TLVMx0W+dPm9Gjk1uDV9xuzvMcUsY7nf9bt4U5pGyWWkCXmPJcKwWfdl51Pw==}
     engines: {node: '>=20.16.0'}
+
+  expo-speech@55.0.13:
+    resolution: {integrity: sha512-DZzwe9Z6NhHmNi5ICwYE9BgcNmE3U8t0pSlg1vs18f6omyD88e1ZqCJ0as1aWgZYO3WtbcwWqCTboV8QMwtOow==}
+    peerDependencies:
+      expo: '*'
 
   expo-splash-screen@55.0.17:
     resolution: {integrity: sha512-zVMYh6YvEhnmRI6WOKA82rxVo8eA4u3lzSF6qhXtgR9H9+idq3BhU0hZc0bqV/hOfGcYscrslj9G8aSM7d5ALg==}
@@ -5325,6 +5347,12 @@ snapshots:
 
   '@istanbuljs/schema@0.1.3': {}
 
+  '@jamsch/expo-speech-recognition@0.2.15(expo@55.0.14)(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)':
+    dependencies:
+      expo: 55.0.14(@babel/core@7.29.0)(@expo/dom-webview@55.0.5)(@expo/metro-runtime@55.0.9)(expo-router@55.0.12)(react-dom@19.2.0(react@19.2.0))(react-native-worklets@0.7.2(@babel/core@7.29.0)(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
+      react: 19.2.0
+      react-native: 0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0)
+
   '@jest/create-cache-key-function@29.7.0':
     dependencies:
       '@jest/types': 29.6.3
@@ -6797,6 +6825,10 @@ snapshots:
       expo: 55.0.14(@babel/core@7.29.0)(@expo/dom-webview@55.0.5)(@expo/metro-runtime@55.0.9)(expo-router@55.0.12)(react-dom@19.2.0(react@19.2.0))(react-native-worklets@0.7.2(@babel/core@7.29.0)(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
 
   expo-server@55.0.7: {}
+
+  expo-speech@55.0.13(expo@55.0.14):
+    dependencies:
+      expo: 55.0.14(@babel/core@7.29.0)(@expo/dom-webview@55.0.5)(@expo/metro-runtime@55.0.9)(expo-router@55.0.12)(react-dom@19.2.0(react@19.2.0))(react-native-worklets@0.7.2(@babel/core@7.29.0)(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.4(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
 
   expo-splash-screen@55.0.17(expo@55.0.14)(typescript@5.9.3):
     dependencies:

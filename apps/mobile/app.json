@@ -44,6 +44,13 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.PLACEHOLDER_REVERSED_CLIENT_ID"
         }
+      ],
+      [
+        "@jamsch/expo-speech-recognition",
+        {
+          "microphonePermission": "DinnerTime uses the microphone for hands-free cooking.",
+          "speechRecognitionPermission": "DinnerTime uses speech recognition to understand cooking commands."
+        }
       ]
     ],
     "experiments": {
