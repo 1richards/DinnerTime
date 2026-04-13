@@ -4,15 +4,15 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 1 of 5
 status: executing
-stopped_at: Completed 10-04-PLAN.md
-last_updated: "2026-04-13T04:38:04.683Z"
-last_activity: 2026-04-10 -- Completed 10-01 skill progression foundation (SKIL-01, SKIL-03, FOUN-07)
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-04-13T04:39:32.419Z"
+last_activity: 2026-04-10 -- Completed 10-02 progression service + routes (SKIL-01, SKIL-02, SKIL-04)
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 44
-  completed_plans: 42
-  percent: 91
+  completed_plans: 43
+  percent: 98
 ---
 
 # Project State
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 Phase: 10 of 10 (Skill Progression & Offline) -- IN PROGRESS
 Current Plan: 1 of 5
 Status: In Progress
-Last activity: 2026-04-10 -- Completed 10-01 skill progression foundation (SKIL-01, SKIL-03, FOUN-07)
+Last activity: 2026-04-10 -- Completed 10-02 progression service + routes (SKIL-01, SKIL-02, SKIL-04)
 
-Progress: [█████████░] 91%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -93,6 +93,7 @@ Progress: [█████████░] 91%
 | Phase 10-skill-progression-offline P01 | 2 min | 2 tasks | 6 files |
 | Phase 10-skill-progression-offline P03 | 2 min | 2 tasks | 5 files |
 | Phase 10-skill-progression-offline P04 | 4min | 2 tasks | 11 files |
+| Phase 10-skill-progression-offline P02 | 5min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -219,6 +220,11 @@ Recent decisions affecting current work:
 - [Phase 10-skill-progression-offline]: [Phase 10-04]: isInternetReachable=null treated as online to avoid false-offline flicker on cold launch
 - [Phase 10-skill-progression-offline]: [Phase 10-04]: offlineQueue executor registry decouples queue lib from store imports — stores register their own replay handlers at module init
 - [Phase 10-skill-progression-offline]: [Phase 10-04]: Global AsyncStorage mock in vitest.setup.ts so persist middleware loads cleanly across every existing store test
+- [Phase 10-skill-progression-offline]: [Phase 10-02]: rankAmbition takes anthropic client as a parameter (AnthropicLike) instead of importing the singleton -- tests use plain mock objects, no module patching
+- [Phase 10-skill-progression-offline]: [Phase 10-02]: logRecipeCook is best-effort; insert errors swallowed via console.warn so a logging failure can never roll back a cook
+- [Phase 10-skill-progression-offline]: [Phase 10-02]: markCooked only logs to recipe_cooks when entry.recipe_id is set -- Claude-generated free-form meal entries have no recipe to track
+- [Phase 10-skill-progression-offline]: [Phase 10-02]: rankAmbition fallback orders by ascending complexity when Sonnet returns 0 valid recommendations
+- [Phase 10-skill-progression-offline]: [Phase 10-02]: getRecipeVariations throws BelowThresholdError mapped to HTTP 400 (not 403) so mobile UI can show 'unlock at 3 cooks' affordance
 
 ### Pending Todos
 
@@ -232,6 +238,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T04:38:04.681Z
-Stopped at: Completed 10-04-PLAN.md
+Last session: 2026-04-13T04:39:02.971Z
+Stopped at: Completed 10-02-PLAN.md
 Resume file: None

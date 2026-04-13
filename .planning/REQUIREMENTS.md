@@ -81,9 +81,9 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Skill Progression
 
 - [x] **SKIL-01**: App tracks which recipes user has cooked and how often
-- [ ] **SKIL-02**: App gently suggests slightly more ambitious recipes based on cooking history
+- [x] **SKIL-02**: App gently suggests slightly more ambitious recipes based on cooking history
 - [x] **SKIL-03**: Contextual cooking tips appear on recipe steps (technique explanations, timing advice)
-- [ ] **SKIL-04**: AI suggests creative variations on frequently-cooked recipes to build skills
+- [x] **SKIL-04**: AI suggests creative variations on frequently-cooked recipes to build skills
 
 ## v2 Requirements
 
@@ -186,9 +186,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VOIC-06 | Phase 9 | Complete |
 | VOIC-07 | Phase 9 | Complete |
 | SKIL-01 | Phase 10 | Complete |
-| SKIL-02 | Phase 10 | Pending |
+| SKIL-02 | Phase 10 | Complete |
 | SKIL-03 | Phase 10 | Complete |
-| SKIL-04 | Phase 10 | Pending |
+| SKIL-04 | Phase 10 | Complete |
 
 **Coverage:**
 - v1 requirements: 54 total
