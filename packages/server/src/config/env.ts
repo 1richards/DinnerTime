@@ -23,6 +23,9 @@ export const env = {
   get ANTHROPIC_API_KEY() {
     return requireEnv('ANTHROPIC_API_KEY');
   },
+  get GOOGLE_API_KEY() {
+    return requireEnv('GOOGLE_API_KEY');
+  },
   get PORT() {
     return parseInt(optionalEnv('PORT', '3000'), 10);
   },
