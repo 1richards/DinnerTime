@@ -11,6 +11,7 @@ import shopping from './routes/shopping.js';
 import ai from './routes/ai.js';
 import voice from './routes/voice.js';
 import cooking from './routes/cooking.js';
+import progression from './routes/progression.js';
 
 const app = new Hono().basePath('/api/v1');
 
@@ -32,6 +33,7 @@ app.route('/shopping', shopping);
 app.route('/ai', ai);
 app.route('/voice', voice);
 app.route('/cooking', cooking);
+app.route('/progression', progression);
 
 // Start server (only when not imported for testing)
 if (process.env.NODE_ENV !== 'test') {
