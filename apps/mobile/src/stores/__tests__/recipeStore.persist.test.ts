@@ -55,7 +55,7 @@ const seedRecipe = {
   total_time_minutes: null,
   servings: null,
   source_url: null,
-  source_type: 'manual',
+  source_type: 'manual' as const,
   image_url: null,
   is_favorite: false,
   created_at: '2026-04-10T00:00:00Z',

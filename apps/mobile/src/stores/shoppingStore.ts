@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import type {
   ShoppingList,
@@ -88,7 +90,9 @@ const tempId = (): string => {
   return `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
 
-export const useShoppingStore = create<ShoppingState>((set, get) => ({
+export const useShoppingStore = create<ShoppingState>()(
+  persist(
+    (set, get) => ({
   currentList: null,
   items: [],
   orders: [],
@@ -412,4 +416,16 @@ export const useShoppingStore = create<ShoppingState>((set, get) => ({
       return [];
     }
   },
-}));
+    }),
+    {
+      name: 'dinnertime-shopping',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        currentList: state.currentList,
+        items: state.items,
+        orders: state.orders,
+      }),
+      version: 1,
+    }
+  )
+);

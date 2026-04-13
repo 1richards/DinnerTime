@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import type {
   HouseholdMember,
@@ -20,7 +22,9 @@ interface PreferencesState {
   updateSkillLevel: (profileId: string, level: SkillLevel) => Promise<void>;
 }
 
-export const usePreferencesStore = create<PreferencesState>((set, get) => ({
+export const usePreferencesStore = create<PreferencesState>()(
+  persist(
+    (set, get) => ({
   members: [],
   cuisinePreferences: [],
   skillLevel: 'beginner',
@@ -148,4 +152,16 @@ export const usePreferencesStore = create<PreferencesState>((set, get) => ({
       throw error;
     }
   },
-}));
+    }),
+    {
+      name: 'dinnertime-preferences',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        members: state.members,
+        cuisinePreferences: state.cuisinePreferences,
+        skillLevel: state.skillLevel,
+      }),
+      version: 1,
+    }
+  )
+);

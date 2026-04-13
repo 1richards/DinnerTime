@@ -29,3 +29,24 @@ vi.mock('@react-native-community/netinfo', () => ({
     fetch: vi.fn(async () => ({ isConnected: true, isInternetReachable: true })),
   },
 }));
+
+// AsyncStorage stub — needed because Zustand persist middleware loads it
+// at module import-time. Tests that need to inspect persisted state should
+// re-mock this module locally with vi.hoisted for clean state.
+vi.mock('@react-native-async-storage/async-storage', () => {
+  const store = new Map<string, string>();
+  return {
+    default: {
+      getItem: vi.fn(async (k: string) => store.get(k) ?? null),
+      setItem: vi.fn(async (k: string, v: string) => {
+        store.set(k, v);
+      }),
+      removeItem: vi.fn(async (k: string) => {
+        store.delete(k);
+      }),
+      clear: vi.fn(async () => {
+        store.clear();
+      }),
+    },
+  };
+});

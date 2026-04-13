@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import type { ParsedRecipe, Recipe } from '../types/recipe';
 
@@ -43,7 +45,9 @@ const getAuthToken = async (): Promise<string> => {
   return data.session.access_token;
 };
 
-export const useRecipeStore = create<RecipeState>((set, get) => ({
+export const useRecipeStore = create<RecipeState>()(
+  persist(
+    (set, get) => ({
   recipes: [],
   isLoading: false,
   isImporting: false,
@@ -406,4 +410,12 @@ export const useRecipeStore = create<RecipeState>((set, get) => ({
       existingRecipe: null,
     });
   },
-}));
+    }),
+    {
+      name: 'dinnertime-recipes',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({ recipes: state.recipes }),
+      version: 1,
+    }
+  )
+);

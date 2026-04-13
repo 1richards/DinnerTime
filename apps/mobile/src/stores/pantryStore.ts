@@ -1,5 +1,9 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { offlineQueue, registerExecutor } from '../lib/offlineQueue';
+import { useNetworkStore } from './networkStore';
 import type { PantryItem, ReviewItem, SourceLocation } from '../types/pantry';
 
 interface PantryState {
@@ -30,7 +34,9 @@ const getAuthToken = async (): Promise<string> => {
   return data.session.access_token;
 };
 
-export const usePantryStore = create<PantryState>((set, get) => ({
+export const usePantryStore = create<PantryState>()(
+  persist(
+    (set, get) => ({
   items: [],
   scanResults: [],
   isScanning: false,
@@ -161,6 +167,15 @@ export const usePantryStore = create<PantryState>((set, get) => ({
       ),
     }));
 
+    if (!useNetworkStore.getState().isOnline) {
+      await offlineQueue.enqueue({
+        type: 'pantryEdit',
+        itemId,
+        patch: { status: 'used' },
+      });
+      return;
+    }
+
     try {
       const token = await getAuthToken();
       const response = await fetch(`${getApiBaseUrl()}/api/v1/pantry/${itemId}`, {
@@ -192,6 +207,15 @@ export const usePantryStore = create<PantryState>((set, get) => ({
       ),
     }));
 
+    if (!useNetworkStore.getState().isOnline) {
+      await offlineQueue.enqueue({
+        type: 'pantryEdit',
+        itemId,
+        patch: { status: 'depleted' },
+      });
+      return;
+    }
+
     try {
       const token = await getAuthToken();
       const response = await fetch(`${getApiBaseUrl()}/api/v1/pantry/${itemId}`, {
@@ -212,4 +236,23 @@ export const usePantryStore = create<PantryState>((set, get) => ({
       throw err;
     }
   },
-}));
+    }),
+    {
+      name: 'dinnertime-pantry',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({ items: state.items }),
+      version: 1,
+    }
+  )
+);
+
+// Register offline-queue executor for pantry edits replay on reconnect.
+registerExecutor('pantryEdit', async (op) => {
+  if (op.type !== 'pantryEdit') return;
+  const status = (op.patch as { status?: string }).status;
+  if (status === 'used') {
+    await usePantryStore.getState().markItemUsed(op.itemId);
+  } else if (status === 'depleted') {
+    await usePantryStore.getState().markItemDepleted(op.itemId);
+  }
+});

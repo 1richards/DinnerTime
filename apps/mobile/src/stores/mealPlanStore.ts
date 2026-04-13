@@ -1,5 +1,9 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { offlineQueue, registerExecutor } from '../lib/offlineQueue';
+import { useNetworkStore } from './networkStore';
 import type { MealPlan, MealPlanEntry } from '../types/mealPlan';
 
 interface MealPlanState {
@@ -49,7 +53,9 @@ const mapGenerateError = (body: { error?: string; code?: string }): string => {
   return body.error ?? 'Failed to generate meal plan';
 };
 
-export const useMealPlanStore = create<MealPlanState>((set, get) => ({
+export const useMealPlanStore = create<MealPlanState>()(
+  persist(
+    (set, get) => ({
   currentPlan: null,
   loading: false,
   error: null,
@@ -157,6 +163,7 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
     const plan = get().currentPlan;
     if (!plan) return;
     const snapshot = plan.entries;
+    const targetEntry = plan.entries.find((e) => e.day_of_week === day);
 
     // Optimistic: mark cooked before await
     set({
@@ -169,6 +176,17 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
       cookingDay: day,
       error: null,
     });
+
+    // Offline path: enqueue and stay optimistic
+    if (!useNetworkStore.getState().isOnline && targetEntry) {
+      await offlineQueue.enqueue({
+        type: 'markCooked',
+        entryId: String(day),
+        recipeId: targetEntry.recipe_id ?? '',
+      });
+      set({ cookingDay: null, error: null });
+      return;
+    }
 
     try {
       const response = await authedFetch(
@@ -215,4 +233,20 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
       });
     }
   },
-}));
+    }),
+    {
+      name: 'dinnertime-meal-plan',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({ currentPlan: state.currentPlan }),
+      version: 1,
+    }
+  )
+);
+
+// Register offline-queue executor for markCooked replay on reconnect.
+registerExecutor('markCooked', async (op) => {
+  if (op.type !== 'markCooked') return;
+  const day = Number(op.entryId);
+  if (Number.isNaN(day)) return;
+  await useMealPlanStore.getState().markCooked(day);
+});
