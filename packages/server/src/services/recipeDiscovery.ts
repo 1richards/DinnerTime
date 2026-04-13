@@ -1,4 +1,5 @@
-import { anthropic } from '../config/anthropic.js';
+import { getClientFor } from '../ai/clientFactory.js';
+import type { JsonSchema, StructuredTool } from '../ai/types.js';
 import type { ParsedIngredient, ParsedRecipe } from './recipeParser.js';
 
 // ---------- Types ----------
@@ -26,57 +27,58 @@ export interface DiscoverRecipesOptions {
 
 // ---------- Tool Definition ----------
 
-/**
- * Claude tool that returns a list of ParsedRecipe-shaped recipes.
- * Schema mirrors the `parseRecipeTool` in recipeParser.ts so downstream
- * code can treat discovered recipes identically to imported ones.
- */
-export const suggestRecipesTool = {
-  name: 'suggest_recipes' as const,
-  description:
-    'Suggest dinner recipes tailored to the household preferences. Return a list of full recipes with ingredients and steps.',
-  input_schema: {
-    type: 'object' as const,
-    properties: {
-      recipes: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            title: { type: 'string', description: 'Recipe title' },
-            description: {
-              type: ['string', 'null'] as const,
-              description: 'Short 1-2 sentence description',
-            },
-            ingredients: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string' },
-                  quantity: { type: ['number', 'null'] as const },
-                  unit: { type: ['string', 'null'] as const },
-                  notes: { type: ['string', 'null'] as const },
-                },
-                required: ['name', 'quantity', 'unit', 'notes'],
-              },
-            },
-            steps: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Ordered cooking steps',
-            },
-            prep_time_minutes: { type: ['number', 'null'] as const },
-            cook_time_minutes: { type: ['number', 'null'] as const },
-            total_time_minutes: { type: ['number', 'null'] as const },
-            servings: { type: ['number', 'null'] as const },
+interface SuggestRecipesOutput {
+  recipes: Array<Partial<ParsedRecipe> & { ingredients?: ParsedIngredient[]; steps?: string[] }>;
+}
+
+const suggestRecipesSchema: JsonSchema = {
+  type: 'object',
+  properties: {
+    recipes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Recipe title' },
+          description: {
+            type: 'string',
+            description: 'Short 1-2 sentence description',
           },
-          required: ['title', 'ingredients', 'steps'],
+          ingredients: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                quantity: { type: 'number' },
+                unit: { type: 'string' },
+                notes: { type: 'string' },
+              },
+              required: ['name'],
+            },
+          },
+          steps: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Ordered cooking steps',
+          },
+          prep_time_minutes: { type: 'number' },
+          cook_time_minutes: { type: 'number' },
+          total_time_minutes: { type: 'number' },
+          servings: { type: 'number' },
         },
+        required: ['title', 'ingredients', 'steps'],
       },
     },
-    required: ['recipes'],
   },
+  required: ['recipes'],
+};
+
+export const suggestRecipesTool: StructuredTool<SuggestRecipesOutput> = {
+  name: 'suggest_recipes',
+  description:
+    'Suggest dinner recipes tailored to the household preferences. Return a list of full recipes with ingredients and steps.',
+  schema: suggestRecipesSchema,
 };
 
 // ---------- Prompt Assembly ----------
@@ -145,7 +147,7 @@ export function buildDiscoveryPrompt(
 // ---------- Main Service ----------
 
 /**
- * Generate a list of ParsedRecipe-shaped discoveries using Claude Sonnet with
+ * Generate a list of ParsedRecipe-shaped discoveries using the AIClient with
  * the `suggest_recipes` tool. Always stamps `source_type: 'ai'` and leaves
  * `source_url` / `image_url` null -- discovered recipes have no canonical URL
  * until the user explicitly saves them.
@@ -156,23 +158,13 @@ export async function discoverRecipes(
   const system = buildDiscoveryPrompt(opts.preferences, opts.existingTitles);
   const userPrompt = opts.prompt ?? 'Suggest 6 dinner recipes.';
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 4096,
+  const ai = getClientFor('recipe.discovery');
+  const { recipes } = await ai.generateStructured({
     system,
-    tools: [suggestRecipesTool],
-    tool_choice: { type: 'tool', name: 'suggest_recipes' },
-    messages: [{ role: 'user', content: userPrompt }],
+    user: userPrompt,
+    tool: suggestRecipesTool,
+    maxTokens: 4096,
   });
-
-  const toolBlock = response.content.find((b) => b.type === 'tool_use');
-  if (!toolBlock || toolBlock.type !== 'tool_use') {
-    throw new Error('Claude did not return a tool_use response');
-  }
-
-  const { recipes } = toolBlock.input as {
-    recipes: Array<Partial<ParsedRecipe> & { ingredients?: ParsedIngredient[]; steps?: string[] }>;
-  };
 
   return (recipes ?? []).map((r) => ({
     title: (r.title as string) || 'Untitled Recipe',

@@ -1,18 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Use vi.hoisted so the mock fn is available before vi.mock hoisting
-const { mockCreate } = vi.hoisted(() => ({
-  mockCreate: vi.fn(),
-}));
+const { mockAnalyzeImageStructured, mockGenerateStructured, mockGenerateText, mockGetClientFor } =
+  vi.hoisted(() => {
+    const mockAnalyzeImageStructured = vi.fn();
+    const mockGenerateStructured = vi.fn();
+    const mockGenerateText = vi.fn();
+    const mockGetClientFor = vi.fn(() => ({
+      generateText: mockGenerateText,
+      generateStructured: mockGenerateStructured,
+      analyzeImageStructured: mockAnalyzeImageStructured,
+    }));
+    return {
+      mockAnalyzeImageStructured,
+      mockGenerateStructured,
+      mockGenerateText,
+      mockGetClientFor,
+    };
+  });
 
-vi.mock('@anthropic-ai/sdk', () => {
-  return {
-    default: class MockAnthropic {
-      messages = { create: mockCreate };
-      constructor() {}
-    },
-  };
-});
+vi.mock('../../ai/clientFactory.js', () => ({
+  getClientFor: mockGetClientFor,
+}));
 
 // Must import after mock setup
 import {
@@ -185,7 +193,8 @@ describe('subtractPantry', () => {
 
 describe('suggestVariations', () => {
   beforeEach(() => {
-    mockCreate.mockReset();
+    mockGenerateStructured.mockReset();
+    mockGetClientFor.mockClear();
   });
 
   const items: ConsolidatedItem[] = [
@@ -195,18 +204,10 @@ describe('suggestVariations', () => {
   ];
 
   function mockSwapResponse(swaps: Array<{ instead_of: string; swap: string; rationale: string }>) {
-    mockCreate.mockResolvedValueOnce({
-      content: [
-        {
-          type: 'tool_use',
-          name: 'suggest_swaps',
-          input: { swaps },
-        },
-      ],
-    });
+    mockGenerateStructured.mockResolvedValueOnce({ swaps });
   }
 
-  it('calls Claude Haiku with suggest_swaps tool forced', async () => {
+  it('calls AIClient with shoppingList.variations task and suggest_swaps tool', async () => {
     mockSwapResponse([
       { instead_of: 'chicken breast', swap: 'chicken thigh', rationale: 'cheaper, juicier' },
       { instead_of: 'white rice', swap: 'brown rice', rationale: 'more fiber' },
@@ -215,17 +216,15 @@ describe('suggestVariations', () => {
 
     await suggestVariations(items);
 
-    expect(mockCreate).toHaveBeenCalledTimes(1);
-    const call = mockCreate.mock.calls[0][0];
-    expect(call.model).toBe('claude-haiku-4-latest');
-    expect(call.tool_choice).toEqual({ type: 'tool', name: 'suggest_swaps' });
-    expect(Array.isArray(call.tools)).toBe(true);
-    const tool = call.tools.find((t: { name: string }) => t.name === 'suggest_swaps');
-    expect(tool).toBeDefined();
-    expect(tool.input_schema.properties.swaps.maxItems).toBe(5);
+    expect(mockGetClientFor).toHaveBeenCalledWith('shoppingList.variations');
+    expect(mockGenerateStructured).toHaveBeenCalledTimes(1);
+    const call = mockGenerateStructured.mock.calls[0][0];
+    expect(call.tool.name).toBe('suggest_swaps');
+    expect(typeof call.user).toBe('string');
+    expect(call.user).toContain('chicken breast');
   });
 
-  it('parses tool_use block and returns VariationSuggestion[] (3-5 items)', async () => {
+  it('returns VariationSuggestion[] (3-5 items) from structured response', async () => {
     mockSwapResponse([
       { instead_of: 'chicken breast', swap: 'tofu', rationale: 'plant-based' },
       { instead_of: 'white rice', swap: 'quinoa', rationale: 'protein' },
@@ -244,10 +243,8 @@ describe('suggestVariations', () => {
     expect(result[0].swap).toBe('tofu');
   });
 
-  it('throws when Claude returns no tool_use block', async () => {
-    mockCreate.mockResolvedValueOnce({
-      content: [{ type: 'text', text: 'sorry no tools today' }],
-    });
+  it('throws when AIClient returns a response missing swaps array', async () => {
+    mockGenerateStructured.mockResolvedValueOnce({});
 
     await expect(suggestVariations(items)).rejects.toThrow(/no tool_use/i);
   });

@@ -1,4 +1,5 @@
-import { anthropic } from '../config/anthropic.js';
+import { getClientFor } from '../ai/clientFactory.js';
+import type { JsonSchema, StructuredTool } from '../ai/types.js';
 import type { MealPlanEntry, MealPlanIngredient } from '../types/mealPlan.js';
 import type { ConsolidatedItem, VariationSuggestion } from '../types/shopping.js';
 import { normalizeIngredientName } from './ingredientMatching.js';
@@ -109,12 +110,38 @@ export function subtractPantry(
   return result;
 }
 
+// ---------- suggestVariations Tool ----------
+
+const suggestSwapsSchema: JsonSchema = {
+  type: 'object',
+  properties: {
+    swaps: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          instead_of: { type: 'string' },
+          swap: { type: 'string' },
+          rationale: { type: 'string' },
+        },
+        required: ['instead_of', 'swap', 'rationale'],
+      },
+    },
+  },
+  required: ['swaps'],
+};
+
+export const suggestSwapsTool: StructuredTool<{ swaps: VariationSuggestion[] }> = {
+  name: 'suggest_swaps',
+  description: 'Suggest 3-5 ingredient swaps for a shopping list',
+  schema: suggestSwapsSchema,
+};
+
 /**
- * Suggest 3-5 ingredient swaps via Claude Haiku tool use.
+ * Suggest 3-5 ingredient swaps via the AIClient abstraction.
  *
- * Uses a forced tool_choice so Claude must respond with a structured
- * suggest_swaps call. Returns the swaps array from the tool_use block.
- * Throws if no tool_use block is present in the response.
+ * Returns the swaps array from the structured tool response. Throws if the
+ * response is missing the expected shape.
  */
 export async function suggestVariations(
   items: ConsolidatedItem[],
@@ -123,52 +150,16 @@ export async function suggestVariations(
     .map((i) => `- ${i.name}${i.quantity ? ` (${i.quantity}${i.unit ? ' ' + i.unit : ''})` : ''}`)
     .join('\n');
 
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-latest',
-    max_tokens: 1024,
-    tools: [
-      {
-        name: 'suggest_swaps',
-        description: 'Suggest 3-5 ingredient swaps for a shopping list',
-        input_schema: {
-          type: 'object' as const,
-          properties: {
-            swaps: {
-              type: 'array',
-              minItems: 3,
-              maxItems: 5,
-              items: {
-                type: 'object',
-                properties: {
-                  instead_of: { type: 'string' },
-                  swap: { type: 'string' },
-                  rationale: { type: 'string' },
-                },
-                required: ['instead_of', 'swap', 'rationale'],
-              },
-            },
-          },
-          required: ['swaps'],
-        },
-      },
-    ],
-    tool_choice: { type: 'tool', name: 'suggest_swaps' },
-    messages: [
-      {
-        role: 'user',
-        content: `Suggest 3-5 ingredient swaps for this shopping list. Consider cost, nutrition, seasonality, and variety.\n\n${itemList}`,
-      },
-    ],
-  } as Parameters<typeof anthropic.messages.create>[0]);
+  const ai = getClientFor('shoppingList.variations');
+  const result = await ai.generateStructured({
+    user: `Suggest 3-5 ingredient swaps for this shopping list. Consider cost, nutrition, seasonality, and variety.\n\n${itemList}`,
+    tool: suggestSwapsTool,
+    maxTokens: 1024,
+  });
 
-  const toolUse = (response as { content: Array<{ type: string; name?: string; input?: unknown }> }).content.find(
-    (b) => b.type === 'tool_use' && b.name === 'suggest_swaps',
-  );
-
-  if (!toolUse) {
+  if (!result || !Array.isArray(result.swaps)) {
     throw new Error('no tool_use in response');
   }
 
-  const input = toolUse.input as { swaps: VariationSuggestion[] };
-  return input.swaps;
+  return result.swaps;
 }
