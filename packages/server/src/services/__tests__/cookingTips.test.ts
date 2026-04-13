@@ -1,18 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Hoisted mock for Anthropic SDK (mirrors shoppingList.test.ts pattern)
-const { mockCreate } = vi.hoisted(() => ({
-  mockCreate: vi.fn(),
+// Phase 11-04: cookingTips now routes via the AIClient factory (Gemini
+// flash-lite). We mock the factory directly so the test has zero
+// coupling to any vendor SDK.
+const { mockGenerateText, mockGetClientFor } = vi.hoisted(() => ({
+  mockGenerateText: vi.fn(),
+  mockGetClientFor: vi.fn(),
 }));
 
-vi.mock('@anthropic-ai/sdk', () => {
-  return {
-    default: class MockAnthropic {
-      messages = { create: mockCreate };
-      constructor() {}
-    },
-  };
-});
+vi.mock('../../ai/clientFactory.js', () => ({
+  getClientFor: mockGetClientFor,
+}));
 
 // Import after mocks
 import { getOrGenerateTip } from '../cookingTips.js';
@@ -51,13 +49,6 @@ function freshState(overrides: Partial<BuilderState> = {}): BuilderState {
   };
 }
 
-function claudeText(text: string) {
-  return {
-    content: [{ type: 'text', text }],
-    stop_reason: 'end_turn',
-  };
-}
-
 // ============================================================
 // getOrGenerateTip
 // ============================================================
@@ -65,9 +56,14 @@ function claudeText(text: string) {
 describe('getOrGenerateTip', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetClientFor.mockReturnValue({
+      generateText: mockGenerateText,
+      generateStructured: vi.fn(),
+      analyzeImageStructured: vi.fn(),
+    });
   });
 
-  it('cache hit: returns stored tip without calling Anthropic', async () => {
+  it('cache hit: returns stored tip without invoking the AI client', async () => {
     const state = freshState({
       maybeSingleResult: { data: { tip: 'cached tip text' }, error: null },
     });
@@ -81,19 +77,20 @@ describe('getOrGenerateTip', () => {
     );
 
     expect(result).toBe('cached tip text');
-    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockGetClientFor).not.toHaveBeenCalled();
+    expect(mockGenerateText).not.toHaveBeenCalled();
     expect(state.insertCalls).toHaveLength(0);
     expect(supabase.from).toHaveBeenCalledWith('recipe_step_tips');
   });
 
-  it('cache miss: calls Haiku, inserts new row, returns generated tip', async () => {
+  it('cache miss: calls AI client with cooking.tips task, inserts row, returns generated tip', async () => {
     const state = freshState({
       maybeSingleResult: { data: null, error: null },
     });
     const supabase = makeSupabase(state);
 
-    mockCreate.mockResolvedValueOnce(
-      claudeText('Braising means cooking low and slow with a little liquid.')
+    mockGenerateText.mockResolvedValueOnce(
+      'Braising means cooking low and slow with a little liquid.'
     );
 
     const result = await getOrGenerateTip(
@@ -106,12 +103,12 @@ describe('getOrGenerateTip', () => {
     expect(result).toBe(
       'Braising means cooking low and slow with a little liquid.'
     );
-    expect(mockCreate).toHaveBeenCalledTimes(1);
-    const call = mockCreate.mock.calls[0][0];
-    // Haiku model id (per project conventions, claude-haiku-4-*)
-    expect(call.model).toMatch(/haiku/);
-    expect(call.max_tokens).toBe(120);
-    expect(call.temperature).toBe(0.3);
+    expect(mockGetClientFor).toHaveBeenCalledTimes(1);
+    expect(mockGetClientFor).toHaveBeenCalledWith('cooking.tips');
+    expect(mockGenerateText).toHaveBeenCalledTimes(1);
+    const call = mockGenerateText.mock.calls[0][0];
+    expect(call.maxTokens).toBe(120);
+    expect(call.user).toContain('Braise the short ribs for two hours.');
 
     // Insert was called with composite key + tip
     expect(state.insertCalls).toHaveLength(1);
@@ -122,10 +119,10 @@ describe('getOrGenerateTip', () => {
     });
   });
 
-  it('Haiku empty response: returns empty, does NOT insert', async () => {
+  it('AI empty response: returns empty, does NOT insert (uncertainty path)', async () => {
     const state = freshState();
     const supabase = makeSupabase(state);
-    mockCreate.mockResolvedValueOnce(claudeText(''));
+    mockGenerateText.mockResolvedValueOnce('');
 
     const result = await getOrGenerateTip(
       supabase,
@@ -138,10 +135,10 @@ describe('getOrGenerateTip', () => {
     expect(state.insertCalls).toHaveLength(0);
   });
 
-  it('Haiku whitespace-only response: normalized to empty, does NOT insert', async () => {
+  it('AI whitespace-only response: normalized to empty, does NOT insert', async () => {
     const state = freshState();
     const supabase = makeSupabase(state);
-    mockCreate.mockResolvedValueOnce(claudeText('   \n\t  '));
+    mockGenerateText.mockResolvedValueOnce('   \n\t  ');
 
     const result = await getOrGenerateTip(
       supabase,
@@ -157,12 +154,12 @@ describe('getOrGenerateTip', () => {
   it('system prompt contains the uncertainty guard (Pitfall 5)', async () => {
     const state = freshState();
     const supabase = makeSupabase(state);
-    mockCreate.mockResolvedValueOnce(claudeText('A useful tip.'));
+    mockGenerateText.mockResolvedValueOnce('A useful tip.');
 
     await getOrGenerateTip(supabase, 'recipe-5', 0, 'Sear the protein.');
 
-    expect(mockCreate).toHaveBeenCalledTimes(1);
-    const call = mockCreate.mock.calls[0][0];
+    expect(mockGenerateText).toHaveBeenCalledTimes(1);
+    const call = mockGenerateText.mock.calls[0][0];
     const system: string = call.system;
     expect(system).toContain('uncertain');
     expect(system).toContain('empty string');
@@ -170,10 +167,10 @@ describe('getOrGenerateTip', () => {
     expect(system).toContain('traditionally');
   });
 
-  it('Haiku throws: error propagates to caller', async () => {
+  it('AI throws: error propagates to caller', async () => {
     const state = freshState();
     const supabase = makeSupabase(state);
-    mockCreate.mockRejectedValueOnce(new Error('boom'));
+    mockGenerateText.mockRejectedValueOnce(new Error('boom'));
 
     await expect(
       getOrGenerateTip(supabase, 'recipe-6', 0, 'Step text.')

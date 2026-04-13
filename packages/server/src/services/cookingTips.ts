@@ -1,21 +1,23 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { anthropic } from '../config/anthropic.js';
+import { getClientFor } from '../ai/clientFactory.js';
 
-// Phase 10-03: Per-step cooking tips with Haiku-backed cache.
+// Phase 10-03 / 11-04: Per-step cooking tips with AI-backed cache.
 //
 // Lazy, per-step generation gated by a Supabase cache table
 // (recipe_step_tips, composite PK on recipe_id + step_index, RLS scoped
-// via the parent recipe). Cost control: cache hit short-circuits Anthropic;
-// uncertainty produces an empty string that we explicitly do NOT cache so
-// future model improvements can fill the gap.
+// via the parent recipe). Cost control: cache hit short-circuits the AI
+// call; uncertainty produces an empty string that we explicitly do NOT
+// cache so future model improvements can fill the gap.
+//
+// As of Phase 11-04, this service routes through the AIClient abstraction
+// (taskRouting.ts -> Gemini 3.1 flash-lite preview). The cache semantics,
+// uncertainty guard, and system prompt are unchanged from Phase 10-03.
 //
 // Pitfall 5 (uncertainty hedging): the system prompt forbids hedging
-// language and instructs Haiku to return an empty string instead of
+// language and instructs the model to return an empty string instead of
 // fabricating a tip it isn't sure about.
-// Pitfall 6 (cost): bounded max_tokens (120) plus cache mean a recipe is
+// Pitfall 6 (cost): bounded maxTokens (120) plus cache mean a recipe is
 // generally a one-time cost no matter how many times the user revisits it.
-
-const HAIKU_MODEL = 'claude-haiku-4-20250514';
 
 const TIP_SYSTEM_PROMPT = [
   'You are a cooking coach. Given a single recipe step, return ONE short tip',
@@ -29,20 +31,15 @@ interface CachedTipRow {
   tip: string;
 }
 
-interface AnthropicTextBlock {
-  type: string;
-  text?: string;
-}
-
 /**
  * Get a cached cooking tip for (recipe_id, step_index), or generate one
- * on a cache miss using Claude Haiku.
+ * on a cache miss using the AIClient abstraction (routed to Gemini flash-lite).
  *
  * Behaviour matrix:
- * - Cache hit         -> return stored tip, no Anthropic call.
- * - Cache miss + tip  -> call Haiku, INSERT row, return generated tip.
+ * - Cache hit         -> return stored tip, no AI call.
+ * - Cache miss + tip  -> call AI, INSERT row, return generated tip.
  * - Cache miss + ''   -> return '', do NOT insert (don't cache uncertainty).
- * - Haiku throws      -> propagate; the route layer maps to 502.
+ * - AI throws         -> propagate; the route layer maps to 502.
  */
 export async function getOrGenerateTip(
   supabase: SupabaseClient,
@@ -62,23 +59,13 @@ export async function getOrGenerateTip(
     return (cached as CachedTipRow).tip;
   }
 
-  // 2. Cache miss -> call Haiku
-  const response = await anthropic.messages.create({
-    model: HAIKU_MODEL,
-    max_tokens: 120,
-    temperature: 0.3,
+  // 2. Cache miss -> call AI via the provider-agnostic client
+  const ai = getClientFor('cooking.tips');
+  const raw = await ai.generateText({
     system: TIP_SYSTEM_PROMPT,
-    messages: [
-      {
-        role: 'user',
-        content: `Recipe step:\n${stepText}`,
-      },
-    ],
+    user: `Recipe step:\n${stepText}`,
+    maxTokens: 120,
   });
-
-  const blocks = response.content as AnthropicTextBlock[];
-  const textBlock = blocks.find((b) => b.type === 'text');
-  const raw = textBlock?.text ?? '';
   const trimmed = raw.trim();
 
   // 3. Don't cache uncertainty — empty/whitespace responses are never inserted.
