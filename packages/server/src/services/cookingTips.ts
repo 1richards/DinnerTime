@@ -1,0 +1,99 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { anthropic } from '../config/anthropic.js';
+
+// Phase 10-03: Per-step cooking tips with Haiku-backed cache.
+//
+// Lazy, per-step generation gated by a Supabase cache table
+// (recipe_step_tips, composite PK on recipe_id + step_index, RLS scoped
+// via the parent recipe). Cost control: cache hit short-circuits Anthropic;
+// uncertainty produces an empty string that we explicitly do NOT cache so
+// future model improvements can fill the gap.
+//
+// Pitfall 5 (uncertainty hedging): the system prompt forbids hedging
+// language and instructs Haiku to return an empty string instead of
+// fabricating a tip it isn't sure about.
+// Pitfall 6 (cost): bounded max_tokens (120) plus cache mean a recipe is
+// generally a one-time cost no matter how many times the user revisits it.
+
+const HAIKU_MODEL = 'claude-haiku-4-20250514';
+
+const TIP_SYSTEM_PROMPT = [
+  'You are a cooking coach. Given a single recipe step, return ONE short tip',
+  '(max 2 sentences) that explains technique, timing, or sensory cues.',
+  "If you're uncertain about the technique in the step, return an empty string",
+  '— never hedge with "traditionally", "some say", or "might".',
+  'Return plain text only, no preamble.',
+].join(' ');
+
+interface CachedTipRow {
+  tip: string;
+}
+
+interface AnthropicTextBlock {
+  type: string;
+  text?: string;
+}
+
+/**
+ * Get a cached cooking tip for (recipe_id, step_index), or generate one
+ * on a cache miss using Claude Haiku.
+ *
+ * Behaviour matrix:
+ * - Cache hit         -> return stored tip, no Anthropic call.
+ * - Cache miss + tip  -> call Haiku, INSERT row, return generated tip.
+ * - Cache miss + ''   -> return '', do NOT insert (don't cache uncertainty).
+ * - Haiku throws      -> propagate; the route layer maps to 502.
+ */
+export async function getOrGenerateTip(
+  supabase: SupabaseClient,
+  recipeId: string,
+  stepIndex: number,
+  stepText: string
+): Promise<string> {
+  // 1. Cache lookup
+  const { data: cached } = await supabase
+    .from('recipe_step_tips')
+    .select('tip')
+    .eq('recipe_id', recipeId)
+    .eq('step_index', stepIndex)
+    .maybeSingle();
+
+  if (cached && typeof (cached as CachedTipRow).tip === 'string') {
+    return (cached as CachedTipRow).tip;
+  }
+
+  // 2. Cache miss -> call Haiku
+  const response = await anthropic.messages.create({
+    model: HAIKU_MODEL,
+    max_tokens: 120,
+    temperature: 0.3,
+    system: TIP_SYSTEM_PROMPT,
+    messages: [
+      {
+        role: 'user',
+        content: `Recipe step:\n${stepText}`,
+      },
+    ],
+  });
+
+  const blocks = response.content as AnthropicTextBlock[];
+  const textBlock = blocks.find((b) => b.type === 'text');
+  const raw = textBlock?.text ?? '';
+  const trimmed = raw.trim();
+
+  // 3. Don't cache uncertainty — empty/whitespace responses are never inserted.
+  if (trimmed.length === 0) {
+    return '';
+  }
+
+  // 4. Cache the new tip. Insert errors are intentionally non-fatal:
+  //    we still want to return the tip even if the cache write races
+  //    with another request and fails on the composite PK.
+  await supabase.from('recipe_step_tips').insert({
+    recipe_id: recipeId,
+    step_index: stepIndex,
+    tip: trimmed,
+  });
+
+  return trimmed;
+}
