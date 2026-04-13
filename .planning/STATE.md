@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 7 of 7 (complete)
+current_plan: 1 of 5
 status: executing
-stopped_at: Completed 08-07-PLAN.md
-last_updated: "2026-04-12T21:41:28.116Z"
-last_activity: 2026-04-10 -- Completed 08-07 shopping UI + Instacart handoff
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-04-13T00:35:47.436Z"
+last_activity: 2026-04-10 -- Completed 09-01 voice cooking foundation (deps, types, cookingStore)
 progress:
   total_phases: 10
   completed_phases: 8
-  total_plans: 34
-  completed_plans: 34
-  percent: 100
+  total_plans: 39
+  completed_plans: 35
+  percent: 90
 ---
 
 # Project State
@@ -22,16 +22,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Open the fridge, take a photo, get dinner ideas -- zero mental effort from "what do we have?" to "what should we cook?"
-**Current focus:** Phase 8: Shopping & Instacart
+**Current focus:** Phase 9: Voice Cooking Mode
 
 ## Current Position
 
-Phase: 8 of 10 (Shopping & Instacart) -- IN PROGRESS
-Current Plan: 7 of 7 (complete)
+Phase: 9 of 10 (Voice Cooking Mode) -- IN PROGRESS
+Current Plan: 1 of 5 (complete)
 Status: In Progress
-Last activity: 2026-04-10 -- Completed 08-07 shopping UI + Instacart handoff
+Last activity: 2026-04-10 -- Completed 09-01 voice cooking foundation (deps, types, cookingStore)
 
-Progress: [██████████] 100%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -85,6 +85,7 @@ Progress: [██████████] 100%
 | Phase 08-shopping-instacart P05 | 6min | 2 tasks | 2 files |
 | Phase 08-shopping-instacart P06 | 6min | 2 tasks | 2 files |
 | Phase 08-shopping-instacart P07 | 3min | 3 tasks | 8 files |
+| Phase 09-voice-cooking-mode P01 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -182,6 +183,8 @@ Recent decisions affecting current work:
 - [Phase 08-shopping-instacart]: [Phase 08-07]: Mobile ShoppingOrder type extended with optional items_snapshot via ShoppingOrderSnapshotItem; Instacart wire types stay server-internal via index signature
 - [Phase 08-shopping-instacart]: [Phase 08-07]: Shopping tab groups items via useMemo + fixed CATEGORY_ORDER render (produce → protein → dairy → pantry → bakery → frozen → condiments → spices → beverages → other)
 - [Phase 08-shopping-instacart]: [Phase 08-07]: Order button disabled when items.length===0 OR all checked; Reorder uses router.replace('/shopping') to avoid back-stack pollution
+- [Phase 09-voice-cooking-mode]: [Phase 09-01]: Pinned @jamsch/expo-speech-recognition to exact 0.2.15 (Pitfall 7 — pre-1.0 churn)
+- [Phase 09-voice-cooking-mode]: [Phase 09-01]: Timer id uses Date.now + Math.random (no crypto.randomUUID — unreliable in RN runtime)
 
 ### Pending Todos
 
@@ -195,6 +198,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-12T21:40:46.041Z
-Stopped at: Completed 08-07-PLAN.md
+Last session: 2026-04-13T00:35:47.434Z
+Stopped at: Completed 09-01-PLAN.md
 Resume file: None
