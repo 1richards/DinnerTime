@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth.js';
-import { anthropic } from '../config/anthropic.js';
+import { getClientFor } from '../ai/clientFactory.js';
 import { getOrGenerateTip } from '../services/cookingTips.js';
 
 const cooking = new Hono();
@@ -112,16 +112,12 @@ cooking.post('/ask', async (c) => {
 
   let answer: string;
   try {
-    const res = await anthropic.messages.create({
-      model: 'claude-sonnet-4-latest',
-      max_tokens: 200,
+    const ai = getClientFor('cooking.voiceAsk');
+    answer = await ai.generateText({
       system: systemPrompt,
-      messages: [{ role: 'user', content: question }],
+      user: question,
+      maxTokens: 300,
     });
-    const textBlock = (res.content as Array<{ type: string; text?: string }>).find(
-      (b) => b.type === 'text'
-    );
-    answer = textBlock?.text ?? '';
   } catch {
     return c.json({ error: 'CLAUDE_ERROR' }, 502);
   }

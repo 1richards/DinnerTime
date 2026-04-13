@@ -3,12 +3,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 /**
  * Cooking Q&A route tests.
  *
- * Mocks @anthropic-ai/sdk default export (the SDK itself, NOT the config
- * wrapper) per Phase 08-02 decision. The mock captures messages.create
- * calls so we can assert prompt contents.
+ * Phase 11-04: /ask migrated to the AIClient abstraction. Tests mock the
+ * factory directly so there is zero coupling to any vendor SDK. The
+ * cooking.tips service is mocked too so this file stays focused on the
+ * route layer (service-level tip behaviour is covered in cookingTips.test.ts).
  */
 const {
-  mockMessagesCreate,
+  mockGenerateText,
+  mockGetClientFor,
+  mockGetOrGenerateTip,
   mockAuthMiddleware,
   supabase,
   tableState,
@@ -38,7 +41,9 @@ const {
   };
 
   return {
-    mockMessagesCreate: vi.fn(),
+    mockGenerateText: vi.fn(),
+    mockGetClientFor: vi.fn(),
+    mockGetOrGenerateTip: vi.fn(),
     mockAuthMiddleware: vi.fn(async (c: any, next: any) => {
       const auth = c.req.header('Authorization');
       if (!auth) return c.json({ error: 'Missing auth' }, 401);
@@ -55,13 +60,13 @@ vi.mock('../../middleware/auth.js', () => ({
   authMiddleware: mockAuthMiddleware,
 }));
 
-vi.mock('@anthropic-ai/sdk', () => {
-  class MockAnthropic {
-    messages = { create: mockMessagesCreate };
-    constructor(_opts?: unknown) {}
-  }
-  return { default: MockAnthropic };
-});
+vi.mock('../../ai/clientFactory.js', () => ({
+  getClientFor: mockGetClientFor,
+}));
+
+vi.mock('../../services/cookingTips.js', () => ({
+  getOrGenerateTip: mockGetOrGenerateTip,
+}));
 
 const { default: cooking } = await import('../cooking.js');
 const { Hono } = await import('hono');
@@ -78,13 +83,6 @@ function resetTables() {
 
 function setTable(name: string, cfg: any) {
   tableState[name] = cfg;
-}
-
-function claudeTextResponse(text: string) {
-  return {
-    content: [{ type: 'text', text }],
-    stop_reason: 'end_turn',
-  };
 }
 
 const RECIPE_ROW = {
@@ -107,6 +105,11 @@ describe('cooking routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetTables();
+    mockGetClientFor.mockReturnValue({
+      generateText: mockGenerateText,
+      generateStructured: vi.fn(),
+      analyzeImageStructured: vi.fn(),
+    });
   });
 
   it('returns 401 without auth', async () => {
@@ -123,12 +126,12 @@ describe('cooking routes', () => {
     expect(res.status).toBe(401);
   });
 
-  it('200 happy path: returns answer, injects recipe context and short-answer rule', async () => {
+  it('200 happy path: returns answer, routes via cooking.voiceAsk, injects recipe context + short-answer rule', async () => {
     setTable('recipes', {
       maybeSingleResult: { data: RECIPE_ROW, error: null },
     });
-    mockMessagesCreate.mockResolvedValue(
-      claudeTextResponse('Use one cup of milk with a tablespoon of vinegar.')
+    mockGenerateText.mockResolvedValue(
+      'Use one cup of milk with a tablespoon of vinegar.'
     );
 
     const app = makeApp();
@@ -146,24 +149,20 @@ describe('cooking routes', () => {
     const body = await res.json();
     expect(body.answer).toBe('Use one cup of milk with a tablespoon of vinegar.');
 
-    // Assert Claude call shape
-    expect(mockMessagesCreate).toHaveBeenCalledTimes(1);
-    const call = mockMessagesCreate.mock.calls[0][0];
-    expect(call.model).toBe('claude-sonnet-4-latest');
-    expect(call.max_tokens).toBe(200);
+    // Routed via AIClient factory to the cooking.voiceAsk task
+    expect(mockGetClientFor).toHaveBeenCalledWith('cooking.voiceAsk');
+    expect(mockGenerateText).toHaveBeenCalledTimes(1);
+    const call = mockGenerateText.mock.calls[0][0];
+    expect(call.maxTokens).toBe(300);
+    expect(call.user).toBe("what's a substitute for buttermilk?");
 
-    // System prompt must contain recipe title, current step text, ingredient, and short-answer rule verbatim
+    // System prompt must contain recipe title, current step text, ingredient, short-answer rule
     expect(call.system).toContain('Buttermilk Pancakes');
     expect(call.system).toContain('Add wet ingredients and stir until just combined.');
     expect(call.system).toContain('buttermilk');
     expect(call.system).toContain(
       'Answers MUST be 1-3 sentences, spoken conversationally, no markdown, no bullet lists, no preamble.'
     );
-
-    // User message is verbatim question
-    expect(call.messages).toEqual([
-      { role: 'user', content: "what's a substitute for buttermilk?" },
-    ]);
   });
 
   it('404 when recipe not found or not owned by user', async () => {
@@ -184,7 +183,7 @@ describe('cooking routes', () => {
     expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.error).toBe('RECIPE_NOT_FOUND');
-    expect(mockMessagesCreate).not.toHaveBeenCalled();
+    expect(mockGenerateText).not.toHaveBeenCalled();
   });
 
   it('400 when required body fields missing', async () => {
@@ -209,11 +208,11 @@ describe('cooking routes', () => {
     expect(res.status).toBe(400);
   });
 
-  it('502 CLAUDE_ERROR when Anthropic throws', async () => {
+  it('502 CLAUDE_ERROR when the AI client throws', async () => {
     setTable('recipes', {
       maybeSingleResult: { data: RECIPE_ROW, error: null },
     });
-    mockMessagesCreate.mockRejectedValueOnce(new Error('boom'));
+    mockGenerateText.mockRejectedValueOnce(new Error('boom'));
 
     const app = makeApp();
     const res = await app.request('/cooking/ask', {
@@ -235,7 +234,7 @@ describe('cooking routes', () => {
       maybeSingleResult: { data: RECIPE_ROW, error: null },
     });
     const longAnswer = 'a'.repeat(500);
-    mockMessagesCreate.mockResolvedValue(claudeTextResponse(longAnswer));
+    mockGenerateText.mockResolvedValue(longAnswer);
 
     const app = makeApp();
     const res = await app.request('/cooking/ask', {
@@ -254,7 +253,7 @@ describe('cooking routes', () => {
   });
 
   // ----------------------------------------------------------
-  // GET /cooking/tips (Phase 10-03)
+  // GET /cooking/tips (Phase 10-03 / 11-04)
   // ----------------------------------------------------------
 
   describe('GET /tips', () => {
@@ -299,16 +298,14 @@ describe('cooking routes', () => {
       expect(res.status).toBe(404);
       const body = await res.json();
       expect(body.error).toBe('RECIPE_NOT_FOUND');
-      expect(mockMessagesCreate).not.toHaveBeenCalled();
+      expect(mockGetOrGenerateTip).not.toHaveBeenCalled();
     });
 
-    it('200 returns cached tip without calling Claude', async () => {
+    it('200 returns tip from service (service handles cache + AI internally)', async () => {
       setTable('recipes', {
         maybeSingleResult: { data: { id: 'recipe-1' }, error: null },
       });
-      setTable('recipe_step_tips', {
-        maybeSingleResult: { data: { tip: 'cached tip' }, error: null },
-      });
+      mockGetOrGenerateTip.mockResolvedValueOnce('cached tip');
 
       const app = makeApp();
       const res = await app.request(
@@ -318,17 +315,14 @@ describe('cooking routes', () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.tip).toBe('cached tip');
-      expect(mockMessagesCreate).not.toHaveBeenCalled();
+      expect(mockGetOrGenerateTip).toHaveBeenCalledTimes(1);
     });
 
-    it('200 returns empty tip when Haiku returns empty (uncertainty)', async () => {
+    it('200 returns empty tip when service returns empty (uncertainty)', async () => {
       setTable('recipes', {
         maybeSingleResult: { data: { id: 'recipe-1' }, error: null },
       });
-      setTable('recipe_step_tips', {
-        maybeSingleResult: { data: null, error: null },
-      });
-      mockMessagesCreate.mockResolvedValueOnce(claudeTextResponse(''));
+      mockGetOrGenerateTip.mockResolvedValueOnce('');
 
       const app = makeApp();
       const res = await app.request(
@@ -340,14 +334,11 @@ describe('cooking routes', () => {
       expect(body.tip).toBe('');
     });
 
-    it('502 when Anthropic throws on cache miss', async () => {
+    it('502 CLAUDE_ERROR when service throws', async () => {
       setTable('recipes', {
         maybeSingleResult: { data: { id: 'recipe-1' }, error: null },
       });
-      setTable('recipe_step_tips', {
-        maybeSingleResult: { data: null, error: null },
-      });
-      mockMessagesCreate.mockRejectedValueOnce(new Error('boom'));
+      mockGetOrGenerateTip.mockRejectedValueOnce(new Error('boom'));
 
       const app = makeApp();
       const res = await app.request(
@@ -364,7 +355,7 @@ describe('cooking routes', () => {
     setTable('recipes', {
       maybeSingleResult: { data: RECIPE_ROW, error: null },
     });
-    mockMessagesCreate.mockResolvedValue(claudeTextResponse('ok'));
+    mockGenerateText.mockResolvedValue('ok');
 
     const app = makeApp();
     const res = await app.request('/cooking/ask', {
@@ -378,7 +369,7 @@ describe('cooking routes', () => {
     });
     expect(res.status).toBe(200);
 
-    const call = mockMessagesCreate.mock.calls[0][0];
+    const call = mockGenerateText.mock.calls[0][0];
     // Last step must appear in system prompt
     expect(call.system).toContain('Cook on a hot griddle until bubbles form.');
   });
