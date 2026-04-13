@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 1 of 5
+current_plan: 2 of 5 (complete)
 status: executing
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-04-13T00:35:47.436Z"
-last_activity: 2026-04-10 -- Completed 09-01 voice cooking foundation (deps, types, cookingStore)
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-04-13T00:39:17.946Z"
+last_activity: 2026-04-10 -- Completed 09-02 local intent router + timer parser (VOIC-02/03/07)
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 39
-  completed_plans: 35
+  completed_plans: 36
   percent: 90
 ---
 
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 9 of 10 (Voice Cooking Mode) -- IN PROGRESS
-Current Plan: 1 of 5 (complete)
+Current Plan: 2 of 5 (complete)
 Status: In Progress
-Last activity: 2026-04-10 -- Completed 09-01 voice cooking foundation (deps, types, cookingStore)
+Last activity: 2026-04-10 -- Completed 09-02 local intent router + timer parser (VOIC-02/03/07)
 
-Progress: [█████████░] 90%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -86,6 +86,7 @@ Progress: [█████████░] 90%
 | Phase 08-shopping-instacart P06 | 6min | 2 tasks | 2 files |
 | Phase 08-shopping-instacart P07 | 3min | 3 tasks | 8 files |
 | Phase 09-voice-cooking-mode P01 | 3min | 2 tasks | 5 files |
+| Phase 09-voice-cooking-mode P02 | 3min | 1 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -185,6 +186,9 @@ Recent decisions affecting current work:
 - [Phase 08-shopping-instacart]: [Phase 08-07]: Order button disabled when items.length===0 OR all checked; Reorder uses router.replace('/shopping') to avoid back-stack pollution
 - [Phase 09-voice-cooking-mode]: [Phase 09-01]: Pinned @jamsch/expo-speech-recognition to exact 0.2.15 (Pitfall 7 — pre-1.0 churn)
 - [Phase 09-voice-cooking-mode]: [Phase 09-01]: Timer id uses Date.now + Math.random (no crypto.randomUUID — unreliable in RN runtime)
+- [Phase 09-voice-cooking-mode]: [Phase 09-02]: routeIntent checks parseTimerPhrase before nav regexes so 'continue for N minutes' can't miscategorize as next
+- [Phase 09-voice-cooking-mode]: [Phase 09-02]: ask.question preserves original (non-lowercased) transcript so Claude sees user phrasing verbatim
+- [Phase 09-voice-cooking-mode]: [Phase 09-02]: Timer regex allows optional 'an?\s+' so 'half an hour' resolves without a separate code path
 
 ### Pending Todos
 
@@ -198,6 +202,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T00:35:47.434Z
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-04-13T00:39:14.171Z
+Stopped at: Completed 09-02-PLAN.md
 Resume file: None
