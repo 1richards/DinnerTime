@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 5 of 5
-status: completed
-stopped_at: Completed 11-01-PLAN.md
-last_updated: "2026-04-13T06:26:08.758Z"
-last_activity: 2026-04-13 -- Completed 10-05 mobile skill progression UI (SKIL-01..04, FOUN-07)
+current_plan: 2 of 5
+status: in_progress
+stopped_at: Completed 11-02-PLAN.md
+last_updated: "2026-04-10T09:45:00.000Z"
+last_activity: 2026-04-10 -- Completed 11-02 vision + recipeParser migration to AIClient abstraction
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 49
-  completed_plans: 45
-  percent: 100
+  completed_plans: 46
+  percent: 94
 ---
 
 # Project State
@@ -22,16 +22,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Open the fridge, take a photo, get dinner ideas -- zero mental effort from "what do we have?" to "what should we cook?"
-**Current focus:** Phase 10: Skill Progression & Offline
+**Current focus:** Phase 11: Hybrid AI Client
 
 ## Current Position
 
-Phase: 10 of 10 (Skill Progression & Offline) -- COMPLETE
-Current Plan: 5 of 5
-Status: Complete
-Last activity: 2026-04-13 -- Completed 10-05 mobile skill progression UI (SKIL-01..04, FOUN-07)
+Phase: 11 of 11 (Hybrid AI Client) -- IN PROGRESS
+Current Plan: 2 of 5
+Status: In Progress
+Last activity: 2026-04-10 -- Completed 11-02 vision + recipeParser migration to AIClient abstraction
 
-Progress: [██████████] 100%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -96,6 +96,7 @@ Progress: [██████████] 100%
 | Phase 10-skill-progression-offline P02 | 5min | 2 tasks | 6 files |
 | Phase 10-skill-progression-offline P05 | 5min | 2 tasks | 9 files |
 | Phase 11-hybrid-ai-client P01 | 4min | 3 tasks | 11 files |
+| Phase 11-hybrid-ai-client P02 | 8min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -235,6 +236,9 @@ Recent decisions affecting current work:
 - [Phase 11-hybrid-ai-client]: [Phase 11-01]: AIClient interface + AnthropicAdapter + GeminiAdapter + getClientFor factory ship the provider-agnostic scaffold; services still on direct SDKs until Waves 2+
 - [Phase 11-hybrid-ai-client]: [Phase 11-01]: Model IDs centralized in GEMINI_MODELS/ANTHROPIC_MODELS const maps in taskRouting.ts with TODO for -latest alias swap when Gemini 3.x exits preview
 - [Phase 11-hybrid-ai-client]: [Phase 11-01]: GeminiAdapter retries ONCE on MALFORMED_FUNCTION_CALL then throws typed MalformedFunctionCallError; empty candidates surfaces as GeminiSafetyBlockError
+- [Phase 11-hybrid-ai-client]: [Phase 11-02]: parse_recipe schema simplified — dropped ['X','null'] unions and omitted nullable fields from required; toolOutputToRecipe still defaults to null at JS boundary
+- [Phase 11-hybrid-ai-client]: [Phase 11-02]: Canonical AIClient test mock pattern — vi.hoisted() + vi.mock('../../ai/clientFactory.js') exposing generateText/Structured/analyzeImageStructured; 11-03/11-04 copy verbatim
+- [Phase 11-hybrid-ai-client]: [Phase 11-02]: recipeParser split into callAIParseRecipeText(task, prompt) + callAIParseRecipePhoto(base64, prompt) — URL/text share Gemini path, photo stays on Anthropic
 
 ### Pending Todos
 
@@ -248,6 +252,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T06:25:58.072Z
-Stopped at: Completed 11-01-PLAN.md
+Last session: 2026-04-13T16:41:09.702Z
+Stopped at: Completed 11-02-PLAN.md
 Resume file: None
