@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 4 of 5
-status: executing
-stopped_at: Completed 11-03-PLAN.md
-last_updated: "2026-04-13T16:48:32.473Z"
-last_activity: 2026-04-10 -- Completed 11-04 classification + short-text migration (cookingTips, ingredientCategories, /ask) to AIClient abstraction
+current_plan: 5 of 5
+status: completed
+stopped_at: Completed 11-05-PLAN.md
+last_updated: "2026-04-13T16:52:20.600Z"
+last_activity: 2026-04-13 -- Completed 11-05 phase closeout (deleted config/anthropic.ts, added env-gated AI smoke script). Phase 11 complete.
 progress:
   total_phases: 11
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 49
-  completed_plans: 48
-  percent: 94
+  completed_plans: 49
+  percent: 100
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 11 of 11 (Hybrid AI Client) -- IN PROGRESS
-Current Plan: 4 of 5
-Status: In Progress
-Last activity: 2026-04-10 -- Completed 11-04 classification + short-text migration (cookingTips, ingredientCategories, /ask) to AIClient abstraction
+Phase: 11 of 11 (Hybrid AI Client) -- COMPLETE
+Current Plan: 5 of 5
+Status: Complete
+Last activity: 2026-04-13 -- Completed 11-05 phase closeout (deleted config/anthropic.ts, added env-gated AI smoke script). Phase 11 complete.
 
-Progress: [█████████░] 94%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -99,6 +99,7 @@ Progress: [█████████░] 94%
 | Phase 11-hybrid-ai-client P02 | 8min | 2 tasks | 4 files |
 | Phase 11-hybrid-ai-client P04 | 5min | 3 tasks | 6 files |
 | Phase 11-hybrid-ai-client P03 | 6min | 3 tasks | 11 files |
+| Phase 11-hybrid-ai-client P05 | 3min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -243,6 +244,8 @@ Recent decisions affecting current work:
 - [Phase 11-hybrid-ai-client]: [Phase 11-02]: recipeParser split into callAIParseRecipeText(task, prompt) + callAIParseRecipePhoto(base64, prompt) — URL/text share Gemini path, photo stays on Anthropic
 - [Phase 11-hybrid-ai-client]: [Phase 11-04]: Wave 2 consumers (cookingTips, ingredientCategories, /cooking/ask) migrated to AIClient abstraction routed to Gemini 3.1 flash-lite — cache semantics, enum-constrained classification, and short-answer contract all preserved
 - [Phase 11-hybrid-ai-client]: [Phase 11-04]: Test mocks swap from @anthropic-ai/sdk to ../../ai/clientFactory.js across all three service/route test files — zero vendor SDK coupling in test layer for migrated consumers
+- [Phase 11-hybrid-ai-client]: [Phase 11-05]: Smoke script iterates ALL_TASKS and dispatches by task family (image vs text-only vs structured) -- single script covers every route
+- [Phase 11-hybrid-ai-client]: [Phase 11-05]: config/anthropic.ts deleted after zero-leakage grep sweep; only ai/adapters/ import provider SDKs now
 
 ### Pending Todos
 
@@ -256,6 +259,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T16:48:32.471Z
-Stopped at: Completed 11-03-PLAN.md
+Last session: 2026-04-13T16:51:58.136Z
+Stopped at: Completed 11-05-PLAN.md
 Resume file: None
