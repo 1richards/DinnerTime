@@ -4,15 +4,15 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 5 of 5
 status: executing
-stopped_at: Completed 09-04-PLAN.md
-last_updated: "2026-04-10T17:45:00.000Z"
-last_activity: 2026-04-10 -- Completed 09-04 voice hooks + askAssistant client (VOIC-02/04/05)
+stopped_at: Completed 09-05-PLAN.md
+last_updated: "2026-04-13T04:18:26.431Z"
+last_activity: 2026-04-10 -- Completed 09-05 cooking mode screen + device test (VOIC-01..07)
 progress:
   total_phases: 10
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 39
-  completed_plans: 38
-  percent: 92
+  completed_plans: 39
+  percent: 97
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 Phase: 9 of 10 (Voice Cooking Mode) -- IN PROGRESS
 Current Plan: 5 of 5
 Status: In Progress
-Last activity: 2026-04-10 -- Completed 09-04 voice hooks + askAssistant client (VOIC-02/04/05)
+Last activity: 2026-04-10 -- Completed 09-05 cooking mode screen + device test (VOIC-01..07)
 
 Progress: [██████████] 97%
 
@@ -89,6 +89,7 @@ Progress: [██████████] 97%
 | Phase 09-voice-cooking-mode P02 | 3min | 1 tasks | 5 files |
 | Phase 09-voice-cooking-mode P03 | 2min | 1 tasks | 3 files |
 | Phase 09-voice-cooking-mode P04 | 4min | 3 tasks | 7 files |
+| Phase 09-voice-cooking-mode P05 | 4min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -200,6 +201,9 @@ Recent decisions affecting current work:
 - [Phase 09-voice-cooking-mode]: [Phase 09-04]: askAssistant inlines authedFetch (mealPlanStore pattern) — no shared src/lib/api.ts exists to reuse
 - [Phase 09-voice-cooking-mode]: [Phase 09-04]: askAssistant maps non-JSON error bodies to HTTP_<status> so the store layer always has a usable error code
 - [Phase 09-voice-cooking-mode]: [Phase 09-04]: useVoiceListener has no unit test in 09-04 — native-coupled, coverage deferred to 09-05 cook.tsx screen test
+- [Phase 09-voice-cooking-mode]: [Phase 09-05]: handleTranscript factored into its own pure module so cook screen tests run under vitest node env without RN renderer
+- [Phase 09-voice-cooking-mode]: [Phase 09-05]: Cook tab repurposed as discovery hub linking to Recipes (avoids touching _layout.tsx)
+- [Phase 09-voice-cooking-mode]: [Phase 09-05]: Timer countdown driven by single setInterval(1s) inside cook.tsx (parent-owned tick)
 
 ### Pending Todos
 
@@ -213,6 +217,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-10T17:45:00.000Z
-Stopped at: Completed 09-04-PLAN.md
+Last session: 2026-04-13T04:18:21.902Z
+Stopped at: Completed 09-05-PLAN.md
 Resume file: None
