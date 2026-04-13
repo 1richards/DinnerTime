@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Hoisted mock for anthropic client (must be declared before vi.mock hoisting)
-const { mockCreate } = vi.hoisted(() => ({
-  mockCreate: vi.fn(),
+// Phase 11-04: ingredientCategories now routes via the AIClient factory
+// (Gemini flash-lite). We mock the factory directly — no vendor SDK coupling.
+const { mockGenerateStructured, mockGetClientFor } = vi.hoisted(() => ({
+  mockGenerateStructured: vi.fn(),
+  mockGetClientFor: vi.fn(),
 }));
 
-vi.mock('../../config/anthropic.js', () => ({
-  anthropic: {
-    messages: { create: mockCreate },
-  },
+vi.mock('../../ai/clientFactory.js', () => ({
+  getClientFor: mockGetClientFor,
 }));
 
 import {
@@ -16,8 +16,18 @@ import {
   classifyStatic,
   classifyBatchWithHaiku,
   classifyItems,
+  classifyIngredientsTool,
 } from '../ingredientCategories.js';
 import type { GroceryCategory } from '../../types/shopping.js';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockGetClientFor.mockReturnValue({
+    generateText: vi.fn(),
+    generateStructured: mockGenerateStructured,
+    analyzeImageStructured: vi.fn(),
+  });
+});
 
 describe('STATIC_MAP', () => {
   it('has at least 150 entries', () => {
@@ -40,6 +50,27 @@ describe('STATIC_MAP', () => {
     for (const cat of expected) {
       expect(categories.has(cat)).toBe(true);
     }
+  });
+});
+
+describe('classifyIngredientsTool schema', () => {
+  it('preserves the enum constraint on category (Pitfall 5)', () => {
+    const enumVals = (
+      classifyIngredientsTool.schema.properties?.classifications.items
+        ?.properties?.category as { enum?: string[] }
+    ).enum;
+    expect(enumVals).toEqual([
+      'produce',
+      'dairy',
+      'protein',
+      'pantry',
+      'bakery',
+      'frozen',
+      'beverages',
+      'condiments',
+      'spices',
+      'other',
+    ]);
   });
 });
 
@@ -70,30 +101,18 @@ describe('classifyStatic', () => {
 });
 
 describe('classifyBatchWithHaiku', () => {
-  beforeEach(() => {
-    mockCreate.mockReset();
-  });
-
-  it('returns empty map without calling Claude for empty input', async () => {
+  it('returns empty map without invoking the AI client for empty input', async () => {
     const result = await classifyBatchWithHaiku([]);
     expect(result).toEqual({});
-    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockGetClientFor).not.toHaveBeenCalled();
+    expect(mockGenerateStructured).not.toHaveBeenCalled();
   });
 
-  it('resolves unknowns via Claude tool-use and returns a name→category map', async () => {
-    mockCreate.mockResolvedValue({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'classify_ingredients',
-          input: {
-            classifications: [
-              { name: 'dragon fruit', category: 'produce' },
-              { name: 'kimchi', category: 'condiments' },
-            ],
-          },
-        },
+  it('resolves unknowns via generateStructured and returns a name→category map', async () => {
+    mockGenerateStructured.mockResolvedValue({
+      classifications: [
+        { name: 'dragon fruit', category: 'produce' },
+        { name: 'kimchi', category: 'condiments' },
       ],
     });
 
@@ -102,48 +121,21 @@ describe('classifyBatchWithHaiku', () => {
       'dragon fruit': 'produce',
       kimchi: 'condiments',
     });
-    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(mockGetClientFor).toHaveBeenCalledWith('ingredient.categorize');
+    expect(mockGenerateStructured).toHaveBeenCalledTimes(1);
 
-    // Verify the call used claude-haiku with forced tool_choice + enum
-    const callArgs = mockCreate.mock.calls[0][0];
-    expect(callArgs.model).toMatch(/haiku/);
-    expect(callArgs.tool_choice).toEqual({ type: 'tool', name: 'classify_ingredients' });
-    const tool = callArgs.tools[0];
-    expect(tool.name).toBe('classify_ingredients');
-    const enumVals =
-      tool.input_schema.properties.classifications.items.properties.category.enum;
-    expect(enumVals).toEqual([
-      'produce',
-      'dairy',
-      'protein',
-      'pantry',
-      'bakery',
-      'frozen',
-      'beverages',
-      'condiments',
-      'spices',
-      'other',
-    ]);
+    const callArgs = mockGenerateStructured.mock.calls[0][0];
+    expect(callArgs.maxTokens).toBe(1024);
+    expect(callArgs.tool.name).toBe('classify_ingredients');
+    expect(callArgs.user).toContain('dragon fruit');
+    expect(callArgs.user).toContain('kimchi');
   });
 });
 
 describe('classifyItems', () => {
-  beforeEach(() => {
-    mockCreate.mockReset();
-  });
-
-  it('uses static for knowns and Haiku for unknowns, merging results', async () => {
-    mockCreate.mockResolvedValue({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'classify_ingredients',
-          input: {
-            classifications: [{ name: 'dragon fruit', category: 'produce' }],
-          },
-        },
-      ],
+  it('uses static for knowns and AI for unknowns, merging results', async () => {
+    mockGenerateStructured.mockResolvedValue({
+      classifications: [{ name: 'dragon fruit', category: 'produce' }],
     });
 
     const result = await classifyItems([
@@ -157,16 +149,15 @@ describe('classifyItems', () => {
       chicken: 'protein',
       'dragon fruit': 'produce',
     });
-    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(mockGenerateStructured).toHaveBeenCalledTimes(1);
 
-    // Haiku was only asked about the unknown
-    const callArgs = mockCreate.mock.calls[0][0];
-    const userMsg = JSON.stringify(callArgs.messages);
-    expect(userMsg).toContain('dragon fruit');
-    expect(userMsg).not.toContain('tomato');
+    // AI was only asked about the unknown
+    const callArgs = mockGenerateStructured.mock.calls[0][0];
+    expect(callArgs.user).toContain('dragon fruit');
+    expect(callArgs.user).not.toContain('tomato');
   });
 
-  it('does NOT invoke Claude when all items are statically known', async () => {
+  it('does NOT invoke the AI client when all items are statically known', async () => {
     const result = await classifyItems([
       { normalizedName: 'tomato' },
       { normalizedName: 'milk' },
@@ -178,21 +169,12 @@ describe('classifyItems', () => {
       milk: 'dairy',
       chicken: 'protein',
     });
-    expect(mockCreate).toHaveBeenCalledTimes(0);
+    expect(mockGenerateStructured).not.toHaveBeenCalled();
   });
 
-  it('defaults unknowns absent from AI response to "other"', async () => {
-    mockCreate.mockResolvedValue({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'classify_ingredients',
-          input: {
-            classifications: [{ name: 'kimchi', category: 'condiments' }],
-          },
-        },
-      ],
+  it('defaults unknowns absent from AI response to "other" (input coverage guard)', async () => {
+    mockGenerateStructured.mockResolvedValue({
+      classifications: [{ name: 'kimchi', category: 'condiments' }],
     });
 
     const result = await classifyItems([

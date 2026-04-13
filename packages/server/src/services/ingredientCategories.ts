@@ -1,4 +1,5 @@
-import { anthropic } from '../config/anthropic.js';
+import { getClientFor } from '../ai/clientFactory.js';
+import type { StructuredTool } from '../ai/types.js';
 import type { GroceryCategory } from '../types/shopping.js';
 
 const GROCERY_CATEGORY_ENUM: GroceryCategory[] = [
@@ -14,17 +15,23 @@ const GROCERY_CATEGORY_ENUM: GroceryCategory[] = [
   'other',
 ];
 
+interface ClassificationsOutput {
+  classifications: Array<{ name: string; category: GroceryCategory }>;
+}
+
 /**
- * Tool schema for Claude Haiku classification. The strict `enum` on
- * `category` is the Pitfall 5 mitigation: it constrains model output to the
- * ten valid GroceryCategory values so we never receive freeform text.
+ * StructuredTool for AI classification. The strict `enum` on `category` is
+ * the Pitfall 5 mitigation: it constrains model output to the ten valid
+ * GroceryCategory values so we never receive freeform text. Gemini respects
+ * `enum: [...]` on string properties, preserving the guarantee Claude's tool
+ * schema previously provided.
  */
-const classifyIngredientsTool = {
+const classifyIngredientsTool: StructuredTool<ClassificationsOutput> = {
   name: 'classify_ingredients',
   description:
     'Classify each ingredient into exactly one grocery category. Every input name MUST appear in the output.',
-  input_schema: {
-    type: 'object' as const,
+  schema: {
+    type: 'object',
     properties: {
       classifications: {
         type: 'array',
@@ -277,37 +284,24 @@ export async function classifyBatchWithHaiku(
 ): Promise<Record<string, GroceryCategory>> {
   if (unknownItems.length === 0) return {};
 
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-latest',
-    max_tokens: 1024,
-    tools: [classifyIngredientsTool],
-    tool_choice: { type: 'tool', name: 'classify_ingredients' },
-    messages: [
-      {
-        role: 'user',
-        content: `Classify each of these ingredients into a grocery store category. Return EVERY name exactly as given.\n\nIngredients:\n${unknownItems
-          .map((n) => `- ${n}`)
-          .join('\n')}`,
-      },
-    ],
+  const ai = getClientFor('ingredient.categorize');
+  const { classifications } = await ai.generateStructured({
+    user: `Classify each of these ingredients into a grocery store category. Return EVERY name exactly as given.\n\nIngredients:\n${unknownItems
+      .map((n) => `- ${n}`)
+      .join('\n')}`,
+    tool: classifyIngredientsTool,
+    maxTokens: 1024,
   });
 
-  const toolBlock = response.content.find(
-    (b: { type: string }) => b.type === 'tool_use',
-  );
-  if (!toolBlock || toolBlock.type !== 'tool_use') {
-    throw new Error('Claude did not return a tool_use response');
-  }
-
-  const input = toolBlock.input as {
-    classifications?: Array<{ name: string; category: GroceryCategory }>;
-  };
   const result: Record<string, GroceryCategory> = {};
-  for (const entry of input.classifications ?? []) {
+  for (const entry of classifications ?? []) {
     result[entry.name] = entry.category;
   }
   return result;
 }
+
+// Re-export for tests that assert schema shape.
+export { classifyIngredientsTool };
 
 /**
  * Hybrid classification entry point. Routes callers should invoke once per
