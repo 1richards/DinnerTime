@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 2 of 5
+current_plan: 5 of 5
 status: executing
-stopped_at: Completed 09-03-PLAN.md
-last_updated: "2026-04-13T00:40:34.742Z"
-last_activity: 2026-04-10 -- Completed 09-02 local intent router + timer parser (VOIC-02/03/07)
+stopped_at: Completed 09-04-PLAN.md
+last_updated: "2026-04-10T17:45:00.000Z"
+last_activity: 2026-04-10 -- Completed 09-04 voice hooks + askAssistant client (VOIC-02/04/05)
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 39
-  completed_plans: 37
+  completed_plans: 38
   percent: 92
 ---
 
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 9 of 10 (Voice Cooking Mode) -- IN PROGRESS
-Current Plan: 2 of 5
+Current Plan: 5 of 5
 Status: In Progress
-Last activity: 2026-04-10 -- Completed 09-02 local intent router + timer parser (VOIC-02/03/07)
+Last activity: 2026-04-10 -- Completed 09-04 voice hooks + askAssistant client (VOIC-02/04/05)
 
-Progress: [█████████░] 92%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -88,6 +88,7 @@ Progress: [█████████░] 92%
 | Phase 09-voice-cooking-mode P01 | 3min | 2 tasks | 5 files |
 | Phase 09-voice-cooking-mode P02 | 3min | 1 tasks | 5 files |
 | Phase 09-voice-cooking-mode P03 | 2min | 1 tasks | 3 files |
+| Phase 09-voice-cooking-mode P04 | 4min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -193,6 +194,12 @@ Recent decisions affecting current work:
 - [Phase 09-voice-cooking-mode]: [Phase 09-03]: /cooking namespace distinct from /voice (voice is future Whisper fallback; cooking is the Claude Q&A endpoint)
 - [Phase 09-voice-cooking-mode]: [Phase 09-03]: System prompt embeds short-answer rule verbatim; current_step_index clamped server-side so stale mobile indices don't 400
 - [Phase 09-voice-cooking-mode]: [Phase 09-03]: INVALID_REQUEST returned for both malformed JSON and missing fields (single error shape for mobile)
+- [Phase 09-voice-cooking-mode]: [Phase 09-04]: Extracted runStepSpeakerEffect as a pure helper so useStepSpeaker tests run under environment:node without a React renderer
+- [Phase 09-voice-cooking-mode]: [Phase 09-04]: Global vitest.setup.ts hosts expo-speech / expo-speech-recognition / expo-keep-awake mocks — downstream screen tests inherit the stub surface
+- [Phase 09-voice-cooking-mode]: [Phase 09-04]: useVoiceListener uses refs for enabled/hints/callback so updates don't tear down the native STT session
+- [Phase 09-voice-cooking-mode]: [Phase 09-04]: askAssistant inlines authedFetch (mealPlanStore pattern) — no shared src/lib/api.ts exists to reuse
+- [Phase 09-voice-cooking-mode]: [Phase 09-04]: askAssistant maps non-JSON error bodies to HTTP_<status> so the store layer always has a usable error code
+- [Phase 09-voice-cooking-mode]: [Phase 09-04]: useVoiceListener has no unit test in 09-04 — native-coupled, coverage deferred to 09-05 cook.tsx screen test
 
 ### Pending Todos
 
@@ -206,6 +213,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-13T00:40:14.563Z
-Stopped at: Completed 09-03-PLAN.md
+Last session: 2026-04-10T17:45:00.000Z
+Stopped at: Completed 09-04-PLAN.md
 Resume file: None
