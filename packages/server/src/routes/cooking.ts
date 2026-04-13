@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth.js';
 import { anthropic } from '../config/anthropic.js';
+import { getOrGenerateTip } from '../services/cookingTips.js';
 
 const cooking = new Hono();
 
@@ -131,6 +132,57 @@ cooking.post('/ask', async (c) => {
   }
 
   return c.json({ answer }, 200);
+});
+
+/**
+ * GET /tips — Per-step cooking tip with Haiku-backed cache (Phase 10-03).
+ *
+ * Query params: recipe_id, step_index, step_text
+ * Returns: { tip: string }  (empty string when Haiku is uncertain)
+ */
+cooking.get('/tips', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+
+  const recipeId = c.req.query('recipe_id');
+  const stepIndexRaw = c.req.query('step_index');
+  const stepText = c.req.query('step_text');
+
+  if (
+    typeof recipeId !== 'string' ||
+    recipeId.length === 0 ||
+    typeof stepIndexRaw !== 'string' ||
+    stepIndexRaw.length === 0 ||
+    typeof stepText !== 'string'
+  ) {
+    return c.json({ error: 'INVALID_REQUEST' }, 400);
+  }
+
+  const stepIndex = Number(stepIndexRaw);
+  if (!Number.isFinite(stepIndex) || stepIndex < 0) {
+    return c.json({ error: 'INVALID_REQUEST' }, 400);
+  }
+
+  // Ownership check: load recipe scoped to authed user (mirrors /ask)
+  const { data: recipe, error: recipeErr } = await supabase
+    .from('recipes')
+    .select('id')
+    .eq('id', recipeId)
+    .eq('profile_id', user.id)
+    .maybeSingle();
+
+  if (recipeErr || !recipe) {
+    return c.json({ error: 'RECIPE_NOT_FOUND' }, 404);
+  }
+
+  let tip: string;
+  try {
+    tip = await getOrGenerateTip(supabase, recipeId, Math.floor(stepIndex), stepText);
+  } catch {
+    return c.json({ error: 'CLAUDE_ERROR' }, 502);
+  }
+
+  return c.json({ tip }, 200);
 });
 
 export default cooking;
