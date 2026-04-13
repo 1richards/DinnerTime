@@ -6,9 +6,14 @@
  * Exits 0 on success, non-zero if any task's live call fails.
  * Uses minimal prompts + tiny fake inputs to keep cost < $0.10 per run.
  */
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { ALL_TASKS, TASK_ROUTES } from '../src/ai/taskRouting.js';
 import { getClientFor } from '../src/ai/clientFactory.js';
 import type { StructuredTool } from '../src/ai/types.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 if (process.env.AI_SMOKE !== '1') {
   console.log('AI_SMOKE not set; skipping.');
@@ -25,9 +30,11 @@ const trivialTool: StructuredTool<{ ok: boolean }> = {
   },
 };
 
-// 1x1 transparent JPEG base64 (for image tasks)
-const TINY_JPEG_B64 =
-  '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA/wA//Z';
+// Real 16x16 grayscale JPEG fixture (committed to scripts/fixtures/tiny.jpg).
+// Generated via macOS sips. Anthropic vision rejects 1x1 and malformed images.
+const TINY_JPEG_B64 = readFileSync(
+  join(__dirname, 'fixtures', 'tiny.jpg')
+).toString('base64');
 
 const IMAGE_TASKS = new Set(['vision.pantryScan', 'recipe.parsePhoto']);
 const TEXT_ONLY_TASKS = new Set(['cooking.voiceAsk', 'cooking.tips']);
@@ -62,6 +69,11 @@ for (const task of ALL_TASKS) {
   } catch (e) {
     console.log(`FAIL (${(e as Error).message})`);
     results.push({ task, ok: false, error: (e as Error).message });
+  }
+  // Throttle to stay under Gemini Flash free tier (5 RPM) — also pads
+  // around transient 503s. Skip the wait after the final task.
+  if (task !== ALL_TASKS[ALL_TASKS.length - 1]) {
+    await new Promise((r) => setTimeout(r, 13_000));
   }
 }
 

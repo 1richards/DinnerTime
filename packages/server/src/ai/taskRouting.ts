@@ -29,7 +29,11 @@ export const TASK_ROUTES: Record<AITask, Route> = {
   'recipe.parseUrl': { provider: 'google', model: GEMINI_MODELS.flash },
   'recipe.parseText': { provider: 'google', model: GEMINI_MODELS.flash },
   'suggestions.dinner': { provider: 'google', model: GEMINI_MODELS.flash },
-  'mealPlanner.week': { provider: 'google', model: GEMINI_MODELS.pro },
+  // Note: gemini-3.1-pro-preview is paid-tier only on Google AI Studio.
+  // Using flash here keeps mealPlanner on the free tier; benchmarks suggest
+  // Flash 3 handles weekly meal-plan constraint reasoning well.
+  // Swap back to GEMINI_MODELS.pro if plan quality regresses.
+  'mealPlanner.week': { provider: 'google', model: GEMINI_MODELS.flash },
   'recipe.discovery': { provider: 'google', model: GEMINI_MODELS.flash },
   'progression.ambition': { provider: 'google', model: GEMINI_MODELS.flash },
   'progression.variations': { provider: 'google', model: GEMINI_MODELS.flash },
