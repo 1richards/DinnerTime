@@ -11,6 +11,13 @@
         "simulator": true
       }
     },
+    "development-device": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      }
+    },
     "preview": {
       "distribution": "internal"
     },
@@ -21,8 +28,7 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "",
-        "ascAppId": ""
+        "appleId": "patrickrrichards@gmail.com"
       }
     }
   }
