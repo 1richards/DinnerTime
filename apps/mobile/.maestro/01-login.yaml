@@ -1,0 +1,49 @@
+appId: com.dinnertime.app
+name: "01 — login: existing user signs in and lands on home"
+---
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "DinnerTime"
+    timeout: 60000
+- takeScreenshot: 01-app-loaded
+
+# The UAT user already has onboarding_complete=true — should land on login screen.
+- extendedWaitUntil:
+    visible:
+      text: "Sign In"
+    timeout: 10000
+- takeScreenshot: 02-login-screen
+
+# Fill email
+- tapOn:
+    text: "you@example.com"
+- inputText: "uat@dinnertime.test"
+- takeScreenshot: 03-email-filled
+
+# Fill password
+- tapOn:
+    text: "Your password"
+- inputText: "UAT-overnight-2026!"
+- takeScreenshot: 04-password-filled
+
+# Submit
+- tapOn:
+    text: "Sign In"
+- takeScreenshot: 05-signing-in
+
+# Wait for home tab to appear (the "What should we cook tonight?" subtitle on HomeScreen)
+- extendedWaitUntil:
+    visible:
+      text: "What should we cook tonight"
+    timeout: 30000
+- takeScreenshot: 06-home-reached

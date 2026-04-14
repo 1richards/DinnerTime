@@ -1,0 +1,37 @@
+appId: com.dinnertime.app
+name: "15 — STUB: voice-guided cooking mode (SKIPPED — requires VOICE/STT)"
+---
+# ============================================================
+# SKIPPED — requires on-device Speech Recognition (VOICE/STT)
+# ============================================================
+#
+# The cooking mode at /recipes/[id]/cook (recipes/[id]/cook.tsx) uses:
+#   - @jamsch/expo-speech-recognition  (on-device STT)
+#   - expo-speech                      (TTS read-aloud)
+#
+# Both are native modules. The iOS Simulator does support TTS but STT
+# via expo-speech-recognition requires a physical device microphone and
+# the iOS Speech Recognition entitlement. The Maestro simulator driver
+# has no mechanism to inject audio input.
+#
+# What this would test (when runnable on a real device):
+#   1. Open any recipe detail screen.
+#   2. Tap "Start Cooking" to enter /recipes/{id}/cook.
+#   3. Verify the StepDisplay renders step 1 text.
+#   4. Speak "next step" and verify step 2 activates.
+#   5. Speak "set a timer for 5 minutes" and verify TimerBar shows.
+#   6. Tap Exit (cook-exit testID) to leave cooking mode.
+#
+# To unblock for real-device runs:
+#   - Build a device-targeted dev client (eas build --profile development --platform ios)
+#   - Use `maestro test --device <udid>` targeting a physical iPhone
+#   - Inject audio via an AudioFile injection approach (not yet supported by Maestro)
+#
+# For now, flow 14 (cook-tab) verifies up to the "Start Cooking" button.
+#
+# This flow has no runnable steps — it is documentation only.
+# Maestro requires at least one command in the steps body.
+# The tapOn below always fails immediately (which is fine — this flow is never run).
+- tapOn:
+    text: "STUB_FLOW_DO_NOT_RUN_SEE_COMMENTS_ABOVE"
+    optional: true

@@ -397,10 +397,21 @@ export async function generateMealPlan(
   const newPlanRow = newPlan as { id: string; profile_id: string; week_start: string; generated_at: string; created_at: string; updated_at: string };
 
   // 10. Insert 7 meal_plan_entries (map day strings -> 0..6)
+  //
+  // recipe_id coercion: the AI may return the literal string "null", an empty
+  // string, or a hallucinated UUID that isn't in the user's library. Only keep
+  // IDs that match a real recipe; otherwise null. This prevents the insert
+  // from failing with "invalid input syntax for type uuid: 'null'".
+  const recipeLibraryIds = new Set(context.recipeLibrary.map((r) => r.id));
+  const coerceRecipeId = (id: string | null | undefined): string | null => {
+    if (!id || id === 'null' || id === '') return null;
+    return recipeLibraryIds.has(id) ? id : null;
+  };
+
   const entryRows = days.map((d) => ({
     meal_plan_id: newPlanRow.id,
     day_of_week: dayStringToIndex(d.day_of_week),
-    recipe_id: d.recipe_id ?? null,
+    recipe_id: coerceRecipeId(d.recipe_id),
     title: d.title,
     description: d.description,
     ingredients: (d.ingredients_used ?? []).map((name) => ({ name })),
@@ -557,8 +568,13 @@ REGENERATION CONTEXT:
   }
 
   // 6. Update the entry row in place
+  const swapLibraryIds = new Set(context.recipeLibrary.map((r) => r.id));
+  const swapRecipeId =
+    replacement.recipe_id && replacement.recipe_id !== 'null' && swapLibraryIds.has(replacement.recipe_id)
+      ? replacement.recipe_id
+      : null;
   const patch = {
-    recipe_id: replacement.recipe_id ?? null,
+    recipe_id: swapRecipeId,
     title: replacement.title,
     description: replacement.description,
     ingredients: (replacement.ingredients_used ?? []).map((name) => ({ name })),

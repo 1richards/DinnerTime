@@ -114,13 +114,14 @@ pantry.patch('/:id', async (c) => {
     return c.json({ error: 'No fields to update' }, 400);
   }
 
+  // Use maybeSingle so a 0-row match returns data=null (→ 404) instead of PGRST116 (→ 500).
   const { data, error } = await supabase
     .from('pantry_items')
     .update(updates)
     .eq('id', id)
     .eq('profile_id', user.id)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
     return c.json({ error: error.message }, 500);

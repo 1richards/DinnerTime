@@ -1,0 +1,37 @@
+appId: com.dinnertime.app
+name: "16 — STUB: pantry photo scan (SKIPPED — requires CAMERA)"
+---
+# ============================================================
+# SKIPPED — requires CAMERA
+# ============================================================
+#
+# The pantry scan flow at /scan uses expo-image-picker to capture
+# a photo of the fridge/pantry/freezer. The iOS Simulator's camera
+# returns a simulated still image (the spinning Earth), which does
+# not represent real pantry contents, and expo-image-picker on the
+# simulator opens the photo library picker — not a camera viewfinder.
+#
+# The Maestro simulator driver cannot:
+#   - Grant camera permission dialogs in Maestro YAML
+#   - Interact with the iOS native image picker UI (it is a separate
+#     OS-level process, not within the app's accessibility tree)
+#
+# What this would test (when runnable on a real device):
+#   1. Login and navigate to the Pantry tab (shows "Your kitchen is empty").
+#   2. Tap "Scan Now" → permission prompt → grant camera.
+#   3. Point camera at a shelf with visible ingredients.
+#   4. Capture photo.
+#   5. Wait for Claude Vision AI to identify items (extendedWaitUntil, 60s).
+#   6. Verify ReviewItemRow list renders with at least one item.
+#   7. Confirm items → verify "My Kitchen" screen shows them.
+#
+# To unblock for real-device runs:
+#   - Use `maestro test --device <udid>` targeting a physical iPhone.
+#   - Pre-grant camera permission via `xcrun simctl privacy <udid> grant camera com.dinnertime.app`.
+#   - Maestro still cannot interact with the native picker; inject via launchArguments
+#     or use an Expo mock for CI.
+#
+# This flow has no runnable steps — it is documentation only.
+- tapOn:
+    text: "STUB_FLOW_DO_NOT_RUN_SEE_COMMENTS_ABOVE"
+    optional: true

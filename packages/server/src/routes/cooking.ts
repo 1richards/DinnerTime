@@ -103,7 +103,19 @@ cooking.post('/ask', async (c) => {
   }
 
   const typed = recipe as RecipeRowLite;
-  const steps = Array.isArray(typed.steps) ? typed.steps : [];
+  // Defensively coerce steps: Supabase usually returns a parsed JSONB array,
+  // but a legacy row or a test fixture may store it as a JSON-encoded string.
+  let steps: string[] = [];
+  if (Array.isArray(typed.steps)) {
+    steps = typed.steps as string[];
+  } else if (typeof typed.steps === 'string') {
+    try {
+      const parsed = JSON.parse(typed.steps);
+      if (Array.isArray(parsed)) steps = parsed as string[];
+    } catch {
+      // Swallow — steps stays [].
+    }
+  }
   const lastIdx = Math.max(0, steps.length - 1);
   const clamped = Math.min(Math.max(0, Math.floor(stepIndex)), lastIdx);
   const currentStep = steps[clamped] ?? '';

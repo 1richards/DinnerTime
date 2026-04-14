@@ -1,0 +1,84 @@
+appId: com.dinnertime.app
+name: "04 — recipe import: paste freeform text, parse with AI, save"
+---
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "DinnerTime"
+    timeout: 60000
+- takeScreenshot: 01-app-loaded
+
+# Login
+- extendedWaitUntil:
+    visible:
+      text: "Sign In"
+    timeout: 10000
+- tapOn:
+    text: "you@example.com"
+- inputText: "uat@dinnertime.test"
+- tapOn:
+    text: "Your password"
+- inputText: "UAT-overnight-2026!"
+- tapOn:
+    text: "Sign In"
+- extendedWaitUntil:
+    visible:
+      text: "What should we cook tonight"
+    timeout: 30000
+- takeScreenshot: 02-home
+
+# Recipes tab
+- tapOn:
+    text: "Recipes"
+- takeScreenshot: 03-recipes-tab
+
+# Open import method picker via FAB
+- tapOn:
+    point: "90%,88%"
+- takeScreenshot: 04-import-method-screen
+
+# Choose "Type It In"
+- tapOn:
+    text: "Type It In"
+- takeScreenshot: 05-manual-import-screen
+- assertVisible:
+    text: "Paste or type your recipe here"
+    optional: true
+
+# Type a simple recipe
+- tapOn:
+    text: "Paste or type your recipe here"
+    optional: true
+- tapOn:
+    point: "50%,40%"
+- inputText: "Simple Scrambled Eggs\n2 eggs\n1 tbsp butter\nSalt and pepper\n\n1. Crack eggs into a bowl and whisk.\n2. Melt butter in a pan over medium heat.\n3. Pour in eggs and stir gently until set."
+- takeScreenshot: 06-text-entered
+
+# Parse (AI-backed — generous timeout)
+- tapOn:
+    text: "Parse Recipe"
+- takeScreenshot: 07-parsing
+- extendedWaitUntil:
+    visible:
+      text: "Save Recipe"
+    timeout: 60000
+- takeScreenshot: 08-review-screen
+
+# Save
+- tapOn:
+    text: "Save Recipe"
+- takeScreenshot: 09-saving
+- extendedWaitUntil:
+    visible:
+      text: "My Recipes"
+    timeout: 20000
+- takeScreenshot: 10-saved

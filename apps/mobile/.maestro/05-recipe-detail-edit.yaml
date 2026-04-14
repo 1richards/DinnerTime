@@ -1,0 +1,99 @@
+appId: com.dinnertime.app
+name: "05 — recipe detail + edit: open first recipe, view detail, edit title, save"
+# Pre-condition: at least one recipe must exist in the UAT user's library.
+# Run the reset script then 03-import-url first if the library is empty.
+---
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "DinnerTime"
+    timeout: 60000
+- takeScreenshot: 01-app-loaded
+
+# Login
+- extendedWaitUntil:
+    visible:
+      text: "Sign In"
+    timeout: 10000
+- tapOn:
+    text: "you@example.com"
+- inputText: "uat@dinnertime.test"
+- tapOn:
+    text: "Your password"
+- inputText: "UAT-overnight-2026!"
+- tapOn:
+    text: "Sign In"
+- extendedWaitUntil:
+    visible:
+      text: "What should we cook tonight"
+    timeout: 30000
+- takeScreenshot: 02-home
+
+# Recipes tab
+- tapOn:
+    text: "Recipes"
+- extendedWaitUntil:
+    visible:
+      text: "My Recipes"
+    timeout: 15000
+- takeScreenshot: 03-recipes-list
+
+# Tap first recipe card (dynamic content — use coordinates for first item)
+- tapOn:
+    point: "50%,35%"
+- takeScreenshot: 04-recipe-detail
+
+# Verify we're on the detail screen by looking for the Ingredients heading
+- extendedWaitUntil:
+    visible:
+      text: "Ingredients"
+    timeout: 10000
+- assertVisible:
+    text: "Steps"
+- assertVisible:
+    text: "Start Cooking"
+- assertVisible:
+    text: "Edit"
+- takeScreenshot: 05-detail-confirmed
+
+# Tap Edit
+- tapOn:
+    text: "Edit"
+- takeScreenshot: 06-edit-screen
+
+# Edit screen has a "Recipe title" placeholder in the Title field
+- extendedWaitUntil:
+    visible:
+      text: "Save Changes"
+    timeout: 10000
+- takeScreenshot: 07-edit-screen-loaded
+
+# Clear the title field and type a new value
+# The title field shows the current recipe title — clear it by selecting all
+- tapOn:
+    text: "Recipe title"
+    optional: true
+- tapOn:
+    point: "50%,18%"
+- clearText
+- inputText: "UAT Edited Recipe"
+- takeScreenshot: 08-title-edited
+
+# Save
+- tapOn:
+    text: "Save Changes"
+- takeScreenshot: 09-saving
+- extendedWaitUntil:
+    visible:
+      text: "Ingredients"
+    timeout: 15000
+- takeScreenshot: 10-back-on-detail

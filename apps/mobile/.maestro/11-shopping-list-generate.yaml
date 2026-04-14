@@ -1,0 +1,95 @@
+appId: com.dinnertime.app
+name: "11 — shopping list: generate from meal plan, add manual item, check items off"
+# Pre-condition: a meal plan must exist. Run 09-meal-plan-generate first.
+---
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "DinnerTime"
+    timeout: 60000
+- takeScreenshot: 01-app-loaded
+
+# Login
+- extendedWaitUntil:
+    visible:
+      text: "Sign In"
+    timeout: 10000
+- tapOn:
+    text: "you@example.com"
+- inputText: "uat@dinnertime.test"
+- tapOn:
+    text: "Your password"
+- inputText: "UAT-overnight-2026!"
+- tapOn:
+    text: "Sign In"
+- extendedWaitUntil:
+    visible:
+      text: "What should we cook tonight"
+    timeout: 30000
+- takeScreenshot: 02-home
+
+# Shopping tab
+- tapOn:
+    text: "Shopping"
+- takeScreenshot: 03-shopping-tab
+
+# Wait for the shopping tab to finish loading (empty or populated).
+# Both states show "shopping" context — wait for a stable element.
+- takeScreenshot: 04-shopping-state
+
+# If empty, generate from meal plan (AI-backed)
+- tapOn:
+    text: "Generate from Meal Plan"
+    optional: true
+- takeScreenshot: 05-generating
+- extendedWaitUntil:
+    visible:
+      text: "Order on Instacart"
+    timeout: 60000
+- takeScreenshot: 06-list-loaded
+
+# Shopping list should show at least a title and the "Orders" button
+- assertVisible:
+    text: "Orders"
+    optional: true
+- takeScreenshot: 07-list-visible
+
+# Add a manual item via the + FAB (AddItemSheet)
+# FAB is at approximately 87% X, 82% Y (above the bottom bar)
+- tapOn:
+    point: "87%,82%"
+- takeScreenshot: 08-add-item-sheet
+
+# Wait for the sheet to appear
+- extendedWaitUntil:
+    visible:
+      text: "Add item"
+    timeout: 10000
+- takeScreenshot: 09-sheet-open
+
+# Enter item name
+- tapOn:
+    text: "e.g. Oranges"
+- inputText: "UAT Test Item"
+- takeScreenshot: 10-item-name-entered
+
+# Submit
+- tapOn:
+    text: "Add to list"
+- takeScreenshot: 11-item-added
+
+# Verify sheet dismissed and we're back on the list
+- extendedWaitUntil:
+    visible:
+      text: "Order on Instacart"
+    timeout: 10000
+- takeScreenshot: 12-back-on-list

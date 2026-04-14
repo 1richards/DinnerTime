@@ -66,13 +66,15 @@ describe('taskRouting', () => {
     expect(client.model).toBe('gemini-3-flash-preview');
   });
 
-  it('getClientFor(mealPlanner.week) returns GeminiAdapter with gemini-3.1-pro-preview', () => {
+  it('getClientFor(mealPlanner.week) returns GeminiAdapter with gemini-3-flash-preview', () => {
+    // NOTE: mealPlanner.week was downgraded from gemini-3.1-pro-preview (paid tier)
+    // to gemini-3-flash-preview (free tier) — see taskRouting.ts comments.
     const client = getClientFor('mealPlanner.week') as unknown as {
       __kind: string;
       model: string;
     };
     expect(client.__kind).toBe('gemini');
-    expect(client.model).toBe('gemini-3.1-pro-preview');
+    expect(client.model).toBe('gemini-3-flash-preview');
   });
 
   it('getClientFor(cooking.tips) returns GeminiAdapter with gemini-3.1-flash-lite-preview', () => {

@@ -1,0 +1,94 @@
+appId: com.dinnertime.app
+name: "13 — settings: update cuisine preference and cooking skill level"
+---
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "DinnerTime"
+    timeout: 60000
+- takeScreenshot: 01-app-loaded
+
+# Login
+- extendedWaitUntil:
+    visible:
+      text: "Sign In"
+    timeout: 10000
+- tapOn:
+    text: "you@example.com"
+- inputText: "uat@dinnertime.test"
+- tapOn:
+    text: "Your password"
+- inputText: "UAT-overnight-2026!"
+- tapOn:
+    text: "Sign In"
+- extendedWaitUntil:
+    visible:
+      text: "What should we cook tonight"
+    timeout: 30000
+- takeScreenshot: 02-home
+
+# Open Settings via the gear icon in the Home tab header (top-right)
+- tapOn:
+    point: "90%,8%"
+- takeScreenshot: 03-settings-opened
+- extendedWaitUntil:
+    visible:
+      text: "Family Members"
+    timeout: 10000
+- takeScreenshot: 04-settings-loaded
+
+# Verify all settings sections are present
+- assertVisible:
+    text: "Dietary"
+    optional: true
+- assertVisible:
+    text: "Cooking Skill"
+- takeScreenshot: 05-sections-visible
+
+# Scroll down to reach the Cooking Skill section (it is near the bottom of the page)
+- scroll
+- scroll
+- tapOn:
+    text: "Confident"
+- takeScreenshot: 06-skill-selected
+
+# A "Saved" toast should appear briefly
+- extendedWaitUntil:
+    visible:
+      text: "Saved"
+    timeout: 5000
+    optional: true
+- takeScreenshot: 07-saved-toast
+
+# Cuisine Preferences section is earlier on the page — scroll back up
+- scroll
+- takeScreenshot: 08-cuisine-section
+
+# Toggle Italian (may already be selected from onboarding — tap to toggle)
+- tapOn:
+    text: "Italian"
+    optional: true
+- takeScreenshot: 09-cuisine-toggled
+
+# Tap "Add Member" to verify Family Members section is interactive
+- tapOn:
+    text: "Add Member"
+- takeScreenshot: 10-member-modal-opened
+
+# Close modal by tapping outside or a close button
+- tapOn:
+    point: "50%,15%"
+    optional: true
+- tapOn:
+    text: "Cancel"
+    optional: true
+- takeScreenshot: 11-modal-closed

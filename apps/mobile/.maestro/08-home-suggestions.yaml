@@ -1,0 +1,68 @@
+appId: com.dinnertime.app
+name: "08 — home: suggestions load and are interactive"
+---
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "DinnerTime"
+    timeout: 60000
+- takeScreenshot: 01-app-loaded
+
+# Login
+- extendedWaitUntil:
+    visible:
+      text: "Sign In"
+    timeout: 10000
+- tapOn:
+    text: "you@example.com"
+- inputText: "uat@dinnertime.test"
+- tapOn:
+    text: "Your password"
+- inputText: "UAT-overnight-2026!"
+- tapOn:
+    text: "Sign In"
+- extendedWaitUntil:
+    visible:
+      text: "What should we cook tonight"
+    timeout: 30000
+- takeScreenshot: 02-home-loaded
+
+# The Home screen (index.tsx) renders the user's display name if set,
+# or "Your Dinner Dashboard" as the header, and "What should we cook tonight?"
+# as the subtitle. The SuggestionList is rendered below.
+- assertVisible:
+    text: "What should we cook tonight"
+- takeScreenshot: 03-home-header
+
+# Verify settings button is accessible (top-right header)
+# The settings gear is at the top-right via headerRight in the tab layout
+- tapOn:
+    point: "90%,8%"
+- takeScreenshot: 04-settings-opened
+
+# Settings screen renders sections
+- extendedWaitUntil:
+    visible:
+      text: "Family Members"
+    timeout: 10000
+- assertVisible:
+    text: "Dietary"
+    optional: true
+- assertVisible:
+    text: "Cooking Skill"
+    optional: true
+- takeScreenshot: 05-settings-screen
+
+# Go back to home
+- tapOn:
+    text: "Home"
+- takeScreenshot: 06-back-to-home

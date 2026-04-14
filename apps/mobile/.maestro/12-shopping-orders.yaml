@@ -1,0 +1,63 @@
+appId: com.dinnertime.app
+name: "12 — shopping orders: navigate to order history screen"
+# This flow tests the Orders sub-screen (shopping/orders.tsx).
+# The "Order on Instacart" button opens an in-app browser (WebBrowser) which we
+# cannot automate. We only test that the Orders screen renders correctly.
+---
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "DinnerTime"
+    timeout: 60000
+- takeScreenshot: 01-app-loaded
+
+# Login
+- extendedWaitUntil:
+    visible:
+      text: "Sign In"
+    timeout: 10000
+- tapOn:
+    text: "you@example.com"
+- inputText: "uat@dinnertime.test"
+- tapOn:
+    text: "Your password"
+- inputText: "UAT-overnight-2026!"
+- tapOn:
+    text: "Sign In"
+- extendedWaitUntil:
+    visible:
+      text: "What should we cook tonight"
+    timeout: 30000
+- takeScreenshot: 02-home
+
+# Shopping tab
+- tapOn:
+    text: "Shopping"
+- takeScreenshot: 03-shopping-tab
+
+# The Orders button (receipt-outline icon + "Orders" text) is in the header
+# only when a shopping list exists. If no list, orders are not navigable from here.
+# Try tapping "Orders" text if visible.
+- tapOn:
+    text: "Orders"
+    optional: true
+- takeScreenshot: 04-orders-screen
+
+# Orders screen shows either "No orders yet" or a list of Instacart order cards
+- extendedWaitUntil:
+    anyOf:
+      - visible:
+          text: "No orders yet"
+      - visible:
+          text: "Instacart order"
+    timeout: 10000
+- takeScreenshot: 05-orders-state

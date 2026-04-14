@@ -182,6 +182,30 @@ shopping.get('/current', async (c) => {
 });
 
 /**
+ * GET /orders — past orders for the current profile.
+ *
+ * NOTE: This MUST be registered before `GET /:id`. Hono matches in registration
+ * order and `/orders` would otherwise be captured as `id="orders"` by the UUID param.
+ */
+shopping.get('/orders', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+
+  try {
+    const { data, error } = await supabase
+      .from('shopping_orders')
+      .select()
+      .eq('profile_id', user.id)
+      .order('placed_at', { ascending: false });
+    if (error) return c.json({ error: error.message }, 500);
+    return c.json({ data: data ?? [] });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch orders';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
  * GET /:id — specific shopping list with items.
  */
 shopping.get('/:id', async (c) => {
@@ -394,27 +418,6 @@ shopping.post('/:id/order', async (c) => {
     return c.json({ data: { url: productsUrl, order_id: order.id } }, 201);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to place order';
-    return c.json({ error: message }, 500);
-  }
-});
-
-/**
- * GET /orders — past orders for the current profile.
- */
-shopping.get('/orders', async (c) => {
-  const supabase = c.get('supabase');
-  const user = c.get('user');
-
-  try {
-    const { data, error } = await supabase
-      .from('shopping_orders')
-      .select()
-      .eq('profile_id', user.id)
-      .order('placed_at', { ascending: false });
-    if (error) return c.json({ error: error.message }, 500);
-    return c.json({ data: data ?? [] });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch orders';
     return c.json({ error: message }, 500);
   }
 });

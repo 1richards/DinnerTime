@@ -1,0 +1,89 @@
+appId: com.dinnertime.app
+name: "03 — recipe import: paste URL, wait for AI parse, review and save"
+---
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "DinnerTime"
+    timeout: 60000
+- takeScreenshot: 01-app-loaded
+
+# Login with UAT user
+- extendedWaitUntil:
+    visible:
+      text: "Sign In"
+    timeout: 10000
+- tapOn:
+    text: "you@example.com"
+- inputText: "uat@dinnertime.test"
+- tapOn:
+    text: "Your password"
+- inputText: "UAT-overnight-2026!"
+- tapOn:
+    text: "Sign In"
+- extendedWaitUntil:
+    visible:
+      text: "What should we cook tonight"
+    timeout: 30000
+- takeScreenshot: 02-home
+
+# Go to Recipes tab
+- tapOn:
+    text: "Recipes"
+- takeScreenshot: 03-recipes-tab
+
+# Tap the floating + button (ImportFab) to open import method picker
+- tapOn:
+    point: "90%,88%"
+- takeScreenshot: 04-import-method-screen
+- assertVisible:
+    text: "Paste URL"
+
+# Select URL import
+- tapOn:
+    text: "Paste URL"
+- takeScreenshot: 05-import-url-screen
+- assertVisible:
+    text: "Recipe URL"
+
+# Enter a stable recipe URL (BBC Good Food — does not require JS rendering)
+- tapOn:
+    text: "https://example.com/recipe"
+- inputText: "https://www.bbcgoodfood.com/recipes/classic-spaghetti-carbonara"
+- takeScreenshot: 06-url-entered
+
+# Trigger import (AI-backed — generous timeout)
+- tapOn:
+    text: "Import"
+- takeScreenshot: 07-importing
+- extendedWaitUntil:
+    visible:
+      text: "Save Recipe"
+    timeout: 60000
+- takeScreenshot: 08-review-screen
+
+# Review screen should show a title field
+- assertVisible:
+    text: "Recipe title"
+    optional: true
+
+# Save the recipe
+- tapOn:
+    text: "Save Recipe"
+- takeScreenshot: 09-saving
+
+# Should navigate back to Recipes tab
+- extendedWaitUntil:
+    visible:
+      text: "My Recipes"
+    timeout: 20000
+- takeScreenshot: 10-saved-to-library

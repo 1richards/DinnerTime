@@ -42,15 +42,27 @@ Screenshots land in `~/.maestro/tests/<run-id>/` and are also embedded in the ru
 
 ## Flow inventory
 
-| File | What it covers |
-| --- | --- |
-| `smoke.yaml` | App launches, auth store hydrates. Cheapest sanity check. |
-| `login.yaml` | Existing user signs in, lands on home or onboarding. |
-| `onboarding.yaml` | Fresh user completes the 3-step wizard. |
-| `recipe-import-url.yaml` | Paste a recipe URL, verify it saves. |
-| `pantry-add.yaml` | Add a pantry item by hand. |
-| `meal-plan-generate.yaml` | Generate a week's meal plan. |
-| `shopping-list.yaml` | Shopping tab renders. |
+| File | What it covers | Requires |
+| --- | --- | --- |
+| `smoke.yaml` | App launches, auth store hydrates. Cheapest sanity check. | — |
+| `01-login.yaml` | Existing UAT user signs in, lands on home tab. | network |
+| `02-signup-onboarding.yaml` | Fresh user registers, completes 3-step onboarding wizard. | network + `MAESTRO_NEW_EMAIL` |
+| `03-import-url.yaml` | Paste a recipe URL, AI parses it, review screen, save. | network + AI |
+| `04-import-manual.yaml` | Type freeform recipe text, AI parses, review, save. | network + AI |
+| `05-recipe-detail-edit.yaml` | Open first recipe, view detail, edit title, save changes. | ≥1 recipe in library |
+| `06-recipe-discover.yaml` | AI-powered recipe discovery, save one suggestion. | network + AI |
+| `07-pantry-add.yaml` | Pantry tab renders, filter tabs work (manual add requires scan). | — |
+| `08-home-suggestions.yaml` | Home screen loads, settings screen opens and saves. | — |
+| `09-meal-plan-generate.yaml` | Generate (or verify) a 7-day meal plan on the Plan tab. | network + AI |
+| `10-meal-plan-swap.yaml` | Swap one day's meal via the SwapSheet. | existing plan + AI |
+| `11-shopping-list-generate.yaml` | Generate shopping list from plan, add manual item. | existing plan + AI |
+| `12-shopping-orders.yaml` | Navigate to order history screen. | — |
+| `13-settings.yaml` | Update skill level, toggle cuisine, add family member modal. | — |
+| `14-cook-tab.yaml` | Cook tab renders, "Open Recipes" navigates, "Start Cooking" visible. | ≥1 recipe |
+| `15-cook-voice-mode-stub.yaml` | **STUB — SKIPPED** Voice cooking mode requires VOICE/STT. | physical device |
+| `16-pantry-scan-stub.yaml` | **STUB — SKIPPED** Pantry photo scan requires CAMERA. | physical device |
+| `17-recipe-import-photo-stub.yaml` | **STUB — SKIPPED** Recipe photo import requires CAMERA. | physical device |
+| `18-recipe-search-favorite.yaml` | Search recipes, toggle Favorites filter, toggle favorite on detail. | ≥1 recipe |
 
 ## Sentinel banner
 

@@ -1,0 +1,29 @@
+appId: com.dinnertime.app
+name: "17 — STUB: recipe import via photo (SKIPPED — requires CAMERA)"
+---
+# ============================================================
+# SKIPPED — requires CAMERA
+# ============================================================
+#
+# The recipe photo import screen at /recipes/import-photo
+# (recipes/import-photo.tsx) uses expo-image-picker to capture
+# or select a photo of a physical recipe card or cookbook page.
+#
+# Same blocking reasons as 16-pantry-scan-stub.yaml:
+#   - iOS Simulator camera is a simulated still image (spinning Earth),
+#     not suitable for recipe-card OCR.
+#   - The native image picker UI is outside Maestro's accessibility tree.
+#
+# What this would test (when runnable on a real device):
+#   1. Login and navigate to Recipes tab.
+#   2. Tap the + FAB → choose "Take Photo".
+#   3. Grant camera permission.
+#   4. Capture a photo of a handwritten/printed recipe.
+#   5. Wait for Claude Vision parsing (extendedWaitUntil, 60s).
+#   6. Verify /recipes/review screen renders with title pre-filled.
+#   7. Tap "Save Recipe" and verify it lands in My Recipes.
+#
+# This flow has no runnable steps — it is documentation only.
+- tapOn:
+    text: "STUB_FLOW_DO_NOT_RUN_SEE_COMMENTS_ABOVE"
+    optional: true

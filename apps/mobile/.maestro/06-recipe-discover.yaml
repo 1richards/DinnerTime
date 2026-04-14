@@ -1,0 +1,77 @@
+appId: com.dinnertime.app
+name: "06 — recipe discover: open Discover tab, get AI suggestions, save one"
+---
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Continue"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "DinnerTime"
+    timeout: 60000
+- takeScreenshot: 01-app-loaded
+
+# Login
+- extendedWaitUntil:
+    visible:
+      text: "Sign In"
+    timeout: 10000
+- tapOn:
+    text: "you@example.com"
+- inputText: "uat@dinnertime.test"
+- tapOn:
+    text: "Your password"
+- inputText: "UAT-overnight-2026!"
+- tapOn:
+    text: "Sign In"
+- extendedWaitUntil:
+    visible:
+      text: "What should we cook tonight"
+    timeout: 30000
+- takeScreenshot: 02-home
+
+# Recipes tab
+- tapOn:
+    text: "Recipes"
+- extendedWaitUntil:
+    visible:
+      text: "My Recipes"
+    timeout: 15000
+- takeScreenshot: 03-recipes-tab
+
+# Tap "Discover" chip button
+- tapOn:
+    text: "Discover"
+- takeScreenshot: 04-discover-loading
+
+# Wait for AI to return suggestions ("Brewing ideas..." then recipes)
+- extendedWaitUntil:
+    visible:
+      text: "Save to Library"
+    timeout: 60000
+- takeScreenshot: 05-suggestions-loaded
+
+# Verify the Discover header
+- assertVisible:
+    text: "Discover"
+- assertVisible:
+    text: "AI-suggested recipes tailored to your household"
+    optional: true
+
+# Tap "Save to Library" on the first suggestion
+- tapOn:
+    text: "Save to Library"
+- takeScreenshot: 06-saving-suggestion
+
+# Confirm save (the button changes to "Saved to library" with a checkmark)
+- extendedWaitUntil:
+    visible:
+      text: "Saved to library"
+    timeout: 15000
+- takeScreenshot: 07-saved-to-library
