@@ -1,0 +1,38 @@
+appId: com.dinnertime.app
+# Shared helper: boot the app into a logged-in state, regardless of whether
+# a session was persisted. Called by most flows via `runFlow`.
+---
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: ".*Open.*"
+    optional: true
+- tapOn:
+    text: ".*Continue.*"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: ".*DinnerTime.*"
+    timeout: 60000
+
+# If already logged in (session persisted from a prior run), skip. Otherwise
+# the "Sign In" button is visible — fill the form.
+- runFlow:
+    when:
+      visible:
+        text: ".*Sign In.*"
+    commands:
+      - tapOn:
+          text: ".*you@example.com.*"
+      - inputText: "uat@dinnertime.test"
+      - tapOn:
+          text: ".*Your password.*"
+      - inputText: "UAT-overnight-2026!"
+      - tapOn:
+          text: ".*Sign In.*"
+      - extendedWaitUntil:
+          visible:
+            text: ".*UAT Tester.*"
+          timeout: 30000

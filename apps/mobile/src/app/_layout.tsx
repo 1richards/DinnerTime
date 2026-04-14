@@ -2,6 +2,7 @@ import '../global.css';
 
 import { useEffect } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/authStore';
@@ -75,13 +76,15 @@ function AuthStateBanner() {
 export default function RootLayout() {
   console.log('[DinnerTime] RootLayout mounted');
   return (
-    <QueryClientProvider client={queryClient}>
-      <View style={{ flex: 1 }}>
-        <AuthStateBanner />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
         <View style={{ flex: 1 }}>
-          <RootNavigator />
+          <AuthStateBanner />
+          <View style={{ flex: 1 }}>
+            <RootNavigator />
+          </View>
         </View>
-      </View>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

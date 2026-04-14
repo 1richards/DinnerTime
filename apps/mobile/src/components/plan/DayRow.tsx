@@ -100,6 +100,7 @@ export function DayRow({
 
       <View className="flex-row items-center gap-1">
         <Pressable
+          testID={`swap-btn-${dayLabel}`}
           onPress={onSwap}
           disabled={isSwapping || isCooking || isCooked}
           hitSlop={8}
@@ -116,6 +117,7 @@ export function DayRow({
           )}
         </Pressable>
         <Pressable
+          testID={`cook-btn-${dayLabel}`}
           onPress={onCook}
           disabled={isSwapping || isCooking || isCooked}
           hitSlop={8}

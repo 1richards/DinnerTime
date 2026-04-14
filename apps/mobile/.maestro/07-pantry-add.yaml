@@ -15,44 +15,14 @@ name: "07 — pantry: add item manually via scan button sheet"
 #
 # This flow: login -> Pantry tab -> confirm UI renders -> filter tabs work.
 ---
-- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
-- tapOn:
-    text: "Open"
-    optional: true
-- tapOn:
-    text: "Continue"
-    optional: true
-- tapOn:
-    point: "90%,32%"
-    optional: true
-- extendedWaitUntil:
-    visible:
-      text: "DinnerTime"
-    timeout: 60000
-- takeScreenshot: 01-app-loaded
+- runFlow: _ensure-logged-in.yaml
 
-# Login
-- extendedWaitUntil:
-    visible:
-      text: "Sign In"
-    timeout: 10000
-- tapOn:
-    text: "you@example.com"
-- inputText: "uat@dinnertime.test"
-- tapOn:
-    text: "Your password"
-- inputText: "UAT-overnight-2026!"
-- tapOn:
-    text: "Sign In"
-- extendedWaitUntil:
-    visible:
-      text: "What should we cook tonight"
-    timeout: 30000
 - takeScreenshot: 02-home
 
 # Navigate to Pantry tab
 - tapOn:
-    text: "Pantry"
+    text: ".*Pantry.*"
+
 - takeScreenshot: 03-pantry-tab
 
 # Pantry can be empty (shows "Your kitchen is empty" with "Scan Now")
@@ -62,18 +32,22 @@ name: "07 — pantry: add item manually via scan button sheet"
 
 # If My Kitchen header visible, test filter tabs
 - tapOn:
-    text: "Fridge"
+    text: ".*Fridge.*"
+
     optional: true
 - takeScreenshot: 05-fridge-filter
 - tapOn:
-    text: "Pantry"
+    text: ".*Pantry.*"
+
     optional: true
 - takeScreenshot: 06-pantry-filter
 - tapOn:
-    text: "Freezer"
+    text: ".*Freezer.*"
+
     optional: true
 - takeScreenshot: 07-freezer-filter
 - tapOn:
-    text: "All"
+    text: ".*All.*"
+
     optional: true
 - takeScreenshot: 08-all-items

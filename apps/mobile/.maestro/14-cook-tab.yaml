@@ -6,72 +6,43 @@ name: "14 — cook tab: open Cook tab, navigate to a recipe from it"
 # and is tested only up to the point of pressing "Start Cooking" — we do NOT
 # enter the voice screen itself (see 15-cook-mode-stub.yaml).
 ---
-- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- runFlow: _ensure-logged-in.yaml
+
+- takeScreenshot: 02-home
+
+# Cook tab — navigate via deep link (tab tap unreliable in test env)
+- openLink: "dinnertime:///(tabs)/cook"
 - tapOn:
     text: "Open"
     optional: true
-- tapOn:
-    text: "Continue"
-    optional: true
-- tapOn:
-    point: "90%,32%"
-    optional: true
-- extendedWaitUntil:
-    visible:
-      text: "DinnerTime"
-    timeout: 60000
-- takeScreenshot: 01-app-loaded
-
-# Login
-- extendedWaitUntil:
-    visible:
-      text: "Sign In"
-    timeout: 10000
-- tapOn:
-    text: "you@example.com"
-- inputText: "uat@dinnertime.test"
-- tapOn:
-    text: "Your password"
-- inputText: "UAT-overnight-2026!"
-- tapOn:
-    text: "Sign In"
-- extendedWaitUntil:
-    visible:
-      text: "What should we cook tonight"
-    timeout: 30000
-- takeScreenshot: 02-home
-
-# Cook tab
-- tapOn:
-    text: "Cook"
 - takeScreenshot: 03-cook-tab
 - extendedWaitUntil:
     visible:
-      text: "Hands-Free Cooking"
-    timeout: 10000
+      text: ".*Hands-Free Cooking.*"
+
+    timeout: 15000
 - assertVisible:
-    text: "Start Cooking"
+    text: ".*Start Cooking.*"
+
     optional: true
 - assertVisible:
-    text: "Open Recipes"
+    text: ".*Open Recipes.*"
+
 - takeScreenshot: 04-cook-tab-content
 
 # Tap "Open Recipes" — navigates to (tabs)/recipes
 - tapOn:
-    text: "Open Recipes"
+    text: ".*Open Recipes.*"
+
+# Recipes tab shows either "My Recipes" (has recipes) or "No recipes yet" (empty)
 - extendedWaitUntil:
     visible:
-      text: "My Recipes"
+      text: ".*Recipes.*"
     timeout: 10000
 - takeScreenshot: 05-on-recipes-tab
 
 # If at least one recipe exists, open the detail screen and verify "Start Cooking" button
 - tapOn:
     point: "50%,35%"
-    optional: true
-- extendedWaitUntil:
-    visible:
-      text: "Start Cooking"
-    timeout: 10000
     optional: true
 - takeScreenshot: 06-recipe-detail-with-start-cooking

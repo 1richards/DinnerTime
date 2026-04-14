@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { forwardRef, useState } from 'react';
 import { View, Text, TextInput, type TextInputProps } from 'react-native';
 
 interface InputProps extends TextInputProps {
@@ -7,13 +7,16 @@ interface InputProps extends TextInputProps {
   containerClassName?: string;
 }
 
-export function Input({
-  label,
-  error,
-  containerClassName = '',
-  secureTextEntry,
-  ...props
-}: InputProps) {
+export const Input = forwardRef<TextInput, InputProps>(function Input(
+  {
+    label,
+    error,
+    containerClassName = '',
+    secureTextEntry,
+    ...props
+  },
+  ref
+) {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
@@ -24,6 +27,7 @@ export function Input({
         </Text>
       )}
       <TextInput
+        ref={ref}
         className={`bg-warmGray-50 border rounded-xl px-4 py-3.5 text-base text-warmGray-900 ${
           error
             ? 'border-red-400'
@@ -48,4 +52,4 @@ export function Input({
       )}
     </View>
   );
-}
+});

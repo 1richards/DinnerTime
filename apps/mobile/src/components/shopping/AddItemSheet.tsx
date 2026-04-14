@@ -97,8 +97,11 @@ export function AddItemSheet({ visible, onClose, onSubmit }: AddItemSheetProps) 
               onChangeText={setName}
               placeholder="e.g. Oranges"
               autoFocus
+              autoCorrect={false}
+              autoCapitalize="none"
               className="bg-white border border-warmGray-200 rounded-xl px-4 py-3 text-base text-warmGray-900 mb-3"
-              returnKeyType="next"
+              returnKeyType="done"
+              onSubmitEditing={handleSubmit}
             />
 
             <View className="flex-row mb-5">

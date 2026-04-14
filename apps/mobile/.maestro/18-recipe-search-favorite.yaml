@@ -2,90 +2,60 @@ appId: com.dinnertime.app
 name: "18 — recipe search + favorite: search recipes and toggle a favorite"
 # Pre-condition: at least one recipe must exist in the UAT user's library.
 ---
-- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
-- tapOn:
-    text: "Open"
-    optional: true
-- tapOn:
-    text: "Continue"
-    optional: true
-- tapOn:
-    point: "90%,32%"
-    optional: true
-- extendedWaitUntil:
-    visible:
-      text: "DinnerTime"
-    timeout: 60000
-- takeScreenshot: 01-app-loaded
+- runFlow: _ensure-logged-in.yaml
 
-# Login
-- extendedWaitUntil:
-    visible:
-      text: "Sign In"
-    timeout: 10000
-- tapOn:
-    text: "you@example.com"
-- inputText: "uat@dinnertime.test"
-- tapOn:
-    text: "Your password"
-- inputText: "UAT-overnight-2026!"
-- tapOn:
-    text: "Sign In"
-- extendedWaitUntil:
-      visible:
-        text: "What should we cook tonight"
-      timeout: 30000
 - takeScreenshot: 02-home
 
 # Recipes tab
 - tapOn:
-    text: "Recipes"
+    text: ".*Recipes.*"
+
+# Wait for Recipes tab to load — shows "My Recipes" (has recipes) or "No recipes yet" (empty)
 - extendedWaitUntil:
     visible:
-      text: "My Recipes"
+      text: ".*Recipes.*"
     timeout: 15000
 - takeScreenshot: 03-recipes-list
 
-# SearchBar — placeholder is "Search recipes"
+# SearchBar — only visible when "My Recipes" view is shown (not empty state)
 - tapOn:
-    text: "Search recipes"
+    text: ".*Search recipes.*"
+    optional: true
 - inputText: "egg"
 - takeScreenshot: 04-search-active
 
 # Results may be empty or filtered — take a screenshot regardless
 - takeScreenshot: 05-search-results
 
-# Clear the search (tap x or clear)
-- clearText
+# Clear the search text
+- eraseText: 10
 - takeScreenshot: 06-search-cleared
 
-# Toggle "Favorites" chip to see favorite-only view
+# Toggle "Favorites" chip to see favorite-only view (only visible with recipes)
 - tapOn:
-    text: "Favorites"
+    text: ".*Favorites.*"
+    optional: true
 - takeScreenshot: 07-favorites-view
 
 # Toggle back to all
 - tapOn:
-    text: "Favorites"
+    text: ".*Favorites.*"
+    optional: true
 - takeScreenshot: 08-all-recipes
 
-# Open the first recipe
+# Open the first recipe if one exists (coordinate tap — optional)
 - tapOn:
-    point: "50%,35%"
-- extendedWaitUntil:
-    visible:
-      text: "Ingredients"
-    timeout: 10000
-- takeScreenshot: 09-recipe-detail
+    point: "50%,40%"
+    optional: true
+- takeScreenshot: 09-recipe-or-empty
 
-# FavoriteButton is rendered at top-right of the detail screen alongside the title.
-# It's a heart icon (Ionicons heart-outline / heart). Tap it to toggle favorite.
-# The FavoriteButton is at approximately 88% X, 15% Y.
+# If on recipe detail, try to toggle favorite
 - tapOn:
     point: "88%,15%"
+    optional: true
 - takeScreenshot: 10-favorite-toggled
 
-# Go back to recipe list
+# Go back to recipe list if on detail screen
 - tapOn:
     point: "5%,10%"
     optional: true

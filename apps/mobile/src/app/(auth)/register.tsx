@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  type TextInput,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,6 +18,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const confirmPasswordRef = useRef<TextInput>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [socialLoading, setSocialLoading] = useState<
@@ -126,17 +128,23 @@ export default function RegisterScreen() {
             onChangeText={setPassword}
             secureTextEntry
             textContentType="newPassword"
-            autoComplete="new-password"
+            autoComplete="password-new"
+            returnKeyType="next"
+            onSubmitEditing={() => confirmPasswordRef.current?.focus()}
           />
 
           <Input
+            ref={confirmPasswordRef}
+            testID="confirm-password-input"
             label="Confirm Password"
             placeholder="Enter password again"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
             textContentType="newPassword"
-            autoComplete="new-password"
+            autoComplete="password-new"
+            returnKeyType="done"
+            onSubmitEditing={handleEmailSignUp}
           />
 
           <Button

@@ -33,5 +33,6 @@ name: "15 — STUB: voice-guided cooking mode (SKIPPED — requires VOICE/STT)"
 # Maestro requires at least one command in the steps body.
 # The tapOn below always fails immediately (which is fine — this flow is never run).
 - tapOn:
-    text: "STUB_FLOW_DO_NOT_RUN_SEE_COMMENTS_ABOVE"
+    text: ".*STUB_FLOW_DO_NOT_RUN_SEE_COMMENTS_ABOVE.*"
+
     optional: true

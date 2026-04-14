@@ -118,9 +118,15 @@ export const useShoppingStore = create<ShoppingState>()(
       }
 
       const body = await response.json();
+      const genData = body.data;
+      if (!genData) {
+        set({ currentList: null, items: [], loading: false, error: null });
+        return;
+      }
+      const { items: generatedItems, ...listFields } = genData;
       set({
-        currentList: body.data.list,
-        items: body.data.items ?? [],
+        currentList: listFields as ShoppingList,
+        items: generatedItems ?? [],
         loading: false,
         error: null,
       });
@@ -157,9 +163,15 @@ export const useShoppingStore = create<ShoppingState>()(
       }
 
       const body = await response.json();
+      const data = body.data;
+      if (!data) {
+        set({ currentList: null, items: [], loading: false, error: null });
+        return;
+      }
+      const { items: fetchedItems, ...fetchedListFields } = data;
       set({
-        currentList: body.data.list,
-        items: body.data.items ?? [],
+        currentList: fetchedListFields as ShoppingList,
+        items: fetchedItems ?? [],
         loading: false,
         error: null,
       });

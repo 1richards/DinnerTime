@@ -2,55 +2,25 @@ appId: com.dinnertime.app
 name: "10 — meal plan: swap a day's recipe via the SwapSheet"
 # Pre-condition: a meal plan must already exist. Run 09-meal-plan-generate first.
 ---
-- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
-- tapOn:
-    text: "Open"
-    optional: true
-- tapOn:
-    text: "Continue"
-    optional: true
-- tapOn:
-    point: "90%,32%"
-    optional: true
-- extendedWaitUntil:
-    visible:
-      text: "DinnerTime"
-    timeout: 60000
-- takeScreenshot: 01-app-loaded
+- runFlow: _ensure-logged-in.yaml
 
-# Login
-- extendedWaitUntil:
-    visible:
-      text: "Sign In"
-    timeout: 10000
-- tapOn:
-    text: "you@example.com"
-- inputText: "uat@dinnertime.test"
-- tapOn:
-    text: "Your password"
-- inputText: "UAT-overnight-2026!"
-- tapOn:
-    text: "Sign In"
-- extendedWaitUntil:
-    visible:
-      text: "What should we cook tonight"
-    timeout: 30000
 - takeScreenshot: 02-home
 
 # Plan tab
 - tapOn:
-    text: "Plan"
+    text: ".*Plan.*"
+
 - extendedWaitUntil:
     visible:
-      text: "This Week"
+      text: ".*This Week.*"
+
     timeout: 90000
 - takeScreenshot: 03-plan-loaded
 
-# DayRow renders swap (swap-horizontal icon) and cook (flame-outline icon) buttons.
-# Neither has a text label — they're Ionicons only. Use coordinates.
-# The swap icon is at ~80% X on the first day row (Mon is at ~25% down the list).
+# DayRow renders swap and cook icon buttons. Both have testID props:
+# swap-btn-Mon, cook-btn-Mon, etc. Use testID (id selector) for reliable targeting.
 - tapOn:
-    point: "80%,25%"
+    id: "swap-btn-Mon"
 - takeScreenshot: 04-swap-sheet-open
 
 # SwapSheet (SwapSheet.tsx) renders:
@@ -59,17 +29,20 @@ name: "10 — meal plan: swap a day's recipe via the SwapSheet"
 #   "Cancel" — cancel button
 - extendedWaitUntil:
     visible:
-      text: "Swap this meal"
+      text: ".*Swap this meal.*"
+
     timeout: 10000
 - takeScreenshot: 05-swap-sheet-visible
 
 # Confirm the swap — button title is "Pick something else" (AI-backed — generous timeout)
 - tapOn:
-    text: "Pick something else"
+    text: ".*Pick something else.*"
+
 - takeScreenshot: 06-swapping
 
 - extendedWaitUntil:
     visible:
-      text: "This Week"
+      text: ".*This Week.*"
+
     timeout: 60000
 - takeScreenshot: 07-swap-complete

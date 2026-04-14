@@ -34,7 +34,34 @@ class NoopStorage {
  * Required because Supabase sessions exceed SecureStore's 2048-byte limit.
  *
  * Source: https://supabase.com/docs/guides/getting-started/tutorials/with-expo-react-native?auth-store=secure-store
+ *
+ * iOS Simulator fallback:
+ * expo-secure-store requires the keychain-access-groups entitlement which
+ * the dev-client build doesn't provision in the simulator, so every call
+ * throws "A required entitlement isn't present". When that happens we fall
+ * back to plain AsyncStorage for the whole session — acceptable for the
+ * simulator (no secure enclave anyway) and for automated UAT. On a real
+ * device SecureStore still works normally.
  */
+let secureStoreAvailable: boolean | null = null;
+
+async function isSecureStoreAvailable(): Promise<boolean> {
+  if (secureStoreAvailable !== null) return secureStoreAvailable;
+  try {
+    // A harmless probe — set then read then delete a tiny value.
+    await SecureStore.setItemAsync('__dt_secure_probe__', '1');
+    await SecureStore.deleteItemAsync('__dt_secure_probe__');
+    secureStoreAvailable = true;
+  } catch {
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.warn('[supabase] SecureStore unavailable, falling back to AsyncStorage.');
+    }
+    secureStoreAvailable = false;
+  }
+  return secureStoreAvailable;
+}
+
 class LargeSecureStore {
   private async _encrypt(key: string, value: string): Promise<string> {
     const encryptionKey = crypto.getRandomValues(new Uint8Array(256 / 8));
@@ -63,17 +90,28 @@ class LargeSecureStore {
   }
 
   async getItem(key: string): Promise<string | null> {
+    if (!(await isSecureStoreAvailable())) {
+      return AsyncStorage.getItem(key);
+    }
     const encrypted = await AsyncStorage.getItem(key);
     if (!encrypted) return encrypted;
     return await this._decrypt(key, encrypted);
   }
 
   async removeItem(key: string): Promise<void> {
+    if (!(await isSecureStoreAvailable())) {
+      await AsyncStorage.removeItem(key);
+      return;
+    }
     await AsyncStorage.removeItem(key);
     await SecureStore.deleteItemAsync(key);
   }
 
   async setItem(key: string, value: string): Promise<void> {
+    if (!(await isSecureStoreAvailable())) {
+      await AsyncStorage.setItem(key, value);
+      return;
+    }
     const encrypted = await this._encrypt(key, value);
     await AsyncStorage.setItem(key, encrypted);
   }

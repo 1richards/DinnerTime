@@ -33,5 +33,6 @@ name: "16 — STUB: pantry photo scan (SKIPPED — requires CAMERA)"
 #
 # This flow has no runnable steps — it is documentation only.
 - tapOn:
-    text: "STUB_FLOW_DO_NOT_RUN_SEE_COMMENTS_ABOVE"
+    text: ".*STUB_FLOW_DO_NOT_RUN_SEE_COMMENTS_ABOVE.*"
+
     optional: true
