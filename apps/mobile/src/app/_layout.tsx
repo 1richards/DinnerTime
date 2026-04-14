@@ -1,7 +1,7 @@
 import '../global.css';
 
 import { useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/authStore';
@@ -32,48 +32,56 @@ function RootNavigator() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-warmWhite">
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFBF5' }}>
         <ActivityIndicator size="large" color="#F97316" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1">
+    <View style={{ flex: 1 }}>
       <OfflineBanner />
-      <View className="flex-1">
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Protected guard={!isLoggedIn}>
-        <Stack.Screen name="(auth)" />
-      </Stack.Protected>
-
-      <Stack.Protected guard={isLoggedIn && !isOnboarded}>
-        <Stack.Screen name="onboarding" />
-      </Stack.Protected>
-
-      <Stack.Protected guard={isLoggedIn && isOnboarded}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="settings"
-          options={{
-            headerShown: true,
-            title: 'Settings',
-            headerStyle: { backgroundColor: '#FFFBF5' },
-            headerTintColor: '#1F2937',
-            headerShadowVisible: false,
-          }}
-        />
-      </Stack.Protected>
-    </Stack>
+      <View style={{ flex: 1 }}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen
+            name="settings"
+            options={{
+              headerShown: true,
+              title: 'Settings',
+              headerStyle: { backgroundColor: '#FFFBF5' },
+              headerTintColor: '#1F2937',
+              headerShadowVisible: false,
+            }}
+          />
+        </Stack>
       </View>
     </View>
   );
 }
 
+function AuthStateBanner() {
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const isOnboarded = useAuthStore((s) => s.isOnboarded);
+  const isLoading = useAuthStore((s) => s.isLoading);
+  return (
+    <View style={{ padding: 16, paddingTop: 60, backgroundColor: '#FED7AA' }}>
+      <Text style={{ fontSize: 13, color: '#7C2D12' }}>
+        loading={String(isLoading)} loggedIn={String(isLoggedIn)} onboarded={String(isOnboarded)}
+      </Text>
+    </View>
+  );
+}
+
 export default function RootLayout() {
+  console.log('[DinnerTime] RootLayout mounted');
   return (
     <QueryClientProvider client={queryClient}>
-      <RootNavigator />
+      <View style={{ flex: 1 }}>
+        <AuthStateBanner />
+        <View style={{ flex: 1 }}>
+          <RootNavigator />
+        </View>
+      </View>
     </QueryClientProvider>
   );
 }

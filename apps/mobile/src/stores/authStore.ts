@@ -38,7 +38,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialize: () => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         set({
           session,
@@ -47,17 +47,23 @@ export const useAuthStore = create<AuthState>((set) => ({
           isLoading: false,
         });
 
-        // Check profile for onboarding status
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+        // CRITICAL: Per Supabase docs, NEVER make supabase.* calls directly
+        // inside an onAuthStateChange callback — the auth lock is held during
+        // the callback and any Supabase request will deadlock. Defer with
+        // setTimeout to escape the lock context.
+        // https://supabase.com/docs/reference/javascript/auth-onauthstatechange
+        setTimeout(async () => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
 
-        set({
-          isOnboarded: profile?.onboarding_complete ?? false,
-          profile: profile ?? null,
-        });
+          set({
+            isOnboarded: profile?.onboarding_complete ?? false,
+            profile: profile ?? null,
+          });
+        }, 0);
       } else {
         set({
           session: null,

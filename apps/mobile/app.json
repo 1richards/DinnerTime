@@ -14,7 +14,10 @@
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "DinnerTime uses speech recognition to understand cooking commands.",
         "NSMicrophoneUsageDescription": "DinnerTime uses the microphone for hands-free cooking.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
       }
     },
     "android": {

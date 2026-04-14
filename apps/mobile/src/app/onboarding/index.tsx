@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Redirect } from 'expo-router';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { supabase } from '../../lib/supabase';
@@ -42,6 +43,11 @@ export default function OnboardingScreen() {
   const [saving, setSaving] = useState(false);
 
   const user = useAuthStore((s) => s.user);
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const isOnboarded = useAuthStore((s) => s.isOnboarded);
+
+  if (!isLoggedIn) return <Redirect href="/(auth)/login" />;
+  if (isOnboarded) return <Redirect href="/(tabs)" />;
 
   const toggleItem = (
     item: string,
@@ -56,11 +62,16 @@ export default function OnboardingScreen() {
   };
 
   const handleComplete = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('[onboarding] handleComplete: no user');
+      return;
+    }
 
+    console.log('[onboarding] handleComplete: starting, user.id =', user.id);
     setSaving(true);
     try {
-      const { error } = await supabase
+      console.log('[onboarding] calling supabase.update...');
+      const { data, error, status, statusText } = await supabase
         .from('profiles')
         .update({
           display_name: displayName.trim() || null,
@@ -70,15 +81,21 @@ export default function OnboardingScreen() {
           onboarding_complete: true,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select();
+
+      console.log('[onboarding] supabase.update returned', { data, error, status, statusText });
 
       if (error) {
-        Alert.alert('Error', 'Could not save your preferences. Please try again.');
+        Alert.alert('Error', `Could not save: ${error.message}`);
         return;
       }
 
-      // Update local state so routing reacts
+      console.log('[onboarding] setting isOnboarded=true');
       useAuthStore.setState({ isOnboarded: true });
+    } catch (err) {
+      console.log('[onboarding] EXCEPTION', err);
+      Alert.alert('Exception', String(err));
     } finally {
       setSaving(false);
     }

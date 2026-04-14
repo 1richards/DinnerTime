@@ -1,8 +1,15 @@
-import { Tabs, router } from 'expo-router';
+import { Redirect, Tabs, router } from 'expo-router';
 import { Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '../../stores/authStore';
 
 export default function TabLayout() {
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const isOnboarded = useAuthStore((s) => s.isOnboarded);
+
+  if (!isLoggedIn) return <Redirect href="/(auth)/login" />;
+  if (!isOnboarded) return <Redirect href="/onboarding" />;
+
   return (
     <Tabs
       screenOptions={{

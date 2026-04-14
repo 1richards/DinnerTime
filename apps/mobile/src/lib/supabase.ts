@@ -6,6 +6,30 @@ import * as aesjs from 'aes-js';
 import * as SecureStore from 'expo-secure-store';
 
 /**
+ * Detect Node SSR (Expo Router static export). Used to skip native storage
+ * calls during server-side rendering; window is undefined in Node but exists
+ * in React Native runtime.
+ */
+const isServerRender =
+  typeof window === 'undefined' &&
+  typeof globalThis.process !== 'undefined' &&
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  !!(globalThis.process as any).versions?.node;
+
+/**
+ * Noop storage used during SSR — Supabase auth client invokes storage at
+ * module load time, but native AsyncStorage / SecureStore aren't available
+ * inside Node. On a real device this is never used.
+ */
+class NoopStorage {
+  async getItem(): Promise<string | null> {
+    return null;
+  }
+  async setItem(): Promise<void> {}
+  async removeItem(): Promise<void> {}
+}
+
+/**
  * LargeSecureStore: AES-256 encryption key in SecureStore, encrypted session in AsyncStorage.
  * Required because Supabase sessions exceed SecureStore's 2048-byte limit.
  *
@@ -60,9 +84,9 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: new LargeSecureStore(),
-    autoRefreshToken: true,
-    persistSession: true,
+    storage: isServerRender ? new NoopStorage() : new LargeSecureStore(),
+    autoRefreshToken: !isServerRender,
+    persistSession: !isServerRender,
     detectSessionInUrl: false,
   },
 });
