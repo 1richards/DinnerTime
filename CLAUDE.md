@@ -154,7 +154,32 @@ Use these entry points:
 Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
 <!-- GSD:workflow-end -->
 
+## UAT (Maestro on iOS Simulator)
 
+Before reporting a UI feature complete, validate it with Maestro against the iOS Simulator on this host. The dev client is prebuilt under `apps/mobile/ios/`.
+
+**Toolchain:** Maestro 2.4.0 + OpenJDK 21 + Xcode (iOS 26.4 runtime). All under `/opt/homebrew`. Java is on `PATH` via `~/.zshrc`.
+
+**Quick loop:**
+
+```
+cd apps/mobile
+xcrun simctl boot "iPhone 17 Pro" || true
+open -a Simulator
+xcrun simctl install booted ios/build/Build/Products/Debug-iphonesimulator/DinnerTime.app
+npx expo start --dev-client --lan        # NOT --tunnel — sim needs localhost
+maestro test .maestro/smoke.yaml
+```
+
+Or use the helper: `apps/mobile/.maestro/scripts/uat.sh {boot|smoke|all|shot|log|reset}`.
+
+**Important — Metro mode.** The dev client picks the bundle URL from Metro's manifest. Tunnel mode (`--tunnel`) makes the simulator try `.exp.direct` URLs that fail behind iOS ATS. Use `--lan` for the simulator. Tunnel mode is only for testing on a physical iPhone outside the LAN.
+
+**First-run dev menu.** The Expo dev client shows a one-time "Welcome to dev tools" intro and then a regular dev menu modal. Smoke flow dismisses both with optional `Continue` tap + a `90%,32%` close-button tap. After the first launch these are no-ops.
+
+**Selectors.** Maestro's text matcher treats input as regex. Avoid asserting against text containing `=`, `(`, `?`, etc. — use plain UI labels like `"Sign In"` or `"DinnerTime"` and lean on screenshots for state verification. The sentinel banner in `src/app/_layout.tsx` is the source of truth for hydration state visually, not assertively.
+
+**Adding flows.** Copy an existing `.yaml` in `apps/mobile/.maestro/`. Take screenshots liberally — they're free debugging gold and Claude can `Read` them directly. See `apps/mobile/.maestro/README.md` for the full inventory.
 
 <!-- GSD:profile-start -->
 ## Developer Profile

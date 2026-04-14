@@ -1,0 +1,6 @@
+appId: com.dinnertime.app
+---
+# Shared Maestro config for DinnerTime UAT flows.
+# Run a single flow:    maestro test .maestro/smoke.yaml
+# Run all flows:        maestro test .maestro/
+# Record screenshots:   add `- takeScreenshot: name` steps inside flows.

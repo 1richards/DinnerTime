@@ -44,6 +44,17 @@ DinnerTime/
 
 Early development -- planning and scaffolding phase. See `.planning/` for the full roadmap and project context.
 
+## End-to-end testing (UAT)
+
+UI flows are validated with [Maestro](https://maestro.mobile.dev) against the iOS Simulator. See [`apps/mobile/.maestro/README.md`](apps/mobile/.maestro/README.md) for setup and the flow inventory.
+
+```
+cd apps/mobile
+.maestro/scripts/uat.sh boot      # boot iPhone 17 Pro sim
+.maestro/scripts/uat.sh smoke     # run the smoke flow
+.maestro/scripts/uat.sh all       # run every flow
+```
+
 ## License
 
 MIT -- see [LICENSE](LICENSE) for details.

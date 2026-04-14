@@ -1,0 +1,24 @@
+appId: com.dinnertime.app
+name: smoke — app launches and reaches a known screen
+---
+# Force the dev client to load the local Metro bundle directly,
+# bypassing the launcher (which may have a stale tunnel URL cached).
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: "Open"
+    optional: true
+# Expo dev menu opens on first launch — dismiss it.
+- tapOn:
+    text: "Continue"
+    optional: true
+# Close button on the dev menu modal (X at top right).
+- tapOn:
+    point: "90%,32%"
+    optional: true
+- takeScreenshot: 01-bundle-loading
+# Sentinel banner from src/app/_layout.tsx prints loading/loggedIn/onboarded.
+- extendedWaitUntil:
+    visible:
+      text: "DinnerTime"
+    timeout: 60000
+- takeScreenshot: 02-hydrated

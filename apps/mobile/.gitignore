@@ -41,3 +41,12 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Maestro UAT artifacts (screenshots from .maestro/scripts/uat.sh shot)
+.maestro/screenshots/
+
+# Stray screenshots from running maestro flows from this dir
+/01-*.png
+/02-*.png
+/03-*.png
+/04-*.png
