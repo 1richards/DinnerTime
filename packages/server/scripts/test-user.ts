@@ -11,7 +11,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const TEST_EMAIL = process.env.TEST_USER_EMAIL ?? 'uat@dinnertime.test';
-const TEST_PASSWORD = process.env.TEST_USER_PASSWORD ?? 'UAT-overnight-2026!';
+const TEST_PASSWORD = process.env.TEST_USER_PASSWORD ?? 'UATovernight2026';
 const TEST_DISPLAY_NAME = 'UAT Tester';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -120,7 +120,35 @@ async function reset() {
     { onConflict: 'id' }
   );
 
-  console.error(`[test-user] reset complete for ${TEST_EMAIL}`);
+  // Seed a baseline pantry so meal plan generation has ingredients to work with.
+  // Without this, the AI returns EMPTY_PANTRY and downstream UAT flows fail.
+  const seedPantry = [
+    { name: 'Chicken Breast', category: 'protein', source_location: 'fridge', unit: 'lb', quantity: 2 },
+    { name: 'Ground Beef', category: 'protein', source_location: 'freezer', unit: 'lb', quantity: 1 },
+    { name: 'Pasta', category: 'grain', source_location: 'pantry', unit: 'box', quantity: 2 },
+    { name: 'Rice', category: 'grain', source_location: 'pantry', unit: 'lb', quantity: 1 },
+    { name: 'Onion', category: 'produce', source_location: 'pantry', unit: 'piece', quantity: 3 },
+    { name: 'Garlic', category: 'produce', source_location: 'pantry', unit: 'head', quantity: 2 },
+    { name: 'Tomatoes', category: 'produce', source_location: 'fridge', unit: 'piece', quantity: 4 },
+    { name: 'Bell Peppers', category: 'produce', source_location: 'fridge', unit: 'piece', quantity: 3 },
+    { name: 'Spinach', category: 'produce', source_location: 'fridge', unit: 'bag', quantity: 1 },
+    { name: 'Eggs', category: 'protein', source_location: 'fridge', unit: 'dozen', quantity: 1 },
+    { name: 'Milk', category: 'dairy', source_location: 'fridge', unit: 'gal', quantity: 1 },
+    { name: 'Cheese', category: 'dairy', source_location: 'fridge', unit: 'block', quantity: 1 },
+    { name: 'Olive Oil', category: 'condiment', source_location: 'pantry', unit: 'bottle', quantity: 1 },
+    { name: 'Soy Sauce', category: 'condiment', source_location: 'pantry', unit: 'bottle', quantity: 1 },
+    { name: 'Black Beans', category: 'grain', source_location: 'pantry', unit: 'can', quantity: 2 },
+  ].map((p) => ({
+    ...p,
+    profile_id: user.id,
+    normalized_name: p.name.toLowerCase().trim(),
+    confidence: 1,
+    status: 'available',
+  }));
+  const { error: pantryErr } = await admin.from('pantry_items').insert(seedPantry);
+  if (pantryErr) console.error(`[test-user] seed pantry: ${pantryErr.message}`);
+
+  console.error(`[test-user] reset complete for ${TEST_EMAIL} (+ ${seedPantry.length} pantry items)`);
   return user;
 }
 

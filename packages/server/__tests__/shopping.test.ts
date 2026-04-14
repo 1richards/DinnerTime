@@ -48,7 +48,7 @@ beforeAll(async () => {
   });
   const { data: session } = await anon.auth.signInWithPassword({
     email: 'uat@dinnertime.test',
-    password: 'UAT-overnight-2026!',
+    password: 'UATovernight2026',
   });
   const uid = session.user?.id;
   if (!uid) return;

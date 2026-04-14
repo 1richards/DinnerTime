@@ -146,6 +146,42 @@ After typing in the Password field, the keyboard covers the Confirm Password Tex
 
 ---
 
+---
+
+## Polish Fallout — 2026-04-14 (second UAT pass after visual polish)
+
+**Date:** 2026-04-14  
+**Triggered by:** Visual polish pass that added `HeroImage` components on multiple screens, reshuffling layout and breaking 6 Maestro flow selectors.
+
+### Flows Fixed
+
+| Flow | Root Cause | Fix Applied |
+|------|-----------|-------------|
+| **03-import-url** | FAB coordinate `90%,88%` was landing on the tab bar after polish shifted safe-area insets. `94%,85%` hits the FAB correctly. | Updated coordinate; added `extendedWaitUntil` before asserting import screen. |
+| **04-import-manual** | Same FAB coordinate issue as 03. | Updated coordinate to `94%,85%`. |
+| **06-recipe-discover** | No actual breakage — ran clean after 03/04 created recipes. | No change needed. |
+| **05-recipe-detail-edit** | HeroImage banner + SuggestedForYou section now occupies ~50% of screen height. Recipe card tap coordinate `50%,35%` was landing in the hero area. Post-save `Ingredients` assertion failed because scroll position was mid-page. | Updated recipe tap to `50%,65%`; added `scroll` calls before `Steps`/`Start Cooking` assertions; changed final `extendedWaitUntil` to `scrollUntilVisible UP`. |
+| **11-shopping-list-generate** | (a) Pantry was empty → EMPTY_PANTRY → no meal plan → Shopping "Generate" button disabled. (b) After `clearState: true`, Shopping screen's `fetchCurrentPlan()` re-runs and may complete before `currentPlan` is available. | Seeded pantry via `POST /api/v1/pantry/confirm` (10 items); added Plan tab visit before Shopping tab; added `extendedWaitUntil notVisible ".*Create a meal plan in the Plan tab first.*"` to wait for plan to load. |
+| **10-meal-plan-swap** | No selector issue — `swap-btn-Mon` testID is correct. Failure was purely data: no meal plan existed. | Re-ran flow 09 after pantry seeded to create a real plan. No flow changes needed. |
+
+### App Bugs Discovered (NOT flow issues)
+
+#### BUG-8 — Empty pantry blocks meal plan generation silently (P1 — DATA/OPS)
+
+The UAT test user's pantry was empty after the password reset for this session. Flow 09 reports EMPTY_PANTRY via an error banner but still "passes" because all day-row assertions are optional. Downstream flows 10 and 11 then fail with no clear error message about the root cause.
+
+**Recommendation:** Add pantry seeding to the UAT reset script. A helper endpoint or seed SQL that inserts a standard 10-item pantry for `uat@dinnertime.test` on reset.
+
+#### BUG-9 — Shopping screen disables "Generate from Meal Plan" briefly even when plan exists (P2 — POTENTIAL APP BUG)
+
+After `clearState: true` (which clears AsyncStorage including Zustand persist), the Shopping screen mounts and immediately renders with `currentPlan: null` (disabled button + "Create a meal plan in the Plan tab first" hint). The screen calls `fetchCurrentPlan()` but there's a window of ~1-5s where the button is disabled even if a plan exists on the server.
+
+Workaround in flow: visit Plan tab first, confirm "This Week" is visible, then navigate to Shopping tab and wait for the hint text to disappear.
+
+**Recommendation:** Either (a) show the "Generate" button as enabled optimistically while the plan fetch is in progress, or (b) add a brief loading indicator instead of the disabled state to avoid false negatives.
+
+---
+
 ## Priority Action Items Before Release
 
 1. **URGENT:** Restore `secureTextEntry` on register password fields (add show/hide toggle as UX improvement)

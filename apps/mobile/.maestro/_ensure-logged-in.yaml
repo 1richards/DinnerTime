@@ -29,7 +29,13 @@ appId: com.dinnertime.app
       - inputText: "uat@dinnertime.test"
       - tapOn:
           text: ".*Your password.*"
-      - inputText: "UAT-overnight-2026!"
+      - inputText: "UATovernight2026"
+      # Dismiss the keyboard by tapping the non-interactive hero title,
+      # otherwise the Sign In button sits behind the keyboard and a tap
+      # there would land on a keyboard key and type characters into the
+      # password field. hideKeyboard is not supported by RN inputs here.
+      - tapOn:
+          text: "YOUR KITCHEN AWAITS"
       - tapOn:
           text: ".*Sign In.*"
       - extendedWaitUntil:

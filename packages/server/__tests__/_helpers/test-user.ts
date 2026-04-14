@@ -10,7 +10,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const TEST_EMAIL = 'uat@dinnertime.test';
-const TEST_PASSWORD = 'UAT-overnight-2026!';
+const TEST_PASSWORD = 'UATovernight2026';
 const TEST_DISPLAY_NAME = 'UAT Tester';
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;

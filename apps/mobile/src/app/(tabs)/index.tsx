@@ -4,6 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 import { usePantryStore } from '../../stores/pantryStore';
 import { SuggestionList } from '../../components/suggestions/SuggestionList';
+import { HeroImage } from '../../components/ui/HeroImage';
+import { FOOD_IMAGES } from '../../constants/foodImages';
+
+// Stable hero image for the home screen (changes daily but not per render)
+const HERO_URI = FOOD_IMAGES.hero[new Date().getDay() % FOOD_IMAGES.hero.length];
 
 export default function HomeScreen() {
   const displayName = useAuthStore((s) => s.profile?.display_name);
@@ -18,17 +23,33 @@ export default function HomeScreen() {
     }
   }, [profileId, pantryItems.length, loadItems]);
 
+  const greeting = displayName
+    ? `Hey, ${displayName}! 👋`
+    : 'Your Dinner Dashboard';
+
   return (
     <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
-      {/* Header */}
-      <View className="px-4 pt-4 pb-2">
-        <Text className="text-2xl font-bold text-warmGray-900">
-          {displayName ? `Hey, ${displayName}!` : 'Your Dinner Dashboard'}
-        </Text>
-        <Text className="text-sm text-warmGray-500 mt-1">
-          What should we cook tonight?
-        </Text>
-      </View>
+      {/* Hero header with food photography */}
+      <HeroImage uri={HERO_URI} height={200}>
+        <View>
+          <Text
+            style={{
+              fontSize: 26,
+              fontWeight: '900',
+              color: '#FFFFFF',
+              letterSpacing: -0.5,
+            }}
+            numberOfLines={1}
+          >
+            {greeting}
+          </Text>
+          <Text
+            style={{ fontSize: 14, color: 'rgba(255,255,255,0.82)', marginTop: 4 }}
+          >
+            What should we cook tonight?
+          </Text>
+        </View>
+      </HeroImage>
 
       {/* Suggestions */}
       <SuggestionList />

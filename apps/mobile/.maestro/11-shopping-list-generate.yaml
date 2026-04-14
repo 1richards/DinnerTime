@@ -20,14 +20,32 @@ name: "11 — shopping list: generate from meal plan, add manual item, check ite
 
 - takeScreenshot: 02-home
 
+# Visit Plan tab first so fetchCurrentPlan() has time to load the server-side
+# meal plan into Zustand. Without this, the Shopping tab renders the empty state
+# with the "Generate from Meal Plan" button disabled (no plan in store yet).
+- tapOn:
+    text: ".*Plan.*"
+- extendedWaitUntil:
+    visible:
+      text: ".*This Week.*"
+    timeout: 30000
+- takeScreenshot: 02b-plan-confirmed
+
 # Shopping tab
 - tapOn:
     text: ".*Shopping.*"
 
 - takeScreenshot: 03-shopping-tab
 
-# Wait for the shopping tab to finish loading (empty or populated).
-# Both states show "shopping" context — wait for a stable element.
+# Wait for shopping tab to load AND for mealPlanStore to populate currentPlan.
+# The "Create a meal plan in the Plan tab first" hint disappears once
+# fetchCurrentPlan() resolves with a valid plan — gives us a reliable wait target.
+# Either the shopping list is already populated (skip empty state) OR we wait
+# for the generate button to become enabled.
+- extendedWaitUntil:
+    notVisible:
+      text: ".*Create a meal plan in the Plan tab first.*"
+    timeout: 15000
 - takeScreenshot: 04-shopping-state
 
 # If empty, generate from meal plan (AI-backed)

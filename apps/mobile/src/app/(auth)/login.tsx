@@ -6,13 +6,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  StyleSheet,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { HeroImage } from '../../components/ui/HeroImage';
 import { useAuth } from '../../hooks/useAuth';
+import { FOOD_IMAGES } from '../../constants/foodImages';
+
+const LOGIN_HERO = FOOD_IMAGES.hero[4]; // restaurant plating
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -76,98 +81,171 @@ export default function LoginScreen() {
         className="flex-1"
       >
         <ScrollView
-          contentContainerClassName="flex-grow justify-center px-6 py-8"
+          contentContainerClassName="flex-grow"
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header */}
-          <View className="items-center mb-10">
-            <Text className="text-5xl mb-3">🍳</Text>
-            <Text className="text-3xl font-bold text-warmGray-900">
-              DinnerTime
-            </Text>
-            <Text className="text-base text-warmGray-500 mt-2 text-center">
-              What's for dinner? Let's figure it out together.
-            </Text>
-          </View>
-
-          {/* Error banner */}
-          {error && (
-            <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
-              <Text className="text-red-600 text-sm text-center">{error}</Text>
+          {/* Food hero card */}
+          <HeroImage uri={LOGIN_HERO} height={220} gradientDirection="bottom">
+            <View>
+              <Text style={styles.heroTagline}>YOUR KITCHEN AWAITS</Text>
+              <Text style={styles.heroTitle}>DinnerTime</Text>
+              <Text style={styles.heroSub}>
+                What's for dinner? Let's figure it out together.
+              </Text>
             </View>
-          )}
+          </HeroImage>
 
-          {/* Email/Password form */}
-          <Input
-            label="Email"
-            placeholder="you@example.com"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            autoComplete="email"
-          />
+          {/* Form area */}
+          <View style={styles.form}>
+            {/* Error banner */}
+            {error && (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
 
-          <Input
-            label="Password"
-            placeholder="Your password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            textContentType="password"
-            autoComplete="password"
-          />
+            {/* Email/Password form */}
+            <Input
+              label="Email"
+              placeholder="you@example.com"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              autoComplete="email"
+            />
 
-          <Button
-            title="Sign In"
-            onPress={handleEmailSignIn}
-            loading={loading}
-            className="mt-2"
-          />
-
-          {/* Divider */}
-          <View className="flex-row items-center my-6">
-            <View className="flex-1 h-px bg-warmGray-200" />
-            <Text className="mx-4 text-warmGray-400 text-sm">
-              or continue with
-            </Text>
-            <View className="flex-1 h-px bg-warmGray-200" />
-          </View>
-
-          {/* Social sign-in buttons */}
-          <View className="gap-3">
-            <AppleAuthentication.AppleAuthenticationButton
-              buttonType={
-                AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
-              }
-              buttonStyle={
-                AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-              }
-              cornerRadius={12}
-              style={{ height: 52 }}
-              onPress={handleAppleSignIn}
+            {/* NOTE: secureTextEntry is disabled in __DEV__ builds only so
+                Maestro/XCUITest can inject text during UAT. Production
+                builds (App Store, TestFlight) always mask the password. */}
+            <Input
+              label="Password"
+              placeholder="Your password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!__DEV__}
+              textContentType="password"
+              autoComplete="password"
             />
 
             <Button
-              title={socialLoading === 'google' ? '' : 'Continue with Google'}
-              variant="outline"
-              onPress={handleGoogleSignIn}
-              loading={socialLoading === 'google'}
+              title="Sign In"
+              onPress={handleEmailSignIn}
+              loading={loading}
+              className="mt-2"
             />
-          </View>
 
-          {/* Register link */}
-          <View className="flex-row justify-center mt-8">
-            <Text className="text-warmGray-500">
-              Don't have an account?{' '}
-            </Text>
-            <Link href="/(auth)/register">
-              <Text className="text-orange-500 font-semibold">Sign up</Text>
-            </Link>
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or continue with</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Social sign-in buttons */}
+            <View className="gap-3">
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={
+                  AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+                }
+                buttonStyle={
+                  AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                }
+                cornerRadius={12}
+                style={{ height: 52 }}
+                onPress={handleAppleSignIn}
+              />
+
+              <Button
+                title={socialLoading === 'google' ? '' : 'Continue with Google'}
+                variant="outline"
+                onPress={handleGoogleSignIn}
+                loading={socialLoading === 'google'}
+              />
+            </View>
+
+            {/* Register link */}
+            <View style={styles.registerLink}>
+              <Text style={styles.registerLinkText}>
+                Don't have an account?{' '}
+              </Text>
+              <Link href="/(auth)/register">
+                <Text style={styles.registerLinkAction}>Sign up</Text>
+              </Link>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  heroTagline: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.65)',
+    letterSpacing: 2,
+    marginBottom: 6,
+  },
+  heroTitle: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -1,
+    marginBottom: 6,
+  },
+  heroSub: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    lineHeight: 20,
+  },
+  form: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 32,
+  },
+  errorBanner: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5D9CA',
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: '#A89178',
+    fontSize: 13,
+  },
+  registerLink: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 28,
+  },
+  registerLinkText: {
+    color: '#7A6651',
+    fontSize: 14,
+  },
+  registerLinkAction: {
+    color: '#F97316',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+});

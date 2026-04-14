@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect } from 'expo-router';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { HeroImage } from '../../components/ui/HeroImage';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
+import { FOOD_IMAGES } from '../../constants/foodImages';
 
 const CUISINE_OPTIONS = [
   'Italian',
@@ -31,6 +33,13 @@ const DIETARY_OPTIONS = [
 ];
 
 const TOTAL_STEPS = 3;
+
+// One hero image per step
+const STEP_IMAGES = [
+  FOOD_IMAGES.hero[2],       // step 0: hands cooking
+  FOOD_IMAGES.hero[3],       // step 1: steam rising
+  FOOD_IMAGES.breakfast[1],  // step 2: preferences
+];
 
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
@@ -106,38 +115,51 @@ export default function OnboardingScreen() {
     return true;
   };
 
+  const stepTitles = [
+    'Welcome to DinnerTime!',
+    'Your Household',
+    'Your Preferences',
+  ];
+
+  const stepSubtitles = [
+    "Let's get to know you so we can suggest meals you'll love.",
+    'This helps us size our recipe suggestions.',
+    'Pick your favorites — you can always change these later.',
+  ];
+
   return (
     <SafeAreaView className="flex-1 bg-warmWhite">
+      {/* Step hero image */}
+      <HeroImage uri={STEP_IMAGES[step]} height={160} gradientDirection="bottom">
+        <View>
+          {/* Progress dots */}
+          <View style={styles.progressDots}>
+            {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.dot,
+                  i === step
+                    ? styles.dotActive
+                    : i < step
+                      ? styles.dotPast
+                      : styles.dotFuture,
+                ]}
+              />
+            ))}
+          </View>
+          <Text style={styles.heroTitle}>{stepTitles[step]}</Text>
+          <Text style={styles.heroSub}>{stepSubtitles[step]}</Text>
+        </View>
+      </HeroImage>
+
       <ScrollView
-        contentContainerClassName="flex-grow px-6 py-8"
+        contentContainerClassName="flex-grow px-6 py-6"
         keyboardShouldPersistTaps="handled"
       >
-        {/* Progress dots */}
-        <View className="flex-row justify-center mb-8 gap-2">
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <View
-              key={i}
-              className={`h-2 rounded-full ${
-                i === step
-                  ? 'w-8 bg-orange-500'
-                  : i < step
-                    ? 'w-2 bg-orange-300'
-                    : 'w-2 bg-warmGray-200'
-              }`}
-            />
-          ))}
-        </View>
-
         {/* Step 0: Welcome & Display Name */}
         {step === 0 && (
           <View>
-            <Text className="text-3xl font-bold text-warmGray-900 text-center mb-2">
-              Welcome to DinnerTime!
-            </Text>
-            <Text className="text-base text-warmGray-500 text-center mb-8">
-              Let's get to know you so we can suggest meals you'll love.
-            </Text>
-
             <Input
               label="What should we call you?"
               placeholder="Your name"
@@ -153,34 +175,25 @@ export default function OnboardingScreen() {
         {/* Step 1: Household */}
         {step === 1 && (
           <View>
-            <Text className="text-3xl font-bold text-warmGray-900 text-center mb-2">
-              Your Household
-            </Text>
-            <Text className="text-base text-warmGray-500 text-center mb-8">
-              This helps us size our recipe suggestions.
-            </Text>
-
-            <Text className="text-sm font-medium text-warmGray-700 mb-3">
+            <Text style={styles.fieldLabel}>
               How many people are you cooking for?
             </Text>
 
-            <View className="flex-row flex-wrap gap-3 mb-6">
+            <View style={styles.numberGrid}>
               {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
                 <Pressable
                   key={n}
                   onPress={() => setHouseholdSize(n)}
-                  className={`w-12 h-12 rounded-xl items-center justify-center ${
-                    householdSize === n
-                      ? 'bg-orange-500'
-                      : 'bg-warmGray-100 border border-warmGray-200'
-                  }`}
+                  style={[
+                    styles.numberButton,
+                    householdSize === n && styles.numberButtonActive,
+                  ]}
                 >
                   <Text
-                    className={`text-lg font-semibold ${
-                      householdSize === n
-                        ? 'text-white'
-                        : 'text-warmGray-700'
-                    }`}
+                    style={[
+                      styles.numberButtonText,
+                      householdSize === n && styles.numberButtonTextActive,
+                    ]}
                   >
                     {n === 8 ? '8+' : n}
                   </Text>
@@ -191,52 +204,42 @@ export default function OnboardingScreen() {
             {/* Kids toggle */}
             <Pressable
               onPress={() => setHasKids(!hasKids)}
-              className={`flex-row items-center justify-between p-4 rounded-xl border ${
-                hasKids
-                  ? 'bg-orange-50 border-orange-300'
-                  : 'bg-warmGray-50 border-warmGray-200'
-              }`}
+              style={[
+                styles.toggleRow,
+                hasKids && styles.toggleRowActive,
+              ]}
             >
-              <Text className="text-base text-warmGray-800">
-                We have kids
-              </Text>
+              <Text style={styles.toggleLabel}>We have kids</Text>
               <View
-                className={`w-6 h-6 rounded-md border-2 items-center justify-center ${
-                  hasKids
-                    ? 'bg-orange-500 border-orange-500'
-                    : 'border-warmGray-300'
-                }`}
+                style={[
+                  styles.checkbox,
+                  hasKids && styles.checkboxActive,
+                ]}
               >
                 {hasKids && (
-                  <Text className="text-white text-xs font-bold">
-                    ✓
-                  </Text>
+                  <Text style={styles.checkmark}>✓</Text>
                 )}
               </View>
             </Pressable>
 
             {hasKids && (
-              <View className="mt-4">
-                <Text className="text-sm font-medium text-warmGray-700 mb-3">
-                  How many kids?
-                </Text>
-                <View className="flex-row gap-3">
+              <View style={{ marginTop: 16 }}>
+                <Text style={styles.fieldLabel}>How many kids?</Text>
+                <View style={styles.numberGrid}>
                   {[1, 2, 3, 4, 5].map((n) => (
                     <Pressable
                       key={n}
                       onPress={() => setKidCount(n)}
-                      className={`w-12 h-12 rounded-xl items-center justify-center ${
-                        kidCount === n
-                          ? 'bg-orange-500'
-                          : 'bg-warmGray-100 border border-warmGray-200'
-                      }`}
+                      style={[
+                        styles.numberButton,
+                        kidCount === n && styles.numberButtonActive,
+                      ]}
                     >
                       <Text
-                        className={`text-lg font-semibold ${
-                          kidCount === n
-                            ? 'text-white'
-                            : 'text-warmGray-700'
-                        }`}
+                        style={[
+                          styles.numberButtonText,
+                          kidCount === n && styles.numberButtonTextActive,
+                        ]}
                       >
                         {n === 5 ? '5+' : n}
                       </Text>
@@ -251,33 +254,22 @@ export default function OnboardingScreen() {
         {/* Step 2: Preferences */}
         {step === 2 && (
           <View>
-            <Text className="text-3xl font-bold text-warmGray-900 text-center mb-2">
-              Your Preferences
-            </Text>
-            <Text className="text-base text-warmGray-500 text-center mb-8">
-              Pick your favorites -- you can always change these later.
-            </Text>
-
-            <Text className="text-sm font-medium text-warmGray-700 mb-3">
-              Cuisines you enjoy
-            </Text>
-            <View className="flex-row flex-wrap gap-2 mb-6">
+            <Text style={styles.fieldLabel}>Cuisines you enjoy</Text>
+            <View style={styles.chipGrid}>
               {CUISINE_OPTIONS.map((c) => (
                 <Pressable
                   key={c}
                   onPress={() => toggleItem(c, cuisines, setCuisines)}
-                  className={`px-4 py-2 rounded-full ${
-                    cuisines.includes(c)
-                      ? 'bg-orange-500'
-                      : 'bg-warmGray-100 border border-warmGray-200'
-                  }`}
+                  style={[
+                    styles.chip,
+                    cuisines.includes(c) && styles.chipActive,
+                  ]}
                 >
                   <Text
-                    className={`text-sm font-medium ${
-                      cuisines.includes(c)
-                        ? 'text-white'
-                        : 'text-warmGray-700'
-                    }`}
+                    style={[
+                      styles.chipText,
+                      cuisines.includes(c) && styles.chipTextActive,
+                    ]}
                   >
                     {c}
                   </Text>
@@ -285,26 +277,24 @@ export default function OnboardingScreen() {
               ))}
             </View>
 
-            <Text className="text-sm font-medium text-warmGray-700 mb-3">
+            <Text style={[styles.fieldLabel, { marginTop: 20 }]}>
               Any dietary needs?
             </Text>
-            <View className="flex-row flex-wrap gap-2 mb-6">
+            <View style={styles.chipGrid}>
               {DIETARY_OPTIONS.map((d) => (
                 <Pressable
                   key={d}
                   onPress={() => toggleItem(d, dietary, setDietary)}
-                  className={`px-4 py-2 rounded-full ${
-                    dietary.includes(d)
-                      ? 'bg-orange-500'
-                      : 'bg-warmGray-100 border border-warmGray-200'
-                  }`}
+                  style={[
+                    styles.chip,
+                    dietary.includes(d) && styles.chipActive,
+                  ]}
                 >
                   <Text
-                    className={`text-sm font-medium ${
-                      dietary.includes(d)
-                        ? 'text-white'
-                        : 'text-warmGray-700'
-                    }`}
+                    style={[
+                      styles.chipText,
+                      dietary.includes(d) && styles.chipTextActive,
+                    ]}
                   >
                     {d}
                   </Text>
@@ -315,10 +305,10 @@ export default function OnboardingScreen() {
         )}
 
         {/* Spacer */}
-        <View className="flex-1" />
+        <View style={{ flex: 1 }} />
 
         {/* Navigation buttons */}
-        <View className="flex-row gap-3 mt-8">
+        <View style={styles.navButtons}>
           {step > 0 && (
             <Button
               title="Back"
@@ -348,3 +338,139 @@ export default function OnboardingScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  progressDots: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 10,
+  },
+  dot: {
+    height: 6,
+    borderRadius: 3,
+  },
+  dotActive: {
+    width: 24,
+    backgroundColor: '#FFFFFF',
+  },
+  dotPast: {
+    width: 6,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+  },
+  dotFuture: {
+    width: 6,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  heroTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+    marginBottom: 5,
+  },
+  heroSub: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    lineHeight: 19,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3F3429',
+    marginBottom: 12,
+  },
+  numberGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+  },
+  numberButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#F1EAE0',
+    borderWidth: 1,
+    borderColor: '#E5D9CA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  numberButtonActive: {
+    backgroundColor: '#F97316',
+    borderColor: '#F97316',
+  },
+  numberButtonText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#3F3429',
+  },
+  numberButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 14,
+    backgroundColor: '#FAF7F2',
+    borderWidth: 1,
+    borderColor: '#E5D9CA',
+  },
+  toggleRowActive: {
+    backgroundColor: '#FFF5EB',
+    borderColor: '#FED7AA',
+  },
+  toggleLabel: {
+    fontSize: 15,
+    color: '#2A221A',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#D1BFA8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxActive: {
+    backgroundColor: '#F97316',
+    borderColor: '#F97316',
+  },
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  chipGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F1EAE0',
+    borderWidth: 1,
+    borderColor: '#E5D9CA',
+  },
+  chipActive: {
+    backgroundColor: '#F97316',
+    borderColor: '#F97316',
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#3F3429',
+  },
+  chipTextActive: {
+    color: '#FFFFFF',
+  },
+  navButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 32,
+  },
+});

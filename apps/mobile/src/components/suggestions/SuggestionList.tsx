@@ -1,12 +1,18 @@
 import React, { useEffect } from 'react';
-import { View, Text, FlatList } from 'react-native';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { Image } from 'expo-image';
 import { SuggestionCard } from './SuggestionCard';
 import { SuggestionSkeleton } from './SuggestionSkeleton';
 import { Button } from '../ui/Button';
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
 import { usePantryStore } from '../../stores/pantryStore';
+import { FOOD_IMAGES } from '../../constants/foodImages';
 import type { DinnerSuggestion } from '../../types/suggestions';
+
+// Stable image for the pantry empty state
+const PANTRY_EMPTY_IMAGE = FOOD_IMAGES.breakfast[0];
+const READY_IMAGE = FOOD_IMAGES.hero[1]; // farmers market
 
 export function SuggestionList() {
   const suggestions = useSuggestionsStore((s) => s.suggestions);
@@ -55,37 +61,67 @@ export function SuggestionList() {
     );
   }
 
-  // Insufficient pantry state
+  // Insufficient pantry — polished empty state with food photo
   if (!hasSufficientPantry) {
     return (
-      <View className="flex-1 items-center justify-center px-6">
-        <Text className="text-4xl mb-4">📸</Text>
-        <Text className="text-lg font-bold text-warmGray-900 mb-2">
-          Scan your fridge first
-        </Text>
-        <Text className="text-sm text-warmGray-500 text-center mb-4">
-          Add at least 3 items to your pantry so we can suggest great dinners for you.
-        </Text>
-        <Button
-          title="Go to Pantry"
-          onPress={() => router.navigate('/(tabs)/pantry')}
-        />
+      <View style={styles.emptyStateContainer}>
+        <View style={styles.photoCard}>
+          <Image
+            source={{ uri: PANTRY_EMPTY_IMAGE }}
+            style={StyleSheet.absoluteFillObject}
+            contentFit="cover"
+            transition={400}
+            placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
+            cachePolicy="memory-disk"
+          />
+          {/* Dark overlay */}
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15,10,5,0.42)' }]} />
+          {/* Photo label */}
+          <View style={styles.photoCardContent}>
+            <Text style={styles.photoCardTag}>PANTRY EMPTY</Text>
+            <Text style={styles.photoCardTitle}>Scan your fridge first</Text>
+            <Text style={styles.photoCardSubtitle}>
+              Add at least 3 items so we can suggest great dinners for you.
+            </Text>
+          </View>
+        </View>
+
+        <View style={{ paddingHorizontal: 24, marginTop: 20 }}>
+          <Button
+            title="Go to Pantry"
+            onPress={() => router.navigate('/(tabs)/pantry')}
+          />
+        </View>
       </View>
     );
   }
 
-  // Empty state (no suggestions fetched yet)
+  // Ready to fetch — polished empty state
   if (suggestions.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center px-6">
-        <Text className="text-4xl mb-4">🍽️</Text>
-        <Text className="text-lg font-bold text-warmGray-900 mb-2">
-          Ready for dinner ideas?
-        </Text>
-        <Text className="text-sm text-warmGray-500 text-center mb-4">
-          Based on what's in your pantry, we'll suggest delicious dinners your family will love.
-        </Text>
-        <Button title="Get Dinner Ideas" onPress={fetchSuggestions} />
+      <View style={styles.emptyStateContainer}>
+        <View style={styles.photoCard}>
+          <Image
+            source={{ uri: READY_IMAGE }}
+            style={StyleSheet.absoluteFillObject}
+            contentFit="cover"
+            transition={400}
+            placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
+            cachePolicy="memory-disk"
+          />
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15,10,5,0.42)' }]} />
+          <View style={styles.photoCardContent}>
+            <Text style={styles.photoCardTag}>AI-POWERED</Text>
+            <Text style={styles.photoCardTitle}>Ready for dinner ideas?</Text>
+            <Text style={styles.photoCardSubtitle}>
+              Based on your pantry, we'll suggest meals your family will love.
+            </Text>
+          </View>
+        </View>
+
+        <View style={{ paddingHorizontal: 24, marginTop: 20 }}>
+          <Button title="Get Dinner Ideas" onPress={fetchSuggestions} />
+        </View>
       </View>
     );
   }
@@ -118,3 +154,48 @@ export function SuggestionList() {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  emptyStateContainer: {
+    flex: 1,
+    paddingTop: 24,
+  },
+  photoCard: {
+    marginHorizontal: 20,
+    borderRadius: 20,
+    height: 240,
+    overflow: 'hidden',
+    backgroundColor: '#2A221A',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  photoCardContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+  },
+  photoCardTag: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.65)',
+    letterSpacing: 1.5,
+    marginBottom: 6,
+  },
+  photoCardTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  photoCardSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.78)',
+    lineHeight: 19,
+  },
+});

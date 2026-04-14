@@ -11,9 +11,10 @@ name: "04 — recipe import: paste freeform text, parse with AI, save"
 
 - takeScreenshot: 03-recipes-tab
 
-# Open import method picker via FAB
+# Open import method picker via FAB.
+# FAB is at bottom-right (right-24, bottom-24); 94%,85% lands on it on iPhone 17 Pro.
 - tapOn:
-    point: "90%,88%"
+    point: "94%,85%"
 - takeScreenshot: 04-import-method-screen
 
 # Choose "Type It In"

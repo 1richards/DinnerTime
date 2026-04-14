@@ -11,9 +11,14 @@ name: "03 — recipe import: paste URL, wait for AI parse, review and save"
 
 - takeScreenshot: 03-recipes-tab
 
-# Tap the floating + button (ImportFab) to open import method picker
+# Open import method picker via FAB.
+# FAB is at bottom-right (right-24, bottom-24); 94%,85% lands on it on iPhone 17 Pro.
 - tapOn:
-    point: "90%,88%"
+    point: "94%,85%"
+- extendedWaitUntil:
+    visible:
+      text: ".*Paste URL.*"
+    timeout: 10000
 - takeScreenshot: 04-import-method-screen
 - assertVisible:
     text: ".*Paste URL.*"
@@ -28,7 +33,7 @@ name: "03 — recipe import: paste URL, wait for AI parse, review and save"
     text: ".*Recipe URL.*"
 
 
-# Enter a recipe URL (simplyrecipes allows server-side fetches)
+# Enter a recipe URL (budgetbytes allows server-side fetches)
 - tapOn:
     text: ".*https://example.com/recipe.*"
 
@@ -40,29 +45,31 @@ name: "03 — recipe import: paste URL, wait for AI parse, review and save"
     text: "Import"
 
 - takeScreenshot: 07-importing
+
+# Wait for either the AI review screen ("Save Recipe") or the duplicate detection screen
+# ("View Existing"). One of these will appear; 90s covers the AI parse latency.
 - extendedWaitUntil:
     visible:
-      text: ".*Save Recipe.*"
-
+      text: ".*Save Recipe.*|.*View Existing.*"
     timeout: 90000
-- takeScreenshot: 08-review-screen
+- takeScreenshot: 08-review-or-duplicate
 
-# Review screen should show a title field
-- assertVisible:
-    text: ".*Recipe title.*"
-
-    optional: true
-
-# Save the recipe
+# Re-run path: duplicate detected → tap "View Existing" to go back to library.
 - tapOn:
-    text: "Save Recipe"
+    text: ".*View Existing.*"
+    optional: true
+- takeScreenshot: 08b-view-existing
+
+# Fresh-run path: review screen → save the recipe.
+- tapOn:
+    text: ".*Save Recipe.*"
+    optional: true
 
 - takeScreenshot: 09-saving
 
-# Should navigate back to Recipes tab (or show "My Recipes" heading)
+# Final assertion: confirm we are on (or returned to) the Recipes library.
 - extendedWaitUntil:
     visible:
       text: ".*My Recipes.*"
-
     timeout: 20000
 - takeScreenshot: 10-saved-to-library
