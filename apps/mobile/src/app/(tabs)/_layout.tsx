@@ -44,6 +44,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="recipes"
         options={{
+          // The Recipes screen owns its own collapsing header now, so
+          // hide the default navigation header. Otherwise we end up with
+          // two "Recipes" titles stacked on top of each other.
+          headerShown: false,
           title: 'Recipes',
           tabBarLabel: 'Recipes',
           tabBarIcon: ({ color, size }) => (
