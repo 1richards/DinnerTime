@@ -29,15 +29,11 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
+          headerShown: false,
           title: 'Home',
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
-          ),
-          headerRight: () => (
-            <Pressable onPress={() => router.push('/settings')} className="mr-4" hitSlop={8}>
-              <Ionicons name="settings-outline" size={24} color="#1F2937" />
-            </Pressable>
           ),
         }}
       />
@@ -58,6 +54,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="plan"
         options={{
+          headerShown: false,
           title: 'Plan',
           tabBarLabel: 'Plan',
           tabBarIcon: ({ color, size }) => (
@@ -68,6 +65,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="pantry"
         options={{
+          headerShown: false,
           title: 'Pantry',
           tabBarLabel: 'Pantry',
           tabBarIcon: ({ color, size }) => (
@@ -78,6 +76,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="shopping"
         options={{
+          headerShown: false,
           title: 'Shopping',
           tabBarLabel: 'Shopping',
           tabBarIcon: ({ color, size }) => (

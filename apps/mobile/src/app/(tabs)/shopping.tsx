@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  ScrollView,
+  Animated,
   ActivityIndicator,
   Pressable,
   Alert,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,18 +18,15 @@ import { CategorySection } from '../../components/shopping/CategorySection';
 import { AddItemSheet } from '../../components/shopping/AddItemSheet';
 import { Button } from '../../components/ui/Button';
 import type { GroceryCategory, ShoppingListItem } from '../../types/shopping';
+import {
+  useCollapsingHeader,
+  collapsingHeaderStyles,
+  LARGE_HEADER_HEIGHT,
+} from '../../components/ui/useCollapsingHeader';
 
 const CATEGORY_ORDER: GroceryCategory[] = [
-  'produce',
-  'protein',
-  'dairy',
-  'pantry',
-  'bakery',
-  'frozen',
-  'condiments',
-  'spices',
-  'beverages',
-  'other',
+  'produce', 'protein', 'dairy', 'pantry', 'bakery',
+  'frozen', 'condiments', 'spices', 'beverages', 'other',
 ];
 
 export default function ShoppingScreen() {
@@ -54,6 +52,9 @@ export default function ShoppingScreen() {
 
   const [addVisible, setAddVisible] = useState(false);
   const [ordering, setOrdering] = useState(false);
+
+  const { onScroll, largeTitleOpacity, largeTitleTranslate, compactHeaderOpacity } =
+    useCollapsingHeader();
 
   useEffect(() => {
     fetchCurrent();
@@ -87,17 +88,16 @@ export default function ShoppingScreen() {
       await WebBrowser.openBrowserAsync(url);
       await fetchOrders();
     } catch {
-      // error is already captured in store.error and shown in banner
+      // error already captured in store
     } finally {
       setOrdering(false);
     }
   }, [createOrder, fetchOrders]);
 
-  const allChecked =
-    items.length > 0 && items.every((i) => i.checked);
+  const checkedCount = items.filter((i) => i.checked).length;
+  const allChecked = items.length > 0 && items.every((i) => i.checked);
   const orderDisabled = ordering || items.length === 0 || allChecked;
 
-  // Loading skeleton
   if (loading && !currentList && items.length === 0) {
     return (
       <SafeAreaView
@@ -105,14 +105,11 @@ export default function ShoppingScreen() {
         edges={['bottom']}
       >
         <ActivityIndicator size="large" color="#F97316" />
-        <Text className="text-sm text-warmGray-500 mt-3">
-          Loading shopping list...
-        </Text>
+        <Text className="text-sm text-warmGray-500 mt-3">Loading shopping list...</Text>
       </SafeAreaView>
     );
   }
 
-  // Empty state
   if (!currentList) {
     return (
       <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
@@ -148,41 +145,60 @@ export default function ShoppingScreen() {
     );
   }
 
+  const subtitle = `${items.length} item${items.length === 1 ? '' : 's'}${checkedCount > 0 ? ` · ${checkedCount} checked` : ''}`;
+
+  const listHeader = (
+    <Animated.View
+      style={{
+        opacity: largeTitleOpacity,
+        transform: [{ translateY: largeTitleTranslate }],
+      }}
+    >
+      <View style={styles.largeHeader}>
+        <Text style={styles.largeTitle}>Shopping</Text>
+        <Text style={styles.largeSubtitle}>{subtitle}</Text>
+      </View>
+    </Animated.View>
+  );
+
+  const listData = CATEGORY_ORDER.filter((cat) => (grouped[cat] ?? []).length > 0 || items.length === 0);
+
   return (
-    <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
-      <View className="px-4 pt-2 pb-3">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-1 pr-3">
-            <Text className="text-2xl font-bold text-warmGray-900">
-              {currentList.title}
-            </Text>
-            <Text className="text-sm text-warmGray-500 mt-0.5">
-              {items.length} item{items.length === 1 ? '' : 's'}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => router.push('/shopping/orders')}
-            hitSlop={8}
-            className="flex-row items-center px-3 py-2 rounded-full bg-orange-50 border border-orange-200 active:bg-orange-100"
-          >
-            <Ionicons name="receipt-outline" size={14} color="#B45309" />
-            <Text className="text-xs font-semibold text-amber-800 ml-1">
-              Orders
-            </Text>
-          </Pressable>
-        </View>
+    <SafeAreaView className="flex-1 bg-warmWhite" edges={['top', 'bottom']}>
+      {/* Compact nav bar */}
+      <Animated.View
+        pointerEvents="box-none"
+        style={[styles.compactHeader, { opacity: compactHeaderOpacity }]}
+      >
+        <Text style={styles.compactTitle}>Shopping</Text>
+      </Animated.View>
+
+      {/* Action row — orders icon */}
+      <View style={styles.actionRow} pointerEvents="box-none">
+        <View style={{ flex: 1 }} />
+        <Pressable
+          onPress={() => router.push('/shopping/orders')}
+          style={styles.actionBtn}
+          hitSlop={8}
+          accessibilityLabel="View orders"
+        >
+          <Ionicons name="receipt-outline" size={20} color="#3E332A" />
+        </Pressable>
       </View>
 
       {error && (
-        <View className="mx-4 mb-2 p-3 rounded-xl bg-red-50 border border-red-200">
+        <View className="mx-4 mb-2 p-3 rounded-xl bg-red-50 border border-red-200" style={{ marginTop: 52 }}>
           <Text className="text-sm text-red-700">{error}</Text>
         </View>
       )}
 
-      <ScrollView
+      <Animated.ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: 200 }}
+        scrollEventThrottle={16}
+        onScroll={onScroll}
       >
+        {listHeader}
         {CATEGORY_ORDER.map((cat) => (
           <CategorySection
             key={cat}
@@ -200,7 +216,7 @@ export default function ShoppingScreen() {
             </Text>
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       <Pressable
         onPress={() => setAddVisible(true)}
@@ -235,3 +251,7 @@ export default function ShoppingScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  ...collapsingHeaderStyles,
+});

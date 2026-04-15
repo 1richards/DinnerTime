@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  Animated,
   ActivityIndicator,
   Pressable,
   Alert,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,21 +16,16 @@ import { EmptyPlanState } from '../../components/plan/EmptyPlanState';
 import { SwapSheet } from '../../components/plan/SwapSheet';
 import { CookConfirm } from '../../components/plan/CookConfirm';
 import type { MealPlanEntry, MealPlanIngredient } from '../../types/mealPlan';
+import {
+  useCollapsingHeader,
+  collapsingHeaderStyles,
+  LARGE_HEADER_HEIGHT,
+} from '../../components/ui/useCollapsingHeader';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTH_SHORT = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
 /** Current week's Monday (UTC) in YYYY-MM-DD form. */
@@ -38,7 +34,6 @@ function currentMondayIso(): string {
   const utc = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   );
-  // getUTCDay: 0=Sun..6=Sat. Shift so Mon=0.
   const dow = (utc.getUTCDay() + 6) % 7;
   utc.setUTCDate(utc.getUTCDate() - dow);
   return utc.toISOString().slice(0, 10);
@@ -71,6 +66,9 @@ export default function PlanScreen() {
   const [swapTarget, setSwapTarget] = useState<number | null>(null);
   const [cookTarget, setCookTarget] = useState<number | null>(null);
   const [cookDelta, setCookDelta] = useState<MealPlanIngredient[] | null>(null);
+
+  const { onScroll, largeTitleOpacity, largeTitleTranslate, compactHeaderOpacity } =
+    useCollapsingHeader();
 
   useEffect(() => {
     fetchCurrent();
@@ -110,24 +108,19 @@ export default function PlanScreen() {
     [entriesByDay]
   );
 
-  // Swap confirm
   const confirmSwap = useCallback(async () => {
     if (swapTarget == null) return;
     await swapDay(swapTarget);
     setSwapTarget(null);
   }, [swapTarget, swapDay]);
 
-  // Cook confirm
   const confirmCook = useCallback(async () => {
     if (cookTarget == null) return;
     const entry = entriesByDay.get(cookTarget);
-    // Snapshot ingredients for delta display (server doesn't return deltas separately)
     const delta = entry?.ingredients_needed ?? entry?.ingredients ?? [];
     await markCooked(cookTarget);
-    // Check store state post-call
     const latestError = useMealPlanStore.getState().error;
     if (latestError && latestError !== 'already_cooked') {
-      // error already surfaced via banner
       setCookTarget(null);
       return;
     }
@@ -139,7 +132,6 @@ export default function PlanScreen() {
     setCookDelta(null);
   }, []);
 
-  // Loading skeleton on first fetch
   if (loading && !currentPlan) {
     return (
       <SafeAreaView
@@ -152,7 +144,6 @@ export default function PlanScreen() {
     );
   }
 
-  // Empty state
   if (!currentPlan) {
     return (
       <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
@@ -168,40 +159,53 @@ export default function PlanScreen() {
 
   const weekRange = formatRangeFromWeekStart(currentPlan.week_start);
 
+  const listHeader = (
+    <Animated.View
+      style={{
+        opacity: largeTitleOpacity,
+        transform: [{ translateY: largeTitleTranslate }],
+      }}
+    >
+      <View style={styles.largeHeader}>
+        <Text style={styles.largeTitle}>This Week</Text>
+        <Text style={styles.largeSubtitle}>{weekRange}</Text>
+      </View>
+    </Animated.View>
+  );
+
   return (
-    <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
-      <View className="px-4 pt-2 pb-3">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-1 pr-3">
-            <Text className="text-2xl font-bold text-warmGray-900">
-              This Week
-            </Text>
-            <Text className="text-sm text-warmGray-500 mt-0.5">
-              {weekRange}
-            </Text>
-          </View>
-          <Pressable
-            onPress={handleRegenerate}
-            hitSlop={8}
-            className="flex-row items-center px-3 py-2 rounded-full bg-orange-50 border border-orange-200 active:bg-orange-100"
-          >
-            <Ionicons name="refresh" size={14} color="#B45309" />
-            <Text className="text-xs font-semibold text-amber-800 ml-1">
-              Regenerate
-            </Text>
-          </Pressable>
-        </View>
+    <SafeAreaView className="flex-1 bg-warmWhite" edges={['top', 'bottom']}>
+      {/* Compact nav bar */}
+      <Animated.View
+        pointerEvents="box-none"
+        style={[styles.compactHeader, { opacity: compactHeaderOpacity }]}
+      >
+        <Text style={styles.compactTitle}>This Week</Text>
+      </Animated.View>
+
+      {/* Action row — regenerate icon */}
+      <View style={styles.actionRow} pointerEvents="box-none">
+        <View style={{ flex: 1 }} />
+        <Pressable
+          onPress={handleRegenerate}
+          style={styles.actionBtn}
+          hitSlop={8}
+          accessibilityLabel="Regenerate week"
+        >
+          <Ionicons name="refresh" size={20} color="#3E332A" />
+        </Pressable>
       </View>
 
       {error && error !== 'already_cooked' && (
-        <View className="mx-4 mb-2 p-3 rounded-xl bg-red-50 border border-red-200">
+        <View className="mx-4 mb-2 p-3 rounded-xl bg-red-50 border border-red-200" style={{ marginTop: 52 }}>
           <Text className="text-sm text-red-700">{error}</Text>
         </View>
       )}
 
-      <FlatList
+      <Animated.FlatList
         data={days}
         keyExtractor={(item) => `day-${item.day}`}
+        ListHeaderComponent={listHeader}
         renderItem={({ item }) => (
           <DayRow
             entry={item.entry}
@@ -229,6 +233,9 @@ export default function PlanScreen() {
             }}
           />
         )}
+        contentContainerStyle={{ paddingBottom: 140 }}
+        scrollEventThrottle={16}
+        onScroll={onScroll}
       />
 
       <SwapSheet
@@ -250,3 +257,7 @@ export default function PlanScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  ...collapsingHeaderStyles,
+});

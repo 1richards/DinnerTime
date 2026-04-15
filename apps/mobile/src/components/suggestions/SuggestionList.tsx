@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, FlatList, ScrollView, StyleSheet, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { SuggestionCard } from './SuggestionCard';
@@ -22,9 +22,11 @@ interface SuggestionListProps {
    * Home hero here so it doesn't eat permanent viewport.
    */
   HeaderComponent?: React.ReactElement;
+  /** Forward scroll events to the parent for collapsing-header animation. */
+  onScroll?: ReturnType<typeof Animated.event>;
 }
 
-export function SuggestionList({ HeaderComponent }: SuggestionListProps = {}) {
+export function SuggestionList({ HeaderComponent, onScroll }: SuggestionListProps = {}) {
   const suggestions = useSuggestionsStore((s) => s.suggestions);
   const isLoading = useSuggestionsStore((s) => s.isLoading);
   const error = useSuggestionsStore((s) => s.error);
@@ -157,11 +159,13 @@ export function SuggestionList({ HeaderComponent }: SuggestionListProps = {}) {
 
   return (
     <>
-      <FlatList
+      <Animated.FlatList
         data={suggestions}
         keyExtractor={(item, index) => `${item.title}-${index}`}
         renderItem={renderItem}
         contentContainerClassName="pb-8"
+        scrollEventThrottle={16}
+        onScroll={onScroll}
         ListHeaderComponent={
           <View>
             {HeaderComponent}

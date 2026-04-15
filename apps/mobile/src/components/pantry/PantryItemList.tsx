@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
-import { View, Text, SectionList, RefreshControl } from 'react-native';
+import { View, Text, SectionList, RefreshControl, Animated } from 'react-native';
 import { PantryItemCard } from './PantryItemCard';
 import type { EnrichedPantryItem } from '../../hooks/usePantryItems';
 
@@ -12,6 +12,10 @@ interface PantryItemListProps {
   items: EnrichedPantryItem[];
   refreshing: boolean;
   onRefresh: () => void;
+  ListHeaderComponent?: React.ReactElement;
+  onScroll?: ReturnType<typeof Animated.event>;
+  scrollEventThrottle?: number;
+  contentContainerStyle?: object;
 }
 
 interface Section {
@@ -20,7 +24,15 @@ interface Section {
   data: EnrichedPantryItem[];
 }
 
-export function PantryItemList({ items, refreshing, onRefresh }: PantryItemListProps) {
+export function PantryItemList({
+  items,
+  refreshing,
+  onRefresh,
+  ListHeaderComponent,
+  onScroll,
+  scrollEventThrottle,
+  contentContainerStyle,
+}: PantryItemListProps) {
   const sections: Section[] = useMemo(() => {
     const grouped = new Map<string, EnrichedPantryItem[]>();
 
@@ -61,11 +73,12 @@ export function PantryItemList({ items, refreshing, onRefresh }: PantryItemListP
   );
 
   return (
-    <SectionList
+    <Animated.SectionList
       sections={sections}
       keyExtractor={(item) => item.id}
       renderItem={renderItem}
       renderSectionHeader={renderSectionHeader}
+      ListHeaderComponent={ListHeaderComponent}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -73,8 +86,10 @@ export function PantryItemList({ items, refreshing, onRefresh }: PantryItemListP
           tintColor="#F97316"
         />
       }
-      contentContainerStyle={{ paddingBottom: 100 }}
+      contentContainerStyle={contentContainerStyle ?? { paddingBottom: 100 }}
       stickySectionHeadersEnabled
+      onScroll={onScroll}
+      scrollEventThrottle={scrollEventThrottle}
     />
   );
 }
