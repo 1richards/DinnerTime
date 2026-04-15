@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { MealPlanEntry } from '../../types/mealPlan';
+import type { MealPlanEntry, MealPlanIngredient } from '../../types/mealPlan';
+import { RemixSheet } from '../recipes/RemixSheet';
 
 interface DayRowProps {
   entry: MealPlanEntry | null;
@@ -29,6 +30,7 @@ export function DayRow({
   onPress,
 }: DayRowProps) {
   const isCooked = entry?.status === 'cooked';
+  const [remixOpen, setRemixOpen] = useState(false);
 
   if (!entry) {
     return (
@@ -100,6 +102,22 @@ export function DayRow({
 
       <View className="flex-row items-center gap-1">
         <Pressable
+          testID={`remix-btn-${dayLabel}`}
+          onPress={(e) => {
+            e.stopPropagation();
+            setRemixOpen(true);
+          }}
+          disabled={isCooked}
+          hitSlop={8}
+          className="w-10 h-10 items-center justify-center rounded-full active:bg-warmGray-100"
+        >
+          <Ionicons
+            name="sparkles"
+            size={20}
+            color={isCooked ? '#D1D5DB' : '#B45309'}
+          />
+        </Pressable>
+        <Pressable
           testID={`swap-btn-${dayLabel}`}
           onPress={onSwap}
           disabled={isSwapping || isCooking || isCooked}
@@ -134,6 +152,31 @@ export function DayRow({
           )}
         </Pressable>
       </View>
+
+      <RemixSheet
+        visible={remixOpen}
+        recipeTitle={entry.title}
+        source={
+          entry.recipe_id
+            ? { kind: 'saved', recipeId: entry.recipe_id }
+            : {
+                kind: 'inline',
+                context: {
+                  title: entry.title,
+                  description: entry.description ?? null,
+                  ingredients: (entry.ingredients ?? []) as MealPlanIngredient[],
+                  total_time_minutes: entry.estimated_time_minutes ?? null,
+                },
+              }
+        }
+        baseForSave={{
+          title: entry.title,
+          description: entry.description ?? null,
+          ingredients: (entry.ingredients ?? []) as MealPlanIngredient[],
+          total_time_minutes: entry.estimated_time_minutes ?? null,
+        }}
+        onClose={() => setRemixOpen(false)}
+      />
     </Pressable>
   );
 }

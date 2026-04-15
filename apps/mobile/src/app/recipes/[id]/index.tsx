@@ -16,6 +16,7 @@ import { ServingSizeStepper } from '../../../components/recipes/ServingSizeStepp
 import { ScaledIngredientList } from '../../../components/recipes/ScaledIngredientList';
 import { FavoriteButton } from '../../../components/recipes/FavoriteButton';
 import { RemixSheet } from '../../../components/recipes/RemixSheet';
+import { AddToPlanSheet } from '../../../components/recipes/AddToPlanSheet';
 import { Button } from '../../../components/ui/Button';
 import { HeroImage } from '../../../components/ui/HeroImage';
 import { getRecipeImage } from '../../../constants/foodImages';
@@ -29,6 +30,7 @@ export default function RecipeDetailScreen() {
   const [servings, setServings] = useState<number>(recipe?.servings ?? 1);
 
   const [remixOpen, setRemixOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
 
   useEffect(() => {
     if (!recipe) {
@@ -168,14 +170,22 @@ export default function RecipeDetailScreen() {
           />
         </View>
 
-        <View className="px-4 mt-3">
+        <View className="px-4 mt-3 flex-row gap-3">
+          <Pressable
+            onPress={() => setPlanOpen(true)}
+            style={[styles.variationsButton, { flex: 1 }]}
+            testID="add-to-plan-button"
+          >
+            <Ionicons name="calendar-outline" size={18} color="#B45309" />
+            <Text style={styles.variationsButtonText}>Add to plan</Text>
+          </Pressable>
           <Pressable
             onPress={() => setRemixOpen(true)}
-            style={styles.variationsButton}
+            style={[styles.variationsButton, { flex: 1 }]}
             testID="creative-variations-button"
           >
             <Ionicons name="sparkles" size={18} color="#B45309" />
-            <Text style={styles.variationsButtonText}>Remix this recipe</Text>
+            <Text style={styles.variationsButtonText}>Remix</Text>
           </Pressable>
         </View>
 
@@ -212,6 +222,12 @@ export default function RecipeDetailScreen() {
           total_time_minutes: recipe.total_time_minutes,
         }}
         onClose={() => setRemixOpen(false)}
+      />
+
+      <AddToPlanSheet
+        visible={planOpen}
+        recipe={recipe}
+        onClose={() => setPlanOpen(false)}
       />
     </SafeAreaView>
   );

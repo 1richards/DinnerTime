@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useDeferredValue } from 'react';
+import React, { useEffect, useMemo, useState, useDeferredValue } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ import { Image } from 'expo-image';
 import { useRecipeStore } from '../../stores/recipeStore';
 import { useProgressionStore } from '../../stores/progressionStore';
 import { useNetworkStore } from '../../stores/networkStore';
+import { usePantryStore } from '../../stores/pantryStore';
 import { RecipeCard } from '../../components/recipes/RecipeCard';
 import { SearchBar } from '../../components/recipes/SearchBar';
 import { ChipToggle } from '../../components/ui/ChipToggle';
@@ -22,7 +24,75 @@ import { Button } from '../../components/ui/Button';
 import { HeroImage } from '../../components/ui/HeroImage';
 import { SuggestedForYou } from '../../components/SuggestedForYou';
 import { FOOD_IMAGES } from '../../constants/foodImages';
-import type { Recipe } from '../../types/recipe';
+import type { Recipe, ParsedIngredient } from '../../types/recipe';
+
+type SourceFilter = 'all' | 'url' | 'photo' | 'manual' | 'ai';
+type TimeFilter = 'any' | 'quick' | 'medium' | 'long';
+
+const SOURCE_FILTER_LABELS: Record<SourceFilter, string> = {
+  all: 'Any source',
+  url: 'From URL',
+  photo: 'From photo',
+  manual: 'Typed',
+  ai: 'AI-discovered',
+};
+
+const TIME_FILTER_LABELS: Record<TimeFilter, string> = {
+  any: 'Any time',
+  quick: 'Under 30 min',
+  medium: '30–60 min',
+  long: 'Over 60 min',
+};
+
+function recipeTime(r: Recipe): number {
+  return (
+    r.total_time_minutes ??
+    (r.prep_time_minutes ?? 0) + (r.cook_time_minutes ?? 0)
+  );
+}
+
+function matchesTimeFilter(r: Recipe, t: TimeFilter): boolean {
+  if (t === 'any') return true;
+  const mins = recipeTime(r);
+  if (mins === 0) return false;
+  if (t === 'quick') return mins < 30;
+  if (t === 'medium') return mins >= 30 && mins <= 60;
+  return mins > 60;
+}
+
+function normalize(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+/**
+ * "Using items on hand" — a recipe passes if every ingredient that's
+ * NOT a pantry-staple (salt, pepper, oil, water) appears in the pantry.
+ * Lightweight substring match on normalized_name.
+ */
+const PANTRY_STAPLES = new Set([
+  'salt', 'pepper', 'water', 'oil', 'olive oil', 'vegetable oil', 'butter',
+  'sugar', 'flour', 'garlic powder', 'onion powder',
+]);
+
+function matchesPantryOnly(r: Recipe, pantryNames: Set<string>): boolean {
+  const ingredients = (r.ingredients ?? []) as ParsedIngredient[];
+  if (ingredients.length === 0) return false;
+  for (const ing of ingredients) {
+    const name = normalize(ing.name ?? '');
+    if (!name) continue;
+    if (PANTRY_STAPLES.has(name)) continue;
+    // pass if ANY pantry item's name contains (or is contained in) this ingredient
+    let matched = false;
+    for (const p of pantryNames) {
+      if (p.includes(name) || name.includes(p)) {
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) return false;
+  }
+  return true;
+}
 
 // Stable hero for the recipes banner
 const RECIPES_HERO = FOOD_IMAGES.bakedGoods[0];
@@ -46,18 +116,64 @@ export default function RecipesScreen() {
   const fetchCookStats = useProgressionStore((s) => s.fetchCookStats);
   const isOnline = useNetworkStore((s) => s.isOnline);
 
+  const pantryItems = usePantryStore((s) => s.items);
+  const loadPantry = usePantryStore((s) => s.loadItems);
+
   const [searchQuery, setSearchQuery] = useState('');
   const deferredQuery = useDeferredValue(searchQuery);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('any');
+  const [pantryOnly, setPantryOnly] = useState(false);
 
+  // Single fetch of the full library on mount/refresh. All filtering
+  // happens client-side via useMemo below — no round-trips per toggle.
   useEffect(() => {
-    // Skip network call when offline AND we already have a cached list.
     if (!isOnline && recipes.length > 0) return;
-    fetchRecipes({
-      q: deferredQuery || undefined,
-      favoritesOnly: showFavoritesOnly,
+    fetchRecipes({});
+  }, [fetchRecipes, isOnline, recipes.length]);
+
+  // Lazy pantry load when the pantry-only filter is first used.
+  useEffect(() => {
+    if (!pantryOnly || pantryItems.length > 0) return;
+    // Pull profile_id from auth store indirectly via pantry loader.
+    const auth = require('../../stores/authStore').useAuthStore.getState();
+    if (auth?.profile?.id) loadPantry(auth.profile.id);
+  }, [pantryOnly, pantryItems.length, loadPantry]);
+
+  const pantryNames = useMemo(
+    () => new Set(pantryItems.map((p) => normalize(p.name))),
+    [pantryItems],
+  );
+
+  const filteredRecipes = useMemo(() => {
+    const q = normalize(deferredQuery);
+    return recipes.filter((r) => {
+      if (showFavoritesOnly && !r.is_favorite) return false;
+      if (sourceFilter !== 'all' && r.source_type !== sourceFilter) return false;
+      if (!matchesTimeFilter(r, timeFilter)) return false;
+      if (pantryOnly && !matchesPantryOnly(r, pantryNames)) return false;
+      if (q) {
+        const hay = normalize(r.title) + ' ' + normalize(r.description ?? '');
+        if (!hay.includes(q)) return false;
+      }
+      return true;
     });
-  }, [deferredQuery, showFavoritesOnly, fetchRecipes, isOnline, recipes.length]);
+  }, [
+    recipes,
+    showFavoritesOnly,
+    sourceFilter,
+    timeFilter,
+    pantryOnly,
+    pantryNames,
+    deferredQuery,
+  ]);
+
+  const activeFilterCount =
+    (showFavoritesOnly ? 1 : 0) +
+    (sourceFilter !== 'all' ? 1 : 0) +
+    (timeFilter !== 'any' ? 1 : 0) +
+    (pantryOnly ? 1 : 0);
 
   // Phase 10: skill progression
   useEffect(() => {
@@ -85,12 +201,20 @@ export default function RecipesScreen() {
       <SuggestedForYou suggestions={ambitionSuggestions} />
       <View className="px-4 pt-3">
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
+
+        {/* Filter row 1: primary toggles + Discover link */}
         <View className="flex-row items-center gap-2 mt-3">
           <ChipToggle
-            label="Favorites"
+            label="♥ Favorites"
             selected={showFavoritesOnly}
             onToggle={() => setShowFavoritesOnly((v) => !v)}
             colorScheme="red"
+          />
+          <ChipToggle
+            label="From pantry"
+            selected={pantryOnly}
+            onToggle={() => setPantryOnly((v) => !v)}
+            colorScheme="orange"
           />
           <Pressable
             onPress={() => router.push('/recipes/discover')}
@@ -102,6 +226,69 @@ export default function RecipesScreen() {
             </Text>
           </Pressable>
         </View>
+
+        {/* Filter row 2: scrollable source + time pills */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 8, paddingTop: 8, paddingBottom: 2 }}
+        >
+          {(['all', 'url', 'photo', 'manual', 'ai'] as SourceFilter[]).map((f) => (
+            <Pressable
+              key={`src-${f}`}
+              onPress={() => setSourceFilter(f)}
+              className={`px-3 py-1.5 rounded-full border ${
+                sourceFilter === f
+                  ? 'bg-orange-500 border-orange-500'
+                  : 'bg-white border-warmGray-200'
+              }`}
+            >
+              <Text
+                className={`text-xs font-semibold ${
+                  sourceFilter === f ? 'text-white' : 'text-warmGray-600'
+                }`}
+              >
+                {SOURCE_FILTER_LABELS[f]}
+              </Text>
+            </Pressable>
+          ))}
+          <View style={{ width: 6 }} />
+          {(['any', 'quick', 'medium', 'long'] as TimeFilter[]).map((t) => (
+            <Pressable
+              key={`time-${t}`}
+              onPress={() => setTimeFilter(t)}
+              className={`px-3 py-1.5 rounded-full border ${
+                timeFilter === t
+                  ? 'bg-orange-500 border-orange-500'
+                  : 'bg-white border-warmGray-200'
+              }`}
+            >
+              <Text
+                className={`text-xs font-semibold ${
+                  timeFilter === t ? 'text-white' : 'text-warmGray-600'
+                }`}
+              >
+                {TIME_FILTER_LABELS[t]}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        {activeFilterCount > 0 && (
+          <Pressable
+            onPress={() => {
+              setShowFavoritesOnly(false);
+              setSourceFilter('all');
+              setTimeFilter('any');
+              setPantryOnly(false);
+            }}
+            className="mt-2 self-start"
+          >
+            <Text className="text-xs font-semibold text-orange-600">
+              Clear filters ({activeFilterCount})
+            </Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -155,7 +342,7 @@ export default function RecipesScreen() {
   return (
     <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
       <FlatList
-        data={recipes}
+        data={filteredRecipes}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={header}
         renderItem={({ item }) => (
@@ -174,12 +361,7 @@ export default function RecipesScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
-            onRefresh={() =>
-              fetchRecipes({
-                q: deferredQuery || undefined,
-                favoritesOnly: showFavoritesOnly,
-              })
-            }
+            onRefresh={() => fetchRecipes({})}
             tintColor="#F97316"
           />
         }

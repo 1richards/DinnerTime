@@ -81,16 +81,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="cook"
-        options={{
-          title: 'Cook',
-          tabBarLabel: 'Cook',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="flame-outline" size={size} color={color} />
-          ),
-        }}
-      />
     </Tabs>
   );
 }

@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import type { Recipe } from '../../types/recipe';
 import { getRecipeImage } from '../../constants/foodImages';
 import { useRecipeStore } from '../../stores/recipeStore';
+import { RemixSheet } from './RemixSheet';
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -20,6 +21,7 @@ const SOURCE_LABELS: Record<Recipe['source_type'], string> = {
 
 export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
   const toggleFavorite = useRecipeStore((s) => s.toggleFavorite);
+  const [remixOpen, setRemixOpen] = useState(false);
   const totalTime =
     recipe.total_time_minutes ??
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
@@ -27,6 +29,7 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
   const imageUri = getRecipeImage(recipe.id, recipe.image_url);
 
   return (
+    <>
     <Pressable
       onPress={() => onPress?.(recipe)}
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
@@ -49,26 +52,42 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
             {SOURCE_LABELS[recipe.source_type]}
           </Text>
         </View>
-        {/* Favorite heart — interactive, not just a visual. Stop propagation
-            so tapping the heart doesn't also trigger the outer card press. */}
-        <Pressable
-          onPress={(e) => {
-            e.stopPropagation();
-            toggleFavorite(recipe.id);
-          }}
-          hitSlop={12}
-          style={({ pressed }) => [
-            styles.heartBadge,
-            pressed && { opacity: 0.6 },
-          ]}
-          accessibilityLabel={recipe.is_favorite ? 'Unfavorite recipe' : 'Favorite recipe'}
-        >
-          <Ionicons
-            name={recipe.is_favorite ? 'heart' : 'heart-outline'}
-            size={22}
-            color={recipe.is_favorite ? '#EF4444' : '#FFFFFF'}
-          />
-        </Pressable>
+        {/* Top-right action cluster: Remix sparkle + Favorite heart.
+            Both stop propagation so taps don't trigger the outer card. */}
+        <View style={styles.actionCluster}>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              setRemixOpen(true);
+            }}
+            hitSlop={10}
+            style={({ pressed }) => [
+              styles.actionBadge,
+              pressed && { opacity: 0.6 },
+            ]}
+            accessibilityLabel="Remix recipe"
+          >
+            <Ionicons name="sparkles" size={18} color="#FFE4B5" />
+          </Pressable>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              toggleFavorite(recipe.id);
+            }}
+            hitSlop={10}
+            style={({ pressed }) => [
+              styles.actionBadge,
+              pressed && { opacity: 0.6 },
+            ]}
+            accessibilityLabel={recipe.is_favorite ? 'Unfavorite recipe' : 'Favorite recipe'}
+          >
+            <Ionicons
+              name={recipe.is_favorite ? 'heart' : 'heart-outline'}
+              size={20}
+              color={recipe.is_favorite ? '#EF4444' : '#FFFFFF'}
+            />
+          </Pressable>
+        </View>
       </View>
 
       {/* Text content */}
@@ -93,6 +112,21 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
         </View>
       </View>
     </Pressable>
+
+    <RemixSheet
+      visible={remixOpen}
+      recipeTitle={recipe.title}
+      source={{ kind: 'saved', recipeId: recipe.id }}
+      baseForSave={{
+        title: recipe.title,
+        description: recipe.description,
+        ingredients: recipe.ingredients,
+        steps: recipe.steps,
+        total_time_minutes: recipe.total_time_minutes,
+      }}
+      onClose={() => setRemixOpen(false)}
+    />
+    </>
   );
 }
 
@@ -140,10 +174,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.8,
   },
-  heartBadge: {
+  actionCluster: {
     position: 'absolute',
     top: 8,
     right: 8,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  actionBadge: {
     width: 36,
     height: 36,
     borderRadius: 18,
