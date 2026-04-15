@@ -4,9 +4,9 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 5 of 5
 status: completed
-stopped_at: Completed 11-05-PLAN.md
-last_updated: "2026-04-13T16:53:01.699Z"
-last_activity: 2026-04-13 -- Completed 11-05 phase closeout (deleted config/anthropic.ts, added env-gated AI smoke script). Phase 11 complete.
+stopped_at: Completed 11-05-PLAN.md; post-v1 polish ongoing ad-hoc
+last_updated: "2026-04-14T00:00:00.000Z"
+last_activity: 2026-04-14 -- v1.0 milestone shipped. Post-v1 polish landed out-of-band on main (UAT harness, food-photo visual pass, remix feature, collapsing headers, filter sheet, sign out, SecureStore fix, Cook tab removed). Tracked below under Post-v1 Polish, not re-planned through GSD.
 progress:
   total_phases: 11
   completed_phases: 11
@@ -257,8 +257,35 @@ None yet.
 - Claude Vision accuracy for real fridge photos needs empirical validation in Phase 3
 - expo-speech-recognition is pre-1.0 -- may need Whisper fallback for Phase 9
 
+## Post-v1 Polish (out-of-band, not GSD-planned)
+
+Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Logged here so GSD state reflects reality without re-planning after the fact.
+
+**UAT + infra (2026-04-13 overnight, see `.planning/UAT-NIGHT-REPORT.md`):**
+- `3031eff` unblock dev client launch on iPhone (ATS, SecureStore)
+- `68b5f6d` scaffold Maestro flows + iOS Simulator UAT runbook
+- `5d2b4ef` 96 server integration tests + 4 backend bugs fixed (route order, single→maybeSingle, AI null UUID, JSON-string steps)
+- `72d256a` 14/14 Maestro flows green; P0 frontend fixes (shoppingStore response shape, GestureHandlerRootView)
+- `8dbbc6f` food-photography visual pass (HeroImage + foodImages constants, 11 files)
+- Final state: 16/16 Maestro UI flows, 329/329 server tests
+
+**Feature + UX polish (2026-04-14):**
+- `0e77e4b` recoverable navigation across non-tab screens, collapsible home hero, Keychain `AFTER_FIRST_UNLOCK`, Sign Out
+- `e685985` Discover preview modal, progression gate rework, pantry scan confirm fix, cooked-entry persistence fix
+- `3e11b7a` RecipeCard favorite heart made interactive
+- `08445b9` Remix modes (surprise/protein/veggies/quicker) + Home suggestion preview modal + `POST /meal-plans/entries/assign`
+- `070fcf8` structured variations (title+description), save-as-recipe, remix on home suggestions
+- `c4b4fc4` unify Home suggestions + Discover card visuals; clarify semantics
+- `5611f8e` remove Cook tab, Tier 2 Remix spread (RecipeCard/DayRow/AddToPlan), client-side recipe filters
+- `b430772` collapsing header + filter bottom-sheet on Recipes tab
+- `31a4ea2` hide default tab header on Recipes (double-header fix)
+- `a5111a7` collapsing-header pattern applied to all five tabs (shared `useCollapsingHeader` hook)
+
+**Deferred (pre-approved for future phase):**
+- Plan tab multi-week navigation (prev/next week chevrons, cache plans by `week_start`, extend `GET /meal-plans/current` with `?week_start=`). User chose to hold off on formalizing as Phase 12.
+
 ## Session Continuity
 
-Last session: 2026-04-13T16:51:58.136Z
-Stopped at: Completed 11-05-PLAN.md
+Last session: 2026-04-14T00:00:00.000Z
+Stopped at: v1.0 shipped; post-v1 polish ongoing ad-hoc UAT feedback
 Resume file: None

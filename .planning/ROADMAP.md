@@ -24,6 +24,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10: Skill Progression & Offline** - Gentle skill coaching, creative variations, and offline support (completed 2026-04-13)
 - [x] **Phase 11: Hybrid AI Client** - Refactor all AI services behind a provider-agnostic AIClient with per-task Anthropic/Gemini routing (completed 2026-04-13)
 
+**Milestone v1.0 shipped 2026-04-14.** Post-v1 polish (UAT harness, visual pass, remix, collapsing headers, filter sheet, sign out, SecureStore fix, Cook tab removal) landed out-of-band on `main` and is logged in `STATE.md` under "Post-v1 Polish" rather than re-planned as a GSD phase. See `.planning/UAT-NIGHT-REPORT.md` for the overnight work summary. Plan tab multi-week navigation is deferred; candidate for a future Phase 12 when formalized.
+
 ## Phase Details
 
 ### Phase 1: Project Setup & Auth
@@ -236,11 +238,11 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 1. Project Setup & Auth | 3/3 | Complete   | 2026-04-11 |
 | 2. Household Preferences | 3/3 | Complete   | 2026-04-11 |
 | 3. Pantry Scanning | 4/4 | Complete   | 2026-04-12 |
-| 4. Fridge-to-Dinner Suggestions | 0/3 | Not started | - |
-| 5. Recipe Import | 2/4 | In Progress|  |
-| 6. Recipe Library | 3/5 | In Progress|  |
-| 7. Meal Planning | 0/5 | Not started | - |
-| 8. Shopping & Instacart | 0/7 | Not started | - |
-| 9. Voice Cooking Mode | 0/5 | Not started | - |
+| 4. Fridge-to-Dinner Suggestions | 3/3 | Complete   | 2026-04-12 |
+| 5. Recipe Import | 4/4 | Complete   | 2026-04-12 |
+| 6. Recipe Library | 5/5 | Complete   | 2026-04-12 |
+| 7. Meal Planning | 5/5 | Complete   | 2026-04-12 |
+| 8. Shopping & Instacart | 7/7 | Complete   | 2026-04-13 |
+| 9. Voice Cooking Mode | 5/5 | Complete   | 2026-04-13 |
 | 10. Skill Progression & Offline | 5/5 | Complete    | 2026-04-13 |
 | 11. Hybrid AI Client | 4/5 | Complete    | 2026-04-13 |
