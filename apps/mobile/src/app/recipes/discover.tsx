@@ -113,11 +113,15 @@ export default function DiscoverScreen() {
         className="flex-1 px-4"
         contentContainerStyle={{ paddingBottom: 80, paddingTop: 12 }}
       >
-        <Text className="text-2xl font-bold text-warmGray-900 mb-1">
+        <Text className="text-xs font-bold text-orange-700 uppercase tracking-wider mb-1">
+          New ideas
+        </Text>
+        <Text className="text-2xl font-black text-warmGray-900 mb-1 -tracking-wider">
           Discover
         </Text>
-        <Text className="text-sm text-warmGray-500 mb-4">
-          AI-suggested recipes tailored to your household.
+        <Text className="text-xs text-warmGray-500 mb-5">
+          Full recipes your household might love. Ingredient-agnostic —
+          we don't limit to what's in your pantry.
         </Text>
 
         <View className="flex-row gap-2 mb-4">

@@ -165,9 +165,17 @@ export function SuggestionList({ HeaderComponent }: SuggestionListProps = {}) {
         ListHeaderComponent={
           <View>
             {HeaderComponent}
-            <Text className="text-base font-semibold text-warmGray-700 mb-3 px-4 pt-4">
-              Tonight's suggestions
-            </Text>
+            <View className="px-4 pt-5 pb-1">
+              <Text className="text-xs font-bold text-orange-700 uppercase tracking-wider mb-1">
+                Cook tonight
+              </Text>
+              <Text className="text-base font-semibold text-warmGray-700 mb-1">
+                Using what's in your pantry
+              </Text>
+              <Text className="text-xs text-warmGray-500 mb-4">
+                Grounded in what you actually have on hand right now.
+              </Text>
+            </View>
           </View>
         }
         ListFooterComponent={
