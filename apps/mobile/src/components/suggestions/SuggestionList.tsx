@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { SuggestionCard } from './SuggestionCard';
 import { SuggestionSkeleton } from './SuggestionSkeleton';
+import { SuggestionPreviewModal } from './SuggestionPreviewModal';
 import { Button } from '../ui/Button';
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
 import { usePantryStore } from '../../stores/pantryStore';
@@ -31,6 +32,8 @@ export function SuggestionList({ HeaderComponent }: SuggestionListProps = {}) {
   const autoFetch = useSuggestionsStore((s) => s.autoFetch);
   const setAutoFetch = useSuggestionsStore((s) => s.setAutoFetch);
   const pantryItems = usePantryStore((s) => s.items);
+
+  const [previewSuggestion, setPreviewSuggestion] = useState<DinnerSuggestion | null>(null);
 
   const hasSufficientPantry = pantryItems.length >= 3;
 
@@ -147,33 +150,42 @@ export function SuggestionList({ HeaderComponent }: SuggestionListProps = {}) {
 
   // Data state
   const renderItem = ({ item }: { item: DinnerSuggestion }) => (
-    <SuggestionCard suggestion={item} />
+    <View className="px-4">
+      <SuggestionCard suggestion={item} onPress={setPreviewSuggestion} />
+    </View>
   );
 
   return (
-    <FlatList
-      data={suggestions}
-      keyExtractor={(item, index) => `${item.title}-${index}`}
-      renderItem={renderItem}
-      contentContainerClassName="pb-8"
-      ListHeaderComponent={
-        <View>
-          {HeaderComponent}
-          <Text className="text-base font-semibold text-warmGray-700 mb-3 px-4 pt-4">
-            Tonight's suggestions
-          </Text>
-        </View>
-      }
-      ListFooterComponent={
-        <View className="mt-2 mb-4 px-4">
-          <Button
-            title="Get New Ideas"
-            variant="outline"
-            onPress={fetchSuggestions}
-          />
-        </View>
-      }
-    />
+    <>
+      <FlatList
+        data={suggestions}
+        keyExtractor={(item, index) => `${item.title}-${index}`}
+        renderItem={renderItem}
+        contentContainerClassName="pb-8"
+        ListHeaderComponent={
+          <View>
+            {HeaderComponent}
+            <Text className="text-base font-semibold text-warmGray-700 mb-3 px-4 pt-4">
+              Tonight's suggestions
+            </Text>
+          </View>
+        }
+        ListFooterComponent={
+          <View className="mt-2 mb-4 px-4">
+            <Button
+              title="Get New Ideas"
+              variant="outline"
+              onPress={fetchSuggestions}
+            />
+          </View>
+        }
+      />
+      <SuggestionPreviewModal
+        visible={previewSuggestion !== null}
+        suggestion={previewSuggestion}
+        onClose={() => setPreviewSuggestion(null)}
+      />
+    </>
   );
 }
 

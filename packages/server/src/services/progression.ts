@@ -273,35 +273,32 @@ interface RecipeRow {
 }
 
 /**
- * Number of total meals cooked (across all recipes) before creative
- * variations unlock. Originally gated per-recipe at 3 cooks, but that felt
- * forced — the user cooks the SAME thing 3 times just to unlock one thing.
- * Switch to profile-wide total cooks: a meaningful progression metric that
- * rewards overall platform engagement.
+ * Remix modes — each produces a different kind of variation. The mode
+ * controls the prompt steering, not the tool schema.
  */
-export const VARIATIONS_UNLOCK_THRESHOLD = 5;
+export type RemixMode = 'surprise' | 'protein' | 'veggies' | 'quicker';
 
-export class BelowThresholdError extends Error {
-  code = 'BELOW_THRESHOLD' as const;
-  /** Total cooks remaining until unlock (for UI display). */
-  remaining: number;
-  constructor(remaining: number) {
-    super(
-      `Cook ${remaining} more ${remaining === 1 ? 'meal' : 'meals'} to unlock creative variations`,
-    );
-    this.name = 'BelowThresholdError';
-    this.remaining = remaining;
-  }
-}
+const REMIX_PROMPTS: Record<RemixMode, string> = {
+  surprise:
+    'Surprise the cook with 3 creative variations — ingredient swaps, technique tweaks, or flavor twists that introduce something new without abandoning what works. Mix bold and safe ideas.',
+  protein:
+    'Suggest 3 variations that keep the base dish and technique but SWAP THE MAIN PROTEIN (e.g., chicken → pork, beef → mushroom, salmon → tofu). Each variation must specify which new protein is being used.',
+  veggies:
+    'Suggest 3 variations that keep the protein and technique but SWAP OR ADD VEGETABLES/AROMATICS/NON-PROTEIN INGREDIENTS to change the flavor profile (e.g., swap spinach for kale, add roasted peppers, substitute sweet potato for regular potato).',
+  quicker:
+    'Suggest 3 variations that deliver the same dish in LESS TIME. Shortcut techniques, pre-made ingredients, smaller cuts, or skipping non-essential steps. Each variation must explain what time-saver it uses.',
+};
 
 /**
- * Return 3 creative variations for a recipe. Gated on TOTAL meals cooked
- * across the user's library (>= VARIATIONS_UNLOCK_THRESHOLD), not per-recipe.
+ * Return 3 creative variations for a recipe. No gating — variations are
+ * always available. Optional `mode` steers the prompt toward a specific
+ * kind of remix (surprise | protein | veggies | quicker).
  */
 export async function getRecipeVariations(
   supabase: SupabaseClient,
   profileId: string,
   recipeId: string,
+  mode: RemixMode = 'surprise',
 ): Promise<string[]> {
   const { data: recipeData, error: recipeError } = await supabase
     .from('recipes')
@@ -318,15 +315,6 @@ export async function getRecipeVariations(
 
   const recipe = recipeData as RecipeRow;
 
-  const stats = await getCookStats(supabase, profileId);
-  const totalCooks = stats.reduce((sum, s) => sum + s.cook_count, 0);
-  const recipeStats = stats.find((s) => s.recipe_id === recipeId);
-  const cookCount = recipeStats?.cook_count ?? 0;
-
-  if (totalCooks < VARIATIONS_UNLOCK_THRESHOLD) {
-    throw new BelowThresholdError(VARIATIONS_UNLOCK_THRESHOLD - totalCooks);
-  }
-
   const ingredientList = (recipe.ingredients ?? [])
     .map((ing) => {
       if (typeof ing === 'string') return ing;
@@ -338,13 +326,14 @@ export async function getRecipeVariations(
     .filter(Boolean)
     .join(', ');
 
-  const prompt = `The cook has made "${recipe.title}" ${cookCount} times and clearly enjoys it.
-Suggest 3 creative variations that build on this recipe -- ingredient swaps,
-technique tweaks, or flavor twists that introduce something new without
-abandoning what works. Each variation should be a single sentence.
-
+  const steering = REMIX_PROMPTS[mode] ?? REMIX_PROMPTS.surprise;
+  const prompt = `Recipe: "${recipe.title}"
 Current ingredients: ${ingredientList || '(unknown)'}
+${recipe.total_time_minutes ? `Current total time: ${recipe.total_time_minutes} minutes` : ''}
 
+${steering}
+
+Each variation should be a single sentence, actionable, and specific.
 Use the suggest_variations tool to return your picks.`;
 
   const ai = getClientFor('progression.variations');

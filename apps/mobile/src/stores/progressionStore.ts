@@ -8,6 +8,8 @@ import type {
   AmbitionSuggestion,
 } from '../types/progression';
 
+export type RemixMode = 'surprise' | 'protein' | 'veggies' | 'quicker';
+
 interface ProgressionState {
   cookStats: RecipeCookStats[];
   ambitionSuggestions: AmbitionSuggestion[];
@@ -16,7 +18,10 @@ interface ProgressionState {
 
   fetchCookStats: () => Promise<void>;
   fetchSuggestions: () => Promise<void>;
-  fetchVariations: (recipeId: string) => Promise<string[] | null>;
+  fetchVariations: (
+    recipeId: string,
+    mode?: RemixMode,
+  ) => Promise<string[] | null>;
   fetchTip: (
     recipeId: string,
     stepIndex: number,
@@ -129,29 +134,23 @@ export const useProgressionStore = create<ProgressionState>()(
         }
       },
 
-      fetchVariations: async (recipeId: string) => {
+      fetchVariations: async (recipeId: string, mode: RemixMode = 'surprise') => {
         if (!useNetworkStore.getState().isOnline) return null;
         try {
           const response = await authedFetch(
-            `/progression/variations/${recipeId}`,
+            `/progression/variations/${recipeId}?mode=${mode}`,
             { method: 'GET' }
           );
-          if (response.status === 400) {
-            const err = await response.json().catch(() => ({}));
-            if (
-              err.code === 'BELOW_THRESHOLD' ||
-              err.error === 'BELOW_THRESHOLD'
-            ) {
-              return null;
-            }
-            return null;
-          }
           if (!response.ok) {
             return null;
           }
           const body = await response.json();
-          const variations = body?.data?.variations;
-          return Array.isArray(variations) ? variations : null;
+          // Server returns { data: string[], mode }. Older builds wrapped
+          // this in { data: { variations: [...] } } — tolerate both shapes.
+          const raw = body?.data;
+          if (Array.isArray(raw)) return raw as string[];
+          if (raw && Array.isArray(raw.variations)) return raw.variations as string[];
+          return null;
         } catch (err) {
           console.warn('[progressionStore] fetchVariations failed', err);
           return null;

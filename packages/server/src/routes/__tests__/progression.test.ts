@@ -127,21 +127,27 @@ describe('progression routes', () => {
     expect(mockRankAmbition).toHaveBeenCalled();
   });
 
-  it('Test 4: GET /variations/:id 400 BELOW_THRESHOLD when cook_count < 3', async () => {
-    const err = new Error('not enough cooks') as Error & { code?: string };
-    err.code = 'BELOW_THRESHOLD';
-    mockGetRecipeVariations.mockRejectedValue(err);
+  it('Test 4: GET /variations/:id passes remix mode through to the service', async () => {
+    mockGetRecipeVariations.mockResolvedValue(['swap a', 'swap b', 'swap c']);
     const app = makeApp();
-    const res = await app.request('/progression/variations/r1', {
+    const res = await app.request('/progression/variations/r1?mode=protein', {
       method: 'GET',
       headers: { Authorization: 'Bearer t' },
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.error).toBe('BELOW_THRESHOLD');
+    expect(body.data).toHaveLength(3);
+    expect(body.mode).toBe('protein');
+    // Service should have been called with the 'protein' mode arg
+    expect(mockGetRecipeVariations).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(String),
+      'r1',
+      'protein',
+    );
   });
 
-  it('Test 5: GET /variations/:id 200 with variations when eligible', async () => {
+  it('Test 5: GET /variations/:id 200 with variations (default mode)', async () => {
     mockGetRecipeVariations.mockResolvedValue(['swap rice', 'add chili', 'try saffron']);
     const app = makeApp();
     const res = await app.request('/progression/variations/r1', {
@@ -151,6 +157,7 @@ describe('progression routes', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data).toHaveLength(3);
+    expect(body.mode).toBe('surprise');
   });
 
   it('Test 6: GET /variations/:id 404 when recipe not owned', async () => {

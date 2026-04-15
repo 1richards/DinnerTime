@@ -6,17 +6,16 @@ import {
   Alert,
   ActivityIndicator,
   Pressable,
-  Modal,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecipeStore } from '../../../stores/recipeStore';
-import { useProgressionStore } from '../../../stores/progressionStore';
 import { ServingSizeStepper } from '../../../components/recipes/ServingSizeStepper';
 import { ScaledIngredientList } from '../../../components/recipes/ScaledIngredientList';
 import { FavoriteButton } from '../../../components/recipes/FavoriteButton';
+import { RemixSheet } from '../../../components/recipes/RemixSheet';
 import { Button } from '../../../components/ui/Button';
 import { HeroImage } from '../../../components/ui/HeroImage';
 import { getRecipeImage } from '../../../constants/foodImages';
@@ -29,34 +28,7 @@ export default function RecipeDetailScreen() {
 
   const [servings, setServings] = useState<number>(recipe?.servings ?? 1);
 
-  const cookStats = useProgressionStore((s) => s.cookStats);
-  const fetchVariations = useProgressionStore((s) => s.fetchVariations);
-  const [variations, setVariations] = useState<string[] | null>(null);
-  const [variationsOpen, setVariationsOpen] = useState(false);
-  const [variationsLoading, setVariationsLoading] = useState(false);
-  const [variationsLocked, setVariationsLocked] = useState(false);
-
-  // Unlock creative variations based on TOTAL meals cooked across the whole
-  // library — a broader engagement metric, not a per-recipe grind.
-  const VARIATIONS_UNLOCK_THRESHOLD = 5;
-  const totalCooks = cookStats.reduce((sum, s) => sum + s.cook_count, 0);
-  const variationsLockedByCount = totalCooks < VARIATIONS_UNLOCK_THRESHOLD;
-  const cooksRemaining = Math.max(0, VARIATIONS_UNLOCK_THRESHOLD - totalCooks);
-
-  const handleVariations = async () => {
-    if (!recipe) return;
-    setVariationsLoading(true);
-    setVariationsOpen(true);
-    setVariationsLocked(false);
-    const result = await fetchVariations(recipe.id);
-    if (result === null) {
-      setVariations(null);
-      setVariationsLocked(true);
-    } else {
-      setVariations(result);
-    }
-    setVariationsLoading(false);
-  };
+  const [remixOpen, setRemixOpen] = useState(false);
 
   useEffect(() => {
     if (!recipe) {
@@ -198,20 +170,12 @@ export default function RecipeDetailScreen() {
 
         <View className="px-4 mt-3">
           <Pressable
-            onPress={handleVariations}
+            onPress={() => setRemixOpen(true)}
             style={styles.variationsButton}
             testID="creative-variations-button"
           >
-            <Ionicons
-              name={variationsLockedByCount ? 'lock-closed' : 'sparkles'}
-              size={18}
-              color="#B45309"
-            />
-            <Text style={styles.variationsButtonText}>
-              {variationsLockedByCount
-                ? `Creative variations (cook ${cooksRemaining} more ${cooksRemaining === 1 ? 'meal' : 'meals'})`
-                : 'Creative variations'}
-            </Text>
+            <Ionicons name="sparkles" size={18} color="#B45309" />
+            <Text style={styles.variationsButtonText}>Remix this recipe</Text>
           </Pressable>
         </View>
 
@@ -233,48 +197,13 @@ export default function RecipeDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Variations modal */}
-      <Modal
-        visible={variationsOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setVariationsOpen(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Creative variations</Text>
-              <Pressable
-                onPress={() => setVariationsOpen(false)}
-                hitSlop={12}
-              >
-                <Ionicons name="close" size={24} color="#374151" />
-              </Pressable>
-            </View>
-            {variationsLoading ? (
-              <ActivityIndicator size="large" color="#F97316" />
-            ) : variationsLocked ? (
-              <Text style={styles.modalBody}>
-                Cook this recipe 3 or more times to unlock creative
-                variations from Claude.
-              </Text>
-            ) : variations && variations.length > 0 ? (
-              <ScrollView>
-                {variations.map((v, i) => (
-                  <View key={i} style={styles.variationRow}>
-                    <Text style={styles.variationBullet}>•</Text>
-                    <Text style={styles.variationText}>{v}</Text>
-                  </View>
-                ))}
-              </ScrollView>
-            ) : (
-              <Text style={styles.modalBody}>
-                No variations available right now.
-              </Text>
-            )}
-          </View>
-        </View>
-      </Modal>
+      {/* Remix sheet — 4 modes + inline results */}
+      <RemixSheet
+        visible={remixOpen}
+        recipeId={recipe.id}
+        recipeTitle={recipe.title}
+        onClose={() => setRemixOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -400,48 +329,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#DC2626',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: '#FFFBF5',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1A140F',
-  },
-  modalBody: {
-    fontSize: 15,
-    color: '#5C4D3D',
-    lineHeight: 23,
-  },
-  variationRow: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
-  variationBullet: {
-    color: '#7A6651',
-    marginRight: 8,
-    fontSize: 16,
-  },
-  variationText: {
-    flex: 1,
-    fontSize: 15,
-    color: '#2A221A',
-    lineHeight: 23,
   },
 });

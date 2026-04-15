@@ -102,27 +102,28 @@ progression.get('/suggestions', async (c) => {
 });
 
 /**
- * GET /variations/:recipeId — 3 creative variations for a recipe. Gated on
- * TOTAL meals cooked profile-wide (not per-recipe). Returns 400
- * BELOW_THRESHOLD with `remaining` count when locked, 404 if the recipe
- * isn't owned by the profile.
+ * GET /variations/:recipeId — 3 creative variations for a recipe.
+ * Always available (no cook-count gate). Optional `?mode=surprise|protein|
+ * veggies|quicker` steers the kind of remix produced. Returns 404 if the
+ * recipe isn't owned by the profile.
  */
+const VALID_MODES = ['surprise', 'protein', 'veggies', 'quicker'] as const;
+type RemixMode = (typeof VALID_MODES)[number];
+
 progression.get('/variations/:recipeId', async (c) => {
   const supabase = c.get('supabase');
   const user = c.get('user');
   const recipeId = c.req.param('recipeId');
+  const modeParam = c.req.query('mode');
+  const mode: RemixMode = (VALID_MODES as readonly string[]).includes(modeParam ?? '')
+    ? (modeParam as RemixMode)
+    : 'surprise';
 
   try {
-    const variations = await getRecipeVariations(supabase, user.id, recipeId);
-    return c.json({ data: variations });
+    const variations = await getRecipeVariations(supabase, user.id, recipeId, mode);
+    return c.json({ data: variations, mode });
   } catch (error) {
-    const err = error as Error & { code?: string; remaining?: number };
-    if (err.code === 'BELOW_THRESHOLD') {
-      return c.json(
-        { error: 'BELOW_THRESHOLD', message: err.message, remaining: err.remaining ?? 0 },
-        400,
-      );
-    }
+    const err = error as Error & { code?: string };
     if (err.code === 'NOT_FOUND') {
       return c.json({ error: 'NOT_FOUND', message: err.message }, 404);
     }

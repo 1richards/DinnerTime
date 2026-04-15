@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import type { DinnerSuggestion } from '../../types/suggestions';
 
 const difficultyConfig: Record<
@@ -13,13 +13,17 @@ const difficultyConfig: Record<
 
 interface SuggestionCardProps {
   suggestion: DinnerSuggestion;
+  onPress?: (s: DinnerSuggestion) => void;
 }
 
-export function SuggestionCard({ suggestion }: SuggestionCardProps) {
+export function SuggestionCard({ suggestion, onPress }: SuggestionCardProps) {
   const difficulty = difficultyConfig[suggestion.difficulty];
 
   return (
-    <View className="bg-white rounded-xl p-4 shadow-sm mb-3">
+    <Pressable
+      onPress={() => onPress?.(suggestion)}
+      className="bg-white rounded-xl p-4 shadow-sm mb-3 active:opacity-90"
+    >
       {/* Header row: title, cuisine, difficulty */}
       <View className="flex-row items-center justify-between mb-2">
         <Text className="text-lg font-bold text-warmGray-900 flex-1 mr-2" numberOfLines={1}>
@@ -88,6 +92,11 @@ export function SuggestionCard({ suggestion }: SuggestionCardProps) {
       <Text className="text-xs text-warmGray-400 italic mt-1">
         {suggestion.why_suggested}
       </Text>
-    </View>
+      <View className="flex-row items-center mt-3">
+        <Text className="text-xs font-bold text-orange-600">
+          Tap to preview and plan →
+        </Text>
+      </View>
+    </Pressable>
   );
 }
