@@ -248,28 +248,36 @@ describe('getRecipeVariations', () => {
     });
   }
 
-  it('returns string[] variations regardless of cook count', async () => {
-    // Variations are no longer gated — they should work even for a fresh
-    // recipe the user has never cooked.
+  it('returns structured {title, description} variations regardless of cook count', async () => {
+    // Variations are no longer gated — and now return objects with
+    // title+description, not plain strings.
     const supabase = makeStatsSupabase(0);
     mockGenerateStructured.mockResolvedValue({
-      variations: ['Try with mushroom stock', 'Add saffron', 'Finish with truffle oil'],
+      variations: [
+        { title: 'Mushroom Stock', description: 'Replace the chicken stock with a rich mushroom broth for earthy umami.' },
+        { title: 'Saffron Touch', description: 'Bloom a pinch of saffron threads in warm water and stir into the rice for color and aroma.' },
+        { title: 'Truffle Finish', description: 'Drizzle white truffle oil over the plated dish for a luxurious aroma.' },
+      ],
     });
     const result = await getRecipeVariations(supabase, 'profile-1', 'r1');
     expect(mockGetClientFor).toHaveBeenCalledWith('progression.variations');
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(3);
-    expect(result[0]).toContain('mushroom');
+    expect(result[0]).toMatchObject({ title: expect.any(String), description: expect.any(String) });
+    expect(result[0].title).toContain('Mushroom');
   });
 
   it('accepts a remix mode and passes it through', async () => {
     const supabase = makeStatsSupabase(0);
     mockGenerateStructured.mockResolvedValue({
-      variations: ['Swap chicken for tofu', 'Use pork tenderloin', 'Try white fish'],
+      variations: [
+        { title: 'Tofu Swap', description: 'Replace the chicken with firm tofu marinated in soy and ginger.' },
+        { title: 'Pork Tenderloin', description: 'Use sliced pork tenderloin instead for a richer, sweeter bite.' },
+        { title: 'White Fish', description: 'Swap in flaky white fish for a lighter protein.' },
+      ],
     });
     const result = await getRecipeVariations(supabase, 'profile-1', 'r1', 'protein');
     expect(result).toHaveLength(3);
-    // Should have called generateStructured with a prompt mentioning protein swapping
     const call = mockGenerateStructured.mock.calls[mockGenerateStructured.mock.calls.length - 1][0];
     expect(call.user).toMatch(/protein/i);
   });

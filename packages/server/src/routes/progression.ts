@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth.js';
 import {
   computeComplexity,
+  generateVariationsForContext,
   getCookStats,
   getRecipeVariations,
   rankAmbition,
@@ -128,6 +129,49 @@ progression.get('/variations/:recipeId', async (c) => {
       return c.json({ error: 'NOT_FOUND', message: err.message }, 404);
     }
     const message = err.message ?? 'Failed to fetch variations';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
+ * POST /variations — inline variation generator for unsaved recipes
+ * (Home suggestions, Discover previews). Takes { title, description?,
+ * ingredients?, total_time_minutes?, mode? } and returns variations
+ * without hitting the DB.
+ */
+progression.post('/variations', async (c) => {
+  let body: {
+    title?: string;
+    description?: string | null;
+    ingredients?: Array<string | { name: string }>;
+    total_time_minutes?: number | null;
+    mode?: string;
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+  if (!body.title || typeof body.title !== 'string') {
+    return c.json({ error: 'title is required' }, 400);
+  }
+  const mode: RemixMode = (VALID_MODES as readonly string[]).includes(body.mode ?? '')
+    ? (body.mode as RemixMode)
+    : 'surprise';
+
+  try {
+    const variations = await generateVariationsForContext(
+      {
+        title: body.title,
+        description: body.description ?? null,
+        ingredients: body.ingredients,
+        total_time_minutes: body.total_time_minutes ?? null,
+      },
+      mode,
+    );
+    return c.json({ data: variations, mode });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch variations';
     return c.json({ error: message }, 500);
   }
 });

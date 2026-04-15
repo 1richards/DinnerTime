@@ -246,20 +246,45 @@ export async function rankAmbition(
 
 // ---------- getRecipeVariations ----------
 
+/**
+ * A single remix variation — a short bold title + a one-sentence
+ * description. Shape was `string[]` originally; upgraded so the UI can
+ * render a proper title and explanation side-by-side.
+ */
+export interface RemixVariation {
+  title: string;
+  description: string;
+}
+
 const variationsSchema: JsonSchema = {
   type: 'object',
   properties: {
     variations: {
       type: 'array',
-      items: { type: 'string' },
+      items: {
+        type: 'object',
+        properties: {
+          title: {
+            type: 'string',
+            description:
+              'Short 2-5 word title for the variation. Use title case. Describe the defining change, e.g., "Sautéed Shrimp", "Weeknight Shortcut", "Coconut Curry Twist".',
+          },
+          description: {
+            type: 'string',
+            description:
+              'One concrete actionable sentence explaining what to change and why it works.',
+          },
+        },
+        required: ['title', 'description'],
+      },
     },
   },
   required: ['variations'],
 };
 
-const variationsTool: StructuredTool<{ variations?: string[] }> = {
+const variationsTool: StructuredTool<{ variations?: RemixVariation[] }> = {
   name: 'suggest_variations',
-  description: 'Suggest 3 creative variations on a recipe the cook has mastered.',
+  description: 'Suggest 3 creative remix variations on a recipe.',
   schema: variationsSchema,
 };
 
@@ -270,6 +295,17 @@ interface RecipeRow {
   steps: unknown[];
   ingredients: unknown[];
   total_time_minutes: number | null;
+}
+
+/**
+ * Generic recipe-ish context for variation generation. Works for both
+ * saved recipes (from the DB) and unsaved Home suggestions.
+ */
+export interface RecipeContext {
+  title: string;
+  description?: string | null;
+  ingredients?: Array<string | { name: string }>;
+  total_time_minutes?: number | null;
 }
 
 /**
@@ -289,20 +325,68 @@ const REMIX_PROMPTS: Record<RemixMode, string> = {
     'Suggest 3 variations that deliver the same dish in LESS TIME. Shortcut techniques, pre-made ingredients, smaller cuts, or skipping non-essential steps. Each variation must explain what time-saver it uses.',
 };
 
+function contextIngredientList(context: RecipeContext): string {
+  return (context.ingredients ?? [])
+    .map((ing) => {
+      if (typeof ing === 'string') return ing;
+      if (ing && typeof ing === 'object' && 'name' in ing) {
+        return String((ing as { name: unknown }).name);
+      }
+      return '';
+    })
+    .filter(Boolean)
+    .join(', ');
+}
+
 /**
- * Return 3 creative variations for a recipe. No gating — variations are
- * always available. Optional `mode` steers the prompt toward a specific
- * kind of remix (surprise | protein | veggies | quicker).
+ * Core variation generator. Works against any RecipeContext — saved
+ * recipe row, Home suggestion, anything with a title + ingredients.
+ */
+export async function generateVariationsForContext(
+  context: RecipeContext,
+  mode: RemixMode = 'surprise',
+): Promise<RemixVariation[]> {
+  const ingredientList = contextIngredientList(context);
+  const steering = REMIX_PROMPTS[mode] ?? REMIX_PROMPTS.surprise;
+  const prompt = `Recipe: "${context.title}"
+${context.description ? `Description: ${context.description}` : ''}
+Current ingredients: ${ingredientList || '(unknown)'}
+${context.total_time_minutes ? `Current total time: ${context.total_time_minutes} minutes` : ''}
+
+${steering}
+
+Each variation must have:
+- A SHORT title (2-5 words, title case) naming the defining change — e.g., "Sautéed Shrimp", "Weeknight Shortcut", "Coconut Curry Twist"
+- A ONE-SENTENCE description explaining what to change and why it works
+
+Use the suggest_variations tool to return your 3 picks.`;
+
+  const ai = getClientFor('progression.variations');
+  const result = await ai.generateStructured({
+    user: prompt,
+    tool: variationsTool,
+    maxTokens: 768,
+  });
+
+  if (!result || !Array.isArray(result.variations)) {
+    throw new Error('AIClient did not return a variations array');
+  }
+  return result.variations;
+}
+
+/**
+ * Return 3 creative variations for a SAVED recipe by id. Thin wrapper —
+ * loads the recipe row, then delegates to generateVariationsForContext.
  */
 export async function getRecipeVariations(
   supabase: SupabaseClient,
   profileId: string,
   recipeId: string,
   mode: RemixMode = 'surprise',
-): Promise<string[]> {
+): Promise<RemixVariation[]> {
   const { data: recipeData, error: recipeError } = await supabase
     .from('recipes')
-    .select('id, profile_id, title, steps, ingredients, total_time_minutes')
+    .select('id, profile_id, title, description, steps, ingredients, total_time_minutes')
     .eq('id', recipeId)
     .eq('profile_id', profileId)
     .single();
@@ -313,38 +397,14 @@ export async function getRecipeVariations(
     throw err;
   }
 
-  const recipe = recipeData as RecipeRow;
-
-  const ingredientList = (recipe.ingredients ?? [])
-    .map((ing) => {
-      if (typeof ing === 'string') return ing;
-      if (ing && typeof ing === 'object' && 'name' in ing) {
-        return String((ing as { name: unknown }).name);
-      }
-      return '';
-    })
-    .filter(Boolean)
-    .join(', ');
-
-  const steering = REMIX_PROMPTS[mode] ?? REMIX_PROMPTS.surprise;
-  const prompt = `Recipe: "${recipe.title}"
-Current ingredients: ${ingredientList || '(unknown)'}
-${recipe.total_time_minutes ? `Current total time: ${recipe.total_time_minutes} minutes` : ''}
-
-${steering}
-
-Each variation should be a single sentence, actionable, and specific.
-Use the suggest_variations tool to return your picks.`;
-
-  const ai = getClientFor('progression.variations');
-  const result = await ai.generateStructured({
-    user: prompt,
-    tool: variationsTool,
-    maxTokens: 512,
-  });
-
-  if (!result || !Array.isArray(result.variations)) {
-    throw new Error('AIClient did not return a variations array');
-  }
-  return result.variations;
+  const recipe = recipeData as RecipeRow & { description?: string | null };
+  return generateVariationsForContext(
+    {
+      title: recipe.title,
+      description: recipe.description ?? null,
+      ingredients: recipe.ingredients as RecipeContext['ingredients'],
+      total_time_minutes: recipe.total_time_minutes ?? null,
+    },
+    mode,
+  );
 }

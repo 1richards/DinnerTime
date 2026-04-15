@@ -128,7 +128,11 @@ describe('progression routes', () => {
   });
 
   it('Test 4: GET /variations/:id passes remix mode through to the service', async () => {
-    mockGetRecipeVariations.mockResolvedValue(['swap a', 'swap b', 'swap c']);
+    mockGetRecipeVariations.mockResolvedValue([
+      { title: 'Swap A', description: 'desc a' },
+      { title: 'Swap B', description: 'desc b' },
+      { title: 'Swap C', description: 'desc c' },
+    ]);
     const app = makeApp();
     const res = await app.request('/progression/variations/r1?mode=protein', {
       method: 'GET',
@@ -137,8 +141,8 @@ describe('progression routes', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data).toHaveLength(3);
+    expect(body.data[0]).toMatchObject({ title: expect.any(String), description: expect.any(String) });
     expect(body.mode).toBe('protein');
-    // Service should have been called with the 'protein' mode arg
     expect(mockGetRecipeVariations).toHaveBeenCalledWith(
       expect.anything(),
       expect.any(String),
@@ -148,7 +152,11 @@ describe('progression routes', () => {
   });
 
   it('Test 5: GET /variations/:id 200 with variations (default mode)', async () => {
-    mockGetRecipeVariations.mockResolvedValue(['swap rice', 'add chili', 'try saffron']);
+    mockGetRecipeVariations.mockResolvedValue([
+      { title: 'Swap Rice', description: 'Use jasmine rice instead for fragrance.' },
+      { title: 'Add Chili', description: 'Finish with a chili crisp drizzle.' },
+      { title: 'Try Saffron', description: 'Bloom saffron in warm stock.' },
+    ]);
     const app = makeApp();
     const res = await app.request('/progression/variations/r1', {
       method: 'GET',

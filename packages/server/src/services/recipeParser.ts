@@ -368,3 +368,49 @@ export async function parseRecipeFromText(text: string): Promise<ParsedRecipe> {
 
   return toolOutputToRecipe(input, 'manual');
 }
+
+/**
+ * Apply a remix variation to a base recipe and produce a FULL parsed
+ * recipe (title, ingredients, steps). Used by POST /recipes/remix when
+ * the user taps "Save as recipe" on a variation card.
+ */
+export async function applyRemixVariation(
+  base: {
+    title: string;
+    description?: string | null;
+    ingredients?: Array<string | { name: string; quantity?: number; unit?: string; notes?: string }>;
+    steps?: string[];
+    total_time_minutes?: number | null;
+  },
+  variation: { title: string; description: string },
+): Promise<ParsedRecipe> {
+  const ingredientText = (base.ingredients ?? [])
+    .map((ing) => {
+      if (typeof ing === 'string') return `- ${ing}`;
+      const qty = [ing.quantity, ing.unit].filter(Boolean).join(' ');
+      const notes = ing.notes ? ` (${ing.notes})` : '';
+      return `- ${qty ? qty + ' ' : ''}${ing.name}${notes}`;
+    })
+    .join('\n');
+  const stepsText = (base.steps ?? []).map((s, i) => `${i + 1}. ${s}`).join('\n');
+
+  const prompt = `Apply a remix to the base recipe below and return the COMPLETE updated recipe.
+
+Base recipe:
+Title: ${base.title}
+${base.description ? `Description: ${base.description}` : ''}
+${base.total_time_minutes ? `Total time: ${base.total_time_minutes} minutes` : ''}
+
+Base ingredients:
+${ingredientText || '(none provided)'}
+
+Base steps:
+${stepsText || '(none provided)'}
+
+Remix to apply — "${variation.title}": ${variation.description}
+
+Produce a full parsed recipe incorporating the remix. Use "${variation.title}" (or a close variant) as the new recipe title so the user can tell it apart from the base. Rewrite ingredients and steps to reflect the change. Convert fractions to decimals for quantities.`;
+
+  const input = await callAIParseRecipeText('recipe.parseText', prompt);
+  return toolOutputToRecipe(input, 'ai');
+}

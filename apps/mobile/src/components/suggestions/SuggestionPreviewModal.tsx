@@ -6,12 +6,12 @@ import {
   ScrollView,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../ui/Button';
+import { RemixSheet } from '../recipes/RemixSheet';
 import { supabase } from '../../lib/supabase';
 import { FOOD_IMAGES } from '../../constants/foodImages';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
@@ -45,6 +45,7 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
   const [selectedDay, setSelectedDay] = useState<number>(todayDayOfWeek());
   const [planning, setPlanning] = useState(false);
   const [planned, setPlanned] = useState(false);
+  const [remixOpen, setRemixOpen] = useState(false);
 
   // Reset state each time the modal opens for a new suggestion.
   React.useEffect(() => {
@@ -52,6 +53,7 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
       setSelectedDay(todayDayOfWeek());
       setPlanned(false);
       setPlanning(false);
+      setRemixOpen(false);
     }
   }, [visible, suggestion?.title]);
 
@@ -236,7 +238,47 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
               })}
             </View>
           </View>
+
+          {/* Remix this suggestion */}
+          <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+            <Pressable
+              onPress={() => setRemixOpen(true)}
+              style={styles.remixButton}
+            >
+              <Ionicons name="sparkles" size={18} color="#C05A00" />
+              <Text style={styles.remixButtonText}>Remix this dish</Text>
+              <Ionicons name="chevron-forward" size={18} color="#C05A00" />
+            </Pressable>
+          </View>
         </ScrollView>
+
+        {/* Remix sheet layered on top when user taps Remix */}
+        <RemixSheet
+          visible={remixOpen}
+          recipeTitle={suggestion.title}
+          source={{
+            kind: 'inline',
+            context: {
+              title: suggestion.title,
+              description: suggestion.description,
+              ingredients: [
+                ...(suggestion.ingredients_used ?? []).map((name) => ({ name })),
+                ...(suggestion.ingredients_needed ?? []).map((name) => ({ name })),
+              ],
+              total_time_minutes: suggestion.estimated_time_minutes ?? null,
+            },
+          }}
+          baseForSave={{
+            title: suggestion.title,
+            description: suggestion.description ?? null,
+            ingredients: [
+              ...(suggestion.ingredients_used ?? []).map((name) => ({ name })),
+              ...(suggestion.ingredients_needed ?? []).map((name) => ({ name })),
+            ],
+            total_time_minutes: suggestion.estimated_time_minutes ?? null,
+          }}
+          onClose={() => setRemixOpen(false)}
+        />
 
         {/* Sticky bottom action bar */}
         <View style={styles.bottomBar}>
@@ -448,5 +490,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#047857',
+  },
+  remixButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#FFF7EE',
+    borderWidth: 1,
+    borderColor: '#FFD9B0',
+  },
+  remixButtonText: {
+    flex: 0,
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#C05A00',
   },
 });

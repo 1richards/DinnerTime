@@ -197,11 +197,20 @@ export default function RecipeDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Remix sheet — 4 modes + inline results */}
+      {/* Remix sheet — 4 modes + inline results. Passing the full recipe
+          as `baseForSave` lets "Save as new recipe" AI-expand a variation
+          into a complete new recipe in the library. */}
       <RemixSheet
         visible={remixOpen}
-        recipeId={recipe.id}
+        source={{ kind: 'saved', recipeId: recipe.id }}
         recipeTitle={recipe.title}
+        baseForSave={{
+          title: recipe.title,
+          description: recipe.description,
+          ingredients: recipe.ingredients,
+          steps: recipe.steps,
+          total_time_minutes: recipe.total_time_minutes,
+        }}
         onClose={() => setRemixOpen(false)}
       />
     </SafeAreaView>

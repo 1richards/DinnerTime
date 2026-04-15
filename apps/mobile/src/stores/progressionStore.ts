@@ -10,6 +10,22 @@ import type {
 
 export type RemixMode = 'surprise' | 'protein' | 'veggies' | 'quicker';
 
+export interface RemixVariation {
+  title: string;
+  description: string;
+}
+
+/**
+ * Generic recipe-ish context. Works for saved recipes and for in-memory
+ * suggestions that haven't been persisted yet.
+ */
+export interface VariationContext {
+  title: string;
+  description?: string | null;
+  ingredients?: Array<string | { name: string }>;
+  total_time_minutes?: number | null;
+}
+
 interface ProgressionState {
   cookStats: RecipeCookStats[];
   ambitionSuggestions: AmbitionSuggestion[];
@@ -18,10 +34,16 @@ interface ProgressionState {
 
   fetchCookStats: () => Promise<void>;
   fetchSuggestions: () => Promise<void>;
+  /** Fetch variations for a saved recipe by id. */
   fetchVariations: (
     recipeId: string,
     mode?: RemixMode,
-  ) => Promise<string[] | null>;
+  ) => Promise<RemixVariation[] | null>;
+  /** Fetch variations for an unsaved context (Home suggestion, Discover). */
+  fetchVariationsForContext: (
+    context: VariationContext,
+    mode?: RemixMode,
+  ) => Promise<RemixVariation[] | null>;
   fetchTip: (
     recipeId: string,
     stepIndex: number,
@@ -141,18 +163,35 @@ export const useProgressionStore = create<ProgressionState>()(
             `/progression/variations/${recipeId}?mode=${mode}`,
             { method: 'GET' }
           );
-          if (!response.ok) {
-            return null;
-          }
+          if (!response.ok) return null;
           const body = await response.json();
-          // Server returns { data: string[], mode }. Older builds wrapped
-          // this in { data: { variations: [...] } } — tolerate both shapes.
           const raw = body?.data;
-          if (Array.isArray(raw)) return raw as string[];
-          if (raw && Array.isArray(raw.variations)) return raw.variations as string[];
+          if (Array.isArray(raw)) return raw as RemixVariation[];
           return null;
         } catch (err) {
           console.warn('[progressionStore] fetchVariations failed', err);
+          return null;
+        }
+      },
+
+      fetchVariationsForContext: async (
+        context: VariationContext,
+        mode: RemixMode = 'surprise',
+      ) => {
+        if (!useNetworkStore.getState().isOnline) return null;
+        try {
+          const response = await authedFetch(`/progression/variations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...context, mode }),
+          });
+          if (!response.ok) return null;
+          const body = await response.json();
+          const raw = body?.data;
+          if (Array.isArray(raw)) return raw as RemixVariation[];
+          return null;
+        } catch (err) {
+          console.warn('[progressionStore] fetchVariationsForContext failed', err);
           return null;
         }
       },

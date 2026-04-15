@@ -4,6 +4,7 @@ import {
   parseRecipeFromUrl,
   parseRecipeFromPhoto,
   parseRecipeFromText,
+  applyRemixVariation,
 } from '../services/recipeParser.js';
 import {
   saveRecipe,
@@ -292,6 +293,55 @@ recipes.post('/import/text', async (c) => {
     return c.json({ data });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to import recipe from text';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
+ * POST /remix - Apply a remix variation to a base recipe and return a
+ * full parsed recipe (not yet saved). The client then POSTs the result
+ * to POST /recipes to persist.
+ *
+ * Body: {
+ *   base: { title, description?, ingredients?, steps?, total_time_minutes? },
+ *   variation: { title, description }
+ * }
+ */
+recipes.post('/remix', async (c) => {
+  let body: {
+    base?: {
+      title?: string;
+      description?: string | null;
+      ingredients?: Array<string | { name: string; quantity?: number; unit?: string; notes?: string }>;
+      steps?: string[];
+      total_time_minutes?: number | null;
+    };
+    variation?: { title?: string; description?: string };
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+  if (!body.base?.title) return c.json({ error: 'base.title is required' }, 400);
+  if (!body.variation?.title || !body.variation?.description) {
+    return c.json({ error: 'variation.title and variation.description are required' }, 400);
+  }
+
+  try {
+    const data = await applyRemixVariation(
+      {
+        title: body.base.title,
+        description: body.base.description ?? null,
+        ingredients: body.base.ingredients,
+        steps: body.base.steps,
+        total_time_minutes: body.base.total_time_minutes ?? null,
+      },
+      { title: body.variation.title, description: body.variation.description },
+    );
+    return c.json({ data });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to apply remix';
     return c.json({ error: message }, 500);
   }
 });
