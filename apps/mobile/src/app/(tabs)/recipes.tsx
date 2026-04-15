@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useDeferredValue } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useDeferredValue } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,8 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -23,26 +23,15 @@ import { ChipToggle } from '../../components/ui/ChipToggle';
 import { Button } from '../../components/ui/Button';
 import { HeroImage } from '../../components/ui/HeroImage';
 import { SuggestedForYou } from '../../components/SuggestedForYou';
-import { FOOD_IMAGES } from '../../constants/foodImages';
+import {
+  RecipeFilterSheet,
+  EMPTY_FILTERS,
+  countActiveFilters,
+  type RecipeFilterState,
+  type SourceFilter,
+  type TimeFilter,
+} from '../../components/recipes/RecipeFilterSheet';
 import type { Recipe, ParsedIngredient } from '../../types/recipe';
-
-type SourceFilter = 'all' | 'url' | 'photo' | 'manual' | 'ai';
-type TimeFilter = 'any' | 'quick' | 'medium' | 'long';
-
-const SOURCE_FILTER_LABELS: Record<SourceFilter, string> = {
-  all: 'Any source',
-  url: 'From URL',
-  photo: 'From photo',
-  manual: 'Typed',
-  ai: 'AI-discovered',
-};
-
-const TIME_FILTER_LABELS: Record<TimeFilter, string> = {
-  any: 'Any time',
-  quick: 'Under 30 min',
-  medium: '30–60 min',
-  long: 'Over 60 min',
-};
 
 function recipeTime(r: Recipe): number {
   return (
@@ -94,9 +83,13 @@ function matchesPantryOnly(r: Recipe, pantryNames: Set<string>): boolean {
   return true;
 }
 
-// Stable hero for the recipes banner
-const RECIPES_HERO = FOOD_IMAGES.bakedGoods[0];
+import { FOOD_IMAGES } from '../../constants/foodImages';
+
 const EMPTY_STATE_IMG = FOOD_IMAGES.pasta[0];
+
+// Large-title header heights used by the collapsing animation
+const LARGE_HEADER_HEIGHT = 100; // title + subtitle
+const COLLAPSED_HEADER_HEIGHT = 52; // compact nav bar
 
 function ImportFab() {
   return (
@@ -121,10 +114,12 @@ export default function RecipesScreen() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const deferredQuery = useDeferredValue(searchQuery);
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('any');
-  const [pantryOnly, setPantryOnly] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [filters, setFilters] = useState<RecipeFilterState>(EMPTY_FILTERS);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+
+  // Animated scroll position for the collapsing header.
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   // Single fetch of the full library on mount/refresh. All filtering
   // happens client-side via useMemo below — no round-trips per toggle.
@@ -135,11 +130,10 @@ export default function RecipesScreen() {
 
   // Lazy pantry load when the pantry-only filter is first used.
   useEffect(() => {
-    if (!pantryOnly || pantryItems.length > 0) return;
-    // Pull profile_id from auth store indirectly via pantry loader.
+    if (!filters.pantryOnly || pantryItems.length > 0) return;
     const auth = require('../../stores/authStore').useAuthStore.getState();
     if (auth?.profile?.id) loadPantry(auth.profile.id);
-  }, [pantryOnly, pantryItems.length, loadPantry]);
+  }, [filters.pantryOnly, pantryItems.length, loadPantry]);
 
   const pantryNames = useMemo(
     () => new Set(pantryItems.map((p) => normalize(p.name))),
@@ -149,31 +143,36 @@ export default function RecipesScreen() {
   const filteredRecipes = useMemo(() => {
     const q = normalize(deferredQuery);
     return recipes.filter((r) => {
-      if (showFavoritesOnly && !r.is_favorite) return false;
-      if (sourceFilter !== 'all' && r.source_type !== sourceFilter) return false;
-      if (!matchesTimeFilter(r, timeFilter)) return false;
-      if (pantryOnly && !matchesPantryOnly(r, pantryNames)) return false;
+      if (filters.favoritesOnly && !r.is_favorite) return false;
+      if (filters.source !== 'all' && r.source_type !== filters.source) return false;
+      if (!matchesTimeFilter(r, filters.time)) return false;
+      if (filters.pantryOnly && !matchesPantryOnly(r, pantryNames)) return false;
       if (q) {
         const hay = normalize(r.title) + ' ' + normalize(r.description ?? '');
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [
-    recipes,
-    showFavoritesOnly,
-    sourceFilter,
-    timeFilter,
-    pantryOnly,
-    pantryNames,
-    deferredQuery,
-  ]);
+  }, [recipes, filters, pantryNames, deferredQuery]);
 
-  const activeFilterCount =
-    (showFavoritesOnly ? 1 : 0) +
-    (sourceFilter !== 'all' ? 1 : 0) +
-    (timeFilter !== 'any' ? 1 : 0) +
-    (pantryOnly ? 1 : 0);
+  const activeFilterCount = countActiveFilters(filters);
+
+  // Collapsing-header interpolations
+  const largeTitleOpacity = scrollY.interpolate({
+    inputRange: [0, LARGE_HEADER_HEIGHT * 0.5, LARGE_HEADER_HEIGHT],
+    outputRange: [1, 0.4, 0],
+    extrapolate: 'clamp',
+  });
+  const largeTitleTranslate = scrollY.interpolate({
+    inputRange: [0, LARGE_HEADER_HEIGHT],
+    outputRange: [0, -20],
+    extrapolate: 'clamp',
+  });
+  const compactHeaderOpacity = scrollY.interpolate({
+    inputRange: [LARGE_HEADER_HEIGHT * 0.5, LARGE_HEADER_HEIGHT],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
 
   // Phase 10: skill progression
   useEffect(() => {
@@ -186,111 +185,29 @@ export default function RecipesScreen() {
     router.push(`/recipes/${recipe.id}`);
   };
 
-  const header = (
-    <View className="pt-2 pb-3">
-      {/* Hero banner */}
-      <HeroImage uri={RECIPES_HERO} height={140} style={{ marginBottom: 0 }}>
-        <View>
-          <Text style={styles.heroBannerTitle}>My Recipes</Text>
-          <Text style={styles.heroBannerSub}>
-            {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'} in your library
-          </Text>
-        </View>
-      </HeroImage>
-
-      <SuggestedForYou suggestions={ambitionSuggestions} />
-      <View className="px-4 pt-3">
-        <SearchBar value={searchQuery} onChange={setSearchQuery} />
-
-        {/* Filter row 1: primary toggles + Discover link */}
-        <View className="flex-row items-center gap-2 mt-3">
-          <ChipToggle
-            label="♥ Favorites"
-            selected={showFavoritesOnly}
-            onToggle={() => setShowFavoritesOnly((v) => !v)}
-            colorScheme="red"
-          />
-          <ChipToggle
-            label="From pantry"
-            selected={pantryOnly}
-            onToggle={() => setPantryOnly((v) => !v)}
-            colorScheme="orange"
-          />
-          <Pressable
-            onPress={() => router.push('/recipes/discover')}
-            className="flex-row items-center px-4 py-2 rounded-full bg-amber-100 border border-amber-200"
-          >
-            <Ionicons name="sparkles" size={14} color="#B45309" />
-            <Text className="text-sm font-medium text-amber-800 ml-1">
-              Discover
-            </Text>
-          </Pressable>
-        </View>
-
-        {/* Filter row 2: scrollable source + time pills */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, paddingTop: 8, paddingBottom: 2 }}
-        >
-          {(['all', 'url', 'photo', 'manual', 'ai'] as SourceFilter[]).map((f) => (
-            <Pressable
-              key={`src-${f}`}
-              onPress={() => setSourceFilter(f)}
-              className={`px-3 py-1.5 rounded-full border ${
-                sourceFilter === f
-                  ? 'bg-orange-500 border-orange-500'
-                  : 'bg-white border-warmGray-200'
-              }`}
-            >
-              <Text
-                className={`text-xs font-semibold ${
-                  sourceFilter === f ? 'text-white' : 'text-warmGray-600'
-                }`}
-              >
-                {SOURCE_FILTER_LABELS[f]}
-              </Text>
-            </Pressable>
-          ))}
-          <View style={{ width: 6 }} />
-          {(['any', 'quick', 'medium', 'long'] as TimeFilter[]).map((t) => (
-            <Pressable
-              key={`time-${t}`}
-              onPress={() => setTimeFilter(t)}
-              className={`px-3 py-1.5 rounded-full border ${
-                timeFilter === t
-                  ? 'bg-orange-500 border-orange-500'
-                  : 'bg-white border-warmGray-200'
-              }`}
-            >
-              <Text
-                className={`text-xs font-semibold ${
-                  timeFilter === t ? 'text-white' : 'text-warmGray-600'
-                }`}
-              >
-                {TIME_FILTER_LABELS[t]}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        {activeFilterCount > 0 && (
-          <Pressable
-            onPress={() => {
-              setShowFavoritesOnly(false);
-              setSourceFilter('all');
-              setTimeFilter('any');
-              setPantryOnly(false);
-            }}
-            className="mt-2 self-start"
-          >
-            <Text className="text-xs font-semibold text-orange-600">
-              Clear filters ({activeFilterCount})
-            </Text>
-          </Pressable>
-        )}
+  // Large-title hero content that scrolls away. No hero image, no fixed
+  // 140px banner — that was eating real estate without informing. Just a
+  // title, subtitle, and the skill-progression row.
+  const listHeader = (
+    <Animated.View
+      style={{
+        opacity: largeTitleOpacity,
+        transform: [{ translateY: largeTitleTranslate }],
+      }}
+    >
+      <View style={styles.largeHeader}>
+        <Text style={styles.largeTitle}>Recipes</Text>
+        <Text style={styles.largeSubtitle}>
+          {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'} in your library
+        </Text>
       </View>
-    </View>
+      <SuggestedForYou suggestions={ambitionSuggestions} />
+      {searchOpen && (
+        <View style={styles.searchRow}>
+          <SearchBar value={searchQuery} onChange={setSearchQuery} />
+        </View>
+      )}
+    </Animated.View>
   );
 
   if (isLoading && recipes.length === 0) {
@@ -311,7 +228,7 @@ export default function RecipesScreen() {
     !isLoading &&
     recipes.length === 0 &&
     !deferredQuery &&
-    !showFavoritesOnly
+    activeFilterCount === 0
   ) {
     return (
       <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
@@ -340,24 +257,85 @@ export default function RecipesScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
-      <FlatList
+    <SafeAreaView className="flex-1 bg-warmWhite" edges={['top', 'bottom']}>
+      {/* Floating compact nav bar — fades in on scroll */}
+      <Animated.View
+        pointerEvents="box-none"
+        style={[styles.compactHeader, { opacity: compactHeaderOpacity }]}
+      >
+        <Text style={styles.compactTitle}>Recipes</Text>
+      </Animated.View>
+
+      {/* Always-on action row (search, filters, discover) — sits on top of
+          both the large title and the compact title so it stays tappable. */}
+      <View style={styles.actionRow} pointerEvents="box-none">
+        <View style={{ flex: 1 }} />
+        <Pressable
+          onPress={() => setSearchOpen((v) => !v)}
+          style={[styles.actionBtn, searchOpen && styles.actionBtnActive]}
+          hitSlop={8}
+          accessibilityLabel="Toggle search"
+        >
+          <Ionicons
+            name={searchOpen ? 'close' : 'search'}
+            size={20}
+            color={searchOpen ? '#FFFFFF' : '#3E332A'}
+          />
+        </Pressable>
+        <Pressable
+          onPress={() => setFilterSheetOpen(true)}
+          style={[
+            styles.actionBtn,
+            activeFilterCount > 0 && styles.actionBtnActive,
+          ]}
+          hitSlop={8}
+          accessibilityLabel="Open filters"
+        >
+          <Ionicons
+            name="options-outline"
+            size={20}
+            color={activeFilterCount > 0 ? '#FFFFFF' : '#3E332A'}
+          />
+          {activeFilterCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{activeFilterCount}</Text>
+            </View>
+          )}
+        </Pressable>
+        <Pressable
+          onPress={() => router.push('/recipes/discover')}
+          style={styles.actionBtn}
+          hitSlop={8}
+          accessibilityLabel="Discover recipes"
+        >
+          <Ionicons name="sparkles" size={20} color="#B45309" />
+        </Pressable>
+      </View>
+
+      <Animated.FlatList
         data={filteredRecipes}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={header}
-        renderItem={({ item }) => (
+        keyExtractor={(item: Recipe) => item.id}
+        ListHeaderComponent={listHeader}
+        renderItem={({ item }: { item: Recipe }) => (
           <RecipeCard recipe={item} onPress={handleCardPress} />
         )}
         ListEmptyComponent={
           <View className="items-center mt-12 px-6">
             <Text className="text-base text-warmGray-500 text-center">
-              {showFavoritesOnly
-                ? 'No favorites yet. Tap the heart on a recipe to favorite it.'
-                : 'No recipes match your search.'}
+              {activeFilterCount > 0
+                ? 'No recipes match your filters.'
+                : deferredQuery
+                  ? 'No recipes match your search.'
+                  : 'No recipes yet.'}
             </Text>
           </View>
         }
-        contentContainerStyle={{ paddingTop: 0, paddingBottom: 120 }}
+        contentContainerStyle={{ paddingTop: 0, paddingBottom: 140 }}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true },
+        )}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
@@ -367,12 +345,105 @@ export default function RecipesScreen() {
         }
       />
 
+      <RecipeFilterSheet
+        visible={filterSheetOpen}
+        initial={filters}
+        onClose={() => setFilterSheetOpen(false)}
+        onApply={setFilters}
+      />
+
       <ImportFab />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  largeHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 8,
+    minHeight: LARGE_HEADER_HEIGHT,
+  },
+  largeTitle: {
+    fontSize: 34,
+    fontWeight: '900',
+    color: '#1A140F',
+    letterSpacing: -0.8,
+    marginBottom: 4,
+  },
+  largeSubtitle: {
+    fontSize: 14,
+    color: '#7A6651',
+  },
+  compactHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: COLLAPSED_HEADER_HEIGHT,
+    backgroundColor: 'rgba(255,251,245,0.95)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F1EAE0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
+  compactTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#1A140F',
+    letterSpacing: -0.2,
+  },
+  actionRow: {
+    position: 'absolute',
+    top: 6,
+    left: 0,
+    right: 0,
+    height: COLLAPSED_HEADER_HEIGHT - 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    gap: 8,
+    zIndex: 10,
+  },
+  actionBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E5D9CA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionBtnActive: {
+    backgroundColor: '#F97316',
+    borderColor: '#F97316',
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFBF5',
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  searchRow: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 6,
+  },
   fab: {
     position: 'absolute',
     bottom: 24,
