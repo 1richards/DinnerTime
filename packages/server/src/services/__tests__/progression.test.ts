@@ -248,15 +248,20 @@ describe('getRecipeVariations', () => {
     });
   }
 
-  it('throws BELOW_THRESHOLD when cook_count < 3', async () => {
+  it('throws BELOW_THRESHOLD when total cooks below threshold', async () => {
+    // Unlock now depends on TOTAL cooks across the library, not per-recipe.
+    // makeStatsSupabase(2) gives one recipe with cook_count=2 and another
+    // with cook_count=1 → 3 total, below the new threshold of 5.
     const supabase = makeStatsSupabase(2);
     await expect(
       getRecipeVariations(supabase, 'profile-1', 'r1'),
     ).rejects.toMatchObject({ code: 'BELOW_THRESHOLD' });
   });
 
-  it('returns string[] variations when cook_count >= 3', async () => {
-    const supabase = makeStatsSupabase(3);
+  it('returns string[] variations when total cooks >= threshold', async () => {
+    // cook_count param in makeStatsSupabase is for r1 specifically; r2 has 1.
+    // Passing 5 gives 5 + 1 = 6 total cooks, above the threshold.
+    const supabase = makeStatsSupabase(5);
     mockGenerateStructured.mockResolvedValue({
       variations: ['Try with mushroom stock', 'Add saffron', 'Finish with truffle oil'],
     });

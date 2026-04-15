@@ -102,9 +102,10 @@ progression.get('/suggestions', async (c) => {
 });
 
 /**
- * GET /variations/:recipeId — 3 creative variations for a recipe the
- * user has cooked at least 3 times. Returns 400 BELOW_THRESHOLD when
- * the gate is not met, 404 if the recipe isn't owned by the profile.
+ * GET /variations/:recipeId — 3 creative variations for a recipe. Gated on
+ * TOTAL meals cooked profile-wide (not per-recipe). Returns 400
+ * BELOW_THRESHOLD with `remaining` count when locked, 404 if the recipe
+ * isn't owned by the profile.
  */
 progression.get('/variations/:recipeId', async (c) => {
   const supabase = c.get('supabase');
@@ -115,9 +116,12 @@ progression.get('/variations/:recipeId', async (c) => {
     const variations = await getRecipeVariations(supabase, user.id, recipeId);
     return c.json({ data: variations });
   } catch (error) {
-    const err = error as Error & { code?: string };
+    const err = error as Error & { code?: string; remaining?: number };
     if (err.code === 'BELOW_THRESHOLD') {
-      return c.json({ error: 'BELOW_THRESHOLD', message: err.message }, 400);
+      return c.json(
+        { error: 'BELOW_THRESHOLD', message: err.message, remaining: err.remaining ?? 0 },
+        400,
+      );
     }
     if (err.code === 'NOT_FOUND') {
       return c.json({ error: 'NOT_FOUND', message: err.message }, 404);

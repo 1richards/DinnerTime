@@ -7,12 +7,16 @@ import {
   ActivityIndicator,
   Pressable,
   Alert,
+  Modal,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { Button } from '../../components/ui/Button';
 import { useRecipeStore } from '../../stores/recipeStore';
 import { supabase } from '../../lib/supabase';
+import { getRecipeImage } from '../../constants/foodImages';
 import type { ParsedRecipe } from '../../types/recipe';
 
 const getApiBaseUrl = (): string => {
@@ -37,6 +41,7 @@ export default function DiscoverScreen() {
   const [error, setError] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
+  const [previewIdx, setPreviewIdx] = useState<number | null>(null);
 
   const fetchDiscover = useCallback(
     async (withPrompt?: string) => {
@@ -166,63 +171,401 @@ export default function DiscoverScreen() {
               recipe.total_time_minutes ??
               (recipe.prep_time_minutes ?? 0) +
                 (recipe.cook_time_minutes ?? 0);
+            const heroUri = getRecipeImage(`discover-${recipe.title}-${idx}`);
             return (
-              <View
+              <Pressable
                 key={`${recipe.title}-${idx}`}
-                className="bg-white rounded-xl p-4 mb-3 border border-warmGray-100"
+                onPress={() => setPreviewIdx(idx)}
+                style={styles.card}
               >
-                <Text className="text-base font-semibold text-warmGray-900 mb-1">
-                  {recipe.title}
-                </Text>
-                {recipe.description && (
-                  <Text
-                    className="text-sm text-warmGray-600 mb-2"
-                    numberOfLines={3}
-                  >
-                    {recipe.description}
-                  </Text>
-                )}
-                <View className="flex-row items-center gap-4 mb-3">
-                  {totalTime > 0 && (
-                    <View className="flex-row items-center">
-                      <Ionicons name="time-outline" size={14} color="#6B7280" />
-                      <Text className="text-xs text-warmGray-500 ml-1">
-                        {totalTime} min
-                      </Text>
-                    </View>
+                <Image
+                  source={{ uri: heroUri }}
+                  style={styles.cardImage}
+                  contentFit="cover"
+                  transition={300}
+                  placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
+                  cachePolicy="memory-disk"
+                />
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardTitle}>{recipe.title}</Text>
+                  {recipe.description && (
+                    <Text style={styles.cardDesc} numberOfLines={2}>
+                      {recipe.description}
+                    </Text>
                   )}
-                  {recipe.servings != null && (
-                    <View className="flex-row items-center">
-                      <Ionicons
-                        name="people-outline"
-                        size={14}
-                        color="#6B7280"
-                      />
-                      <Text className="text-xs text-warmGray-500 ml-1">
-                        {recipe.servings} servings
-                      </Text>
+                  <View style={styles.cardMetaRow}>
+                    {totalTime > 0 && (
+                      <View style={styles.cardMetaItem}>
+                        <Ionicons name="time-outline" size={14} color="#6B7280" />
+                        <Text style={styles.cardMetaText}>{totalTime} min</Text>
+                      </View>
+                    )}
+                    {recipe.servings != null && (
+                      <View style={styles.cardMetaItem}>
+                        <Ionicons name="people-outline" size={14} color="#6B7280" />
+                        <Text style={styles.cardMetaText}>
+                          {recipe.servings} servings
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.cardMetaItem}>
+                      <Ionicons name="chevron-forward" size={16} color="#F97316" />
+                      <Text style={styles.cardCtaText}>View recipe</Text>
+                    </View>
+                  </View>
+                  {recipe._saved && (
+                    <View style={styles.savedBadge}>
+                      <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                      <Text style={styles.savedBadgeText}>Saved to library</Text>
                     </View>
                   )}
                 </View>
-                {recipe._saved ? (
-                  <View className="flex-row items-center">
-                    <Ionicons name="checkmark-circle" size={18} color="#10B981" />
-                    <Text className="text-sm text-green-700 ml-1.5">
-                      Saved to library
-                    </Text>
-                  </View>
-                ) : (
-                  <Button
-                    title="Save to Library"
-                    variant="outline"
-                    onPress={() => handleSave(idx, recipe)}
-                    loading={savingIdx === idx}
-                  />
-                )}
-              </View>
+              </Pressable>
             );
           })}
       </ScrollView>
+
+      {/* Preview modal — full recipe content with Save CTA */}
+      <Modal
+        visible={previewIdx !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setPreviewIdx(null)}
+      >
+        {previewIdx !== null && recipes[previewIdx] && (
+          <PreviewSheet
+            recipe={recipes[previewIdx]}
+            heroUri={getRecipeImage(`discover-${recipes[previewIdx].title}-${previewIdx}`)}
+            onClose={() => setPreviewIdx(null)}
+            onSave={async () => {
+              await handleSave(previewIdx, recipes[previewIdx]);
+            }}
+            saving={savingIdx === previewIdx}
+          />
+        )}
+      </Modal>
     </SafeAreaView>
   );
 }
+
+// ---------- Preview sheet (modal) ----------
+
+function PreviewSheet({
+  recipe,
+  heroUri,
+  onClose,
+  onSave,
+  saving,
+}: {
+  recipe: DiscoveredRecipe;
+  heroUri: string;
+  onClose: () => void;
+  onSave: () => Promise<void>;
+  saving: boolean;
+}) {
+  const totalTime =
+    recipe.total_time_minutes ??
+    (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
+
+  return (
+    <View style={styles.sheet}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+        <View style={{ position: 'relative' }}>
+          <Image
+            source={{ uri: heroUri }}
+            style={styles.sheetHero}
+            contentFit="cover"
+            transition={300}
+            placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
+          />
+          <View style={styles.sheetHeroOverlay} />
+          <Pressable onPress={onClose} style={styles.sheetClose} hitSlop={12}>
+            <Ionicons name="close" size={22} color="#FFFFFF" />
+          </Pressable>
+          <View style={styles.sheetHeroText}>
+            <Text style={styles.sheetTitle} numberOfLines={3}>
+              {recipe.title}
+            </Text>
+            {totalTime > 0 && (
+              <View style={styles.sheetMeta}>
+                <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.sheetMetaText}>{totalTime} min</Text>
+                {recipe.servings != null && (
+                  <>
+                    <Text style={styles.sheetMetaText}>{'  ·  '}</Text>
+                    <Ionicons name="people-outline" size={14} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.sheetMetaText}>
+                      {recipe.servings} servings
+                    </Text>
+                  </>
+                )}
+              </View>
+            )}
+          </View>
+        </View>
+
+        {recipe.description && (
+          <View style={styles.sheetSection}>
+            <Text style={styles.sheetDescription}>{recipe.description}</Text>
+          </View>
+        )}
+
+        <View style={styles.sheetCard}>
+          <Text style={styles.sheetSectionHeading}>Ingredients</Text>
+          {recipe.ingredients.length === 0 ? (
+            <Text style={styles.sheetEmpty}>No ingredients listed.</Text>
+          ) : (
+            recipe.ingredients.map((ing, i) => (
+              <View key={i} style={styles.sheetIngredient}>
+                <View style={styles.sheetBullet} />
+                <Text style={styles.sheetIngredientText}>
+                  {[ing.quantity, ing.unit, ing.name].filter(Boolean).join(' ')}
+                  {ing.notes ? ` — ${ing.notes}` : ''}
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
+
+        <View style={styles.sheetCard}>
+          <Text style={styles.sheetSectionHeading}>Steps</Text>
+          {recipe.steps.length === 0 ? (
+            <Text style={styles.sheetEmpty}>No steps listed.</Text>
+          ) : (
+            recipe.steps.map((step, i) => (
+              <View key={i} style={styles.sheetStep}>
+                <Text style={styles.sheetStepNum}>{i + 1}</Text>
+                <Text style={styles.sheetStepText}>{step}</Text>
+              </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Fixed bottom save bar */}
+      <View style={styles.sheetBottomBar}>
+        {recipe._saved ? (
+          <View style={styles.sheetSavedRow}>
+            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Text style={styles.sheetSavedText}>Saved to library</Text>
+            <View style={{ flex: 1 }} />
+            <Button title="Done" variant="outline" onPress={onClose} />
+          </View>
+        ) : (
+          <Button title="Save to Library" onPress={onSave} loading={saving} />
+        )}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 14,
+    overflow: 'hidden',
+    shadowColor: '#7A6651',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardImage: {
+    width: '100%',
+    height: 160,
+    backgroundColor: '#2A221A',
+  },
+  cardBody: {
+    padding: 14,
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#1A140F',
+    marginBottom: 4,
+  },
+  cardDesc: {
+    fontSize: 13,
+    color: '#7A6651',
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  cardMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  cardMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardMetaText: {
+    fontSize: 12,
+    color: '#7A6651',
+  },
+  cardCtaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F97316',
+  },
+  savedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 10,
+  },
+  savedBadgeText: {
+    fontSize: 12,
+    color: '#047857',
+    fontWeight: '600',
+  },
+
+  // Preview sheet
+  sheet: {
+    flex: 1,
+    backgroundColor: '#FFFBF5',
+  },
+  sheetHero: {
+    width: '100%',
+    height: 260,
+    backgroundColor: '#2A221A',
+  },
+  sheetHeroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15,10,5,0.32)',
+  },
+  sheetClose: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetHeroText: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+  },
+  sheetTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+    lineHeight: 32,
+  },
+  sheetMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 8,
+  },
+  sheetMetaText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  sheetSection: {
+    paddingHorizontal: 20,
+    paddingTop: 18,
+  },
+  sheetDescription: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#5C4B39',
+  },
+  sheetCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: '#7A6651',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  sheetSectionHeading: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1A140F',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  sheetEmpty: {
+    fontSize: 13,
+    color: '#A89178',
+    fontStyle: 'italic',
+  },
+  sheetIngredient: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  sheetBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#F97316',
+    marginTop: 8,
+    marginRight: 10,
+  },
+  sheetIngredientText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#3E332A',
+    lineHeight: 20,
+  },
+  sheetStep: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  sheetStepNum: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#FFF4E6',
+    color: '#C05A00',
+    textAlign: 'center',
+    lineHeight: 26,
+    fontSize: 13,
+    fontWeight: '800',
+    marginRight: 12,
+  },
+  sheetStepText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#3E332A',
+    lineHeight: 21,
+  },
+  sheetBottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    paddingBottom: 28,
+    backgroundColor: '#FFFBF5',
+    borderTopWidth: 1,
+    borderTopColor: '#F1EAE0',
+  },
+  sheetSavedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  sheetSavedText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#047857',
+  },
+});

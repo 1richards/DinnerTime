@@ -211,7 +211,16 @@ export const useMealPlanStore = create<MealPlanState>()(
       }
 
       const body = await response.json();
-      const updatedEntry: MealPlanEntry = body.data;
+      // Server returns { data: { entry, pantryDelta } } — NOT a bare entry.
+      // Previously we assigned body.data to updatedEntry, which meant each
+      // DayRow rendered a wrapper object with no title/status fields and
+      // looked "blank", as if the meal had disappeared.
+      const updatedEntry: MealPlanEntry | undefined = body?.data?.entry ?? body?.data;
+      if (!updatedEntry || typeof (updatedEntry as MealPlanEntry).day_of_week !== 'number') {
+        // Defensive: keep the optimistic cooked state we already applied above.
+        set({ cookingDay: null, error: null });
+        return;
+      }
       set((state) => ({
         currentPlan: state.currentPlan
           ? {

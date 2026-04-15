@@ -36,9 +36,12 @@ export default function RecipeDetailScreen() {
   const [variationsLoading, setVariationsLoading] = useState(false);
   const [variationsLocked, setVariationsLocked] = useState(false);
 
-  const cookCount =
-    cookStats.find((s) => s.recipe_id === id)?.cook_count ?? 0;
-  const variationsLockedByCount = cookCount < 3;
+  // Unlock creative variations based on TOTAL meals cooked across the whole
+  // library — a broader engagement metric, not a per-recipe grind.
+  const VARIATIONS_UNLOCK_THRESHOLD = 5;
+  const totalCooks = cookStats.reduce((sum, s) => sum + s.cook_count, 0);
+  const variationsLockedByCount = totalCooks < VARIATIONS_UNLOCK_THRESHOLD;
+  const cooksRemaining = Math.max(0, VARIATIONS_UNLOCK_THRESHOLD - totalCooks);
 
   const handleVariations = async () => {
     if (!recipe) return;
@@ -206,7 +209,7 @@ export default function RecipeDetailScreen() {
             />
             <Text style={styles.variationsButtonText}>
               {variationsLockedByCount
-                ? `Creative variations (cook ${3 - cookCount} more)`
+                ? `Creative variations (cook ${cooksRemaining} more ${cooksRemaining === 1 ? 'meal' : 'meals'})`
                 : 'Creative variations'}
             </Text>
           </Pressable>

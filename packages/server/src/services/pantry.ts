@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { coerceCategory } from './vision.js';
 
 export interface ConfirmedItem {
   name: string;
@@ -7,6 +8,8 @@ export interface ConfirmedItem {
   category: string;
   confidence: number;
 }
+
+const VALID_SOURCE_LOCATIONS = new Set(['fridge', 'pantry', 'freezer']);
 
 export interface PantryItem {
   id: string;
@@ -41,9 +44,24 @@ export async function reconcileItems(
   items: ConfirmedItem[],
   sourceLocation: string
 ): Promise<PantryItem[]> {
+  // Coerce source_location — the schema CHECK only allows fridge/pantry/freezer.
+  const location = VALID_SOURCE_LOCATIONS.has(sourceLocation)
+    ? sourceLocation
+    : 'pantry';
+
   const results: PantryItem[] = [];
 
-  for (const item of items) {
+  for (const rawItem of items) {
+    // Sanitize each item so a bad category or out-of-range confidence
+    // doesn't crash the whole batch with a cryptic PG error.
+    const item: ConfirmedItem = {
+      name: String(rawItem.name ?? '').trim(),
+      quantity: Number.isFinite(rawItem.quantity) ? Number(rawItem.quantity) : 1,
+      unit: String(rawItem.unit ?? 'piece').trim() || 'piece',
+      category: coerceCategory(rawItem.category),
+      confidence: Math.max(0, Math.min(1, Number(rawItem.confidence) || 1)),
+    };
+    if (!item.name) continue;
     const normalized = normalizeName(item.name);
 
     // Check if item already exists for this user + name + location
@@ -52,7 +70,7 @@ export async function reconcileItems(
       .select()
       .eq('profile_id', profileId)
       .eq('normalized_name', normalized)
-      .eq('source_location', sourceLocation);
+      .eq('source_location', location);
 
     if (selectError) {
       throw new Error(`Failed to query pantry items: ${selectError.message}`);
@@ -88,7 +106,7 @@ export async function reconcileItems(
           quantity: item.quantity,
           unit: item.unit,
           category: item.category,
-          source_location: sourceLocation,
+          source_location: location,
           confidence: item.confidence,
           status: 'available',
           last_seen_at: new Date().toISOString(),

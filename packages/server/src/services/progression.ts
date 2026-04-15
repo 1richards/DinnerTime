@@ -272,16 +272,31 @@ interface RecipeRow {
   total_time_minutes: number | null;
 }
 
+/**
+ * Number of total meals cooked (across all recipes) before creative
+ * variations unlock. Originally gated per-recipe at 3 cooks, but that felt
+ * forced — the user cooks the SAME thing 3 times just to unlock one thing.
+ * Switch to profile-wide total cooks: a meaningful progression metric that
+ * rewards overall platform engagement.
+ */
+export const VARIATIONS_UNLOCK_THRESHOLD = 5;
+
 export class BelowThresholdError extends Error {
   code = 'BELOW_THRESHOLD' as const;
-  constructor(message = 'Recipe must be cooked at least 3 times before unlocking variations') {
-    super(message);
+  /** Total cooks remaining until unlock (for UI display). */
+  remaining: number;
+  constructor(remaining: number) {
+    super(
+      `Cook ${remaining} more ${remaining === 1 ? 'meal' : 'meals'} to unlock creative variations`,
+    );
     this.name = 'BelowThresholdError';
+    this.remaining = remaining;
   }
 }
 
 /**
- * Return 3 creative variations for a recipe the user has cooked >= 3 times.
+ * Return 3 creative variations for a recipe. Gated on TOTAL meals cooked
+ * across the user's library (>= VARIATIONS_UNLOCK_THRESHOLD), not per-recipe.
  */
 export async function getRecipeVariations(
   supabase: SupabaseClient,
@@ -304,11 +319,12 @@ export async function getRecipeVariations(
   const recipe = recipeData as RecipeRow;
 
   const stats = await getCookStats(supabase, profileId);
+  const totalCooks = stats.reduce((sum, s) => sum + s.cook_count, 0);
   const recipeStats = stats.find((s) => s.recipe_id === recipeId);
   const cookCount = recipeStats?.cook_count ?? 0;
 
-  if (cookCount < 3) {
-    throw new BelowThresholdError();
+  if (totalCooks < VARIATIONS_UNLOCK_THRESHOLD) {
+    throw new BelowThresholdError(VARIATIONS_UNLOCK_THRESHOLD - totalCooks);
   }
 
   const ingredientList = (recipe.ingredients ?? [])
