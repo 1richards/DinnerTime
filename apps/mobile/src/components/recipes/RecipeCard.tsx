@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import type { Recipe } from '../../types/recipe';
 import { getRecipeImage } from '../../constants/foodImages';
+import { useRecipeStore } from '../../stores/recipeStore';
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -18,6 +19,7 @@ const SOURCE_LABELS: Record<Recipe['source_type'], string> = {
 };
 
 export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
+  const toggleFavorite = useRecipeStore((s) => s.toggleFavorite);
   const totalTime =
     recipe.total_time_minutes ??
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
@@ -47,14 +49,26 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
             {SOURCE_LABELS[recipe.source_type]}
           </Text>
         </View>
-        {/* Favorite heart */}
-        <View style={styles.heartBadge}>
+        {/* Favorite heart — interactive, not just a visual. Stop propagation
+            so tapping the heart doesn't also trigger the outer card press. */}
+        <Pressable
+          onPress={(e) => {
+            e.stopPropagation();
+            toggleFavorite(recipe.id);
+          }}
+          hitSlop={12}
+          style={({ pressed }) => [
+            styles.heartBadge,
+            pressed && { opacity: 0.6 },
+          ]}
+          accessibilityLabel={recipe.is_favorite ? 'Unfavorite recipe' : 'Favorite recipe'}
+        >
           <Ionicons
             name={recipe.is_favorite ? 'heart' : 'heart-outline'}
-            size={18}
-            color={recipe.is_favorite ? '#EF4444' : 'rgba(255,255,255,0.85)'}
+            size={22}
+            color={recipe.is_favorite ? '#EF4444' : '#FFFFFF'}
           />
-        </View>
+        </Pressable>
       </View>
 
       {/* Text content */}
@@ -129,7 +143,13 @@ const styles = StyleSheet.create({
   heartBadge: {
     position: 'absolute',
     top: 8,
-    right: 10,
+    right: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   body: {
     padding: 14,
