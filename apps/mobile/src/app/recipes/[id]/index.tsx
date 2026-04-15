@@ -9,8 +9,8 @@ import {
   Modal,
   StyleSheet,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecipeStore } from '../../../stores/recipeStore';
 import { useProgressionStore } from '../../../stores/progressionStore';
@@ -23,6 +23,7 @@ import { getRecipeImage } from '../../../constants/foodImages';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const { recipes, fetchRecipes, deleteRecipe } = useRecipeStore();
   const recipe = recipes.find((r) => r.id === id);
 
@@ -106,6 +107,10 @@ export default function RecipeDetailScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
+      {/* Hide the default nav header — it's rendered behind the hero. The
+          floating back button below replaces it. Swipe-from-left-edge still
+          pops the stack natively. */}
+      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 120 }}
@@ -124,8 +129,17 @@ export default function RecipeDetailScreen() {
               </View>
             )}
           </HeroImage>
+          {/* Floating back chevron — top-left, above the notch */}
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={12}
+            style={[styles.heroBack, { top: insets.top + 8 }]}
+            accessibilityLabel="Back"
+          >
+            <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
+          </Pressable>
           {/* Favorite button floats over the image */}
-          <View style={styles.heroFavorite}>
+          <View style={[styles.heroFavorite, { top: insets.top + 8 }]}>
             <FavoriteButton
               recipeId={recipe.id}
               isFavorite={recipe.is_favorite}
@@ -263,9 +277,18 @@ export default function RecipeDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  heroBack: {
+    position: 'absolute',
+    left: 12,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heroFavorite: {
     position: 'absolute',
-    top: 14,
     right: 14,
     backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: 20,

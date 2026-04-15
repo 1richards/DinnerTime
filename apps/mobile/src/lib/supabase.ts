@@ -45,12 +45,20 @@ class NoopStorage {
  */
 let secureStoreAvailable: boolean | null = null;
 
+// AFTER_FIRST_UNLOCK lets the Supabase auto-refresh tick read the session
+// from a background context (e.g. right after a lock screen), otherwise
+// iOS throws "User interaction is not allowed" during auto-refresh ticks
+// and the entire auth state silently breaks.
+const KEYCHAIN_OPTIONS: SecureStore.SecureStoreOptions = {
+  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+};
+
 async function isSecureStoreAvailable(): Promise<boolean> {
   if (secureStoreAvailable !== null) return secureStoreAvailable;
   try {
     // A harmless probe — set then read then delete a tiny value.
-    await SecureStore.setItemAsync('__dt_secure_probe__', '1');
-    await SecureStore.deleteItemAsync('__dt_secure_probe__');
+    await SecureStore.setItemAsync('__dt_secure_probe__', '1', KEYCHAIN_OPTIONS);
+    await SecureStore.deleteItemAsync('__dt_secure_probe__', KEYCHAIN_OPTIONS);
     secureStoreAvailable = true;
   } catch {
     if (__DEV__) {
@@ -71,13 +79,17 @@ class LargeSecureStore {
     );
     const encryptedBytes = cipher.encrypt(aesjs.utils.utf8.toBytes(value));
 
-    await SecureStore.setItemAsync(key, aesjs.utils.hex.fromBytes(encryptionKey));
+    await SecureStore.setItemAsync(
+      key,
+      aesjs.utils.hex.fromBytes(encryptionKey),
+      KEYCHAIN_OPTIONS,
+    );
 
     return aesjs.utils.hex.fromBytes(encryptedBytes);
   }
 
   private async _decrypt(key: string, value: string): Promise<string | null> {
-    const encryptionKeyHex = await SecureStore.getItemAsync(key);
+    const encryptionKeyHex = await SecureStore.getItemAsync(key, KEYCHAIN_OPTIONS);
     if (!encryptionKeyHex) return null;
 
     const cipher = new aesjs.ModeOfOperation.ctr(
@@ -104,7 +116,7 @@ class LargeSecureStore {
       return;
     }
     await AsyncStorage.removeItem(key);
-    await SecureStore.deleteItemAsync(key);
+    await SecureStore.deleteItemAsync(key, KEYCHAIN_OPTIONS);
   }
 
   async setItem(key: string, value: string): Promise<void> {

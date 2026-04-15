@@ -27,32 +27,34 @@ export default function HomeScreen() {
     ? `Hey, ${displayName}! 👋`
     : 'Your Dinner Dashboard';
 
+  const hero = (
+    <HeroImage uri={HERO_URI} height={160}>
+      <View>
+        <Text
+          style={{
+            fontSize: 24,
+            fontWeight: '900',
+            color: '#FFFFFF',
+            letterSpacing: -0.5,
+          }}
+          numberOfLines={1}
+        >
+          {greeting}
+        </Text>
+        <Text
+          style={{ fontSize: 14, color: 'rgba(255,255,255,0.82)', marginTop: 4 }}
+        >
+          What should we cook tonight?
+        </Text>
+      </View>
+    </HeroImage>
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
-      {/* Hero header with food photography */}
-      <HeroImage uri={HERO_URI} height={200}>
-        <View>
-          <Text
-            style={{
-              fontSize: 26,
-              fontWeight: '900',
-              color: '#FFFFFF',
-              letterSpacing: -0.5,
-            }}
-            numberOfLines={1}
-          >
-            {greeting}
-          </Text>
-          <Text
-            style={{ fontSize: 14, color: 'rgba(255,255,255,0.82)', marginTop: 4 }}
-          >
-            What should we cook tonight?
-          </Text>
-        </View>
-      </HeroImage>
-
-      {/* Suggestions */}
-      <SuggestionList />
+      {/* Hero scrolls with the suggestion list so it frees up the viewport
+          as soon as the user starts scrolling. */}
+      <SuggestionList HeaderComponent={hero} />
     </SafeAreaView>
   );
 }

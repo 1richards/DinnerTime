@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { SuggestionCard } from './SuggestionCard';
@@ -14,7 +14,16 @@ import type { DinnerSuggestion } from '../../types/suggestions';
 const PANTRY_EMPTY_IMAGE = FOOD_IMAGES.breakfast[0];
 const READY_IMAGE = FOOD_IMAGES.hero[1]; // farmers market
 
-export function SuggestionList() {
+interface SuggestionListProps {
+  /**
+   * Optional header rendered above the suggestions. When provided, the
+   * header scrolls together with the list content — callers can pass the
+   * Home hero here so it doesn't eat permanent viewport.
+   */
+  HeaderComponent?: React.ReactElement;
+}
+
+export function SuggestionList({ HeaderComponent }: SuggestionListProps = {}) {
   const suggestions = useSuggestionsStore((s) => s.suggestions);
   const isLoading = useSuggestionsStore((s) => s.isLoading);
   const error = useSuggestionsStore((s) => s.error);
@@ -36,93 +45,103 @@ export function SuggestionList() {
   // Loading state
   if (isLoading) {
     return (
-      <View className="px-4 pt-4">
-        <Text className="text-base font-semibold text-warmGray-700 mb-3">
-          Finding dinner ideas...
-        </Text>
-        <SuggestionSkeleton />
-      </View>
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        {HeaderComponent}
+        <View className="px-4 pt-4">
+          <Text className="text-base font-semibold text-warmGray-700 mb-3">
+            Finding dinner ideas...
+          </Text>
+          <SuggestionSkeleton />
+        </View>
+      </ScrollView>
     );
   }
 
   // Error state
   if (error) {
     return (
-      <View className="flex-1 items-center justify-center px-6">
-        <Text className="text-4xl mb-4">😕</Text>
-        <Text className="text-lg font-bold text-warmGray-900 mb-2">
-          Something went wrong
-        </Text>
-        <Text className="text-sm text-warmGray-500 text-center mb-4">
-          {error}
-        </Text>
-        <Button title="Try Again" onPress={fetchSuggestions} />
-      </View>
+      <ScrollView contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}>
+        {HeaderComponent}
+        <View className="flex-1 items-center justify-center px-6 py-12">
+          <Text className="text-4xl mb-4">😕</Text>
+          <Text className="text-lg font-bold text-warmGray-900 mb-2">
+            Something went wrong
+          </Text>
+          <Text className="text-sm text-warmGray-500 text-center mb-4">
+            {error}
+          </Text>
+          <Button title="Try Again" onPress={fetchSuggestions} />
+        </View>
+      </ScrollView>
     );
   }
 
   // Insufficient pantry — polished empty state with food photo
   if (!hasSufficientPantry) {
     return (
-      <View style={styles.emptyStateContainer}>
-        <View style={styles.photoCard}>
-          <Image
-            source={{ uri: PANTRY_EMPTY_IMAGE }}
-            style={StyleSheet.absoluteFillObject}
-            contentFit="cover"
-            transition={400}
-            placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
-            cachePolicy="memory-disk"
-          />
-          {/* Dark overlay */}
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15,10,5,0.42)' }]} />
-          {/* Photo label */}
-          <View style={styles.photoCardContent}>
-            <Text style={styles.photoCardTag}>PANTRY EMPTY</Text>
-            <Text style={styles.photoCardTitle}>Scan your fridge first</Text>
-            <Text style={styles.photoCardSubtitle}>
-              Add at least 3 items so we can suggest great dinners for you.
-            </Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        {HeaderComponent}
+        <View style={styles.emptyStateContainer}>
+          <View style={styles.photoCard}>
+            <Image
+              source={{ uri: PANTRY_EMPTY_IMAGE }}
+              style={StyleSheet.absoluteFillObject}
+              contentFit="cover"
+              transition={400}
+              placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
+              cachePolicy="memory-disk"
+            />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15,10,5,0.42)' }]} />
+            <View style={styles.photoCardContent}>
+              <Text style={styles.photoCardTag}>PANTRY EMPTY</Text>
+              <Text style={styles.photoCardTitle}>Scan your fridge first</Text>
+              <Text style={styles.photoCardSubtitle}>
+                Add at least 3 items so we can suggest great dinners for you.
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ paddingHorizontal: 24, marginTop: 20 }}>
+            <Button
+              title="Go to Pantry"
+              onPress={() => router.navigate('/(tabs)/pantry')}
+            />
           </View>
         </View>
-
-        <View style={{ paddingHorizontal: 24, marginTop: 20 }}>
-          <Button
-            title="Go to Pantry"
-            onPress={() => router.navigate('/(tabs)/pantry')}
-          />
-        </View>
-      </View>
+      </ScrollView>
     );
   }
 
   // Ready to fetch — polished empty state
   if (suggestions.length === 0) {
     return (
-      <View style={styles.emptyStateContainer}>
-        <View style={styles.photoCard}>
-          <Image
-            source={{ uri: READY_IMAGE }}
-            style={StyleSheet.absoluteFillObject}
-            contentFit="cover"
-            transition={400}
-            placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
-            cachePolicy="memory-disk"
-          />
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15,10,5,0.42)' }]} />
-          <View style={styles.photoCardContent}>
-            <Text style={styles.photoCardTag}>AI-POWERED</Text>
-            <Text style={styles.photoCardTitle}>Ready for dinner ideas?</Text>
-            <Text style={styles.photoCardSubtitle}>
-              Based on your pantry, we'll suggest meals your family will love.
-            </Text>
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+        {HeaderComponent}
+        <View style={styles.emptyStateContainer}>
+          <View style={styles.photoCard}>
+            <Image
+              source={{ uri: READY_IMAGE }}
+              style={StyleSheet.absoluteFillObject}
+              contentFit="cover"
+              transition={400}
+              placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
+              cachePolicy="memory-disk"
+            />
+            <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15,10,5,0.42)' }]} />
+            <View style={styles.photoCardContent}>
+              <Text style={styles.photoCardTag}>AI-POWERED</Text>
+              <Text style={styles.photoCardTitle}>Ready for dinner ideas?</Text>
+              <Text style={styles.photoCardSubtitle}>
+                Based on your pantry, we'll suggest meals your family will love.
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ paddingHorizontal: 24, marginTop: 20 }}>
+            <Button title="Get Dinner Ideas" onPress={fetchSuggestions} />
           </View>
         </View>
-
-        <View style={{ paddingHorizontal: 24, marginTop: 20 }}>
-          <Button title="Get Dinner Ideas" onPress={fetchSuggestions} />
-        </View>
-      </View>
+      </ScrollView>
     );
   }
 
@@ -136,14 +155,17 @@ export function SuggestionList() {
       data={suggestions}
       keyExtractor={(item, index) => `${item.title}-${index}`}
       renderItem={renderItem}
-      contentContainerClassName="px-4 pt-4 pb-8"
+      contentContainerClassName="pb-8"
       ListHeaderComponent={
-        <Text className="text-base font-semibold text-warmGray-700 mb-3">
-          Tonight's suggestions
-        </Text>
+        <View>
+          {HeaderComponent}
+          <Text className="text-base font-semibold text-warmGray-700 mb-3 px-4 pt-4">
+            Tonight's suggestions
+          </Text>
+        </View>
       }
       ListFooterComponent={
-        <View className="mt-2 mb-4">
+        <View className="mt-2 mb-4 px-4">
           <Button
             title="Get New Ideas"
             variant="outline"
