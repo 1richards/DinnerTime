@@ -4,11 +4,11 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 5 of 5
 status: completed
-stopped_at: Completed 11-05-PLAN.md; post-v1 polish ongoing ad-hoc
-last_updated: "2026-04-14T00:00:00.000Z"
-last_activity: 2026-04-14 -- v1.0 milestone shipped. Post-v1 polish landed out-of-band on main (UAT harness, food-photo visual pass, remix feature, collapsing headers, filter sheet, sign out, SecureStore fix, Cook tab removed). Tracked below under Post-v1 Polish, not re-planned through GSD.
+stopped_at: Phase 14 context gathered
+last_updated: "2026-04-16T14:49:54.028Z"
+last_activity: 2026-04-13 -- Completed 11-05 phase closeout (deleted config/anthropic.ts, added env-gated AI smoke script). Phase 11 complete.
 progress:
-  total_phases: 11
+  total_phases: 14
   completed_phases: 11
   total_plans: 49
   completed_plans: 49
@@ -102,6 +102,11 @@ Progress: [██████████] 100%
 | Phase 11-hybrid-ai-client P05 | 3min | 3 tasks | 3 files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+- Phase 12 added: Rationalize Home and Recipes into a single unified page
+- Phase 13 added: Receipt scan and Instacart import for bulk pantry loading
+- Phase 14 added: Multi-photo pantry scan with smarter item filtering (no vague/unidentifiable items)
 
 ### Decisions
 
@@ -286,6 +291,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-14T00:00:00.000Z
-Stopped at: v1.0 shipped; post-v1 polish ongoing ad-hoc UAT feedback
-Resume file: None
+Last session: 2026-04-16T14:49:54.021Z
+Stopped at: Phase 14 context gathered
+Resume file: .planning/phases/14-multi-photo-pantry-scan-with-smarter-item-filtering/14-CONTEXT.md
