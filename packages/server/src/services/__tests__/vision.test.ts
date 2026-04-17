@@ -1,17 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockAnalyzeImageStructured, mockGenerateStructured, mockGenerateText, mockGetClientFor } =
+const { mockAnalyzeImageStructured, mockAnalyzeImagesStructured, mockGenerateStructured, mockGenerateText, mockGetClientFor } =
   vi.hoisted(() => {
     const mockAnalyzeImageStructured = vi.fn();
+    const mockAnalyzeImagesStructured = vi.fn();
     const mockGenerateStructured = vi.fn();
     const mockGenerateText = vi.fn();
     const mockGetClientFor = vi.fn(() => ({
       generateText: mockGenerateText,
       generateStructured: mockGenerateStructured,
       analyzeImageStructured: mockAnalyzeImageStructured,
+      analyzeImagesStructured: mockAnalyzeImagesStructured,
     }));
     return {
       mockAnalyzeImageStructured,
+      mockAnalyzeImagesStructured,
       mockGenerateStructured,
       mockGenerateText,
       mockGetClientFor,
@@ -23,7 +26,7 @@ vi.mock('../../ai/clientFactory.js', () => ({
 }));
 
 // Must import after mock setup
-import { identifyFoodItems } from '../vision.js';
+import { identifyFoodItems, identifyFoodItemsBatch } from '../vision.js';
 
 describe('identifyFoodItems', () => {
   beforeEach(() => {
@@ -132,5 +135,63 @@ describe('identifyFoodItems', () => {
       expect(callArgs.user).toContain(location);
       expect(mockGetClientFor).toHaveBeenCalledWith('vision.pantryScan');
     }
+  });
+});
+
+describe('identifyFoodItemsBatch', () => {
+  beforeEach(() => {
+    mockAnalyzeImagesStructured.mockReset();
+    mockGetClientFor.mockClear();
+  });
+
+  it('validates each image against 5MB limit and throws on oversized', async () => {
+    // Create a base64 string that decodes to > 5MB
+    const oversized = Buffer.alloc(6 * 1024 * 1024).toString('base64');
+
+    await expect(
+      identifyFoodItemsBatch([oversized], 'fridge')
+    ).rejects.toThrow(/Image 1.*too large/);
+  });
+
+  it('calls analyzeImagesStructured with all images and the filtering prompt', async () => {
+    mockAnalyzeImagesStructured.mockResolvedValue({ items: [] });
+
+    await identifyFoodItemsBatch(['IMG1', 'IMG2'], 'pantry');
+
+    expect(mockGetClientFor).toHaveBeenCalledWith('vision.pantryScan');
+    expect(mockAnalyzeImagesStructured).toHaveBeenCalledOnce();
+
+    const callArgs = mockAnalyzeImagesStructured.mock.calls[0][0];
+    expect(callArgs.images).toEqual([
+      { base64: 'IMG1', mimeType: 'image/jpeg' },
+      { base64: 'IMG2', mimeType: 'image/jpeg' },
+    ]);
+    expect(callArgs.user).toContain('2 photos');
+    expect(callArgs.user).toContain('pantry');
+    expect(callArgs.user).toContain('deduplicate');
+    expect(callArgs.user).toContain('DO NOT report');
+    expect(callArgs.tool).toMatchObject({ name: 'report_food_items' });
+    expect(callArgs.maxTokens).toBe(8192);
+  });
+
+  it('coerces categories on returned items', async () => {
+    mockAnalyzeImagesStructured.mockResolvedValue({
+      items: [
+        { name: 'chicken', quantity: 1, unit: 'lb', confidence: 0.9, category: 'meat' },
+        { name: 'apple', quantity: 3, unit: 'piece', confidence: 0.8, category: 'fruit' },
+      ],
+    });
+
+    const result = await identifyFoodItemsBatch(['IMG1'], 'fridge');
+
+    expect(result[0].category).toBe('protein');
+    expect(result[1].category).toBe('produce');
+  });
+
+  it('returns empty array when items missing from result', async () => {
+    mockAnalyzeImagesStructured.mockResolvedValue({});
+
+    const result = await identifyFoodItemsBatch(['IMG1'], 'fridge');
+    expect(result).toEqual([]);
   });
 });

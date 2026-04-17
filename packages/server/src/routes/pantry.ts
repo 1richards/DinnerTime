@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth.js';
-import { identifyFoodItems } from '../services/vision.js';
+import { identifyFoodItems, identifyFoodItemsBatch } from '../services/vision.js';
 import { reconcileItems } from '../services/pantry.js';
 
 const pantry = new Hono();
@@ -62,6 +62,38 @@ pantry.post('/scan', async (c) => {
     const items = await identifyFoodItems(body.image, body.source_location);
     return c.json({ data: items });
   } catch (error) {
+    console.error('[pantry/scan] Vision error:', error);
+    const message = error instanceof Error ? error.message : 'Vision processing failed';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
+ * POST /scan-batch - Send multiple base64 images for batch food identification.
+ * Body: { images: string[] (1-5 base64 images), source_location: 'fridge' | 'pantry' | 'freezer' }
+ */
+pantry.post('/scan-batch', async (c) => {
+  const body = await c.req.json<{ images: string[]; source_location: 'fridge' | 'pantry' | 'freezer' }>();
+
+  const validLocations = ['fridge', 'pantry', 'freezer'];
+
+  if (!body.images || !Array.isArray(body.images) || body.images.length === 0) {
+    return c.json({ error: 'Missing or empty images array' }, 400);
+  }
+
+  if (body.images.length > 5) {
+    return c.json({ error: 'images array must contain 1-5 elements' }, 400);
+  }
+
+  if (!body.source_location || !validLocations.includes(body.source_location)) {
+    return c.json({ error: 'Invalid source_location. Must be fridge, pantry, or freezer' }, 400);
+  }
+
+  try {
+    const items = await identifyFoodItemsBatch(body.images, body.source_location);
+    return c.json({ data: items });
+  } catch (error) {
+    console.error('[pantry/scan-batch] Vision error:', error);
     const message = error instanceof Error ? error.message : 'Vision processing failed';
     return c.json({ error: message }, 500);
   }

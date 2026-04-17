@@ -73,17 +73,68 @@ const foodItemsTool: StructuredTool<{ items: ScanResult[] }> = {
   schema: foodItemsSchema,
 };
 
+const MAX_BASE64_BYTES = 5 * 1024 * 1024; // Anthropic's 5 MB limit
+
+const FILTERING_RULES = `For each item, report ONLY items you can specifically name as a cooking ingredient or food product. Examples of GOOD items: "milk", "cheddar cheese", "sriracha", "ground beef", "sourdough bread", "olive oil".
+
+DO NOT report:
+- Vague or unidentifiable items ("leftover container", "unidentified dairy item", "mystery sauce")
+- Generic descriptions ("condiment packet", "sauce packet", "plastic container with food")
+- Non-food items (cleaning supplies, utensils, containers without identifiable contents)
+- Items you cannot specifically name -- if you can't tell what it is, exclude it entirely
+
+Named condiments and sauces ARE included (e.g., ketchup, soy sauce, ranch dressing).
+All beverages ARE included (e.g., orange juice, soda, water, beer).
+
+Assign confidence 0.0-1.0 based on how clearly you can identify each item. Only report items with confidence >= 0.5.
+The category field MUST be exactly one of the nine values in the schema.`;
+
 export async function identifyFoodItems(
   base64Image: string,
   sourceLocation: 'fridge' | 'pantry' | 'freezer'
 ): Promise<ScanResult[]> {
+  const imageBytes = Buffer.from(base64Image, 'base64').length;
+  if (imageBytes > MAX_BASE64_BYTES) {
+    throw new Error(
+      `Image too large (${(imageBytes / 1024 / 1024).toFixed(1)} MB). Please retake at lower resolution.`
+    );
+  }
   const ai = getClientFor('vision.pantryScan');
   const result = await ai.analyzeImageStructured<{ items: ScanResult[] }>({
-    user: `Identify all visible food items in this ${sourceLocation} photo. For each item, estimate quantity and provide a confidence score. Be thorough — include partially visible items with lower confidence. The category field MUST be exactly one of the nine values in the schema.`,
+    user: `You are analyzing a photo of a ${sourceLocation}. Identify all visible food items.\n\n${FILTERING_RULES}`,
     imageBase64: base64Image,
     mimeType: 'image/jpeg',
     tool: foodItemsTool,
     maxTokens: 4096,
+  });
+  // Coerce category in case the model ignored the enum.
+  return (result.items ?? []).map((item) => ({
+    ...item,
+    category: coerceCategory(item.category),
+  }));
+}
+
+export async function identifyFoodItemsBatch(
+  base64Images: string[],
+  sourceLocation: 'fridge' | 'pantry' | 'freezer'
+): Promise<ScanResult[]> {
+  // Validate each image against the 5MB limit.
+  for (let i = 0; i < base64Images.length; i++) {
+    const imageBytes = Buffer.from(base64Images[i], 'base64').length;
+    if (imageBytes > MAX_BASE64_BYTES) {
+      throw new Error(
+        `Image ${i + 1} too large (${(imageBytes / 1024 / 1024).toFixed(1)} MB). Please retake at lower resolution.`
+      );
+    }
+  }
+
+  const count = base64Images.length;
+  const ai = getClientFor('vision.pantryScan');
+  const result = await ai.analyzeImagesStructured<{ items: ScanResult[] }>({
+    user: `You are analyzing ${count} photos of a ${sourceLocation}. These photos may show overlapping areas -- deduplicate items that appear in multiple photos.\n\n${FILTERING_RULES}`,
+    images: base64Images.map((b64) => ({ base64: b64, mimeType: 'image/jpeg' as const })),
+    tool: foodItemsTool,
+    maxTokens: 8192,
   });
   // Coerce category in case the model ignored the enum.
   return (result.items ?? []).map((item) => ({
