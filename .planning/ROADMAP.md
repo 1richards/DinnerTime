@@ -265,7 +265,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 12. Combine Home & Recipes | 0/0 | Not planned | — |
 
 | 13. Receipt Scan & Instacart Import | 0/0 | Not planned | — |
-| 14. Multi-Photo Scan & Smarter Filtering | 0/2 | Planned | — |
+| 14. Multi-Photo Scan & Smarter Filtering | 1/2 | In Progress|  |
 
 ### Phase 13: Receipt Scan & Instacart Import
 **Goal**: Users can bulk-load pantry items by scanning a grocery receipt or importing Instacart purchase history, instead of photographing every item individually
@@ -292,6 +292,6 @@ Plans: (not yet planned)
   5. Low-confidence items that can't be specifically named are silently excluded
 **Plans**: 2 plans
 Plans:
-- [ ] 14-01-PLAN.md — Server: AIClient multi-image extension, vision batch service with filtering prompt, POST /scan-batch route
+- [x] 14-01-PLAN.md — Server: AIClient multi-image extension, vision batch service with filtering prompt, POST /scan-batch route
 - [ ] 14-02-PLAN.md — Mobile: multi-photo capture UI with thumbnail strip, pantryStore batch scan, review screen fixes
 **UI hint**: yes

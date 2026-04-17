@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 5 of 5
-status: completed
-stopped_at: Phase 14 context gathered
-last_updated: "2026-04-16T14:49:54.028Z"
-last_activity: 2026-04-13 -- Completed 11-05 phase closeout (deleted config/anthropic.ts, added env-gated AI smoke script). Phase 11 complete.
+current_plan: 1 of 2
+status: executing
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-04-17T05:26:35.810Z"
+last_activity: 2026-04-17 -- Completed 14-01 multi-image batch scan API (analyzeImagesStructured, identifyFoodItemsBatch, POST /scan-batch, filtering prompt)
 progress:
   total_phases: 14
   completed_phases: 11
-  total_plans: 49
-  completed_plans: 49
-  percent: 100
+  total_plans: 51
+  completed_plans: 50
+  percent: 98
 ---
 
 # Project State
@@ -22,20 +22,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Open the fridge, take a photo, get dinner ideas -- zero mental effort from "what do we have?" to "what should we cook?"
-**Current focus:** Phase 11: Hybrid AI Client
+**Current focus:** Phase 14: Multi-photo Pantry Scan with Smarter Item Filtering
 
 ## Current Position
 
-Phase: 11 of 11 (Hybrid AI Client) -- COMPLETE
-Current Plan: 5 of 5
-Status: Complete
-Last activity: 2026-04-13 -- Completed 11-05 phase closeout (deleted config/anthropic.ts, added env-gated AI smoke script). Phase 11 complete.
+Phase: 14 of 14 (Multi-photo Pantry Scan) -- IN PROGRESS
+Current Plan: 1 of 2
+Status: In Progress
+Last activity: 2026-04-17 -- Completed 14-01 multi-image batch scan API (analyzeImagesStructured, identifyFoodItemsBatch, POST /scan-batch, filtering prompt)
 
-Progress: [██████████] 100%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0
 - Average duration: --
 - Total execution time: 0 hours
@@ -47,6 +48,7 @@ Progress: [██████████] 100%
 | - | - | - | - |
 
 **Recent Trend:**
+
 - Last 5 plans: --
 - Trend: --
 
@@ -100,10 +102,12 @@ Progress: [██████████] 100%
 | Phase 11-hybrid-ai-client P04 | 5min | 3 tasks | 6 files |
 | Phase 11-hybrid-ai-client P03 | 6min | 3 tasks | 11 files |
 | Phase 11-hybrid-ai-client P05 | 3min | 3 tasks | 3 files |
+| Phase 14 P01 | 4min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
 ### Roadmap Evolution
+
 - Phase 12 added: Rationalize Home and Recipes into a single unified page
 - Phase 13 added: Receipt scan and Instacart import for bulk pantry loading
 - Phase 14 added: Multi-photo pantry scan with smarter item filtering (no vague/unidentifiable items)
@@ -251,6 +255,7 @@ Recent decisions affecting current work:
 - [Phase 11-hybrid-ai-client]: [Phase 11-04]: Test mocks swap from @anthropic-ai/sdk to ../../ai/clientFactory.js across all three service/route test files — zero vendor SDK coupling in test layer for migrated consumers
 - [Phase 11-hybrid-ai-client]: [Phase 11-05]: Smoke script iterates ALL_TASKS and dispatches by task family (image vs text-only vs structured) -- single script covers every route
 - [Phase 11-hybrid-ai-client]: [Phase 11-05]: config/anthropic.ts deleted after zero-leakage grep sweep; only ai/adapters/ import provider SDKs now
+- [Phase 14]: [Phase 14-01]: GeminiAdapter.analyzeImagesStructured throws not-implemented (vision routes to Anthropic only); batch maxTokens 8192; single-image prompt also updated with filtering rules
 
 ### Pending Todos
 
@@ -267,6 +272,7 @@ None yet.
 Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Logged here so GSD state reflects reality without re-planning after the fact.
 
 **UAT + infra (2026-04-13 overnight, see `.planning/UAT-NIGHT-REPORT.md`):**
+
 - `3031eff` unblock dev client launch on iPhone (ATS, SecureStore)
 - `68b5f6d` scaffold Maestro flows + iOS Simulator UAT runbook
 - `5d2b4ef` 96 server integration tests + 4 backend bugs fixed (route order, single→maybeSingle, AI null UUID, JSON-string steps)
@@ -275,6 +281,7 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 - Final state: 16/16 Maestro UI flows, 329/329 server tests
 
 **Feature + UX polish (2026-04-14):**
+
 - `0e77e4b` recoverable navigation across non-tab screens, collapsible home hero, Keychain `AFTER_FIRST_UNLOCK`, Sign Out
 - `e685985` Discover preview modal, progression gate rework, pantry scan confirm fix, cooked-entry persistence fix
 - `3e11b7a` RecipeCard favorite heart made interactive
@@ -287,10 +294,11 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 - `a5111a7` collapsing-header pattern applied to all five tabs (shared `useCollapsingHeader` hook)
 
 **Deferred (pre-approved for future phase):**
+
 - Plan tab multi-week navigation (prev/next week chevrons, cache plans by `week_start`, extend `GET /meal-plans/current` with `?week_start=`). User chose to hold off on formalizing as Phase 12.
 
 ## Session Continuity
 
-Last session: 2026-04-16T14:49:54.021Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-multi-photo-pantry-scan-with-smarter-item-filtering/14-CONTEXT.md
+Last session: 2026-04-17T05:26:35.806Z
+Stopped at: Completed 14-01-PLAN.md
+Resume file: None
