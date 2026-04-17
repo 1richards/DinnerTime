@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ReviewItemRow } from '../../components/pantry/ReviewItemRow';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -24,6 +24,12 @@ export default function ReviewScreen() {
     confirmScan,
   } = usePantryStore();
   const profile = useAuthStore((s) => s.profile);
+  const { sourceLocation: locationParam } = useLocalSearchParams<{ sourceLocation?: string }>();
+  const sourceLocation: SourceLocation = (
+    ['fridge', 'pantry', 'freezer'].includes(locationParam ?? '')
+      ? locationParam as SourceLocation
+      : 'fridge'
+  );
 
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -69,8 +75,6 @@ export default function ReviewScreen() {
 
     setIsConfirming(true);
     try {
-      // Get source location from route params or default to fridge
-      const sourceLocation: SourceLocation = 'fridge';
       await confirmScan(profile.id, sourceLocation);
 
       Alert.alert(
