@@ -14,6 +14,7 @@ interface PantryState {
 
   loadItems: (profileId: string) => Promise<void>;
   startScan: (base64Image: string, sourceLocation: SourceLocation) => Promise<void>;
+  startBatchScan: (base64Images: string[], sourceLocation: SourceLocation) => Promise<void>;
   updateReviewItem: (id: string, updates: Partial<ReviewItem>) => void;
   addReviewItem: (item: ReviewItem) => void;
   removeReviewItem: (id: string) => void;
@@ -89,6 +90,46 @@ export const usePantryStore = create<PantryState>()(
           confidence: item.confidence,
           category: item.category,
           accepted: true,
+          userEdited: false,
+        })
+      );
+
+      set({ scanResults: reviewItems, isScanning: false });
+    } catch (err) {
+      set({ isScanning: false });
+      throw err;
+    }
+  },
+
+  startBatchScan: async (base64Images: string[], sourceLocation: SourceLocation) => {
+    set({ isScanning: true });
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/pantry/scan-batch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ images: base64Images, source_location: sourceLocation }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error ?? 'Batch scan failed');
+      }
+
+      const data = await response.json();
+      const reviewItems: ReviewItem[] = (data.data ?? []).map(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (item: any, index: number) => ({
+          id: `scan-${Date.now()}-${index}`,
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          confidence: item.confidence,
+          category: item.category,
+          accepted: item.confidence >= 0.7,
           userEdited: false,
         })
       );
