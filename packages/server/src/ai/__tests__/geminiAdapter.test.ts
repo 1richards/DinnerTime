@@ -164,6 +164,19 @@ describe('GeminiAdapter.analyzeImageStructured', () => {
   });
 });
 
+describe('GeminiAdapter.analyzeImagesStructured', () => {
+  it('throws not implemented error', async () => {
+    const adapter = new GeminiAdapter('gemini-3-flash-preview');
+    await expect(
+      adapter.analyzeImagesStructured({
+        user: 'prompt',
+        images: [{ base64: 'X', mimeType: 'image/jpeg' }],
+        tool,
+      })
+    ).rejects.toThrow('analyzeImagesStructured not implemented for Gemini');
+  });
+});
+
 describe('GeminiAdapter safety settings', () => {
   it('passes 4 BLOCK_ONLY_HIGH safety settings on structured calls', async () => {
     mockGenerateContent.mockResolvedValue({

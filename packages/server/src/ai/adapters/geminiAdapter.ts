@@ -8,6 +8,7 @@ import { env } from '../../config/env.js';
 import type {
   AIClient,
   AnalyzeImageStructuredInput,
+  AnalyzeImagesStructuredInput,
   GenerateStructuredInput,
   GenerateTextInput,
   StructuredTool,
@@ -110,6 +111,12 @@ export class GeminiAdapter implements AIClient {
         { inlineData: { mimeType: i.mimeType, data: i.imageBase64 } },
       ],
     });
+  }
+
+  async analyzeImagesStructured<T>(
+    _i: AnalyzeImagesStructuredInput<T>
+  ): Promise<T> {
+    throw new Error('analyzeImagesStructured not implemented for Gemini');
   }
 
   private async callStructured<T>(

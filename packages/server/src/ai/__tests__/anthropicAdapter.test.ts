@@ -97,3 +97,72 @@ describe('AnthropicAdapter.analyzeImageStructured', () => {
     expect(text.text).toBe('prompt');
   });
 });
+
+describe('AnthropicAdapter.analyzeImagesStructured', () => {
+  it('sends multiple image content blocks followed by text and returns tool_use input', async () => {
+    mockCreate.mockResolvedValue({
+      content: [{ type: 'tool_use', name: 't', input: { a: 3 } }],
+    });
+    const adapter = new AnthropicAdapter('claude-sonnet-4-6');
+    const out = await adapter.analyzeImagesStructured({
+      user: 'multi prompt',
+      images: [
+        { base64: 'IMG1', mimeType: 'image/jpeg' },
+        { base64: 'IMG2', mimeType: 'image/png' },
+      ],
+      tool,
+    });
+    expect(out).toEqual({ a: 3 });
+
+    const args = mockCreate.mock.calls[0][0];
+    expect(args.model).toBe('claude-sonnet-4-6');
+    expect(args.tool_choice).toEqual({ type: 'tool', name: 't' });
+    expect(args.tools[0].name).toBe('t');
+
+    const content = args.messages[0].content as Array<{
+      type: string;
+      source?: { type: string; media_type: string; data: string };
+      text?: string;
+    }>;
+
+    // Should have 2 image blocks + 1 text block = 3 total
+    expect(content).toHaveLength(3);
+
+    // First two are images
+    expect(content[0].type).toBe('image');
+    expect(content[0].source?.media_type).toBe('image/jpeg');
+    expect(content[0].source?.data).toBe('IMG1');
+    expect(content[1].type).toBe('image');
+    expect(content[1].source?.media_type).toBe('image/png');
+    expect(content[1].source?.data).toBe('IMG2');
+
+    // Last is text
+    expect(content[2].type).toBe('text');
+    expect(content[2].text).toBe('multi prompt');
+  });
+
+  it('returns parsed tool_use input from the response', async () => {
+    mockCreate.mockResolvedValue({
+      content: [{ type: 'tool_use', name: 't', input: { a: 42 } }],
+    });
+    const adapter = new AnthropicAdapter('claude-sonnet-4-6');
+    const result = await adapter.analyzeImagesStructured({
+      user: 'test',
+      images: [{ base64: 'X', mimeType: 'image/webp' }],
+      tool,
+    });
+    expect(result).toEqual({ a: 42 });
+  });
+
+  it('throws when no tool_use block in response', async () => {
+    mockCreate.mockResolvedValue({ content: [{ type: 'text', text: 'nope' }] });
+    const adapter = new AnthropicAdapter('claude-sonnet-4-6');
+    await expect(
+      adapter.analyzeImagesStructured({
+        user: 'p',
+        images: [{ base64: 'X', mimeType: 'image/jpeg' }],
+        tool,
+      })
+    ).rejects.toThrow(/no tool_use/);
+  });
+});

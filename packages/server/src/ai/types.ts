@@ -60,8 +60,17 @@ export interface AnalyzeImageStructuredInput<T> {
   maxTokens?: number;
 }
 
+export interface AnalyzeImagesStructuredInput<T> {
+  system?: string;
+  user: string;
+  images: Array<{ base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/webp' }>;
+  tool: StructuredTool<T>;
+  maxTokens?: number;
+}
+
 export interface AIClient {
   generateText(input: GenerateTextInput): Promise<string>;
   generateStructured<T>(input: GenerateStructuredInput<T>): Promise<T>;
   analyzeImageStructured<T>(input: AnalyzeImageStructuredInput<T>): Promise<T>;
+  analyzeImagesStructured<T>(input: AnalyzeImagesStructuredInput<T>): Promise<T>;
 }
