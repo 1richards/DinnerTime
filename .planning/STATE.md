@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 15-03 (icon sweep) — pending
+current_plan: 15-04 (maestro rebaseline) — pending
 status: executing
-stopped_at: Completed 15-02-PLAN.md (navigation migration + dirty-form guards + scoped Ionicons swap)
-last_updated: "2026-04-18T21:40:46.303Z"
-last_activity: 2026-04-18 -- Completed 15-02 (native stack headers, scan/recipes modal presentation, useDirtyFormGuard wired on 3 screens)
+stopped_at: Completed 15-03-PLAN.md (icon sweep + decorative emoji removal; all purity gates exit 0)
+last_updated: "2026-04-18T21:59:06.134Z"
+last_activity: 2026-04-18 -- Completed 15-03 (34 Ionicons files + 7 decorative emojis migrated to SymbolIcon + EmptyState; all 3 purity gates exit 0)
 progress:
   total_phases: 25
   completed_phases: 14
   total_plans: 66
-  completed_plans: 58
-  percent: 88
+  completed_plans: 59
+  percent: 89
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 15 of 25 (UI Polish & Navigation Consistency Audit) — In Progress (2/4 plans)
-Current Plan: 15-03 (icon sweep) — pending
+Phase: 15 of 25 (UI Polish & Navigation Consistency Audit) — In Progress (3/4 plans)
+Current Plan: 15-04 (maestro rebaseline) — pending
 Status: In Progress
-Last activity: 2026-04-18 -- Completed 15-02 (native stack headers, scan/recipes modal presentation, useDirtyFormGuard wired on 3 screens)
+Last activity: 2026-04-18 -- Completed 15-03 (34 Ionicons files + 7 decorative emojis migrated to SymbolIcon + EmptyState; all 3 purity gates exit 0)
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -111,6 +111,7 @@ Progress: [█████████░] 88%
 | Phase 12-combine-home-recipes P03 | 68min | 4 tasks | 8 files |
 | Phase 15 P01 | 5min | 2 tasks | 14 files |
 | Phase 15 P02 | 6min | 2 tasks | 10 files |
+| Phase 15 P03 | 15min | 2 tasks | 43 files |
 
 ## Accumulated Context
 
@@ -310,6 +311,14 @@ Recent decisions affecting current work:
 - [Phase 15-02]: Touched-flag dirty guard with editDraft/handleX wrappers — hydration from async sources uses raw setDraft (no guard trigger); only user edits flip touched
 - [Phase 15-02]: Guard predicate gates on !saving/!isLoading/!isConfirming so successful save/submit flow unsubscribes guard before router.back/replace
 - [Phase 15-02]: Explicit Discard buttons call setTouched(false) before router.back/replace to avoid double-alert (guard + in-component confirm)
+- [Phase 15-03]: Fridge + freezer both use 'snowflake' SF Symbol (iOS 15+ safe default); 'refrigerator' is iOS 17+ only
+- [Phase 15-03]: Dynamic icon prop retyped from keyof typeof Ionicons.glyphMap to string on MethodCard/OptionRow/NavButton (Pitfall 5); `as never` cast applied at SymbolIcon invocation for dynamic string names
+- [Phase 15-03]: Tab bar icons wrapped in View{width:size,height:size} so SymbolView glyphs align vertically (Pitfall 1)
+- [Phase 15-03]: Kid-friendly 👶 dropped across 3 surfaces; text label preserved per CONTEXT Claude's Discretion
+- [Phase 15-03]: Orange #F97316 preserved on every FAB and FavoriteButton active heart; RecipeCard inline heart matches
+- [Phase 15-03]: scan/index.tsx consolidated to one EmptyState on no-photos branch; has-photos branch uses inline SymbolIcon (not an empty state)
+- [Phase 15-03]: recipes/import-photo uses ad-hoc layout (SymbolIcon + heading + 2 Buttons) because EmptyState supports only one action
+- [Phase 15-03]: RecipeFilterSheet + RemixSheet emoji chip arrays untouched (deferred to Phase 19 chip rewrite per Open Question #2); verify-no-decorative-emoji.sh only scopes src/app so gate passes
 
 ### Pending Todos
 
@@ -353,6 +362,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T21:40:46.299Z
-Stopped at: Completed 15-02-PLAN.md (navigation migration + dirty-form guards + scoped Ionicons swap)
+Last session: 2026-04-18T21:59:06.130Z
+Stopped at: Completed 15-03-PLAN.md (icon sweep + decorative emoji removal; all purity gates exit 0)
 Resume file: None

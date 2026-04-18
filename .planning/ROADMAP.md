@@ -326,7 +326,7 @@ Plans:
 Plans:
 - [x] 15-01-PLAN.md — Shared primitives (SymbolIcon, EmptyState/LoadingState/ErrorState, useDirtyFormGuard) + Vitest coverage + purity grep scripts
 - [x] 15-02-PLAN.md — Native stack headers, modal presentation for scan/recipes import, dirty-form guard wiring, HeaderCloseButton
-- [ ] 15-03-PLAN.md — Icon + emoji sweep: Ionicons → SymbolIcon across 34 files, decorative emojis → EmptyState/SymbolIcon per mapping
+- [x] 15-03-PLAN.md — Icon + emoji sweep: Ionicons → SymbolIcon across 34 files, decorative emojis → EmptyState/SymbolIcon per mapping
 - [ ] 15-04-PLAN.md — Overflow ellipsis (ActionSheetIOS), new Maestro flows (21-modal-dismiss, 22-dirty-form-guard), re-baseline existing flows, /gsd:ui-review gate
 **UI hint**: yes
 
