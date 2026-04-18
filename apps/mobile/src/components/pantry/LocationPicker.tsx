@@ -1,17 +1,21 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import type { SourceLocation } from '../../types/pantry';
 
 interface LocationOption {
   value: SourceLocation;
   label: string;
-  emoji: string;
+  // SF Symbol name. Per 15-RESEARCH Open Question #3, fridge and freezer
+  // both use 'snowflake' (the 'refrigerator' symbol is iOS 17+ only and
+  // we target iOS 15+).
+  symbol: string;
 }
 
 const locations: LocationOption[] = [
-  { value: 'fridge', label: 'Fridge', emoji: '🧊' },
-  { value: 'pantry', label: 'Pantry', emoji: '🗄️' },
-  { value: 'freezer', label: 'Freezer', emoji: '❄️' },
+  { value: 'fridge', label: 'Fridge', symbol: 'snowflake' },
+  { value: 'pantry', label: 'Pantry', symbol: 'archivebox' },
+  { value: 'freezer', label: 'Freezer', symbol: 'snowflake' },
 ];
 
 interface LocationPickerProps {
@@ -33,8 +37,16 @@ export function LocationPicker({ selected, onSelect }: LocationPickerProps) {
                 ? 'border-orange-500 bg-orange-50'
                 : 'border-warmGray-200 bg-white'
             }`}
+            accessibilityLabel={loc.label}
+            accessibilityState={{ selected: isSelected }}
           >
-            <Text className="text-3xl mb-2">{loc.emoji}</Text>
+            <View className="mb-2">
+              <SymbolIcon
+                name={loc.symbol as never}
+                size={28}
+                tintColor={isSelected ? '#F97316' : '#9CA3AF'}
+              />
+            </View>
             <Text
               className={`text-base font-semibold ${
                 isSelected ? 'text-orange-600' : 'text-warmGray-600'

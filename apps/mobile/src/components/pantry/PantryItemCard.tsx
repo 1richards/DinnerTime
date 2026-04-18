@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import type { EnrichedPantryItem } from '../../hooks/usePantryItems';
 import { usePantryStore } from '../../stores/pantryStore';
 
-const locationIcons: Record<string, string> = {
-  fridge: '🧊',
-  pantry: '🗄️',
-  freezer: '❄️',
+// 15-RESEARCH Open Question #3 — safe iOS 15+ default is "snowflake" for
+// both fridge and freezer (the "refrigerator" symbol is iOS 17+ only).
+const LOCATION_SYMBOLS: Record<string, string> = {
+  fridge: 'snowflake',
+  pantry: 'archivebox',
+  freezer: 'snowflake',
 };
+const FALLBACK_LOCATION_SYMBOL = 'shippingbox';
 
 interface PantryItemCardProps {
   item: EnrichedPantryItem;
@@ -47,9 +50,13 @@ export function PantryItemCard({ item }: PantryItemCardProps) {
     >
       <View className="flex-row items-center">
         {/* Location icon */}
-        <Text className="text-lg mr-3">
-          {locationIcons[item.source_location] ?? '📦'}
-        </Text>
+        <View className="mr-3">
+          <SymbolIcon
+            name={(LOCATION_SYMBOLS[item.source_location] ?? FALLBACK_LOCATION_SYMBOL) as never}
+            size={20}
+            tintColor="#9CA3AF"
+          />
+        </View>
 
         {/* Item info */}
         <View className="flex-1">
@@ -62,7 +69,7 @@ export function PantryItemCard({ item }: PantryItemCardProps) {
             </Text>
             {item.isUncertain && (
               <View className="flex-row items-center ml-2">
-                <Ionicons name="time-outline" size={14} color="#9CA3AF" />
+                <SymbolIcon name="clock" size={14} tintColor="#9CA3AF" />
                 <Text className="text-xs text-warmGray-400 ml-1">
                   Not seen in {daysSinceLastSeen} days
                 </Text>
@@ -85,15 +92,17 @@ export function PantryItemCard({ item }: PantryItemCardProps) {
           <Pressable
             onPress={handleMarkUsed}
             className="flex-1 flex-row items-center justify-center bg-green-50 rounded-lg py-2.5"
+            accessibilityLabel="Mark used"
           >
-            <Ionicons name="checkmark-circle-outline" size={18} color="#16A34A" />
+            <SymbolIcon name="checkmark.circle" size={18} tintColor="#16A34A" />
             <Text className="text-sm font-medium text-green-700 ml-1.5">Used</Text>
           </Pressable>
           <Pressable
             onPress={handleMarkDepleted}
             className="flex-1 flex-row items-center justify-center bg-red-50 rounded-lg py-2.5"
+            accessibilityLabel="Mark gone"
           >
-            <Ionicons name="trash-outline" size={18} color="#DC2626" />
+            <SymbolIcon name="trash" size={18} tintColor="#DC2626" />
             <Text className="text-sm font-medium text-red-700 ml-1.5">Gone</Text>
           </Pressable>
         </View>

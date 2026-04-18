@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import type { ReviewItem } from '../../types/pantry';
 
 interface ReviewItemRowProps {
@@ -47,11 +47,16 @@ export function ReviewItemRow({ item, onUpdate, onRemove }: ReviewItemRowProps) 
       }`}
     >
       {/* Checkbox */}
-      <Pressable onPress={handleToggleAccepted} hitSlop={8} className="mr-3">
-        <Ionicons
-          name={item.accepted ? 'checkbox' : 'square-outline'}
+      <Pressable
+        onPress={handleToggleAccepted}
+        hitSlop={8}
+        className="mr-3"
+        accessibilityLabel={item.accepted ? 'Unselect item' : 'Select item'}
+      >
+        <SymbolIcon
+          name={item.accepted ? 'checkmark.square.fill' : 'square'}
           size={24}
-          color={item.accepted ? '#F97316' : '#9CA3AF'}
+          tintColor={item.accepted ? '#F97316' : '#9CA3AF'}
         />
       </Pressable>
 
@@ -95,8 +100,13 @@ export function ReviewItemRow({ item, onUpdate, onRemove }: ReviewItemRowProps) 
       </View>
 
       {/* Remove button */}
-      <Pressable onPress={() => onRemove(item.id)} hitSlop={8} className="ml-2">
-        <Ionicons name="close-circle-outline" size={22} color="#EF4444" />
+      <Pressable
+        onPress={() => onRemove(item.id)}
+        hitSlop={8}
+        className="ml-2"
+        accessibilityLabel="Remove item"
+      >
+        <SymbolIcon name="xmark.circle" size={22} tintColor="#EF4444" />
       </Pressable>
     </View>
   );

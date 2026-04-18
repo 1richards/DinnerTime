@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 import { RemixSheet } from '../recipes/RemixSheet';
 import { supabase } from '../../lib/supabase';
@@ -125,8 +125,8 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
               placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
             />
             <View style={styles.heroOverlay} />
-            <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color="#FFFFFF" />
+            <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn} accessibilityLabel="Close">
+              <SymbolIcon name="xmark" size={22} tintColor="#FFFFFF" />
             </Pressable>
             <View style={styles.heroText}>
               <Text style={styles.tag}>DINNER SUGGESTION</Text>
@@ -134,7 +134,7 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
                 {suggestion.title}
               </Text>
               <View style={styles.metaRow}>
-                <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.82)" />
+                <SymbolIcon name="clock" size={14} tintColor="rgba(255,255,255,0.82)" />
                 <Text style={styles.metaText}>
                   {suggestion.estimated_time_minutes} min
                 </Text>
@@ -147,7 +147,7 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
                 {suggestion.kid_friendly && (
                   <>
                     <Text style={styles.metaSep}>·</Text>
-                    <Text style={styles.metaText}>👶 Kid-friendly</Text>
+                    <Text style={styles.metaText}>Kid-friendly</Text>
                   </>
                 )}
               </View>
@@ -168,7 +168,7 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
               <View style={styles.tagRow}>
                 {suggestion.ingredients_used.map((ing) => (
                   <View key={ing} style={styles.tagFromPantry}>
-                    <Ionicons name="checkmark-circle" size={12} color="#047857" />
+                    <SymbolIcon name="checkmark.circle.fill" size={12} tintColor="#047857" />
                     <Text style={styles.tagFromPantryText}>{ing}</Text>
                   </View>
                 ))}
@@ -183,7 +183,7 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
               <View style={styles.tagRow}>
                 {suggestion.ingredients_needed.map((ing) => (
                   <View key={ing} style={styles.tagNeeded}>
-                    <Ionicons name="cart-outline" size={12} color="#C05A00" />
+                    <SymbolIcon name="cart" size={12} tintColor="#C05A00" />
                     <Text style={styles.tagNeededText}>{ing}</Text>
                   </View>
                 ))}
@@ -245,9 +245,9 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
               onPress={() => setRemixOpen(true)}
               style={styles.remixButton}
             >
-              <Ionicons name="sparkles" size={18} color="#C05A00" />
+              <SymbolIcon name="sparkles" size={18} tintColor="#C05A00" />
               <Text style={styles.remixButtonText}>Remix this dish</Text>
-              <Ionicons name="chevron-forward" size={18} color="#C05A00" />
+              <SymbolIcon name="chevron.forward" size={18} tintColor="#C05A00" />
             </Pressable>
           </View>
         </ScrollView>
@@ -284,7 +284,7 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
         <View style={styles.bottomBar}>
           {planned ? (
             <View style={styles.plannedRow}>
-              <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+              <SymbolIcon name="checkmark.circle.fill" size={22} tintColor="#10B981" />
               <Text style={styles.plannedText}>
                 Added to {DAY_LABELS[selectedDay]}
               </Text>

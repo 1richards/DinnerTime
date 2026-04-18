@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import type { DinnerSuggestion } from '../../types/suggestions';
 import { FOOD_IMAGES } from '../../constants/foodImages';
 
@@ -60,7 +60,7 @@ export function SuggestionCard({ suggestion, onPress }: SuggestionCardProps) {
         {/* Kid-friendly indicator, top-right */}
         {suggestion.kid_friendly && (
           <View style={styles.kidBadge}>
-            <Text style={styles.kidBadgeEmoji}>👶</Text>
+            <Text style={styles.kidBadgeText}>Kid-friendly</Text>
           </View>
         )}
       </View>
@@ -78,14 +78,14 @@ export function SuggestionCard({ suggestion, onPress }: SuggestionCardProps) {
         {/* Meta row — time + pantry grounding */}
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
-            <Ionicons name="time-outline" size={13} color="#7A6651" />
+            <SymbolIcon name="clock" size={13} tintColor="#7A6651" />
             <Text style={styles.metaText}>
               {suggestion.estimated_time_minutes} min
             </Text>
           </View>
           {pantryCount > 0 && (
             <View style={[styles.metaItem, styles.metaPantry]}>
-              <Ionicons name="checkmark-circle" size={13} color="#047857" />
+              <SymbolIcon name="checkmark.circle.fill" size={13} tintColor="#047857" />
               <Text style={styles.metaPantryText}>
                 {pantryCount} {pantryCount === 1 ? 'item' : 'items'} from pantry
               </Text>
@@ -144,15 +144,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
     backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  kidBadgeEmoji: {
-    fontSize: 16,
+  kidBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   body: {
     padding: 14,

@@ -6,6 +6,7 @@ import { SuggestionCard } from './SuggestionCard';
 import { SuggestionSkeleton } from './SuggestionSkeleton';
 import { SuggestionPreviewModal } from './SuggestionPreviewModal';
 import { Button } from '../ui/Button';
+import { ErrorState } from '../ui/ErrorState';
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
 import { usePantryStore } from '../../stores/pantryStore';
 import { FOOD_IMAGES } from '../../constants/foodImages';
@@ -67,16 +68,12 @@ export function SuggestionList({ HeaderComponent, onScroll }: SuggestionListProp
     return (
       <ScrollView contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}>
         {HeaderComponent}
-        <View className="flex-1 items-center justify-center px-6 py-12">
-          <Text className="text-4xl mb-4">😕</Text>
-          <Text className="text-lg font-bold text-warmGray-900 mb-2">
-            Something went wrong
-          </Text>
-          <Text className="text-sm text-warmGray-500 text-center mb-4">
-            {error}
-          </Text>
-          <Button title="Try Again" onPress={fetchSuggestions} />
-        </View>
+        <ErrorState
+          title="Something went wrong"
+          message={error}
+          retry={{ label: 'Try again', onPress: fetchSuggestions }}
+          variant="full"
+        />
       </ScrollView>
     );
   }

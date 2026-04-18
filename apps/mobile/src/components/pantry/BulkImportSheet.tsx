@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Modal, Pressable } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 
 interface BulkImportSheetProps {
   visible: boolean;
@@ -9,7 +9,8 @@ interface BulkImportSheetProps {
 }
 
 interface OptionRowProps {
-  icon: keyof typeof Ionicons.glyphMap;
+  // SF Symbols has no typed glyphMap — plain string (Pitfall 5).
+  icon: string;
   title: string;
   subtitle: string;
   onPress: () => void;
@@ -23,13 +24,13 @@ function OptionRow({ icon, title, subtitle, onPress }: OptionRowProps) {
       className="bg-white rounded-2xl p-4 flex-row items-center gap-4 mb-3 border border-warmGray-200"
     >
       <View className="w-12 h-12 rounded-full bg-orange-50 items-center justify-center">
-        <Ionicons name={icon} size={26} color="#F97316" />
+        <SymbolIcon name={icon as never} size={26} tintColor="#F97316" />
       </View>
       <View className="flex-1">
         <Text className="text-base font-semibold text-warmGray-800">{title}</Text>
         <Text className="text-sm text-warmGray-500 mt-0.5">{subtitle}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+      <SymbolIcon name="chevron.forward" size={20} tintColor="#9CA3AF" />
     </Pressable>
   );
 }
@@ -60,19 +61,19 @@ export function BulkImportSheet({ visible, onClose }: BulkImportSheetProps) {
             </Text>
 
             <OptionRow
-              icon="camera"
+              icon="camera.fill"
               title="Camera"
               subtitle="Scan your fridge, pantry, or freezer"
               onPress={() => navigateTo('/scan')}
             />
             <OptionRow
-              icon="receipt-outline"
+              icon="doc.text"
               title="Receipt"
               subtitle="Photograph a grocery receipt"
               onPress={() => navigateTo('/scan/receipt')}
             />
             <OptionRow
-              icon="bag-handle-outline"
+              icon="bag"
               title="Instacart"
               subtitle="Import from an Instacart screenshot"
               onPress={() => navigateTo('/scan/instacart')}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import type { MealPlanEntry, MealPlanIngredient } from '../../types/mealPlan';
 import { RemixSheet } from '../recipes/RemixSheet';
 
@@ -78,7 +78,7 @@ export function DayRow({
         <View className="flex-row items-center mt-1 flex-wrap">
           {entry.estimated_time_minutes != null && (
             <View className="flex-row items-center mr-2">
-              <Ionicons name="time-outline" size={12} color="#6B7280" />
+              <SymbolIcon name="clock" size={12} tintColor="#6B7280" />
               <Text className="text-xs text-warmGray-500 ml-1">
                 {entry.estimated_time_minutes}m
               </Text>
@@ -92,10 +92,15 @@ export function DayRow({
             </View>
           )}
           {entry.kid_friendly && (
-            <Text className="text-xs mr-2">👶</Text>
+            <View className="bg-warmGray-100 rounded-full px-2 py-0.5 mr-2">
+              <Text className="text-[10px] font-semibold text-warmGray-600">Kid-friendly</Text>
+            </View>
           )}
           {isCooked && entry.cooked_at && (
-            <Text className="text-xs text-green-700 ml-1">✓ cooked</Text>
+            <View className="flex-row items-center ml-1">
+              <SymbolIcon name="checkmark" size={10} weight="bold" tintColor="#047857" />
+              <Text className="text-xs text-green-700 ml-1">cooked</Text>
+            </View>
           )}
         </View>
       </View>
@@ -110,11 +115,12 @@ export function DayRow({
           disabled={isCooked}
           hitSlop={8}
           className="w-10 h-10 items-center justify-center rounded-full active:bg-warmGray-100"
+          accessibilityLabel="Remix"
         >
-          <Ionicons
+          <SymbolIcon
             name="sparkles"
             size={20}
-            color={isCooked ? '#D1D5DB' : '#B45309'}
+            tintColor={isCooked ? '#D1D5DB' : '#B45309'}
           />
         </Pressable>
         <Pressable
@@ -123,14 +129,15 @@ export function DayRow({
           disabled={isSwapping || isCooking || isCooked}
           hitSlop={8}
           className="w-10 h-10 items-center justify-center rounded-full active:bg-warmGray-100"
+          accessibilityLabel="Swap meal"
         >
           {isSwapping ? (
             <ActivityIndicator size="small" color="#F97316" />
           ) : (
-            <Ionicons
-              name="swap-horizontal"
+            <SymbolIcon
+              name="arrow.left.arrow.right"
               size={22}
-              color={isCooked ? '#D1D5DB' : '#6B7280'}
+              tintColor={isCooked ? '#D1D5DB' : '#6B7280'}
             />
           )}
         </Pressable>
@@ -140,14 +147,15 @@ export function DayRow({
           disabled={isSwapping || isCooking || isCooked}
           hitSlop={8}
           className="w-10 h-10 items-center justify-center rounded-full active:bg-warmGray-100"
+          accessibilityLabel={isCooked ? 'Cooked' : 'Mark as cooked'}
         >
           {isCooking ? (
             <ActivityIndicator size="small" color="#F97316" />
           ) : (
-            <Ionicons
-              name={isCooked ? 'checkmark-circle' : 'flame-outline'}
+            <SymbolIcon
+              name={isCooked ? 'checkmark.circle.fill' : 'flame'}
               size={22}
-              color={isCooked ? '#16A34A' : '#F97316'}
+              tintColor={isCooked ? '#16A34A' : '#F97316'}
             />
           )}
         </Pressable>

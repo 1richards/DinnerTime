@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 
 export function ScanButton() {
   return (
@@ -15,8 +15,9 @@ export function ScanButton() {
         shadowRadius: 8,
         elevation: 8,
       }}
+      accessibilityLabel="Scan"
     >
-      <Ionicons name="camera" size={28} color="#FFFFFF" />
+      <SymbolIcon name="camera.fill" size={28} tintColor="#FFFFFF" />
     </Pressable>
   );
 }

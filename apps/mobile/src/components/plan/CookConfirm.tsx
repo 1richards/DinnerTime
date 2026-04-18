@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Modal, Pressable, ActivityIndicator, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 import type { MealPlanEntry, MealPlanIngredient } from '../../types/mealPlan';
 
@@ -39,8 +39,8 @@ export function CookConfirm({
             <Text className="text-xl font-bold text-warmGray-900">
               {showDelta ? 'Cooked!' : 'Mark as cooked?'}
             </Text>
-            <Pressable onPress={onCancel} hitSlop={8}>
-              <Ionicons name="close" size={24} color="#6B7280" />
+            <Pressable onPress={onCancel} hitSlop={8} accessibilityLabel="Close">
+              <SymbolIcon name="xmark" size={24} tintColor="#6B7280" />
             </Pressable>
           </View>
 
@@ -73,7 +73,7 @@ export function CookConfirm({
           {showDelta && (
             <>
               <View className="flex-row items-center mb-4">
-                <Ionicons name="checkmark-circle" size={24} color="#16A34A" />
+                <SymbolIcon name="checkmark.circle.fill" size={24} tintColor="#16A34A" />
                 <Text className="text-sm text-green-700 ml-2">
                   Pantry updated
                 </Text>
@@ -88,7 +88,7 @@ export function CookConfirm({
                       key={`${item.name}-${idx}`}
                       className="flex-row items-center py-2 border-b border-warmGray-100"
                     >
-                      <Ionicons name="remove-circle-outline" size={18} color="#F97316" />
+                      <SymbolIcon name="minus.circle" size={18} tintColor="#F97316" />
                       <Text className="text-sm text-warmGray-700 ml-2 flex-1">
                         {item.name}
                       </Text>
