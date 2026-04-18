@@ -56,7 +56,7 @@ export default function OnboardingScreen() {
   const isOnboarded = useAuthStore((s) => s.isOnboarded);
 
   if (!isLoggedIn) return <Redirect href="/(auth)/login" />;
-  if (isOnboarded) return <Redirect href="/(tabs)" />;
+  if (isOnboarded) return <Redirect href="/(tabs)/kitchen" />;
 
   const toggleItem = (
     item: string,

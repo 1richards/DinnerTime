@@ -53,7 +53,7 @@ export default function ReviewScreen() {
 
   useEffect(() => {
     if (!importedRecipe) {
-      const t = setTimeout(() => router.replace('/(tabs)/recipes'), 0);
+      const t = setTimeout(() => router.replace('/(tabs)/kitchen?segment=library'), 0);
       return () => clearTimeout(t);
     }
   }, [importedRecipe]);
@@ -142,7 +142,7 @@ export default function ReviewScreen() {
     // saveRecipe clears importedRecipe on success; check error state
     const state = useRecipeStore.getState();
     if (!state.error) {
-      router.replace('/(tabs)/recipes');
+      router.replace('/(tabs)/kitchen?segment=library');
     }
   };
 
@@ -154,7 +154,7 @@ export default function ReviewScreen() {
         style: 'destructive',
         onPress: () => {
           clearImport();
-          router.replace('/(tabs)/recipes');
+          router.replace('/(tabs)/kitchen?segment=library');
         },
       },
     ]);

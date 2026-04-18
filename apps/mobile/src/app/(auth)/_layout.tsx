@@ -11,7 +11,7 @@ export default function AuthLayout() {
     return <Redirect href="/onboarding" />;
   }
   if (isLoggedIn && isOnboarded) {
-    return <Redirect href="/(tabs)" />;
+    return <Redirect href="/(tabs)/kitchen" />;
   }
 
   return (

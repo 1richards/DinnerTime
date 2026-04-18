@@ -69,7 +69,7 @@ export default function ImportUrlScreen() {
                 className="flex-1"
                 onPress={() => {
                   clearImport();
-                  router.replace('/(tabs)/recipes');
+                  router.replace('/(tabs)/kitchen?segment=library');
                 }}
               />
               <Button

@@ -10,5 +10,5 @@ export default function Index() {
 
   if (!isLoggedIn) return <Redirect href="/(auth)/login" />;
   if (!isOnboarded) return <Redirect href="/onboarding" />;
-  return <Redirect href="/(tabs)" />;
+  return <Redirect href="/(tabs)/kitchen" />;
 }
