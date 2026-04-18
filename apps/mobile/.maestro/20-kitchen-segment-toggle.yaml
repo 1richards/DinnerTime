@@ -1,0 +1,9 @@
+appId: com.dinnertime.app
+name: "20 — kitchen: segment toggle preserves state"
+---
+- runFlow: _ensure-logged-in.yaml
+# TODO (Plan 03): tap Library segment, assert 'Search recipes' placeholder visible,
+# tap Suggestions segment, assert 'What should we cook tonight' visible,
+# take screenshots, verify FABs swap (ImportFab on Library, RegenerateFab on Suggestions).
+- tapOn: "Kitchen"
+- takeScreenshot: 20-kitchen-stub
