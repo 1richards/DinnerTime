@@ -122,6 +122,7 @@ Progress: [██████████] 100%
 - Phase 17 added: "Something New" — AI recipe exploration with search, pantry filter, remix-save (reimagines Suggestions segment)
 - Phase 18 added: AI auto-location for pantry imports (remove forced fridge/pantry/freezer choice)
 - Phase 19 added: Design professionalization — icons, buttons, nav, search bars inspired by Spotify/Strava/DoorDash
+- Phase 20 added: Shopping refactor — push items to Instacart draft cart; user manages payment/delivery/substitutions inside Instacart
 
 ### Decisions
 
