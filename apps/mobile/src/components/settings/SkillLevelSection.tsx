@@ -35,22 +35,22 @@ export function SkillLevelSection({ profileId, onSaved }: SkillLevelSectionProps
             <Pressable
               key={option.value}
               onPress={() => handleSelect(option.value)}
-              className={`p-4 rounded-xl ${
+              className={`p-4 rounded-button ${
                 isSelected
-                  ? 'bg-orange-50 border-l-4 border-orange-500'
-                  : 'bg-white border border-warmGray-100'
+                  ? 'bg-brand/10 border-l-4 border-brand'
+                  : 'bg-surface border border-border-subtle'
               }`}
             >
               <Text
                 className={`text-base font-semibold ${
-                  isSelected ? 'text-orange-700' : 'text-warmGray-800'
+                  isSelected ? 'text-brand-pressed' : 'text-text-primary'
                 }`}
               >
                 {option.label}
               </Text>
               <Text
                 className={`text-sm mt-0.5 ${
-                  isSelected ? 'text-orange-600' : 'text-warmGray-500'
+                  isSelected ? 'text-brand' : 'text-text-secondary'
                 }`}
               >
                 {option.description}

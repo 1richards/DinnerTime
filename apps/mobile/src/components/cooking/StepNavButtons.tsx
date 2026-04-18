@@ -29,7 +29,7 @@ function NavButton({
   testID,
 }: NavButtonProps) {
   const container = primary
-    ? 'bg-orange-500'
+    ? 'bg-brand'
     : 'bg-warmGray-100 border border-warmGray-200';
   const textColor = primary ? 'text-white' : 'text-warmGray-800';
   const iconColor = primary ? '#FFFFFF' : '#374151';

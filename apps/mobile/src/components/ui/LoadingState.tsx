@@ -1,4 +1,5 @@
 import { View, Text, ActivityIndicator } from 'react-native';
+import { colors } from '../../design/tokens';
 
 export type LoadingStateVariant = 'spinner' | 'skeleton';
 
@@ -36,7 +37,7 @@ export function LoadingState({
       accessibilityRole="progressbar"
       accessibilityLabel={label ?? 'Loading'}
     >
-      <ActivityIndicator size="small" color="#F97316" />
+      <ActivityIndicator size="small" color={colors.brand} />
       {label ? (
         <Text className="text-sm text-warmGray-500 mt-3">{label}</Text>
       ) : null}

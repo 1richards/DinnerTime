@@ -30,7 +30,7 @@ export function IngredientList({ ingredients }: IngredientListProps) {
           key={`${ing.name}-${idx}`}
           className="flex-row items-start py-2 border-b border-warmGray-100"
         >
-          <View className="w-2 h-2 rounded-full bg-orange-400 mt-2 mr-3" />
+          <View className="w-2 h-2 rounded-full bg-brand mt-2 mr-3" />
           <View className="flex-1">
             <Text className="text-base text-warmGray-900">
               {formatIngredient(ing)}

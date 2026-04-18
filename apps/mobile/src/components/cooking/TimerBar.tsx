@@ -29,11 +29,11 @@ export default function TimerBar({ timers, onCancel }: TimerBarProps) {
         <Pressable
           key={t.id}
           onPress={() => onCancel(t.id)}
-          className="flex-row items-center bg-orange-100 border border-orange-300 rounded-full px-4 py-2"
+          className="flex-row items-center bg-brand/15 border border-brand rounded-full px-4 py-2"
           accessibilityLabel="Cancel timer"
         >
           <SymbolIcon name="timer" size={18} tintColor="#C2410C" />
-          <Text className="ml-2 text-base font-semibold text-orange-800">
+          <Text className="ml-2 text-base font-semibold text-brand-pressed">
             {formatRemaining(t.remainingMs)}
           </Text>
           <SymbolIcon

@@ -43,7 +43,7 @@ export function ErrorState({
         {retry ? (
           <Pressable
             onPress={retry.onPress}
-            className="ml-3 px-3 py-1.5 rounded-md bg-orange-500"
+            className="ml-3 px-3 py-1.5 rounded-md bg-brand"
             accessibilityRole="button"
             accessibilityLabel={retry.label}
           >
@@ -75,7 +75,7 @@ export function ErrorState({
       {retry ? (
         <Pressable
           onPress={retry.onPress}
-          className="mt-6 px-6 py-3 bg-orange-500 rounded-xl"
+          className="mt-6 px-6 py-3 bg-brand rounded-button"
           accessibilityRole="button"
           accessibilityLabel={retry.label}
         >

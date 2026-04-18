@@ -21,6 +21,7 @@ import {
 import { useRecipeStore } from '../../stores/recipeStore';
 import { supabase } from '../../lib/supabase';
 import type { ParsedRecipe } from '../../types/recipe';
+import { colors } from '../../design/tokens';
 
 /**
  * RemixSheet accepts one of two sources:
@@ -256,7 +257,7 @@ export function RemixSheet({
         {/* Loading state */}
         {selectedMode && loading && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#F97316" />
+            <ActivityIndicator size="large" color={colors.brand} />
             <Text style={styles.loadingText}>Brewing ideas...</Text>
           </View>
         )}

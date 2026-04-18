@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { usePreferencesStore } from '../../stores/preferencesStore';
-import { ChipToggle } from '../ui/ChipToggle';
+import { Chip } from '../ui/Chip';
 
 export function DislikesSection() {
   const members = usePreferencesStore((s) => s.members);
@@ -28,12 +28,10 @@ export function DislikesSection() {
         <>
           <View className="flex-row flex-wrap gap-2">
             {allDislikes.map((item) => (
-              <ChipToggle
+              <Chip
                 key={item}
+                kind="display"
                 label={item}
-                selected
-                onToggle={() => {}}
-                variant="default"
               />
             ))}
           </View>

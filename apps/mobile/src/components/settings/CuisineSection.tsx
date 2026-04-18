@@ -3,7 +3,7 @@ import { View, Text } from 'react-native';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useUpdateProfile } from '../../hooks/usePreferences';
 import { CUISINE_OPTIONS } from '../../data/dietary';
-import { ChipToggle } from '../ui/ChipToggle';
+import { Chip } from '../ui/Chip';
 import type { CuisineOption } from '../../types/preferences';
 
 interface CuisineSectionProps {
@@ -34,11 +34,12 @@ export function CuisineSection({ profileId, onSaved }: CuisineSectionProps) {
 
       <View className="flex-row flex-wrap gap-2">
         {CUISINE_OPTIONS.map((option) => (
-          <ChipToggle
+          <Chip
             key={option.value}
+            kind="filter"
             label={option.label}
             selected={cuisinePreferences.includes(option.value)}
-            onToggle={() => handleToggle(option.value)}
+            onPress={() => handleToggle(option.value)}
           />
         ))}
       </View>

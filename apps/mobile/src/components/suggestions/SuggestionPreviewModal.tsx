@@ -13,6 +13,7 @@ import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 import { RemixSheet } from '../recipes/RemixSheet';
 import { supabase } from '../../lib/supabase';
+import { colors } from '../../design/tokens';
 import { FOOD_IMAGES } from '../../constants/foodImages';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
 import type { DinnerSuggestion } from '../../types/suggestions';
@@ -453,8 +454,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5D9CA',
   },
   dayChipSelected: {
-    backgroundColor: '#F97316',
-    borderColor: '#F97316',
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
   dayChipText: {
     fontSize: 13,
@@ -467,7 +468,7 @@ const styles = StyleSheet.create({
   dayChipTodayDot: {
     fontSize: 16,
     lineHeight: 14,
-    color: '#F97316',
+    color: colors.brand,
     marginTop: -2,
   },
   bottomBar: {

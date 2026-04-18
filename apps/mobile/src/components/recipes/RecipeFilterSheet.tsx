@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
+import { colors } from '../../design/tokens';
 
 export type SourceFilter = 'all' | 'url' | 'photo' | 'manual' | 'ai';
 export type TimeFilter = 'any' | 'quick' | 'medium' | 'long';
@@ -103,7 +104,7 @@ export function RecipeFilterSheet({ visible, initial, onClose, onApply }: Props)
               style={styles.toggleRow}
             >
               <View style={styles.toggleIcon}>
-                <SymbolIcon name="heart.fill" size={18} tintColor="#F97316" />
+                <SymbolIcon name="heart.fill" size={18} tintColor={colors.brand} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.toggleLabel}>Favorites only</Text>
@@ -344,7 +345,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   switchOn: {
-    backgroundColor: '#F97316',
+    backgroundColor: colors.brand,
   },
   switchKnob: {
     width: 22,
@@ -386,8 +387,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5D9CA',
   },
   segmentChipSelected: {
-    backgroundColor: '#F97316',
-    borderColor: '#F97316',
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
   segmentEmoji: {
     fontSize: 14,
@@ -415,8 +416,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   timeRowSelected: {
-    backgroundColor: '#F97316',
-    borderColor: '#F97316',
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
   timeLabel: {
     fontSize: 15,

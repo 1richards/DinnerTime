@@ -304,8 +304,8 @@ export default function EditRecipeScreen() {
           <FieldLabel>Steps</FieldLabel>
           {draft.steps.map((step, idx) => (
             <View key={idx} className="flex-row items-start mb-2">
-              <View className="w-8 h-8 rounded-full bg-orange-100 items-center justify-center mr-2 mt-1">
-                <Text className="text-sm font-semibold text-orange-700">
+              <View className="w-8 h-8 rounded-full bg-brand/15 items-center justify-center mr-2 mt-1">
+                <Text className="text-sm font-semibold text-brand-pressed">
                   {idx + 1}
                 </Text>
               </View>

@@ -12,6 +12,7 @@ import { Button } from '../ui/Button';
 import { supabase } from '../../lib/supabase';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
 import type { Recipe } from '../../types/recipe';
+import { colors } from '../../design/tokens';
 
 interface Props {
   visible: boolean;
@@ -250,8 +251,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   dayRowSelected: {
-    backgroundColor: '#F97316',
-    borderColor: '#F97316',
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
   dayRowLabel: {
     fontSize: 16,
@@ -272,7 +273,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   todayPillSelected: {
-    color: '#F97316',
+    color: colors.brand,
     backgroundColor: '#FFFFFF',
   },
   bottomBar: {

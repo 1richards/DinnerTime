@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { usePreferencesStore } from '../../stores/preferencesStore';
-import { ChipToggle } from '../ui/ChipToggle';
+import { Chip } from '../ui/Chip';
 
 export function DietarySection() {
   const members = usePreferencesStore((s) => s.members);
@@ -32,12 +32,11 @@ export function DietarySection() {
             {allAllergies.length > 0 ? (
               <View className="flex-row flex-wrap gap-2">
                 {allAllergies.map((allergy) => (
-                  <ChipToggle
+                  <Chip
                     key={allergy}
+                    kind="display"
+                    tone="destructive"
                     label={allergy}
-                    selected
-                    onToggle={() => {}}
-                    colorScheme="red"
                   />
                 ))}
               </View>
@@ -56,11 +55,10 @@ export function DietarySection() {
             {allRestrictions.length > 0 ? (
               <View className="flex-row flex-wrap gap-2">
                 {allRestrictions.map((restriction) => (
-                  <ChipToggle
+                  <Chip
                     key={restriction}
+                    kind="display"
                     label={restriction}
-                    selected
-                    onToggle={() => {}}
                   />
                 ))}
               </View>

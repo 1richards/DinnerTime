@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TextInput, Pressable, FlatList } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { useIngredientSearch } from '../../hooks/useIngredientSearch';
-import { ChipToggle } from '../ui/ChipToggle';
+import { Chip } from '../ui/Chip';
 
 interface IngredientSearchProps {
   selectedItems: string[];
@@ -84,12 +84,12 @@ export function IngredientSearch({
       {selectedItems.length > 0 && (
         <View className="flex-row flex-wrap gap-2 mt-3">
           {selectedItems.map((item) => (
-            <ChipToggle
+            <Chip
               key={item}
-              label={item}
+              kind="filter"
+              label={`${item} \u00d7`}
               selected
-              onToggle={() => onRemove(item)}
-              variant="removable"
+              onPress={() => onRemove(item)}
             />
           ))}
         </View>

@@ -18,8 +18,8 @@ function getTypeBadge(member: HouseholdMember) {
   const isYoung = member.age_range === 'toddler' || member.age_range === 'young_kid';
   return {
     label: ageLabel,
-    bg: isYoung ? 'bg-orange-100' : 'bg-amber-100',
-    text: isYoung ? 'text-orange-700' : 'text-amber-700',
+    bg: isYoung ? 'bg-brand/15' : 'bg-warning/15',
+    text: isYoung ? 'text-brand-pressed' : 'text-warning',
   };
 }
 

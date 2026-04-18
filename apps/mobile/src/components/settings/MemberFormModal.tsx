@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
-import { ChipToggle } from '../ui/ChipToggle';
+import { Chip } from '../ui/Chip';
 import { IngredientSearch } from './IngredientSearch';
 import { DIETARY_OPTIONS, AGE_RANGES } from '../../data/dietary';
 import { useAddMember, useUpdateMember } from '../../hooks/usePreferences';
@@ -158,7 +158,7 @@ export function MemberFormModal({
               onPress={() => setMemberType('adult')}
               className={`flex-1 py-3 rounded-xl items-center ${
                 memberType === 'adult'
-                  ? 'bg-orange-500'
+                  ? 'bg-brand'
                   : 'bg-warmGray-100 border border-warmGray-200'
               }`}
             >
@@ -174,7 +174,7 @@ export function MemberFormModal({
               onPress={() => setMemberType('kid')}
               className={`flex-1 py-3 rounded-xl items-center ${
                 memberType === 'kid'
-                  ? 'bg-orange-500'
+                  ? 'bg-brand'
                   : 'bg-warmGray-100 border border-warmGray-200'
               }`}
             >
@@ -194,11 +194,12 @@ export function MemberFormModal({
               <Text className="text-sm font-medium text-warmGray-700 mb-2">Age Range</Text>
               <View className="flex-row flex-wrap gap-2">
                 {AGE_RANGES.map((range) => (
-                  <ChipToggle
+                  <Chip
                     key={range.value}
+                    kind="filter"
                     label={`${range.label} (${range.range})`}
                     selected={ageRange === range.value}
-                    onToggle={() => setAgeRange(range.value)}
+                    onPress={() => setAgeRange(range.value)}
                   />
                 ))}
               </View>
@@ -215,11 +216,12 @@ export function MemberFormModal({
             </Text>
             <View className="flex-row flex-wrap gap-2">
               {DIETARY_OPTIONS.map((option) => (
-                <ChipToggle
+                <Chip
                   key={`pref-${option.value}`}
+                  kind="filter"
                   label={option.label}
                   selected={dietaryRestrictions.includes(option.value)}
-                  onToggle={() => toggleDietary(option.value)}
+                  onPress={() => toggleDietary(option.value)}
                 />
               ))}
             </View>
@@ -235,12 +237,12 @@ export function MemberFormModal({
             </Text>
             <View className="flex-row flex-wrap gap-2">
               {DIETARY_OPTIONS.map((option) => (
-                <ChipToggle
+                <Chip
                   key={`allergy-${option.value}`}
+                  kind="filter"
                   label={option.label}
                   selected={dietaryAllergies.includes(option.value)}
-                  onToggle={() => toggleAllergy(option.value)}
-                  colorScheme="red"
+                  onPress={() => toggleAllergy(option.value)}
                 />
               ))}
             </View>

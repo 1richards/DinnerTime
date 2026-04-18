@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { useRecipeStore } from '../../stores/recipeStore';
+import { colors } from '../../design/tokens';
 
 interface FavoriteButtonProps {
   recipeId: string;
@@ -9,10 +10,10 @@ interface FavoriteButtonProps {
   size?: number;
 }
 
-// Orange #F97316 preserved per Phase 15 mandate — the favorite heart is
-// the most visible orange touchpoint in the app. Inactive state is white
-// so the button reads against dark hero backgrounds; consumers placing
-// this in a light surface can override via wrapping.
+// Phase 19 update: heart uses colors.brand (terracotta #C65D3A) in place of
+// the prior pure-orange default. Inactive state stays white so the button
+// reads over dark hero imagery; consumers placing this on a light surface
+// can wrap with their own tintColor override if needed later.
 export function FavoriteButton({
   recipeId,
   isFavorite,
@@ -32,7 +33,7 @@ export function FavoriteButton({
       <SymbolIcon
         name={isFavorite ? 'heart.fill' : 'heart'}
         size={size}
-        tintColor={isFavorite ? '#F97316' : '#FFFFFF'}
+        tintColor={isFavorite ? colors.brand : '#FFFFFF'}
       />
     </Pressable>
   );

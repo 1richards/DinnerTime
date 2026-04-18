@@ -11,6 +11,7 @@ import { DietarySection } from '../../components/settings/DietarySection';
 import { CuisineSection } from '../../components/settings/CuisineSection';
 import { DislikesSection } from '../../components/settings/DislikesSection';
 import { SkillLevelSection } from '../../components/settings/SkillLevelSection';
+import { colors } from '../../design/tokens';
 
 export default function SettingsScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -56,7 +57,7 @@ export default function SettingsScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-warmWhite items-center justify-center" edges={['bottom']}>
-        <ActivityIndicator size="large" color="#F97316" />
+        <ActivityIndicator size="large" color={colors.brand} />
       </SafeAreaView>
     );
   }
@@ -110,7 +111,7 @@ export default function SettingsScreen() {
           ) : null}
           <Button
             title="Sign Out"
-            variant="outline"
+            variant="destructive"
             onPress={handleSignOut}
           />
         </View>

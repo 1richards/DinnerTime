@@ -3,6 +3,7 @@ import { View, Text, Modal, Pressable, ActivityIndicator, ScrollView } from 'rea
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 import type { MealPlanEntry, MealPlanIngredient } from '../../types/mealPlan';
+import { colors } from '../../design/tokens';
 
 interface CookConfirmProps {
   visible: boolean;
@@ -59,12 +60,12 @@ export function CookConfirm({
 
               {loading ? (
                 <View className="items-center py-4">
-                  <ActivityIndicator size="large" color="#F97316" />
+                  <ActivityIndicator size="large" color={colors.brand} />
                 </View>
               ) : (
                 <View className="gap-3">
                   <Button title="Yes, mark cooked" onPress={onConfirm} />
-                  <Button title="Cancel" variant="outline" onPress={onCancel} />
+                  <Button title="Cancel" variant="secondary" onPress={onCancel} />
                 </View>
               )}
             </>
@@ -88,7 +89,7 @@ export function CookConfirm({
                       key={`${item.name}-${idx}`}
                       className="flex-row items-center py-2 border-b border-warmGray-100"
                     >
-                      <SymbolIcon name="minus.circle" size={18} tintColor="#F97316" />
+                      <SymbolIcon name="minus.circle" size={18} tintColor={colors.brand} />
                       <Text className="text-sm text-warmGray-700 ml-2 flex-1">
                         {item.name}
                       </Text>

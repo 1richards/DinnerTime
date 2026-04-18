@@ -3,6 +3,7 @@ import { View, Text, Modal, Pressable, ActivityIndicator } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 import type { MealPlanEntry } from '../../types/mealPlan';
+import { colors } from '../../design/tokens';
 
 interface SwapSheetProps {
   visible: boolean;
@@ -63,7 +64,7 @@ export function SwapSheet({
 
           {loading ? (
             <View className="items-center py-4">
-              <ActivityIndicator size="large" color="#F97316" />
+              <ActivityIndicator size="large" color={colors.brand} />
               <Text className="text-sm text-warmGray-500 mt-2">
                 Finding an alternative...
               </Text>

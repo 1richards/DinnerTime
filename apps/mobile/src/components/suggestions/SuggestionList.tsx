@@ -167,7 +167,7 @@ export function SuggestionList({ HeaderComponent, onScroll }: SuggestionListProp
           <View>
             {HeaderComponent}
             <View className="px-4 pt-5 pb-1">
-              <Text className="text-xs font-bold text-orange-700 uppercase tracking-wider mb-1">
+              <Text className="text-xs font-bold text-brand-pressed uppercase tracking-wider mb-1">
                 Cook tonight
               </Text>
               <Text className="text-base font-semibold text-warmGray-700 mb-1">

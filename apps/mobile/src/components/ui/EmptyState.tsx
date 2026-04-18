@@ -49,7 +49,7 @@ export function EmptyState({ visual, title, subtitle, action }: EmptyStateProps)
       {action ? (
         <Pressable
           onPress={action.onPress}
-          className="mt-6 px-6 py-3 bg-orange-500 rounded-xl"
+          className="mt-6 px-6 py-3 bg-brand rounded-button"
           accessibilityRole="button"
           accessibilityLabel={action.label}
         >
