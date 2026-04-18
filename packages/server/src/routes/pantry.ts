@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth.js';
-import { identifyFoodItems, identifyFoodItemsBatch } from '../services/vision.js';
+import { identifyFoodItems, identifyFoodItemsBatch, identifyReceiptItems } from '../services/vision.js';
 import { reconcileItems } from '../services/pantry.js';
 
 const pantry = new Hono();
@@ -107,6 +107,81 @@ pantry.post('/scan-batch', async (c) => {
     return c.json({ data: items });
   } catch (error) {
     console.error('[pantry/scan-batch] Vision error:', error);
+    const message = error instanceof Error ? error.message : 'Vision processing failed';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
+ * POST /scan-receipt - Extract pantry items from a single receipt photo.
+ * Body: { image: string (base64), source_location?: 'fridge' | 'pantry' | 'freezer' }
+ * Defaults source_location to 'pantry' (CONTEXT locked decision: receipts
+ * typically span pantry + fridge mixed, and pantry is the most common bin).
+ */
+pantry.post('/scan-receipt', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const body = await c.req.json<{ image: string; source_location?: 'fridge' | 'pantry' | 'freezer' }>();
+
+  if (!body.image) {
+    return c.json({ error: 'Missing required field: image' }, 400);
+  }
+
+  const sourceLocation = body.source_location ?? 'pantry';
+  const validLocations = ['fridge', 'pantry', 'freezer'];
+  if (!validLocations.includes(sourceLocation)) {
+    return c.json({ error: 'Invalid source_location. Must be fridge, pantry, or freezer' }, 400);
+  }
+
+  try {
+    const { data: existingItems } = await supabase
+      .from('pantry_items')
+      .select('name')
+      .eq('profile_id', user.id)
+      .eq('source_location', sourceLocation)
+      .eq('status', 'available');
+    const existingNames = (existingItems ?? []).map((row: { name: string }) => row.name);
+
+    const items = await identifyReceiptItems(body.image, sourceLocation, existingNames, 'receipt');
+    return c.json({ data: items });
+  } catch (error) {
+    console.error('[pantry/scan-receipt] Vision error:', error);
+    const message = error instanceof Error ? error.message : 'Vision processing failed';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
+ * POST /import-instacart - Extract pantry items from an Instacart order-summary
+ * screenshot. source_location is hardcoded to 'pantry' (Instacart orders are
+ * typically shelf-stable bulk imports; fridge/freezer items get re-scanned
+ * via the camera flow in Phase 14).
+ * Body: { image: string (base64) }
+ */
+pantry.post('/import-instacart', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const body = await c.req.json<{ image: string }>();
+
+  if (!body.image) {
+    return c.json({ error: 'Missing required field: image' }, 400);
+  }
+
+  const sourceLocation = 'pantry' as const;
+
+  try {
+    const { data: existingItems } = await supabase
+      .from('pantry_items')
+      .select('name')
+      .eq('profile_id', user.id)
+      .eq('source_location', sourceLocation)
+      .eq('status', 'available');
+    const existingNames = (existingItems ?? []).map((row: { name: string }) => row.name);
+
+    const items = await identifyReceiptItems(body.image, sourceLocation, existingNames, 'instacart_screenshot');
+    return c.json({ data: items });
+  } catch (error) {
+    console.error('[pantry/import-instacart] Vision error:', error);
     const message = error instanceof Error ? error.message : 'Vision processing failed';
     return c.json({ error: message }, 500);
   }
