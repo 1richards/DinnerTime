@@ -11,7 +11,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { Image } from 'expo-image';
 import { Button } from '../../components/ui/Button';
 import { useRecipeStore } from '../../stores/recipeStore';
@@ -139,7 +139,7 @@ export default function DiscoverScreen() {
             disabled={isLoading}
             className="px-4 rounded-xl bg-orange-500 items-center justify-center"
           >
-            <Ionicons name="refresh" size={20} color="#FFFFFF" />
+            <SymbolIcon name="arrow.clockwise" size={20} tintColor="#FFFFFF" />
           </Pressable>
         </View>
 
@@ -200,26 +200,26 @@ export default function DiscoverScreen() {
                   <View style={styles.cardMetaRow}>
                     {totalTime > 0 && (
                       <View style={styles.cardMetaItem}>
-                        <Ionicons name="time-outline" size={14} color="#6B7280" />
+                        <SymbolIcon name="clock" size={14} tintColor="#6B7280" />
                         <Text style={styles.cardMetaText}>{totalTime} min</Text>
                       </View>
                     )}
                     {recipe.servings != null && (
                       <View style={styles.cardMetaItem}>
-                        <Ionicons name="people-outline" size={14} color="#6B7280" />
+                        <SymbolIcon name="person.2" size={14} tintColor="#6B7280" />
                         <Text style={styles.cardMetaText}>
                           {recipe.servings} servings
                         </Text>
                       </View>
                     )}
                     <View style={styles.cardMetaItem}>
-                      <Ionicons name="chevron-forward" size={16} color="#F97316" />
+                      <SymbolIcon name="chevron.forward" size={16} tintColor="#F97316" />
                       <Text style={styles.cardCtaText}>View recipe</Text>
                     </View>
                   </View>
                   {recipe._saved && (
                     <View style={styles.savedBadge}>
-                      <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                      <SymbolIcon name="checkmark.circle.fill" size={14} tintColor="#10B981" />
                       <Text style={styles.savedBadgeText}>Saved to library</Text>
                     </View>
                   )}
@@ -283,8 +283,8 @@ function PreviewSheet({
             placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
           />
           <View style={styles.sheetHeroOverlay} />
-          <Pressable onPress={onClose} style={styles.sheetClose} hitSlop={12}>
-            <Ionicons name="close" size={22} color="#FFFFFF" />
+          <Pressable onPress={onClose} style={styles.sheetClose} hitSlop={12} accessibilityLabel="Close">
+            <SymbolIcon name="xmark" size={22} tintColor="#FFFFFF" />
           </Pressable>
           <View style={styles.sheetHeroText}>
             <Text style={styles.sheetTitle} numberOfLines={3}>
@@ -292,12 +292,12 @@ function PreviewSheet({
             </Text>
             {totalTime > 0 && (
               <View style={styles.sheetMeta}>
-                <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.8)" />
+                <SymbolIcon name="clock" size={14} tintColor="rgba(255,255,255,0.8)" />
                 <Text style={styles.sheetMetaText}>{totalTime} min</Text>
                 {recipe.servings != null && (
                   <>
                     <Text style={styles.sheetMetaText}>{'  ·  '}</Text>
-                    <Ionicons name="people-outline" size={14} color="rgba(255,255,255,0.8)" />
+                    <SymbolIcon name="person.2" size={14} tintColor="rgba(255,255,255,0.8)" />
                     <Text style={styles.sheetMetaText}>
                       {recipe.servings} servings
                     </Text>
@@ -350,7 +350,7 @@ function PreviewSheet({
       <View style={styles.sheetBottomBar}>
         {recipe._saved ? (
           <View style={styles.sheetSavedRow}>
-            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <SymbolIcon name="checkmark.circle.fill" size={20} tintColor="#10B981" />
             <Text style={styles.sheetSavedText}>Saved to library</Text>
             <View style={{ flex: 1 }} />
             <Button title="Done" variant="outline" onPress={onClose} />

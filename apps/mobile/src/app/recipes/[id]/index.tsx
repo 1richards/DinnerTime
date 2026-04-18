@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../../../components/ui/SymbolIcon';
 import { useRecipeStore } from '../../../stores/recipeStore';
 import { ServingSizeStepper } from '../../../components/recipes/ServingSizeStepper';
 import { ScaledIngredientList } from '../../../components/recipes/ScaledIngredientList';
@@ -101,7 +101,7 @@ export default function RecipeDetailScreen() {
             </Text>
             {totalTime > 0 && (
               <View style={styles.heroMeta}>
-                <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.8)" />
+                <SymbolIcon name="clock" size={14} tintColor="rgba(255,255,255,0.8)" />
                 <Text style={styles.heroMetaText}>{totalTime} min</Text>
               </View>
             )}
@@ -113,7 +113,7 @@ export default function RecipeDetailScreen() {
             style={[styles.heroBack, { top: insets.top + 8 }]}
             accessibilityLabel="Back"
           >
-            <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
+            <SymbolIcon name="chevron.backward" size={22} tintColor="#FFFFFF" />
           </Pressable>
           {/* Favorite button floats over the image */}
           <View style={[styles.heroFavorite, { top: insets.top + 8 }]}>
@@ -176,7 +176,7 @@ export default function RecipeDetailScreen() {
             style={[styles.variationsButton, { flex: 1 }]}
             testID="add-to-plan-button"
           >
-            <Ionicons name="calendar-outline" size={18} color="#B45309" />
+            <SymbolIcon name="calendar" size={18} tintColor="#B45309" />
             <Text style={styles.variationsButtonText}>Add to plan</Text>
           </Pressable>
           <Pressable
@@ -184,7 +184,7 @@ export default function RecipeDetailScreen() {
             style={[styles.variationsButton, { flex: 1 }]}
             testID="creative-variations-button"
           >
-            <Ionicons name="sparkles" size={18} color="#B45309" />
+            <SymbolIcon name="sparkles" size={18} tintColor="#B45309" />
             <Text style={styles.variationsButtonText}>Remix</Text>
           </Pressable>
         </View>
@@ -201,7 +201,7 @@ export default function RecipeDetailScreen() {
             onPress={handleDelete}
             style={styles.deleteButton}
           >
-            <Ionicons name="trash-outline" size={18} color="#DC2626" />
+            <SymbolIcon name="trash" size={18} tintColor="#DC2626" />
             <Text style={styles.deleteButtonText}>Delete</Text>
           </Pressable>
         </View>

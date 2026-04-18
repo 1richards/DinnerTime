@@ -5,6 +5,7 @@ import { Redirect } from 'expo-router';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { HeroImage } from '../../components/ui/HeroImage';
+import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
 import { FOOD_IMAGES } from '../../constants/foodImages';
@@ -217,7 +218,7 @@ export default function OnboardingScreen() {
                 ]}
               >
                 {hasKids && (
-                  <Text style={styles.checkmark}>✓</Text>
+                  <SymbolIcon name="checkmark" size={12} weight="bold" tintColor="#FFFFFF" />
                 )}
               </View>
             </Pressable>

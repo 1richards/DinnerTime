@@ -15,6 +15,9 @@ import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { LocationPicker } from '../../components/pantry/LocationPicker';
 import { Button } from '../../components/ui/Button';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { SymbolIcon } from '../../components/ui/SymbolIcon';
+import { EMPTY_STATE_IMAGES } from '../../constants/emptyStateImages';
 import { usePantryStore } from '../../stores/pantryStore';
 import type { SourceLocation } from '../../types/pantry';
 
@@ -130,8 +133,9 @@ export default function ScanScreen() {
       <TouchableOpacity
         onPress={() => handleRemovePhoto(item.id)}
         className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 items-center justify-center"
+        accessibilityLabel="Remove photo"
       >
-        <Text className="text-white text-[10px] font-bold">X</Text>
+        <SymbolIcon name="xmark" size={10} weight="bold" tintColor="#FFFFFF" />
       </TouchableOpacity>
     </View>
   );
@@ -178,44 +182,39 @@ export default function ScanScreen() {
           </Text>
         )}
 
-        <View className="flex-1 items-center justify-center px-6">
-          {!hasPhotos ? (
-            <>
-              <Text className="text-6xl mb-6">📸</Text>
-              <Text className="text-base text-warmGray-500 text-center mb-8 leading-6">
-                Take a photo of your {selectedLocation} and we'll identify what's inside
-              </Text>
-              <Button
-                title="Take Photo"
-                onPress={handleTakePhoto}
-                className="w-full"
-              />
-            </>
-          ) : (
-            <>
-              <Text className="text-5xl mb-4">📸</Text>
-              <Text className="text-base text-warmGray-600 text-center mb-2 font-medium">
-                {capturedPhotos.length} photo{capturedPhotos.length !== 1 ? 's' : ''} ready
-              </Text>
-              <Text className="text-sm text-warmGray-400 text-center mb-8">
-                {canAddMore
-                  ? `Add up to ${MAX_PHOTOS - capturedPhotos.length} more, or scan now`
-                  : 'Maximum photos reached'}
-              </Text>
-              <Button
-                title="Submit"
-                onPress={handleSubmitBatch}
-                className="w-full mb-3"
-              />
-              <Button
-                title="Clear All"
-                variant="ghost"
-                onPress={() => setCapturedPhotos([])}
-                className="w-full"
-              />
-            </>
-          )}
-        </View>
+        {!hasPhotos ? (
+          <EmptyState
+            visual={{ kind: 'image', uri: EMPTY_STATE_IMAGES.scanReady }}
+            title="Ready to scan your kitchen"
+            subtitle={`Take a photo of your ${selectedLocation} and we'll identify what's inside`}
+            action={{ label: 'Take Photo', onPress: handleTakePhoto }}
+          />
+        ) : (
+          <View className="flex-1 items-center justify-center px-6">
+            <View className="mb-4">
+              <SymbolIcon name="camera.fill" size={56} weight="light" tintColor="#9CA3AF" />
+            </View>
+            <Text className="text-base text-warmGray-600 text-center mb-2 font-medium">
+              {capturedPhotos.length} photo{capturedPhotos.length !== 1 ? 's' : ''} ready
+            </Text>
+            <Text className="text-sm text-warmGray-400 text-center mb-8">
+              {canAddMore
+                ? `Add up to ${MAX_PHOTOS - capturedPhotos.length} more, or scan now`
+                : 'Maximum photos reached'}
+            </Text>
+            <Button
+              title="Submit"
+              onPress={handleSubmitBatch}
+              className="w-full mb-3"
+            />
+            <Button
+              title="Clear All"
+              variant="ghost"
+              onPress={() => setCapturedPhotos([])}
+              className="w-full"
+            />
+          </View>
+        )}
 
         {/* Thumbnail strip — fixed row, fits MAX_PHOTOS + add button */}
         {hasPhotos && (

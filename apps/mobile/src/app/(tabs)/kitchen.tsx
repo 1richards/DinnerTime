@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 
+import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { useAuthStore } from '../../stores/authStore';
 import { usePantryStore } from '../../stores/pantryStore';
 import { useRecipeStore } from '../../stores/recipeStore';
@@ -108,7 +108,7 @@ function ImportFab() {
       style={styles.fab}
       accessibilityLabel="Import recipe"
     >
-      <Ionicons name="add" size={32} color="#FFFFFF" />
+      <SymbolIcon name="plus" size={32} tintColor="#FFFFFF" />
     </Pressable>
   );
 }
@@ -125,7 +125,7 @@ function RegenerateFab() {
       style={styles.fab}
       accessibilityLabel="Regenerate suggestions"
     >
-      <Ionicons name="sparkles" size={28} color="#FFFFFF" />
+      <SymbolIcon name="sparkles" size={28} tintColor="#FFFFFF" />
     </Pressable>
   );
 }
@@ -353,10 +353,10 @@ export default function KitchenScreen() {
               hitSlop={8}
               accessibilityLabel="Toggle search"
             >
-              <Ionicons
-                name={searchOpen ? 'close' : 'search'}
+              <SymbolIcon
+                name={searchOpen ? 'xmark' : 'magnifyingglass'}
                 size={20}
-                color={searchOpen ? '#FFFFFF' : '#3E332A'}
+                tintColor={searchOpen ? '#FFFFFF' : '#3E332A'}
               />
             </Pressable>
             <Pressable
@@ -368,10 +368,10 @@ export default function KitchenScreen() {
               hitSlop={8}
               accessibilityLabel="Open filters"
             >
-              <Ionicons
-                name="options-outline"
+              <SymbolIcon
+                name="line.3.horizontal.decrease.circle"
                 size={20}
-                color={activeFilterCount > 0 ? '#FFFFFF' : '#3E332A'}
+                tintColor={activeFilterCount > 0 ? '#FFFFFF' : '#3E332A'}
               />
               {activeFilterCount > 0 && (
                 <View style={styles.badge}>
@@ -385,7 +385,7 @@ export default function KitchenScreen() {
               hitSlop={8}
               accessibilityLabel="Discover recipes"
             >
-              <Ionicons name="sparkles" size={20} color="#B45309" />
+              <SymbolIcon name="sparkles" size={20} tintColor="#B45309" />
             </Pressable>
           </>
         )}

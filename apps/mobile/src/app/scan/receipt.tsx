@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { LocationPicker } from '../../components/pantry/LocationPicker';
 import { Button } from '../../components/ui/Button';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { usePantryStore } from '../../stores/pantryStore';
 import type { SourceLocation } from '../../types/pantry';
 
@@ -90,16 +91,12 @@ export default function ReceiptScanScreen() {
         </Text>
         <LocationPicker selected={sourceLocation} onSelect={setSourceLocation} />
 
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-6xl mb-6">🧾</Text>
-          <Text className="text-base text-warmGray-500 text-center mb-2 leading-6">
-            Take a photo of your grocery receipt and we'll extract the items.
-          </Text>
-          <Text className="text-xs text-warmGray-400 text-center mb-8">
-            Best results with fresh, flat receipts. Faded receipts may miss items.
-          </Text>
-          <Button title="Take Photo" onPress={handleTakePhoto} className="w-full" />
-        </View>
+        <EmptyState
+          visual={{ kind: 'symbol', name: 'doc.text.viewfinder' }}
+          title="Scan a grocery receipt"
+          subtitle="Take a photo and we'll extract the items. Best results with fresh, flat receipts — faded receipts may miss items."
+          action={{ label: 'Take Photo', onPress: handleTakePhoto }}
+        />
       </View>
     </SafeAreaView>
   );

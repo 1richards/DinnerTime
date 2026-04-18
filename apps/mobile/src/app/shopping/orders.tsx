@@ -7,9 +7,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useShoppingStore } from '../../stores/shoppingStore';
+import { SymbolIcon } from '../../components/ui/SymbolIcon';
+import { EmptyState } from '../../components/ui/EmptyState';
 import type { ShoppingOrder } from '../../types/shopping';
 
 function formatDate(iso: string): string {
@@ -55,15 +56,11 @@ export default function OrdersScreen() {
             <Text className="text-sm text-red-700">{error}</Text>
           </View>
         )}
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-4xl mb-3">📦</Text>
-          <Text className="text-xl font-bold text-warmGray-900 mb-1">
-            No orders yet
-          </Text>
-          <Text className="text-sm text-warmGray-500 text-center">
-            Orders you place on Instacart will appear here.
-          </Text>
-        </View>
+        <EmptyState
+          visual={{ kind: 'symbol', name: 'shippingbox' }}
+          title="No orders yet"
+          subtitle="Orders you place on Instacart will appear here."
+        />
       </SafeAreaView>
     );
   }
@@ -77,7 +74,7 @@ export default function OrdersScreen() {
         className="bg-white rounded-xl px-4 py-4 mx-4 my-1 flex-row items-center active:bg-warmGray-50"
       >
         <View className="w-10 h-10 rounded-full bg-orange-50 items-center justify-center mr-3">
-          <Ionicons name="cart" size={20} color="#F97316" />
+          <SymbolIcon name="cart" size={20} tintColor="#F97316" />
         </View>
         <View className="flex-1">
           <Text className="text-base font-semibold text-warmGray-900">
@@ -88,7 +85,7 @@ export default function OrdersScreen() {
             {expired ? ' · link expired' : ''}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+        <SymbolIcon name="chevron.forward" size={20} tintColor="#9CA3AF" />
       </Pressable>
     );
   };

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../../../components/ui/SymbolIcon';
 import * as Speech from 'expo-speech';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useCookingStore } from '../../../stores/cookingStore';
@@ -219,7 +219,7 @@ export default function CookScreen() {
           className="flex-row items-center"
           testID="cook-exit"
         >
-          <Ionicons name="close" size={28} color="#374151" />
+          <SymbolIcon name="xmark" size={28} tintColor="#374151" />
           <Text className="ml-1 text-base font-medium text-warmGray-700">
             Exit
           </Text>

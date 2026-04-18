@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '../../components/ui/Button';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { usePantryStore } from '../../stores/pantryStore';
 
 export default function InstacartImportScreen() {
@@ -95,21 +96,12 @@ export default function InstacartImportScreen() {
           </Text>
         </View>
 
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-6xl mb-6">🛒</Text>
-          <Text className="text-base text-warmGray-500 text-center mb-2 leading-6">
-            Pick an Instacart screenshot from your Photos and we'll extract the
-            items into your pantry.
-          </Text>
-          <Text className="text-xs text-warmGray-400 text-center mb-8">
-            Imported items are added to your pantry by default.
-          </Text>
-          <Button
-            title="Choose Screenshot"
-            onPress={handleChoose}
-            className="w-full"
-          />
-        </View>
+        <EmptyState
+          visual={{ kind: 'symbol', name: 'cart.circle' }}
+          title="Import from Instacart"
+          subtitle="Pick a screenshot from your Photos and we'll extract the items into your pantry. Imported items are added to your pantry by default."
+          action={{ label: 'Choose Screenshot', onPress: handleChoose }}
+        />
       </View>
     </SafeAreaView>
   );

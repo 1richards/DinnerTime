@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Pressable, Animated, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { usePantryStore } from '../../stores/pantryStore';
 import { useAuthStore } from '../../stores/authStore';
 import { usePantryItems } from '../../hooks/usePantryItems';
@@ -121,7 +121,7 @@ export default function PantryScreen() {
         style={styles.fab}
         accessibilityLabel="Scan items"
       >
-        <Ionicons name="camera" size={28} color="#FFFFFF" />
+        <SymbolIcon name="camera.fill" size={28} tintColor="#FFFFFF" />
       </Pressable>
 
       <BulkImportSheet

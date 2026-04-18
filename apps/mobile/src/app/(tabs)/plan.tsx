@@ -9,7 +9,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
 import { DayRow } from '../../components/plan/DayRow';
 import { EmptyPlanState } from '../../components/plan/EmptyPlanState';
@@ -192,7 +192,7 @@ export default function PlanScreen() {
           hitSlop={8}
           accessibilityLabel="Regenerate week"
         >
-          <Ionicons name="refresh" size={20} color="#3E332A" />
+          <SymbolIcon name="arrow.clockwise" size={20} tintColor="#3E332A" />
         </Pressable>
       </View>
 

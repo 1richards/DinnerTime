@@ -1,5 +1,6 @@
 import { Redirect, Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { View } from 'react-native';
+import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { useAuthStore } from '../../stores/authStore';
 
 export default function TabLayout() {
@@ -37,11 +38,15 @@ export default function TabLayout() {
           title: 'Kitchen',
           tabBarLabel: 'Kitchen',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? 'restaurant' : 'restaurant-outline'}
-              size={size}
-              color={color}
-            />
+            // Wrap SymbolIcon in a sized View (15-RESEARCH Pitfall 1) so SF
+            // Symbol glyphs align vertically in the tab bar.
+            <View style={{ width: size, height: size }}>
+              <SymbolIcon
+                name={focused ? 'fork.knife.circle.fill' : 'fork.knife'}
+                size={size}
+                tintColor={color}
+              />
+            </View>
           ),
         }}
       />
@@ -51,8 +56,15 @@ export default function TabLayout() {
           headerShown: false,
           title: 'Plan',
           tabBarLabel: 'Plan',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={{ width: size, height: size }}>
+              <SymbolIcon
+                name="calendar"
+                size={size}
+                weight={focused ? 'semibold' : 'regular'}
+                tintColor={color}
+              />
+            </View>
           ),
         }}
       />
@@ -62,8 +74,14 @@ export default function TabLayout() {
           headerShown: false,
           title: 'Pantry',
           tabBarLabel: 'Pantry',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="basket-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={{ width: size, height: size }}>
+              <SymbolIcon
+                name={focused ? 'basket.fill' : 'basket'}
+                size={size}
+                tintColor={color}
+              />
+            </View>
           ),
         }}
       />
@@ -73,8 +91,14 @@ export default function TabLayout() {
           headerShown: false,
           title: 'Shopping',
           tabBarLabel: 'Shopping',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="cart-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={{ width: size, height: size }}>
+              <SymbolIcon
+                name={focused ? 'cart.fill' : 'cart'}
+                size={size}
+                tintColor={color}
+              />
+            </View>
           ),
         }}
       />
@@ -85,11 +109,13 @@ export default function TabLayout() {
           title: 'Settings',
           tabBarLabel: 'Settings',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? 'settings' : 'settings-outline'}
-              size={size}
-              color={color}
-            />
+            <View style={{ width: size, height: size }}>
+              <SymbolIcon
+                name={focused ? 'gearshape.fill' : 'gearshape'}
+                size={size}
+                tintColor={color}
+              />
+            </View>
           ),
         }}
       />

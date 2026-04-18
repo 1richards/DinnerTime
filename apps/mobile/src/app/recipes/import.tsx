@@ -2,10 +2,11 @@ import React from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../../components/ui/SymbolIcon';
 
 interface MethodCardProps {
-  icon: keyof typeof Ionicons.glyphMap;
+  // SF Symbols has no typed glyphMap — icon names are plain strings.
+  icon: string;
   title: string;
   description: string;
   onPress: () => void;
@@ -25,7 +26,7 @@ function MethodCard({ icon, title, description, onPress }: MethodCardProps) {
       }}
     >
       <View className="w-14 h-14 rounded-full bg-orange-100 items-center justify-center mr-4">
-        <Ionicons name={icon} size={28} color="#F97316" />
+        <SymbolIcon name={icon as never} size={28} tintColor="#F97316" />
       </View>
       <View className="flex-1">
         <Text className="text-lg font-semibold text-warmGray-900 mb-1">
@@ -33,7 +34,7 @@ function MethodCard({ icon, title, description, onPress }: MethodCardProps) {
         </Text>
         <Text className="text-sm text-warmGray-500">{description}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+      <SymbolIcon name="chevron.forward" size={20} tintColor="#9CA3AF" />
     </Pressable>
   );
 }
@@ -47,19 +48,19 @@ export default function ImportScreen() {
         </Text>
 
         <MethodCard
-          icon="link-outline"
+          icon="link"
           title="Paste URL"
           description="Import from a recipe website"
           onPress={() => router.push('/recipes/import-url')}
         />
         <MethodCard
-          icon="camera-outline"
+          icon="camera"
           title="Take Photo"
           description="Snap a picture of a cookbook or card"
           onPress={() => router.push('/recipes/import-photo')}
         />
         <MethodCard
-          icon="create-outline"
+          icon="square.and.pencil"
           title="Type It In"
           description="Paste or type a recipe in freeform text"
           onPress={() => router.push('/recipes/import-manual')}

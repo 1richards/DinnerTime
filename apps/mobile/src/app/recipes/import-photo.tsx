@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '../../components/ui/Button';
+import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { useRecipeStore } from '../../stores/recipeStore';
 
 export default function ImportPhotoScreen() {
@@ -77,7 +78,12 @@ export default function ImportPhotoScreen() {
   return (
     <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
       <View className="flex-1 px-6 pt-6 items-center">
-        <Text className="text-6xl mb-6">📷</Text>
+        <View className="mb-6">
+          <SymbolIcon name="camera" size={56} weight="light" tintColor="#9CA3AF" />
+        </View>
+        <Text className="text-lg font-semibold text-warmGray-900 text-center mb-2">
+          Capture a recipe
+        </Text>
         <Text className="text-base text-warmGray-500 text-center mb-8 leading-6">
           Take a clear photo of a recipe card, cookbook page, or printed recipe
           and we'll extract the details.

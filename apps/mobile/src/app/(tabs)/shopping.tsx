@@ -9,7 +9,6 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useShoppingStore } from '../../stores/shoppingStore';
@@ -17,6 +16,8 @@ import { useMealPlanStore } from '../../stores/mealPlanStore';
 import { CategorySection } from '../../components/shopping/CategorySection';
 import { AddItemSheet } from '../../components/shopping/AddItemSheet';
 import { Button } from '../../components/ui/Button';
+import { SymbolIcon } from '../../components/ui/SymbolIcon';
+import { EmptyState } from '../../components/ui/EmptyState';
 import type { GroceryCategory, ShoppingListItem } from '../../types/shopping';
 import {
   useCollapsingHeader,
@@ -118,29 +119,21 @@ export default function ShoppingScreen() {
             <Text className="text-sm text-red-700">{error}</Text>
           </View>
         )}
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-5xl mb-4">🛒</Text>
-          <Text className="text-2xl font-bold text-warmGray-900 mb-2">
-            No active shopping list
+        <EmptyState
+          visual={{ kind: 'symbol', name: 'cart' }}
+          title="No active shopping list"
+          subtitle="Generate a list from your current meal plan — we'll consolidate ingredients and subtract what you already have."
+          action={
+            currentPlan?.id
+              ? { label: 'Generate from Meal Plan', onPress: handleGenerate }
+              : undefined
+          }
+        />
+        {!currentPlan?.id && (
+          <Text className="text-xs text-warmGray-400 mb-6 px-6 text-center">
+            Create a meal plan in the Plan tab first.
           </Text>
-          <Text className="text-base text-warmGray-500 text-center leading-6 mb-8">
-            Generate a list from your current meal plan — we&apos;ll consolidate
-            ingredients and subtract what you already have.
-          </Text>
-          <View className="w-full">
-            <Button
-              title="Generate from Meal Plan"
-              onPress={handleGenerate}
-              loading={loading}
-              disabled={!currentPlan?.id}
-            />
-          </View>
-          {!currentPlan?.id && (
-            <Text className="text-xs text-warmGray-400 mt-3 text-center">
-              Create a meal plan in the Plan tab first.
-            </Text>
-          )}
-        </View>
+        )}
       </SafeAreaView>
     );
   }
@@ -182,7 +175,7 @@ export default function ShoppingScreen() {
           hitSlop={8}
           accessibilityLabel="View orders"
         >
-          <Ionicons name="receipt-outline" size={20} color="#3E332A" />
+          <SymbolIcon name="doc.text" size={20} tintColor="#3E332A" />
         </Pressable>
       </View>
 
@@ -228,8 +221,9 @@ export default function ShoppingScreen() {
           shadowRadius: 6,
           elevation: 4,
         }}
+        accessibilityLabel="Add item"
       >
-        <Ionicons name="add" size={28} color="#FFFFFF" />
+        <SymbolIcon name="plus" size={28} tintColor="#FFFFFF" />
       </Pressable>
 
       <View className="absolute left-0 right-0 bottom-0 px-4 pb-4 pt-3 bg-warmWhite border-t border-warmGray-100">
