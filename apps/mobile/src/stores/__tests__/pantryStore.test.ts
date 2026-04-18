@@ -227,6 +227,158 @@ describe('pantryStore', () => {
     });
   });
 
+  describe('startReceiptScan', () => {
+    it('POSTs to /api/v1/pantry/scan-receipt with auth + source_location', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: [
+              {
+                name: 'chicken',
+                quantity: 1,
+                unit: 'lb',
+                confidence: 0.9,
+                category: 'protein',
+              },
+            ],
+          }),
+      });
+      await usePantryStore.getState().startReceiptScan('b64', 'pantry');
+
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url).toContain('/api/v1/pantry/scan-receipt');
+      expect(init.method).toBe('POST');
+      expect(init.headers.Authorization).toBe('Bearer test-token');
+      const body = JSON.parse(init.body);
+      expect(body.image).toBe('b64');
+      expect(body.source_location).toBe('pantry');
+    });
+
+    it('maps response data into scanResults with correct id/accepted/userEdited', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: [
+              {
+                name: 'chicken',
+                quantity: 1,
+                unit: 'lb',
+                confidence: 0.9,
+                category: 'protein',
+              },
+            ],
+          }),
+      });
+      await usePantryStore.getState().startReceiptScan('b64', 'pantry');
+
+      const { scanResults, isScanning } = usePantryStore.getState();
+      expect(scanResults).toHaveLength(1);
+      expect(scanResults[0].id).toMatch(/^scan-\d+-0$/);
+      expect(scanResults[0].accepted).toBe(true); // 0.9 >= 0.7
+      expect(scanResults[0].userEdited).toBe(false);
+      expect(scanResults[0].name).toBe('chicken');
+      expect(isScanning).toBe(false);
+    });
+
+    it('applies confidence threshold: 0.5 rejected, 0.7 accepted', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: [
+              { name: 'low', quantity: 1, unit: 'ea', confidence: 0.5, category: 'other' },
+              { name: 'edge', quantity: 1, unit: 'ea', confidence: 0.7, category: 'other' },
+            ],
+          }),
+      });
+      await usePantryStore.getState().startReceiptScan('b64', 'pantry');
+
+      const { scanResults } = usePantryStore.getState();
+      expect(scanResults[0].accepted).toBe(false);
+      expect(scanResults[1].accepted).toBe(true);
+    });
+
+    it('throws upstream error and resets isScanning on !ok response', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'upstream error' }),
+      });
+
+      await expect(
+        usePantryStore.getState().startReceiptScan('b64', 'pantry')
+      ).rejects.toThrow('upstream error');
+      expect(usePantryStore.getState().isScanning).toBe(false);
+    });
+  });
+
+  describe('startInstacartImport', () => {
+    it('POSTs to /api/v1/pantry/import-instacart with auth + no source_location', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: [
+              {
+                name: 'oat milk',
+                quantity: 1,
+                unit: 'carton',
+                confidence: 0.88,
+                category: 'beverage',
+              },
+            ],
+          }),
+      });
+      await usePantryStore.getState().startInstacartImport('b64');
+
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url).toContain('/api/v1/pantry/import-instacart');
+      expect(init.method).toBe('POST');
+      expect(init.headers.Authorization).toBe('Bearer test-token');
+      const body = JSON.parse(init.body);
+      expect(body.image).toBe('b64');
+      expect(body.source_location).toBeUndefined();
+    });
+
+    it('maps response data into scanResults with correct shape', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: [
+              {
+                name: 'oat milk',
+                quantity: 1,
+                unit: 'carton',
+                confidence: 0.88,
+                category: 'beverage',
+              },
+            ],
+          }),
+      });
+      await usePantryStore.getState().startInstacartImport('b64');
+
+      const { scanResults } = usePantryStore.getState();
+      expect(scanResults).toHaveLength(1);
+      expect(scanResults[0].id).toMatch(/^scan-\d+-0$/);
+      expect(scanResults[0].accepted).toBe(true);
+      expect(scanResults[0].userEdited).toBe(false);
+    });
+
+    it('throws upstream error and resets isScanning on !ok response', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'instacart upstream error' }),
+      });
+
+      await expect(
+        usePantryStore.getState().startInstacartImport('b64')
+      ).rejects.toThrow('instacart upstream error');
+      expect(usePantryStore.getState().isScanning).toBe(false);
+    });
+  });
+
   describe('confirmScan', () => {
     it('sends only accepted items and merges results into items', async () => {
       const acceptedItem = { ...mockReviewItem, accepted: true };
