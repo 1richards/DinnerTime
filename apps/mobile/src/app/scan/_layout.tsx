@@ -17,6 +17,14 @@ export default function ScanLayout() {
         name="review"
         options={{ title: 'Review Items' }}
       />
+      <Stack.Screen
+        name="receipt"
+        options={{ title: 'Scan Receipt' }}
+      />
+      <Stack.Screen
+        name="instacart"
+        options={{ title: 'Import from Instacart' }}
+      />
     </Stack>
   );
 }

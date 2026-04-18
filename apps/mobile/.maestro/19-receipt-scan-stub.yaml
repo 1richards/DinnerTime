@@ -1,0 +1,17 @@
+appId: com.dinnertime.app
+name: "19 — bulk import sheet: Camera / Receipt / Instacart"
+---
+- runFlow: _ensure-logged-in.yaml
+- tapOn: "Pantry"
+- tapOn:
+    id: "Scan items"
+- assertVisible: "Add pantry items"
+- assertVisible: "Camera"
+- assertVisible: "Receipt"
+- assertVisible: "Instacart"
+- takeScreenshot: phase-13-bulk-import-sheet
+- tapOn: "Receipt"
+- assertVisible: "Scan Receipt"
+- takeScreenshot: phase-13-receipt-capture
+- back
+- back

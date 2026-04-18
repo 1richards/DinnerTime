@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Pressable, Animated, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { usePantryStore } from '../../stores/pantryStore';
 import { useAuthStore } from '../../stores/authStore';
 import { usePantryItems } from '../../hooks/usePantryItems';
 import { EmptyPantry } from '../../components/pantry/EmptyPantry';
 import { PantryItemList } from '../../components/pantry/PantryItemList';
+import { BulkImportSheet } from '../../components/pantry/BulkImportSheet';
 import type { SourceLocation } from '../../types/pantry';
 import {
   useCollapsingHeader,
@@ -28,6 +28,7 @@ export default function PantryScreen() {
   const { loadItems, isLoading, items } = usePantryStore();
   const profile = useAuthStore((s) => s.profile);
   const [locationFilter, setLocationFilter] = useState<LocationFilter>('all');
+  const [importSheetOpen, setImportSheetOpen] = useState(false);
 
   const { onScroll, largeTitleOpacity, largeTitleTranslate, compactHeaderOpacity } =
     useCollapsingHeader();
@@ -116,12 +117,17 @@ export default function PantryScreen() {
       />
 
       <Pressable
-        onPress={() => router.push('/scan')}
+        onPress={() => setImportSheetOpen(true)}
         style={styles.fab}
         accessibilityLabel="Scan items"
       >
         <Ionicons name="camera" size={28} color="#FFFFFF" />
       </Pressable>
+
+      <BulkImportSheet
+        visible={importSheetOpen}
+        onClose={() => setImportSheetOpen(false)}
+      />
     </SafeAreaView>
   );
 }
