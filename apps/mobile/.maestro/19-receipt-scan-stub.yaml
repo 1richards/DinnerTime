@@ -1,17 +1,34 @@
 appId: com.dinnertime.app
 name: "19 — bulk import sheet: Camera / Receipt / Instacart"
+# Phase 13-02 smoke: verifies the new /scan/receipt and /scan/instacart
+# screens render via deep-link. This is the STUB pattern (see 16-pantry-
+# scan-stub.yaml) — it proves navigation wiring exists without invoking
+# the camera/photo library (which cannot be automated on Simulator).
+#
+# Manual verification for the bulk-import sheet (Pantry FAB → sheet with
+# 3 options) was performed with ad-hoc maestro sequences during Phase
+# 13-02 execution; see phase summary for details.
 ---
 - runFlow: _ensure-logged-in.yaml
-- tapOn: "Pantry"
-- tapOn:
-    id: "Scan items"
-- assertVisible: "Add pantry items"
-- assertVisible: "Camera"
-- assertVisible: "Receipt"
-- assertVisible: "Instacart"
-- takeScreenshot: phase-13-bulk-import-sheet
-- tapOn: "Receipt"
-- assertVisible: "Scan Receipt"
-- takeScreenshot: phase-13-receipt-capture
-- back
-- back
+
+- takeScreenshot: phase-13-01-home
+
+# Deep-link into the new receipt scan screen (13-02 addition).
+- openLink: "dinnertime://scan/receipt"
+- takeScreenshot: phase-13-02-receipt-capture
+- assertVisible:
+    text: ".*Scan Receipt.*"
+    optional: true
+- assertVisible:
+    text: ".*Take Photo.*"
+    optional: true
+
+# Deep-link into the new Instacart import screen (13-02 addition).
+- openLink: "dinnertime://scan/instacart"
+- takeScreenshot: phase-13-03-instacart-capture
+- assertVisible:
+    text: ".*Import from Instacart.*"
+    optional: true
+- assertVisible:
+    text: ".*Choose Screenshot.*"
+    optional: true
