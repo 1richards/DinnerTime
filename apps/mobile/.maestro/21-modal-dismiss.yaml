@@ -1,0 +1,51 @@
+appId: com.dinnertime.app
+name: "21 — modal dismiss: scan modal opens from pantry, swipes down to dismiss"
+tags:
+  - phase-15
+# Plan 15-02 migrated the scan flow to `presentation: 'modal'`. This flow
+# proves (a) the modal presents on tap of the Pantry FAB and (b) the user
+# can dismiss it with a downward swipe. Complementary to the X close path
+# (HeaderCloseButton) which is exercised manually via Plan 04 Task 3 UAT.
+---
+- runFlow: _ensure-logged-in.yaml
+
+- takeScreenshot: 21-01-home
+
+# Navigate to Pantry tab
+- tapOn:
+    text: ".*Pantry.*"
+
+- takeScreenshot: 21-02-pantry-tab
+
+# Open scan modal via ScanButton FAB. The FAB sits bottom-right
+# (bottom-6 right-6, 64x64) — 94%,85% lands on it on iPhone 17 Pro.
+# ScanButton has accessibilityLabel="Scan" (pantry/ScanButton.tsx).
+- tapOn:
+    text: "Scan"
+    optional: true
+- tapOn:
+    point: "94%,85%"
+    optional: true
+
+# Scan modal presents with its native header + either an empty-state
+# "Ready to scan your kitchen" EmptyState OR a has-photos status screen.
+- extendedWaitUntil:
+    visible:
+      text: ".*Ready to scan your kitchen.*|.*photo.*ready.*"
+    timeout: 10000
+- takeScreenshot: 21-03-scan-modal-open
+
+# Dismiss the modal with a downward swipe from near the top of the screen.
+# expo-router 55 + presentation: 'modal' supports swipe-to-dismiss gesture.
+- swipe:
+    start: "50%,10%"
+    end: "50%,90%"
+
+- takeScreenshot: 21-04-scan-modal-dismissed
+
+# Back on the Pantry tab — the pantry tab markers are re-visible.
+- extendedWaitUntil:
+    visible:
+      text: ".*Pantry.*"
+    timeout: 5000
+- takeScreenshot: 21-05-back-on-pantry

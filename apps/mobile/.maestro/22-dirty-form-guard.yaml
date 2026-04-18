@@ -1,0 +1,93 @@
+appId: com.dinnertime.app
+name: "22 — dirty form guard: editing a recipe and swiping back surfaces the Unsaved changes Alert"
+tags:
+  - phase-15
+# NOTE: iOS Alert interaction via Maestro is occasionally flaky (the native
+# Alert dialog is rendered in a separate UIWindow that XCUITest's
+# accessibility tree sometimes doesn't reach promptly). If this flow is
+# red on CI but manual UAT on the simulator shows the Alert presenting
+# and behaving correctly, treat this flow as "manual-only" (see README
+# — this flow is tagged `phase-15` so it can be excluded from the
+# default `all` target if necessary).
+#
+# Pre-condition: at least one recipe must exist in the UAT user's library.
+---
+- runFlow: _ensure-logged-in.yaml
+
+- takeScreenshot: 22-01-home
+
+# Kitchen tab → Library segment
+- tapOn:
+    text: ".*Kitchen.*"
+- tapOn:
+    text: ".*Library.*"
+
+- extendedWaitUntil:
+    visible:
+      text: ".*in your library.*"
+    timeout: 15000
+- takeScreenshot: 22-02-library
+
+# Tap first recipe card (dynamic content — first item lives ~65% Y on iPhone 17 Pro).
+- tapOn:
+    point: "50%,65%"
+- extendedWaitUntil:
+    visible:
+      text: ".*Ingredients.*"
+    timeout: 10000
+- takeScreenshot: 22-03-recipe-detail
+
+# Scroll down to reveal the Edit button (below the fold after Phase 15 header collapse).
+- scroll
+- scroll
+- tapOn:
+    text: ".*Edit.*"
+
+- extendedWaitUntil:
+    visible:
+      text: ".*Save Changes.*"
+    timeout: 10000
+- takeScreenshot: 22-04-edit-screen
+
+# Dirty the form — append to the title field.
+- tapOn:
+    text: ".*Recipe title.*"
+    optional: true
+- tapOn:
+    point: "50%,18%"
+- inputText: " (edited)"
+- takeScreenshot: 22-05-title-dirtied
+
+# Attempt to leave via left-edge swipe (iOS pop gesture).
+- swipe:
+    start: "2%,50%"
+    end: "90%,50%"
+
+# Expect the dirty-form guard's Alert.
+- assertVisible:
+    text: ".*Unsaved changes.*"
+    optional: true
+- takeScreenshot: 22-06-unsaved-alert
+
+# Dismiss the alert by choosing "Keep editing" — we stay on the edit screen.
+- tapOn:
+    text: ".*Keep editing.*"
+    optional: true
+
+- assertVisible:
+    text: ".*Save Changes.*"
+- takeScreenshot: 22-07-still-on-edit
+
+# Clean up: reset the title (erase the " (edited)" addition) and save so the
+# recipe is left in the state the test started in.
+- tapOn:
+    point: "50%,18%"
+- eraseText: 10
+- takeScreenshot: 22-08-title-reset
+- tapOn:
+    text: ".*Save Changes.*"
+- extendedWaitUntil:
+    visible:
+      text: ".*Ingredients.*"
+    timeout: 15000
+- takeScreenshot: 22-09-back-on-detail

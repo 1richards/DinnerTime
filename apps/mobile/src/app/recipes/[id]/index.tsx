@@ -11,6 +11,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import { SymbolIcon } from '../../../components/ui/SymbolIcon';
+import { HeaderEllipsis } from '../../../components/ui/HeaderEllipsis';
 import { useRecipeStore } from '../../../stores/recipeStore';
 import { ServingSizeStepper } from '../../../components/recipes/ServingSizeStepper';
 import { ScaledIngredientList } from '../../../components/recipes/ScaledIngredientList';
@@ -115,12 +116,27 @@ export default function RecipeDetailScreen() {
           >
             <SymbolIcon name="chevron.backward" size={22} tintColor="#FFFFFF" />
           </Pressable>
-          {/* Favorite button floats over the image */}
-          <View style={[styles.heroFavorite, { top: insets.top + 8 }]}>
-            <FavoriteButton
-              recipeId={recipe.id}
-              isFavorite={recipe.is_favorite}
-            />
+          {/* Floating action row, top-right: ellipsis overflow + favorite.
+              The ellipsis collapses the 3+ secondary actions (Add to Plan,
+              Remix, Delete) that used to live as inline body buttons — matches
+              Apple's Mail/Notes header pattern (Phase 15 CONTEXT D-05). */}
+          <View style={[styles.heroActions, { top: insets.top + 8 }]}>
+            <View style={styles.heroActionBubble}>
+              <HeaderEllipsis
+                tintColor="#FFFFFF"
+                actions={[
+                  { label: 'Add to Plan', onPress: () => setPlanOpen(true) },
+                  { label: 'Remix', onPress: () => setRemixOpen(true) },
+                  { label: 'Delete', onPress: handleDelete, destructive: true },
+                ]}
+              />
+            </View>
+            <View style={styles.heroFavoriteInline}>
+              <FavoriteButton
+                recipeId={recipe.id}
+                isFavorite={recipe.is_favorite}
+              />
+            </View>
           </View>
         </View>
 
@@ -170,40 +186,14 @@ export default function RecipeDetailScreen() {
           />
         </View>
 
-        <View className="px-4 mt-3 flex-row gap-3">
-          <Pressable
-            onPress={() => setPlanOpen(true)}
-            style={[styles.variationsButton, { flex: 1 }]}
-            testID="add-to-plan-button"
-          >
-            <SymbolIcon name="calendar" size={18} tintColor="#B45309" />
-            <Text style={styles.variationsButtonText}>Add to plan</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setRemixOpen(true)}
-            style={[styles.variationsButton, { flex: 1 }]}
-            testID="creative-variations-button"
-          >
-            <SymbolIcon name="sparkles" size={18} tintColor="#B45309" />
-            <Text style={styles.variationsButtonText}>Remix</Text>
-          </Pressable>
-        </View>
-
-        <View className="px-4 mt-3 flex-row gap-3">
-          <View className="flex-1">
-            <Button
-              title="Edit"
-              variant="outline"
-              onPress={() => router.push(`/recipes/${recipe.id}/edit`)}
-            />
-          </View>
-          <Pressable
-            onPress={handleDelete}
-            style={styles.deleteButton}
-          >
-            <SymbolIcon name="trash" size={18} tintColor="#DC2626" />
-            <Text style={styles.deleteButtonText}>Delete</Text>
-          </Pressable>
+        {/* Edit stays as a body CTA. Add to Plan, Remix, and Delete moved
+            into the HeaderEllipsis overflow menu at top-right (Phase 15 D-05). */}
+        <View className="px-4 mt-3">
+          <Button
+            title="Edit"
+            variant="outline"
+            onPress={() => router.push(`/recipes/${recipe.id}/edit`)}
+          />
         </View>
       </ScrollView>
 
@@ -244,9 +234,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroFavorite: {
+  heroActions: {
     position: 'absolute',
-    right: 14,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  heroActionBubble: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroFavoriteInline: {
     backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: 20,
     padding: 6,
@@ -321,38 +324,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#2A221A',
     lineHeight: 23,
-  },
-  variationsButton: {
-    height: 50,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#FCD34D',
-    backgroundColor: '#FFFBEB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  variationsButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#92400E',
-  },
-  deleteButton: {
-    paddingHorizontal: 16,
-    height: 50,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#FECACA',
-    backgroundColor: '#FFF5F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 6,
-  },
-  deleteButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#DC2626',
   },
 });
