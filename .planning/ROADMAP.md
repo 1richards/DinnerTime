@@ -26,7 +26,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 12: Combine Home & Recipes** - Rationalize Home and Recipes into a single unified page (completed 2026-04-18)
 - [x] **Phase 13: Receipt Scan & Instacart Import** - Bulk pantry loading from grocery receipts and Instacart purchase history (completed 2026-04-18)
 - [x] **Phase 14: Multi-Photo Scan & Smarter Item Filtering** - Multiple photos per scan session, AI only returns identifiable cooking ingredients (completed 2026-04-18)
-- [ ] **Phase 15: UI Polish & Navigation Consistency** - Systematic audit + fixes: system icons replace emojis, consistent nav headers/back buttons, unified empty/loading states
+- [x] **Phase 15: UI Polish & Navigation Consistency** - Systematic audit + fixes: system icons replace emojis, consistent nav headers/back buttons, unified empty/loading states (completed 2026-04-18)
 - [ ] **Phase 16: Cooking Mode UX Enhancements** - Upgraded voice interaction + model, UI polish, better information display during cooking
 - [ ] **Phase 17: "Something New" — AI Recipe Exploration** - Reimagines the Suggestions segment: keyword search over AI-generated recipes, "from the pantry" filter, persisted results, remix-and-save to Recipe Box
 - [ ] **Phase 18: AI Auto-Location for Pantry Imports** - Remove forced fridge/pantry/freezer choice; AI infers per-item location across scan, receipt, and Instacart flows

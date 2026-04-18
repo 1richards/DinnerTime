@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 15-04 (maestro rebaseline) — pending
-status: executing
-stopped_at: Completed 15-03-PLAN.md (icon sweep + decorative emoji removal; all purity gates exit 0)
-last_updated: "2026-04-18T21:59:06.134Z"
-last_activity: 2026-04-18 -- Completed 15-03 (34 Ionicons files + 7 decorative emojis migrated to SymbolIcon + EmptyState; all 3 purity gates exit 0)
+current_plan: 15-04 (maestro rebaseline + HeaderEllipsis overflow) — complete; Phase 15 closed (criterion #4 deferred to Phase 19)
+status: ready_for_next_phase
+stopped_at: Completed 15-04-PLAN.md (HeaderEllipsis overflow + Maestro flows 21/22 + 10 flows annotated; Phase 15 Wave 3 complete)
+last_updated: "2026-04-18T22:10:21.490Z"
+last_activity: 2026-04-18 -- Completed 15-04 (HeaderEllipsis ActionSheetIOS + 2 new Maestro flows + 10 flows annotated; Phase 15 closed)
 progress:
   total_phases: 25
-  completed_phases: 14
+  completed_phases: 15
   total_plans: 66
-  completed_plans: 59
+  completed_plans: 60
   percent: 89
 ---
 
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 15 of 25 (UI Polish & Navigation Consistency Audit) — In Progress (3/4 plans)
-Current Plan: 15-04 (maestro rebaseline) — pending
-Status: In Progress
-Last activity: 2026-04-18 -- Completed 15-03 (34 Ionicons files + 7 decorative emojis migrated to SymbolIcon + EmptyState; all 3 purity gates exit 0)
+Phase: 15 of 25 (UI Polish & Navigation Consistency Audit) — Complete (4/4 plans)
+Current Plan: 15-04 (maestro rebaseline + HeaderEllipsis overflow) — complete
+Status: Phase 15 closed — ROADMAP criteria 1/2/3/5 satisfied; #4 DEFERRED to Phase 19
+Last activity: 2026-04-18 -- Completed 15-04 (HeaderEllipsis ActionSheetIOS + 2 new Maestro flows + 10 flows annotated; Phase 15 closed)
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -112,6 +112,7 @@ Progress: [█████████░] 89%
 | Phase 15 P01 | 5min | 2 tasks | 14 files |
 | Phase 15 P02 | 6min | 2 tasks | 10 files |
 | Phase 15 P03 | 15min | 2 tasks | 43 files |
+| Phase Phase 15 PP04 | 6min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -319,6 +320,10 @@ Recent decisions affecting current work:
 - [Phase 15-03]: scan/index.tsx consolidated to one EmptyState on no-photos branch; has-photos branch uses inline SymbolIcon (not an empty state)
 - [Phase 15-03]: recipes/import-photo uses ad-hoc layout (SymbolIcon + heading + 2 Buttons) because EmptyState supports only one action
 - [Phase 15-03]: RecipeFilterSheet + RemixSheet emoji chip arrays untouched (deferred to Phase 19 chip rewrite per Open Question #2); verify-no-decorative-emoji.sh only scopes src/app so gate passes
+- [Phase Phase 15-04]: HeaderEllipsis (ActionSheetIOS) overflow menu collapses 3 secondary actions (Add to Plan, Remix, Delete) on recipes/[id]/index top-right hero overlay; Edit stays as body CTA
+- [Phase Phase 15-04]: Maestro flow rebase was comment-annotation-only — audit found zero 'Back' text assertions, zero emoji-specific assertions, zero Ionicons-specific visual assertions; all selectors remain stable under SF Symbol refresh
+- [Phase Phase 15-04]: ROADMAP Phase 15 criterion #4 (typography/spacing/color documentation) EXPLICITLY DEFERRED to Phase 19 per plan — Phase 15 closes criteria 1, 2, 3, 5
+- [Phase Phase 15-04]: 22-dirty-form-guard.yaml registered as manual-only fallback in Maestro README — iOS Alert UIWindow occasionally unreachable from XCUITest; included cleanup-save step for idempotency
 
 ### Pending Todos
 
@@ -362,6 +367,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T21:59:06.130Z
-Stopped at: Completed 15-03-PLAN.md (icon sweep + decorative emoji removal; all purity gates exit 0)
+Last session: 2026-04-18T22:10:21.487Z
+Stopped at: Completed 15-04-PLAN.md (HeaderEllipsis overflow + Maestro flows 21/22 + 10 flows annotated; Phase 15 Wave 3 complete)
 Resume file: None
