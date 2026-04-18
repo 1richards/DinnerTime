@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 
 interface ServingSizeStepperProps {
   servings: number;
@@ -34,8 +34,9 @@ export function ServingSizeStepper({
         className={`w-9 h-9 rounded-full items-center justify-center ${
           disabledDec ? 'opacity-40' : ''
         }`}
+        accessibilityLabel="Decrease servings"
       >
-        <Ionicons name="remove" size={22} color="#1F2937" />
+        <SymbolIcon name="minus" size={22} tintColor="#1F2937" />
       </Pressable>
       <Text className="mx-3 text-base font-semibold text-warmGray-900 min-w-[80px] text-center">
         {servings} {servings === 1 ? 'serving' : 'servings'}
@@ -47,8 +48,9 @@ export function ServingSizeStepper({
         className={`w-9 h-9 rounded-full items-center justify-center ${
           disabledInc ? 'opacity-40' : ''
         }`}
+        accessibilityLabel="Increase servings"
       >
-        <Ionicons name="add" size={22} color="#1F2937" />
+        <SymbolIcon name="plus" size={22} tintColor="#1F2937" />
       </Pressable>
     </View>
   );

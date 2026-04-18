@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 import { supabase } from '../../lib/supabase';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
@@ -113,8 +113,8 @@ export function AddToPlanSheet({ visible, recipe, onClose }: Props) {
               {recipe.title}
             </Text>
           </View>
-          <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-            <Ionicons name="close" size={22} color="#3E332A" />
+          <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn} accessibilityLabel="Close">
+            <SymbolIcon name="xmark" size={22} tintColor="#3E332A" />
           </Pressable>
         </View>
 
@@ -152,10 +152,10 @@ export function AddToPlanSheet({ visible, recipe, onClose }: Props) {
                     </Text>
                   )}
                   {isSelected && (
-                    <Ionicons
+                    <SymbolIcon
                       name="checkmark"
                       size={20}
-                      color="#FFFFFF"
+                      tintColor="#FFFFFF"
                       style={{ marginLeft: 'auto' }}
                     />
                   )}
@@ -168,7 +168,7 @@ export function AddToPlanSheet({ visible, recipe, onClose }: Props) {
         <View style={styles.bottomBar}>
           {plannedOn !== null ? (
             <View style={styles.plannedRow}>
-              <Ionicons name="checkmark-circle" size={22} color="#10B981" />
+              <SymbolIcon name="checkmark.circle.fill" size={22} tintColor="#10B981" />
               <Text style={styles.plannedText}>
                 Added to {DAY_LABELS[plannedOn]}
               </Text>

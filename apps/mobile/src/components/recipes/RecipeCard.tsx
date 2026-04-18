@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import type { Recipe } from '../../types/recipe';
 import { getRecipeImage } from '../../constants/foodImages';
 import { useRecipeStore } from '../../stores/recipeStore';
@@ -67,7 +67,7 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
             ]}
             accessibilityLabel="Remix recipe"
           >
-            <Ionicons name="sparkles" size={18} color="#FFE4B5" />
+            <SymbolIcon name="sparkles" size={18} tintColor="#FFE4B5" />
           </Pressable>
           <Pressable
             onPress={(e) => {
@@ -81,10 +81,10 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
             ]}
             accessibilityLabel={recipe.is_favorite ? 'Unfavorite recipe' : 'Favorite recipe'}
           >
-            <Ionicons
-              name={recipe.is_favorite ? 'heart' : 'heart-outline'}
+            <SymbolIcon
+              name={recipe.is_favorite ? 'heart.fill' : 'heart'}
               size={20}
-              color={recipe.is_favorite ? '#EF4444' : '#FFFFFF'}
+              tintColor={recipe.is_favorite ? '#F97316' : '#FFFFFF'}
             />
           </Pressable>
         </View>
@@ -99,13 +99,13 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
         <View style={styles.metaRow}>
           {totalTime > 0 && (
             <View style={styles.metaItem}>
-              <Ionicons name="time-outline" size={13} color="#7A6651" />
+              <SymbolIcon name="clock" size={13} tintColor="#7A6651" />
               <Text style={styles.metaText}>{totalTime} min</Text>
             </View>
           )}
           {recipe.servings != null && (
             <View style={styles.metaItem}>
-              <Ionicons name="people-outline" size={13} color="#7A6651" />
+              <SymbolIcon name="person.2" size={13} tintColor="#7A6651" />
               <Text style={styles.metaText}>{recipe.servings} servings</Text>
             </View>
           )}

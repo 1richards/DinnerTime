@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 
 interface VoiceStatusBadgeProps {
   listening: boolean;
@@ -26,10 +26,10 @@ export default function VoiceStatusBadge({
       className={`flex-row items-center rounded-full border px-3 py-2 ${bg}`}
       testID="voice-status-badge"
     >
-      <Ionicons
-        name={voiceEnabled ? 'mic' : 'mic-off'}
+      <SymbolIcon
+        name={voiceEnabled ? 'mic.fill' : 'mic.slash.fill'}
         size={16}
-        color={iconColor}
+        tintColor={iconColor}
       />
       <Text className={`ml-2 text-sm font-semibold ${textColor}`}>{label}</Text>
     </Pressable>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Pressable, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 
 interface StepNavButtonsProps {
   onBack: () => void;
@@ -12,7 +12,8 @@ interface StepNavButtonsProps {
 
 interface NavButtonProps {
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  // SF Symbols has no typed glyphMap — plain string (Pitfall 5).
+  icon: string;
   onPress: () => void;
   disabled?: boolean;
   primary?: boolean;
@@ -41,8 +42,9 @@ function NavButton({
         disabled ? 'opacity-40' : ''
       }`}
       style={{ minHeight: 72 }}
+      accessibilityLabel={label}
     >
-      <Ionicons name={icon} size={28} color={iconColor} />
+      <SymbolIcon name={icon as never} size={28} tintColor={iconColor} />
       <Text className={`mt-1 text-base font-semibold ${textColor}`}>
         {label}
       </Text>
@@ -61,20 +63,20 @@ export default function StepNavButtons({
     <View className="flex-row gap-3 px-4 pb-4">
       <NavButton
         label="Back"
-        icon="arrow-back"
+        icon="arrow.backward"
         onPress={onBack}
         disabled={!canGoBack}
         testID="cook-back"
       />
       <NavButton
         label="Repeat"
-        icon="refresh"
+        icon="arrow.clockwise"
         onPress={onRepeat}
         testID="cook-repeat"
       />
       <NavButton
         label="Next"
-        icon="arrow-forward"
+        icon="arrow.forward"
         onPress={onNext}
         disabled={!canGoNext}
         primary

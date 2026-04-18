@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import { useRecipeStore } from '../../stores/recipeStore';
 
 interface FavoriteButtonProps {
@@ -9,6 +9,10 @@ interface FavoriteButtonProps {
   size?: number;
 }
 
+// Orange #F97316 preserved per Phase 15 mandate — the favorite heart is
+// the most visible orange touchpoint in the app. Inactive state is white
+// so the button reads against dark hero backgrounds; consumers placing
+// this in a light surface can override via wrapping.
 export function FavoriteButton({
   recipeId,
   isFavorite,
@@ -23,11 +27,12 @@ export function FavoriteButton({
       style={({ pressed }) => ({
         transform: [{ scale: pressed ? 0.9 : 1 }],
       })}
+      accessibilityLabel={isFavorite ? 'Unfavorite recipe' : 'Favorite recipe'}
     >
-      <Ionicons
-        name={isFavorite ? 'heart' : 'heart-outline'}
+      <SymbolIcon
+        name={isFavorite ? 'heart.fill' : 'heart'}
         size={size}
-        color={isFavorite ? '#EF4444' : '#6B7280'}
+        tintColor={isFavorite ? '#F97316' : '#FFFFFF'}
       />
     </Pressable>
   );

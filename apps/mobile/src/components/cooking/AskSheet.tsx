@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 
 interface AskSheetProps {
@@ -42,8 +42,8 @@ export default function AskSheet({
             <Text className="text-lg font-bold text-warmGray-900 flex-1 mr-3">
               You asked
             </Text>
-            <Pressable onPress={onClose} hitSlop={8}>
-              <Ionicons name="close" size={24} color="#6B7280" />
+            <Pressable onPress={onClose} hitSlop={8} accessibilityLabel="Close">
+              <SymbolIcon name="xmark" size={24} tintColor="#6B7280" />
             </Pressable>
           </View>
 

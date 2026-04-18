@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import type { HouseholdMember } from '../../types/preferences';
 import { AGE_RANGES } from '../../data/dietary';
 
@@ -72,8 +72,9 @@ export function MemberCard({ member, onPress, onDelete }: MemberCardProps) {
         }}
         className="p-2 ml-2"
         hitSlop={8}
+        accessibilityLabel="Delete member"
       >
-        <Ionicons name="trash-outline" size={20} color="#9CA3AF" />
+        <SymbolIcon name="trash" size={20} tintColor="#9CA3AF" />
       </Pressable>
     </Pressable>
   );

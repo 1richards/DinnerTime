@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TextInput, Pressable, FlatList } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import { useIngredientSearch } from '../../hooks/useIngredientSearch';
 import { ChipToggle } from '../ui/ChipToggle';
 
@@ -34,7 +34,7 @@ export function IngredientSearch({
     <View>
       {/* Search input */}
       <View className="flex-row items-center bg-warmGray-50 border border-warmGray-200 rounded-xl px-3 py-2.5">
-        <Ionicons name="search" size={18} color="#9CA3AF" />
+        <SymbolIcon name="magnifyingglass" size={18} tintColor="#9CA3AF" />
         <TextInput
           className="flex-1 ml-2 text-base text-warmGray-900"
           placeholder="Search ingredients..."
@@ -47,8 +47,8 @@ export function IngredientSearch({
           autoCorrect={false}
         />
         {query.length > 0 && (
-          <Pressable onPress={() => setQuery('')} hitSlop={8}>
-            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+          <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityLabel="Clear search">
+            <SymbolIcon name="xmark.circle.fill" size={18} tintColor="#9CA3AF" />
           </Pressable>
         )}
       </View>

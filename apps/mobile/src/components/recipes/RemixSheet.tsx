@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 import {
   useProgressionStore,
@@ -223,7 +223,7 @@ export function RemixSheet({
             </Text>
           </View>
           <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-            <Ionicons name="close" size={22} color="#3E332A" />
+            <SymbolIcon name="xmark" size={22} tintColor="#3E332A" />
           </Pressable>
         </View>
 
@@ -247,7 +247,7 @@ export function RemixSheet({
                   <Text style={styles.modeLabel}>{m.label}</Text>
                   <Text style={styles.modeSub}>{m.sub}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#A89178" />
+                <SymbolIcon name="chevron.forward" size={18} tintColor="#A89178" />
               </Pressable>
             ))}
           </ScrollView>
@@ -264,7 +264,7 @@ export function RemixSheet({
         {/* Error state */}
         {selectedMode && error && (
           <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle-outline" size={32} color="#DC2626" />
+            <SymbolIcon name="exclamationmark.circle" size={32} tintColor="#DC2626" />
             <Text style={styles.errorText}>{error}</Text>
             <View style={{ height: 12 }} />
             <Button title="Try Another Mode" variant="outline" onPress={handleTryAnother} />
@@ -296,9 +296,9 @@ export function RemixSheet({
                       onPress={() => handleOpenSaved(i)}
                       style={styles.savedRow}
                     >
-                      <Ionicons name="checkmark-circle" size={16} color="#047857" />
+                      <SymbolIcon name="checkmark.circle.fill" size={16} tintColor="#047857" />
                       <Text style={styles.savedText}>Saved to library</Text>
-                      <Ionicons name="chevron-forward" size={14} color="#047857" />
+                      <SymbolIcon name="chevron.forward" size={14} tintColor="#047857" />
                     </Pressable>
                   ) : (
                     <Pressable
@@ -313,7 +313,7 @@ export function RemixSheet({
                         <ActivityIndicator size="small" color="#C05A00" />
                       ) : (
                         <>
-                          <Ionicons name="add-circle-outline" size={16} color="#C05A00" />
+                          <SymbolIcon name="plus.circle" size={16} tintColor="#C05A00" />
                           <Text style={styles.saveBtnText}>Save as new recipe</Text>
                         </>
                       )}

@@ -8,7 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 
 interface AddItemSheetProps {
@@ -84,8 +84,8 @@ export function AddItemSheet({ visible, onClose, onSubmit }: AddItemSheetProps) 
               <Text className="text-xl font-bold text-warmGray-900">
                 Add item
               </Text>
-              <Pressable onPress={handleClose} hitSlop={8}>
-                <Ionicons name="close" size={24} color="#9CA3AF" />
+              <Pressable onPress={handleClose} hitSlop={8} accessibilityLabel="Close">
+                <SymbolIcon name="xmark" size={24} tintColor="#9CA3AF" />
               </Pressable>
             </View>
 

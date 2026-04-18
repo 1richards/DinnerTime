@@ -7,7 +7,7 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 
 export type SourceFilter = 'all' | 'url' | 'photo' | 'manual' | 'ai';
@@ -90,8 +90,8 @@ export function RecipeFilterSheet({ visible, initial, onClose, onApply }: Props)
             <Text style={styles.label}>FILTERS</Text>
             <Text style={styles.title}>Narrow your recipes</Text>
           </View>
-          <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-            <Ionicons name="close" size={22} color="#3E332A" />
+          <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn} accessibilityLabel="Close">
+            <SymbolIcon name="xmark" size={22} tintColor="#3E332A" />
           </Pressable>
         </View>
 
@@ -103,7 +103,7 @@ export function RecipeFilterSheet({ visible, initial, onClose, onApply }: Props)
               style={styles.toggleRow}
             >
               <View style={styles.toggleIcon}>
-                <Ionicons name="heart" size={18} color="#EF4444" />
+                <SymbolIcon name="heart.fill" size={18} tintColor="#F97316" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.toggleLabel}>Favorites only</Text>
@@ -131,7 +131,7 @@ export function RecipeFilterSheet({ visible, initial, onClose, onApply }: Props)
               style={styles.toggleRow}
             >
               <View style={styles.toggleIcon}>
-                <Ionicons name="basket-outline" size={18} color="#C05A00" />
+                <SymbolIcon name="basket" size={18} tintColor="#C05A00" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.toggleLabel}>From my pantry</Text>
@@ -216,10 +216,10 @@ export function RecipeFilterSheet({ visible, initial, onClose, onApply }: Props)
                     </Text>
                   ) : null}
                   {selected && (
-                    <Ionicons
+                    <SymbolIcon
                       name="checkmark"
                       size={18}
-                      color="#FFFFFF"
+                      tintColor="#FFFFFF"
                       style={{ marginLeft: 'auto' }}
                     />
                   )}

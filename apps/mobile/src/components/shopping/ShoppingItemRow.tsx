@@ -7,7 +7,7 @@ import {
   Animated,
 } from 'react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
-import { Ionicons } from '@expo/vector-icons';
+import { SymbolIcon } from '../ui/SymbolIcon';
 import type { ShoppingListItem } from '../../types/shopping';
 
 interface ShoppingItemRowProps {
@@ -72,7 +72,7 @@ export function ShoppingItemRow({
           borderRadius: 12,
         }}
       >
-        <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
+        <SymbolIcon name="trash" size={22} tintColor="#FFFFFF" />
         <Text className="text-white text-xs font-semibold mt-1">Delete</Text>
       </RectButton>
     );
@@ -106,8 +106,8 @@ export function ShoppingItemRow({
           returnKeyType="done"
           onSubmitEditing={commit}
         />
-        <Pressable onPress={cancelEdit} hitSlop={8} className="ml-3">
-          <Ionicons name="close" size={20} color="#9CA3AF" />
+        <Pressable onPress={cancelEdit} hitSlop={8} className="ml-3" accessibilityLabel="Cancel edit">
+          <SymbolIcon name="xmark" size={20} tintColor="#9CA3AF" />
         </Pressable>
       </View>
     );
@@ -133,9 +133,10 @@ export function ShoppingItemRow({
               ? 'bg-orange-500 border-orange-500'
               : 'border-warmGray-300 bg-white'
           }`}
+          accessibilityLabel={item.checked ? 'Uncheck item' : 'Check item'}
         >
           {item.checked && (
-            <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+            <SymbolIcon name="checkmark" size={18} weight="bold" tintColor="#FFFFFF" />
           )}
         </Pressable>
 
