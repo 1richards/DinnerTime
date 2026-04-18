@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 19-02 (button + chip + input rewrite) — complete (3/6 plans)
-status: Phase 19 Wave 2 progressing — 19-01 + 19-02 + 19-03 landed (tokens, primitives, search/row); 19-04/05/06 queued
-stopped_at: Completed 19-02-PLAN.md (5-variant Button + two-family Chip + rethemed Input; pure-className tests; outline and ChipToggle as deprecation shims for Plan 05 sweep)
-last_updated: "2026-04-18T22:30:50.957Z"
-last_activity: 2026-04-18 -- Completed 19-02 (Button 5-variant 44pt + Chip filter/display kinds + Input semantic-token retheme)
+current_plan: "19-04 (card treatments: mode-aware RecipeCard + dense DayRow) — complete (4/6 plans)"
+status: Phase 19 Wave 2 progressing — 19-01 + 19-02 + 19-03 + 19-04 landed (tokens, primitives, search/row, card treatments); 19-05/06 queued
+stopped_at: Completed 19-04-PLAN.md (mode-aware RecipeCard + dense DayRow with Chip-driven status via deriveStatusChips helper)
+last_updated: "2026-04-18T22:32:06.816Z"
+last_activity: 2026-04-18 -- Completed 19-04 (mode-aware RecipeCard + dense DayRow with Chip status; deriveStatusChips helper matrix-tested)
 progress:
   total_phases: 25
   completed_phases: 15
   total_plans: 66
-  completed_plans: 64
-  percent: 97
+  completed_plans: 65
+  percent: 98
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 19 of 25 (Design Professionalization — Icons, Buttons, Navigation, Search Bars)
-Current Plan: 19-02 (button + chip + input rewrite) — complete (3/6 plans)
-Status: Phase 19 Wave 2 progressing — 19-01 + 19-02 + 19-03 landed (tokens, primitives, search/row); 19-04/05/06 queued
-Last activity: 2026-04-18 -- Completed 19-02 (Button 5-variant 44pt + Chip filter/display kinds + Input semantic-token retheme)
+Current Plan: 19-04 (card treatments: mode-aware RecipeCard + dense DayRow) — complete (4/6 plans)
+Status: Phase 19 Wave 2 progressing — 19-01 + 19-02 + 19-03 + 19-04 landed (tokens, primitives, search/row, card treatments); 19-05/06 queued
+Last activity: 2026-04-18 -- Completed 19-04 (mode-aware RecipeCard + dense DayRow with Chip status; deriveStatusChips helper matrix-tested)
 
-Progress: [██████████] 97%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -116,6 +116,7 @@ Progress: [██████████] 97%
 | Phase 19 P01 | 3min | 4 tasks | 9 files |
 | Phase 19 P03 | 3min | 2 tasks | 7 files |
 | Phase 19 P02 | 4min | 3 tasks | 8 files |
+| Phase 19 P04 | 5min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -339,6 +340,11 @@ Recent decisions affecting current work:
 - [Phase 19]: [Phase 19-02]: Button rewritten to 5-variant 44pt system with pure variantStyles + test; 'outline' kept as deprecated alias mapping to 'secondary' for 23 legacy call sites (Plan 05 sweep removes)
 - [Phase 19]: [Phase 19-02]: Chip is two-family (kind=filter|display) in a single component file; chipStyles.ts resolveChipClasses is a pure function asserted as data in vitest node env; ChipToggle reduced to deprecation shim forwarding to Chip(kind=filter)
 - [Phase 19]: [Phase 19-02]: Input API preserved exactly (error?: string, not error?: boolean) — existing 5 call sites use error:string; plan explicitly permitted preserving existing shape while swapping only color/border/text classes to tokens
+- [Phase 19]: [Phase 19-04]: RecipeCard gets mode:'grid'|'list' prop (default 'grid' — backward-compat); pure resolveCardClasses returns {container,imageContainer,body,title,metaRow,metaText} for vitest-guarded class contracts
+- [Phase 19]: [Phase 19-04]: DayRow intentionally does NOT consume ItemRow — day-label column is text typography (w-12 label), not an affordance slot; file-top JSDoc documents the non-consumption rationale
+- [Phase 19]: [Phase 19-04]: Status-chip derivation extracted to pure deriveStatusChips helper with matrix test (4 statuses × stretch × pantryReady) so silent regressions cannot hide behind Plan tab screenshots
+- [Phase 19]: [Phase 19-04]: vitest.config exclude narrowed from 'src/components/!(ui)/**' to 'src/components/**/*.native.test.*' — unblocks pure helper tests under recipes/ and plan/ without exposing RN-renderer-coupled tests
+- [Phase 19]: [Phase 19-04]: isStretch/pantryReady flags threaded through deriveStatusChips even though MealPlanEntry lacks them today — one-line data binding when Phase 22 plan refactor adds the fields
 
 ### Pending Todos
 
@@ -382,6 +388,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T22:30:31.346Z
-Stopped at: Completed 19-02-PLAN.md (5-variant Button + two-family Chip + rethemed Input; pure-className tests; outline and ChipToggle as deprecation shims for Plan 05 sweep)
+Last session: 2026-04-18T22:32:06.811Z
+Stopped at: Completed 19-04-PLAN.md (mode-aware RecipeCard + dense DayRow with Chip-driven status via deriveStatusChips helper)
 Resume file: None
