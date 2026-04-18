@@ -73,6 +73,8 @@ pantry.post('/scan', async (c) => {
  * Body: { images: string[] (1-5 base64 images), source_location: 'fridge' | 'pantry' | 'freezer' }
  */
 pantry.post('/scan-batch', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
   const body = await c.req.json<{ images: string[]; source_location: 'fridge' | 'pantry' | 'freezer' }>();
 
   const validLocations = ['fridge', 'pantry', 'freezer'];
@@ -90,7 +92,18 @@ pantry.post('/scan-batch', async (c) => {
   }
 
   try {
-    const items = await identifyFoodItemsBatch(body.images, body.source_location);
+    // Fetch existing items at this location so the AI can dedup against them.
+    // Shelf-stable items (condiments, oils) appear in every scan — filtering
+    // them out here keeps the review screen focused on what's actually new.
+    const { data: existingItems } = await supabase
+      .from('pantry_items')
+      .select('name')
+      .eq('profile_id', user.id)
+      .eq('source_location', body.source_location)
+      .eq('status', 'available');
+    const existingNames = (existingItems ?? []).map((row: { name: string }) => row.name);
+
+    const items = await identifyFoodItemsBatch(body.images, body.source_location, existingNames);
     return c.json({ data: items });
   } catch (error) {
     console.error('[pantry/scan-batch] Vision error:', error);

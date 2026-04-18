@@ -116,6 +116,6 @@ describe('POST /scan-batch', () => {
     const body = await res.json();
     expect(body.data).toHaveLength(2);
     expect(body.data[0].name).toBe('milk');
-    expect(mockIdentifyFoodItemsBatch).toHaveBeenCalledWith(['img1', 'img2'], 'fridge');
+    expect(mockIdentifyFoodItemsBatch).toHaveBeenCalledWith(['img1', 'img2'], 'fridge', expect.any(Array));
   });
 });

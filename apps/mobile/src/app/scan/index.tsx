@@ -4,11 +4,11 @@ import {
   Text,
   Alert,
   ActivityIndicator,
-  FlatList,
   TouchableOpacity,
   Image,
   Modal,
   Pressable,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -25,6 +25,11 @@ interface CapturedPhoto {
 }
 
 const MAX_PHOTOS = 5;
+// Fit 6 slots (5 photos + add button) across screen width with gaps.
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const H_PADDING = 32; // 16px on each side
+const SLOT_GAP = 6;
+const SLOT_SIZE = Math.floor((SCREEN_WIDTH - H_PADDING - SLOT_GAP * (MAX_PHOTOS + 1 - 1)) / (MAX_PHOTOS + 1));
 
 export default function ScanScreen() {
   const [selectedLocation, setSelectedLocation] = useState<SourceLocation>('fridge');
@@ -110,23 +115,23 @@ export default function ScanScreen() {
   const hasPhotos = capturedPhotos.length > 0;
   const canAddMore = capturedPhotos.length < MAX_PHOTOS;
 
-  const renderThumbnail = ({ item }: { item: CapturedPhoto }) => (
-    <View className="mr-3 relative">
+  const renderThumbnail = (item: CapturedPhoto) => (
+    <View key={item.id} style={{ width: SLOT_SIZE, position: 'relative' }}>
       <TouchableOpacity
         onPress={() => setPreviewPhoto(item)}
         activeOpacity={0.8}
       >
         <Image
           source={{ uri: item.uri }}
-          className="w-[72px] h-[72px] rounded-lg"
+          style={{ width: SLOT_SIZE, height: SLOT_SIZE, borderRadius: 8 }}
           resizeMode="cover"
         />
       </TouchableOpacity>
       <TouchableOpacity
         onPress={() => handleRemovePhoto(item.id)}
-        className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 items-center justify-center"
+        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 items-center justify-center"
       >
-        <Text className="text-white text-xs font-bold">X</Text>
+        <Text className="text-white text-[10px] font-bold">X</Text>
       </TouchableOpacity>
     </View>
   );
@@ -135,8 +140,18 @@ export default function ScanScreen() {
     if (!canAddMore) return null;
     return (
       <TouchableOpacity
+        key="add-button"
         onPress={handleTakePhoto}
-        className="w-[72px] h-[72px] rounded-lg border-2 border-dashed border-warmGray-300 items-center justify-center"
+        style={{
+          width: SLOT_SIZE,
+          height: SLOT_SIZE,
+          borderRadius: 8,
+          borderWidth: 2,
+          borderStyle: 'dashed',
+          borderColor: '#D6D3D1',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
         activeOpacity={0.7}
       >
         <Text className="text-2xl text-warmGray-400">+</Text>
@@ -188,7 +203,7 @@ export default function ScanScreen() {
                   : 'Maximum photos reached'}
               </Text>
               <Button
-                title="Scan All Photos"
+                title="Submit"
                 onPress={handleSubmitBatch}
                 className="w-full mb-3"
               />
@@ -202,18 +217,20 @@ export default function ScanScreen() {
           )}
         </View>
 
-        {/* Thumbnail strip */}
+        {/* Thumbnail strip — fixed row, fits MAX_PHOTOS + add button */}
         {hasPhotos && (
           <View className="pb-4 pt-2 border-t border-warmGray-200">
-            <FlatList
-              data={capturedPhotos}
-              keyExtractor={(item) => item.id}
-              renderItem={renderThumbnail}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8 }}
-              ListFooterComponent={renderAddButton}
-            />
+            <View
+              style={{
+                flexDirection: 'row',
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                gap: SLOT_GAP,
+              }}
+            >
+              {capturedPhotos.map(renderThumbnail)}
+              {renderAddButton()}
+            </View>
           </View>
         )}
       </View>

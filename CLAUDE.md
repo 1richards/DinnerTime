@@ -181,6 +181,64 @@ Or use the helper: `apps/mobile/.maestro/scripts/uat.sh {boot|smoke|all|shot|log
 
 **Adding flows.** Copy an existing `.yaml` in `apps/mobile/.maestro/`. Take screenshots liberally — they're free debugging gold and Claude can `Read` them directly. See `apps/mobile/.maestro/README.md` for the full inventory.
 
+## Dev Environment Startup
+
+Starting the full dev stack requires three things: the backend server, Metro bundler, and (for physical iPhone testing) a Cloudflare tunnel. Each session starts from zero — nothing persists across Claude sessions.
+
+### 1. Start the Server
+
+```bash
+cd /Users/patrickrichards/DinnerTime
+set -a && source .env && set +a && cd packages/server && pnpm dev
+```
+
+The server runs on port 3000. Environment variables live in the **root** `.env` file (not `packages/server/.env`). The server uses `dotenv` to load `../../.env` automatically, but `tsx watch` hot-reloads can sometimes lose the env — if the server crashes with `Missing required environment variable`, source the root `.env` manually as shown above.
+
+### 2. Start Metro
+
+```bash
+cd apps/mobile
+npx expo start --dev-client --lan        # works for both simulator and iPhone on same WiFi
+```
+
+- Use `--lan` always. `--tunnel` (ngrok) is unreliable and not needed when iPhone is on the same WiFi as the Mac Mini.
+- After changing `apps/mobile/.env`, you MUST clear the Metro cache: `rm -rf .expo && npx expo start --dev-client --lan --clear`. Expo inlines `EXPO_PUBLIC_*` vars at **bundle time** — a running Metro won't pick up `.env` changes.
+- If the app shows stale errors after a URL change, the Zustand persisted state in AsyncStorage may need clearing. Force-close the app or, in extreme cases, delete `RCTAsyncLocalStorage_V1` from the simulator's app container.
+
+### 3. Cloudflare Tunnel (for physical iPhone)
+
+The iPhone cannot reach `localhost` or `127.0.0.1` — those resolve to the phone itself. For physical device testing, start a Cloudflare tunnel:
+
+```bash
+cloudflared tunnel --url http://localhost:3000
+# Outputs a URL like: https://random-words.trycloudflare.com
+```
+
+Then update `apps/mobile/.env`:
+```
+EXPO_PUBLIC_API_URL=https://<tunnel-url>.trycloudflare.com
+```
+
+**Tunnel URLs are ephemeral** — they change every time `cloudflared` restarts. Update `.env` and restart Metro with `--clear` each session.
+
+For **simulator-only** testing, use `EXPO_PUBLIC_API_URL=http://localhost:3000` (no tunnel needed).
+
+### Environment Files
+
+| File | Purpose | Notes |
+|------|---------|-------|
+| `.env` (root) | Server env vars (Supabase, Anthropic, Google, Instacart keys) | Gitignored. All secrets live here. |
+| `apps/mobile/.env` | Mobile env vars (`EXPO_PUBLIC_*`) | Gitignored. Only public keys + API URL. |
+| `.env.example` (root) | Template showing required vars | Committed. No real values. |
+
+### Known Gotchas
+
+- **iPhone camera photos exceed Anthropic's 5MB limit** at high quality. `scan/index.tsx` uses `quality: 0.4` to keep images under 5MB. Don't raise this without testing on a real device.
+- **`SecureStore unavailable` warning** on simulator is expected — Expo SecureStore requires a real Keychain. Auth falls back to AsyncStorage. Not a bug.
+- **Server binds to IPv6 by default** (`@hono/node-server` behavior). Both IPv4 and IPv6 localhost work from the simulator. If networking issues arise, add `hostname: '0.0.0.0'` to the `serve()` call in `packages/server/src/index.ts`.
+- **Mac Mini host**: `clawdaddy` on Tailscale (`100.90.230.96`), LAN IP typically `192.168.4.43`. iPhone must be on the same WiFi (`192.168.4.x` network).
+- **Dev client bundle ID**: `com.dinnertime.app` (not `com.patrickrrichards.dinnertime`).
+
 <!-- GSD:profile-start -->
 ## Developer Profile
 

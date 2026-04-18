@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { Animated, StyleSheet } from 'react-native';
 
-export const LARGE_HEADER_HEIGHT = 100;
+export const LARGE_HEADER_HEIGHT = 68;
 export const COLLAPSED_HEADER_HEIGHT = 52;
 
 export function useCollapsingHeader() {
@@ -36,16 +36,16 @@ export function useCollapsingHeader() {
 export const collapsingHeaderStyles = StyleSheet.create({
   largeHeader: {
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 8,
-    minHeight: LARGE_HEADER_HEIGHT,
+    paddingTop: 0,
+    paddingBottom: 4,
+    marginTop: -6,
   },
   largeTitle: {
     fontSize: 34,
     fontWeight: '900',
     color: '#1A140F',
     letterSpacing: -0.8,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   largeSubtitle: {
     fontSize: 14,

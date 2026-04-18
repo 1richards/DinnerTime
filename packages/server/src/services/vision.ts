@@ -116,7 +116,8 @@ export async function identifyFoodItems(
 
 export async function identifyFoodItemsBatch(
   base64Images: string[],
-  sourceLocation: 'fridge' | 'pantry' | 'freezer'
+  sourceLocation: 'fridge' | 'pantry' | 'freezer',
+  existingItemNames: string[] = []
 ): Promise<ScanResult[]> {
   // Validate each image against the 5MB limit.
   for (let i = 0; i < base64Images.length; i++) {
@@ -130,8 +131,17 @@ export async function identifyFoodItemsBatch(
 
   const count = base64Images.length;
   const ai = getClientFor('vision.pantryScan');
+
+  // Build the "already in pantry" directive when items exist. This prevents
+  // shelf-stable items (condiments, oils, etc.) from cluttering review results
+  // on every scan. The reconciler still updates last_seen_at for matched items
+  // via a separate code path, so skipping them here is purely a UX filter.
+  const existingBlock = existingItemNames.length > 0
+    ? `\n\nALREADY IN PANTRY (do NOT report these — they are already tracked):\n${existingItemNames.map((n) => `- ${n}`).join('\n')}\n\nIf you see any of the above items in the photos, exclude them from your response. Only report NEW items not already in this list.`
+    : '';
+
   const result = await ai.analyzeImagesStructured<{ items: ScanResult[] }>({
-    user: `You are analyzing ${count} photos of a ${sourceLocation}. These photos may show overlapping areas -- deduplicate items that appear in multiple photos.\n\n${FILTERING_RULES}`,
+    user: `You are analyzing ${count} photos of a ${sourceLocation}. These photos may show overlapping areas -- deduplicate items that appear in multiple photos.\n\n${FILTERING_RULES}${existingBlock}`,
     images: base64Images.map((b64) => ({ base64: b64, mimeType: 'image/jpeg' as const })),
     tool: foodItemsTool,
     maxTokens: 8192,

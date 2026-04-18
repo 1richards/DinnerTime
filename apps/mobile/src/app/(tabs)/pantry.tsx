@@ -105,19 +105,6 @@ export default function PantryScreen() {
         <Text style={styles.compactTitle}>Pantry</Text>
       </Animated.View>
 
-      {/* Action row — camera scan */}
-      <View style={styles.actionRow} pointerEvents="box-none">
-        <View style={{ flex: 1 }} />
-        <Pressable
-          onPress={() => router.push('/scan')}
-          style={styles.actionBtn}
-          hitSlop={8}
-          accessibilityLabel="Scan items"
-        >
-          <Ionicons name="camera-outline" size={20} color="#3E332A" />
-        </Pressable>
-      </View>
-
       <PantryItemList
         items={availableItems}
         refreshing={isLoading}
@@ -127,10 +114,34 @@ export default function PantryScreen() {
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingBottom: 140 }}
       />
+
+      <Pressable
+        onPress={() => router.push('/scan')}
+        style={styles.fab}
+        accessibilityLabel="Scan items"
+      >
+        <Ionicons name="camera" size={28} color="#FFFFFF" />
+      </Pressable>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   ...collapsingHeaderStyles,
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#F97316',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 8,
+  },
 });
