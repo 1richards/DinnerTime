@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 1 of 3 (Phase 12 in progress)
+current_plan: 2 of 3 (Phase 12 in progress)
 status: executing
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-04-18T05:21:58.810Z"
-last_activity: 2026-04-18 -- Completed 12-01 unified Kitchen tab (merged Home + Recipes into 4-tab bar)
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-04-18T05:25:34.940Z"
+last_activity: 2026-04-18 -- Completed 12-02 route-call-site sweep (all /(tabs) refs now target /(tabs)/kitchen; typecheck green)
 progress:
   total_phases: 15
   completed_phases: 13
   total_plans: 56
-  completed_plans: 54
-  percent: 96
+  completed_plans: 55
+  percent: 98
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 12 of 15 (Combine Home + Recipes)
-Current Plan: 1 of 3 (Phase 12 in progress)
+Current Plan: 2 of 3 (Phase 12 in progress)
 Status: In Progress
-Last activity: 2026-04-18 -- Completed 12-01 unified Kitchen tab (merged Home + Recipes into 4-tab bar)
+Last activity: 2026-04-18 -- Completed 12-02 route-call-site sweep (all /(tabs) refs now target /(tabs)/kitchen; typecheck green)
 
-Progress: [█████████░] 96%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -107,6 +107,7 @@ Progress: [█████████░] 96%
 | Phase 13 P01 | 6min | 2 tasks | 4 files |
 | Phase 13 P02 | 14min | 3 tasks | 8 files |
 | Phase 12-combine-home-recipes P01 | 2 min | 3 tasks | 4 files |
+| Phase 12-combine-home-recipes P02 | 1 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -280,6 +281,8 @@ Recent decisions affecting current work:
 - [Phase 12-combine-home-recipes]: Two independent useCollapsingHeader() instances — one per segment; active segment drives compact-header opacity
 - [Phase 12-combine-home-recipes]: RegenerateFab calls fetchSuggestions (not refreshSuggestions — which CONTEXT.md cited but does not exist in store)
 - [Phase 12-combine-home-recipes]: Atomic swap: rewrite _layout.tsx + delete old index/recipes files in same task so /(tabs) redirect never resolves stale
+- [Phase 12-combine-home-recipes]: Save-flow redirects use /(tabs)/kitchen?segment=library so saved recipes are immediately visible (Research Pitfall 3)
+- [Phase 12-combine-home-recipes]: Auth/root/onboarding redirects target /(tabs)/kitchen — no index tab after 12-01 consolidation
 
 ### Pending Todos
 
@@ -323,6 +326,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T05:21:58.807Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-04-18T05:25:31.470Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
