@@ -1,3 +1,67 @@
+/*
+ * Design-token source of truth (Phase 19).
+ * Use SPACE-SEPARATED RGB channels, not hex — required for Tailwind `<alpha-value>`
+ * opacity modifiers (e.g., `bg-brand/15`). See 19-RESEARCH.md Pitfall 1.
+ *
+ * Keep these values IN SYNC with apps/mobile/src/design/tokens.ts (hex mirror).
+ * tokens.test.ts enforces parity; drift will fail the suite.
+ *
+ * NOTE FOR DOWNSTREAM PLANS (19-02..19-06): after any edit here, flush the Metro
+ * cache before the next dev-client run:
+ *   rm -rf apps/mobile/.expo && (cd apps/mobile && npx expo start --dev-client --lan --clear)
+ * See CLAUDE.md "Metro cache" gotcha and 19-RESEARCH.md Pitfall 2.
+ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    /* Brand */
+    --color-brand: 198 93 58;
+    --color-brand-pressed: 167 73 44;
+
+    /* Surfaces */
+    --color-bg: 250 247 242;
+    --color-surface: 255 255 255;
+    --color-surface-subtle: 241 234 224;
+
+    /* Text */
+    --color-text-primary: 28 25 23;
+    --color-text-secondary: 92 77 61;
+    --color-text-tertiary: 168 145 120;
+
+    /* Semantic state */
+    --color-success: 22 163 74;
+    --color-warning: 217 119 6;
+    --color-destructive: 220 38 38;
+    --color-info: 37 99 235;
+
+    /* Borders */
+    --color-border: 229 217 202;
+    --color-border-subtle: 241 234 224;
+  }
+
+  /*
+   * Dark-mode readiness — STRUCTURAL ONLY.
+   * Per Phase 19 CONTEXT: "Light mode only in this phase. Design tokens must be
+   * structured so dark mode is a drop-in palette swap later."
+   * No dark UI ships in Phase 19; this block is intentionally commented out so the
+   * architecture is obvious without changing any rendered output.
+   *
+   * @media (prefers-color-scheme: dark) {
+   *   :root {
+   *     --color-bg: 20 18 16;
+   *     --color-surface: 30 27 24;
+   *     --color-surface-subtle: 42 36 30;
+   *     --color-text-primary: 245 240 232;
+   *     --color-text-secondary: 196 183 164;
+   *     --color-text-tertiary: 143 128 108;
+   *     --color-border: 64 55 45;
+   *     --color-border-subtle: 48 40 32;
+   *     // brand + semantic tokens can stay — tested against both surfaces
+   *   }
+   * }
+   */
+}
