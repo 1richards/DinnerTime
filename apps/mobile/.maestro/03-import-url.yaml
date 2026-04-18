@@ -5,9 +5,11 @@ name: "03 — recipe import: paste URL, wait for AI parse, review and save"
 
 - takeScreenshot: 02-home
 
-# Go to Recipes tab
+# Go to Kitchen tab → Library segment (Phase 12 consolidation)
 - tapOn:
-    text: ".*Recipes.*"
+    text: "Kitchen"
+- tapOn:
+    text: "Library"
 
 - takeScreenshot: 03-recipes-tab
 
@@ -67,9 +69,9 @@ name: "03 — recipe import: paste URL, wait for AI parse, review and save"
 
 - takeScreenshot: 09-saving
 
-# Final assertion: confirm we are on (or returned to) the Recipes library.
+# Final assertion: confirm we are on (or returned to) the Kitchen Library segment.
 - extendedWaitUntil:
     visible:
-      text: ".*My Recipes.*"
+      text: "Search recipes"
     timeout: 20000
 - takeScreenshot: 10-saved-to-library

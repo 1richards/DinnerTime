@@ -1,7 +1,8 @@
 appId: com.dinnertime.app
-name: "08 — home: landing page renders after login"
-# Verifies the Home tab lands on the greeting + dinner dashboard after
-# auth hydrates. Settings navigation is tested in flow 13 via deep link.
+name: "08 — kitchen: suggestions segment renders after login"
+# Verifies the Kitchen tab opens on the Suggestions segment (default) with
+# greeting + "What should we cook tonight" hero after auth hydrates.
+# Settings navigation is tested in flow 13 via deep link.
 ---
 - runFlow: _ensure-logged-in.yaml
 
