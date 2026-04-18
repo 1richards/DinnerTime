@@ -4,6 +4,47 @@ import { vi } from 'vitest';
 // These are defined globally so downstream screen tests inherit the same
 // stub surface without re-mocking per file.
 
+// react-native ships Flow-annotated source that vitest's bundler cannot
+// parse. Tests that exercise pure logic never need the real module; they
+// only need identifiable primitive references to assert element trees.
+// Each primitive is a distinct dummy function-component so test code can
+// match by reference (e.g. `el.type === View`).
+vi.mock('react-native', () => {
+  const View = (_props: unknown) => null;
+  const Text = (_props: unknown) => null;
+  const Pressable = (_props: unknown) => null;
+  const TouchableOpacity = (_props: unknown) => null;
+  const Image = (_props: unknown) => null;
+  const ActivityIndicator = (_props: unknown) => null;
+  const ScrollView = (_props: unknown) => null;
+  const FlatList = (_props: unknown) => null;
+  const Modal = (_props: unknown) => null;
+  const TextInput = (_props: unknown) => null;
+  const Alert = { alert: vi.fn() };
+  const Platform = { OS: 'ios', select: (map: Record<string, unknown>) => map.ios };
+  const StyleSheet = { create: <T,>(styles: T) => styles, flatten: (x: unknown) => x };
+  const Dimensions = { get: () => ({ width: 390, height: 844 }) };
+  const Animated = { View, Text, createAnimatedComponent: (c: unknown) => c };
+  return {
+    View,
+    Text,
+    Pressable,
+    TouchableOpacity,
+    Image,
+    ActivityIndicator,
+    ScrollView,
+    FlatList,
+    Modal,
+    TextInput,
+    Alert,
+    Platform,
+    StyleSheet,
+    Dimensions,
+    Animated,
+    default: {},
+  };
+});
+
 vi.mock('expo-speech', () => ({
   speak: vi.fn(),
   stop: vi.fn(),
