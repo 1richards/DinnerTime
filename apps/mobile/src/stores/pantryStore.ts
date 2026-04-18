@@ -15,6 +15,8 @@ interface PantryState {
   loadItems: (profileId: string) => Promise<void>;
   startScan: (base64Image: string, sourceLocation: SourceLocation) => Promise<void>;
   startBatchScan: (base64Images: string[], sourceLocation: SourceLocation) => Promise<void>;
+  startReceiptScan: (base64Image: string, sourceLocation: SourceLocation) => Promise<void>;
+  startInstacartImport: (base64Image: string) => Promise<void>;
   updateReviewItem: (id: string, updates: Partial<ReviewItem>) => void;
   addReviewItem: (item: ReviewItem) => void;
   removeReviewItem: (id: string) => void;
@@ -117,6 +119,86 @@ export const usePantryStore = create<PantryState>()(
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.error ?? 'Batch scan failed');
+      }
+
+      const data = await response.json();
+      const reviewItems: ReviewItem[] = (data.data ?? []).map(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (item: any, index: number) => ({
+          id: `scan-${Date.now()}-${index}`,
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          confidence: item.confidence,
+          category: item.category,
+          accepted: item.confidence >= 0.7,
+          userEdited: false,
+        })
+      );
+
+      set({ scanResults: reviewItems, isScanning: false });
+    } catch (err) {
+      set({ isScanning: false });
+      throw err;
+    }
+  },
+
+  startReceiptScan: async (base64Image: string, sourceLocation: SourceLocation) => {
+    set({ isScanning: true });
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/pantry/scan-receipt`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ image: base64Image, source_location: sourceLocation }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error ?? 'Receipt scan failed');
+      }
+
+      const data = await response.json();
+      const reviewItems: ReviewItem[] = (data.data ?? []).map(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (item: any, index: number) => ({
+          id: `scan-${Date.now()}-${index}`,
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          confidence: item.confidence,
+          category: item.category,
+          accepted: item.confidence >= 0.7,
+          userEdited: false,
+        })
+      );
+
+      set({ scanResults: reviewItems, isScanning: false });
+    } catch (err) {
+      set({ isScanning: false });
+      throw err;
+    }
+  },
+
+  startInstacartImport: async (base64Image: string) => {
+    set({ isScanning: true });
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/pantry/import-instacart`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ image: base64Image }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error ?? 'Instacart import failed');
       }
 
       const data = await response.json();
