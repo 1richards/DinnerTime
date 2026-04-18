@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 2 of 2 (Phase 13 complete)
+current_plan: 1 of 3 (Phase 12 in progress)
 status: executing
-stopped_at: Phase 12 context gathered
-last_updated: "2026-04-18T04:55:38.243Z"
-last_activity: 2026-04-17 -- Completed 13-02 mobile UI wiring (BulkImportSheet + receipt/instacart scan screens, Pantry FAB rewired)
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-04-18T05:21:58.810Z"
+last_activity: 2026-04-18 -- Completed 12-01 unified Kitchen tab (merged Home + Recipes into 4-tab bar)
 progress:
   total_phases: 15
   completed_phases: 13
-  total_plans: 53
-  completed_plans: 53
-  percent: 100
+  total_plans: 56
+  completed_plans: 54
+  percent: 96
 ---
 
 # Project State
@@ -22,16 +22,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Open the fridge, take a photo, get dinner ideas -- zero mental effort from "what do we have?" to "what should we cook?"
-**Current focus:** Phase 13: Receipt Scan and Instacart Import for Bulk Pantry Loading
+**Current focus:** Phase 12: Combine Home + Recipes into unified Kitchen tab
 
 ## Current Position
 
-Phase: 13 of 15 (Receipt Scan and Instacart Import)
-Current Plan: 2 of 2 (Phase 13 complete)
+Phase: 12 of 15 (Combine Home + Recipes)
+Current Plan: 1 of 3 (Phase 12 in progress)
 Status: In Progress
-Last activity: 2026-04-17 -- Completed 13-02 mobile UI wiring (BulkImportSheet + receipt/instacart scan screens, Pantry FAB rewired)
+Last activity: 2026-04-18 -- Completed 12-01 unified Kitchen tab (merged Home + Recipes into 4-tab bar)
 
-Progress: [██████████] 100%
+Progress: [█████████░] 96%
 
 ## Performance Metrics
 
@@ -106,6 +106,7 @@ Progress: [██████████] 100%
 | Phase 14 P02 | 22h | 3 tasks | 7 files |
 | Phase 13 P01 | 6min | 2 tasks | 4 files |
 | Phase 13 P02 | 14min | 3 tasks | 8 files |
+| Phase 12-combine-home-recipes P01 | 2 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -274,6 +275,11 @@ Recent decisions affecting current work:
 - [Phase 13]: [Phase 13-02]: Receipt/Instacart screens reuse /scan/review unchanged by populating pantryStore.scanResults + navigating with sourceLocation param - no review logic fork
 - [Phase 13]: [Phase 13-02]: Empty-result mitigation inspects usePantryStore.getState().scanResults.length after await; zero-length fires Alert and suppresses auto-navigate useEffect
 - [Phase 13]: [Phase 13-02]: Maestro stub flow deep-links into /scan/receipt and /scan/instacart rather than tapping bottom-tab + FAB - tab-bar text selectors unreliable on Simulator
+- [Phase 12-combine-home-recipes]: Custom Pressable segmented control over @react-native-segmented-control to avoid dev-client rebuild
+- [Phase 12-combine-home-recipes]: display:none dual-mount (not conditional render) preserves Library scroll + search + filter state across segment toggle
+- [Phase 12-combine-home-recipes]: Two independent useCollapsingHeader() instances — one per segment; active segment drives compact-header opacity
+- [Phase 12-combine-home-recipes]: RegenerateFab calls fetchSuggestions (not refreshSuggestions — which CONTEXT.md cited but does not exist in store)
+- [Phase 12-combine-home-recipes]: Atomic swap: rewrite _layout.tsx + delete old index/recipes files in same task so /(tabs) redirect never resolves stale
 
 ### Pending Todos
 
@@ -317,6 +323,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T04:55:38.241Z
-Stopped at: Phase 12 context gathered
-Resume file: .planning/phases/12-combine-home-recipes/12-CONTEXT.md
+Last session: 2026-04-18T05:21:58.807Z
+Stopped at: Completed 12-01-PLAN.md
+Resume file: None
