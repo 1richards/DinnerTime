@@ -32,6 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 18: AI Auto-Location for Pantry Imports** - Remove forced fridge/pantry/freezer choice; AI infers per-item location across scan, receipt, and Instacart flows
 - [ ] **Phase 19: Design Professionalization** - Polish icons, buttons, navigation, search bars, and shared design patterns; reference Spotify, Strava, DoorDash aesthetics
 - [ ] **Phase 20: Shopping Refactor — Push to Draft Cart** - Replace order placement with pushing items to an Instacart draft cart so users manage payment, delivery window, and substitutions inside Instacart itself
+- [ ] **Phase 21: Pantry Intelligence** - Smarter dedup (fuzzy name matching, variant rollup), better pantry-tab presentation (grouping, sections, search), AI categorization learning from history, and user-defined scan rules for commonly purchased items
 
 **Milestone v1.0 shipped 2026-04-14.** Post-v1 polish (UAT harness, visual pass, remix, collapsing headers, filter sheet, sign out, SecureStore fix, Cook tab removal) landed out-of-band on `main` and is logged in `STATE.md` under "Post-v1 Polish" rather than re-planned as a GSD phase. See `.planning/UAT-NIGHT-REPORT.md` for the overnight work summary. Plan tab multi-week navigation is deferred; candidate for a future Phase 12 when formalized.
 
@@ -392,6 +393,21 @@ Plans: (not yet planned)
   4. DinnerTime UI clearly communicates the handoff: "Sending to Instacart cart…" → success state → deep link / URL to continue in Instacart
   5. No card-on-file, no delivery-window picker, no payment UI inside DinnerTime — those responsibilities move entirely to Instacart
   6. Existing Phase 8 shopping-list features (auto-generation from meal plan, consolidation, manual edits) remain functional before the cart handoff
+**Plans**: 0 plans
+Plans: (not yet planned)
+**UI hint**: yes
+
+### Phase 21: Pantry Intelligence
+**Goal**: Pantry feels smart — duplicates are caught even when names differ slightly, items are presented in a way that's easy to scan, categorization improves over time by learning from the user, and users can define rules for commonly purchased items so future scans are accurate without manual correction
+**Depends on**: Phase 3, Phase 14, Phase 18
+**Requirements**: Pantry UX improvement (post-v1)
+**Success Criteria** (what must be TRUE):
+  1. Smarter deduplication — fuzzy name matching (e.g., "greek yogurt" + "greek yoghurt" + "plain greek yogurt 32oz" roll up to one item); variant normalization (plural/singular, brand vs generic)
+  2. Improved pantry-tab presentation — items grouped by category or location with clear section headers; search works within the pantry; items near expiry/stale are visually distinct
+  3. AI categorization learns from user corrections — when a user re-categorizes an item after scan, that correction is stored and applied to future scans of the same or similar items
+  4. User-defined scan rules — users can add rules like "always call 'skim milk 2%' 'milk'", "treat 'honeycrisp apple' as 'apple'", or "frozen peas always go in freezer". Rules apply to all future scans pre-review
+  5. Commonly purchased items list — users can mark items as staples; staples are auto-accepted on future scans even at lower confidence
+  6. Rules are manageable — list view in Settings, edit/delete/reorder, preview of which recent scans would have been affected
 **Plans**: 0 plans
 Plans: (not yet planned)
 **UI hint**: yes
