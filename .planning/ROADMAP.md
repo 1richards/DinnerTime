@@ -232,7 +232,7 @@ Plans:
 **UI hint**: no
 
 ### Phase 12: Combine Home & Recipes
-**Goal**: Merge the Home and Recipes tabs into a single unified page so users have one place for suggestions and their recipe library
+**Goal**: Merge the Home and Recipes tabs into a single unified "Kitchen" tab with segmented control (Suggestions | Library); tab bar drops from 5 to 4 tabs with all existing recipe and suggestion features preserved
 **Depends on**: Phase 6, Phase 4
 **Requirements**: UI rationalization (post-v1)
 **Success Criteria** (what must be TRUE):
@@ -240,8 +240,11 @@ Plans:
   2. AI dinner suggestions and recipe library coexist on the unified page
   3. All existing recipe features (import, favorites, search, filters) remain accessible
   4. Tab bar has one fewer entry with no orphaned navigation routes
-**Plans**: 0 plans
-Plans: (not yet planned)
+**Plans**: 3 plans
+Plans:
+- [ ] 12-01-PLAN.md — Create kitchen.tsx (segmented control + dual lists with display:none), update _layout.tsx (Kitchen leftmost, 4 tabs), delete old index.tsx + recipes.tsx, stub new Maestro flow
+- [ ] 12-02-PLAN.md — Update 4 route call sites (scan/review, recipes/review, recipes/import-url) to target /(tabs)/kitchen with ?segment=library on save flows; full typecheck clean
+- [ ] 12-03-PLAN.md — Rewrite 6 Maestro flows for Kitchen+Library navigation, fill in 20-kitchen-segment-toggle.yaml, full Maestro suite green, human UAT checkpoint
 **UI hint**: yes
 
 ## Progress
@@ -263,7 +266,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 9. Voice Cooking Mode | 5/5 | Complete   | 2026-04-13 |
 | 10. Skill Progression & Offline | 5/5 | Complete    | 2026-04-13 |
 | 11. Hybrid AI Client | 4/5 | Complete    | 2026-04-13 |
-| 12. Combine Home & Recipes | 0/0 | Not planned | — |
+| 12. Combine Home & Recipes | 0/3 | Planned | — |
 
 | 13. Receipt Scan & Instacart Import | 2/2 | Complete    | 2026-04-18 |
 | 14. Multi-Photo Scan & Smarter Filtering | 2/2 | Complete   | 2026-04-18 |
@@ -309,8 +312,6 @@ Plans:
   3. Empty states, loading states, and error states use a consistent component pattern
   4. Typography scale, spacing, and color usage documented and applied consistently
   5. /gsd:ui-review audit passes with no BLOCK-level issues
-**Plans**: 0 plans
-Plans: (not yet planned)
 **UI hint**: yes
 
 Plans:
