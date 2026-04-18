@@ -9,6 +9,7 @@ import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
 import { FOOD_IMAGES } from '../../constants/foodImages';
+import { colors } from '../../design/tokens';
 
 const CUISINE_OPTIONS = [
   'Italian',
@@ -129,7 +130,7 @@ export default function OnboardingScreen() {
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-warmWhite">
+    <SafeAreaView className="flex-1 bg-bg">
       {/* Step hero image */}
       <HeroImage uri={STEP_IMAGES[step]} height={160} gradientDirection="bottom">
         <View>
@@ -397,8 +398,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   numberButtonActive: {
-    backgroundColor: '#F97316',
-    borderColor: '#F97316',
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
   numberButtonText: {
     fontSize: 17,
@@ -436,8 +437,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxActive: {
-    backgroundColor: '#F97316',
-    borderColor: '#F97316',
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
   checkmark: {
     color: '#FFFFFF',
@@ -458,8 +459,8 @@ const styles = StyleSheet.create({
     borderColor: '#E5D9CA',
   },
   chipActive: {
-    backgroundColor: '#F97316',
-    borderColor: '#F97316',
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
   chipText: {
     fontSize: 13,

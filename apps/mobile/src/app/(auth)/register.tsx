@@ -16,6 +16,7 @@ import { Input } from '../../components/ui/Input';
 import { HeroImage } from '../../components/ui/HeroImage';
 import { useAuth } from '../../hooks/useAuth';
 import { FOOD_IMAGES } from '../../constants/foodImages';
+import { colors } from '../../design/tokens';
 
 const REGISTER_HERO = FOOD_IMAGES.hero[0]; // plated dinner
 
@@ -87,7 +88,7 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-warmWhite">
+    <SafeAreaView className="flex-1 bg-bg">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
@@ -186,7 +187,7 @@ export default function RegisterScreen() {
 
               <Button
                 title={socialLoading === 'google' ? '' : 'Continue with Google'}
-                variant="outline"
+                variant="secondary"
                 onPress={handleGoogleSignIn}
                 loading={socialLoading === 'google'}
               />
@@ -234,15 +235,15 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   errorBanner: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: 'rgba(220,38,38,0.08)',
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: 'rgba(220,38,38,0.25)',
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
   },
   errorText: {
-    color: '#DC2626',
+    color: colors.destructive,
     fontSize: 14,
     textAlign: 'center',
   },
@@ -254,11 +255,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E5D9CA',
+    backgroundColor: colors.border,
   },
   dividerText: {
     marginHorizontal: 12,
-    color: '#A89178',
+    color: colors.textTertiary,
     fontSize: 13,
   },
   loginLink: {
@@ -267,11 +268,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   loginLinkText: {
-    color: '#7A6651',
+    color: colors.textSecondary,
     fontSize: 14,
   },
   loginLinkAction: {
-    color: '#F97316',
+    color: colors.brand,
     fontWeight: '700',
     fontSize: 14,
   },

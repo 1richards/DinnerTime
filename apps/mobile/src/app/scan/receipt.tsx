@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { usePantryStore } from '../../stores/pantryStore';
 import type { SourceLocation } from '../../types/pantry';
+import { colors } from '../../design/tokens';
 
 export default function ReceiptScanScreen() {
   // CONTEXT locked decision: default source_location = 'pantry' for receipts
@@ -74,7 +75,7 @@ export default function ReceiptScanScreen() {
         className="flex-1 bg-warmWhite items-center justify-center"
         edges={['bottom']}
       >
-        <ActivityIndicator size="large" color="#F97316" />
+        <ActivityIndicator size="large" color={colors.brand} />
         <Text className="text-lg text-warmGray-600 mt-4">Analyzing photo…</Text>
         <Text className="text-sm text-warmGray-400 mt-2">
           This may take a few seconds

@@ -20,6 +20,7 @@ import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { EMPTY_STATE_IMAGES } from '../../constants/emptyStateImages';
 import { usePantryStore } from '../../stores/pantryStore';
 import type { SourceLocation } from '../../types/pantry';
+import { colors } from '../../design/tokens';
 
 interface CapturedPhoto {
   id: string;
@@ -104,7 +105,7 @@ export default function ScanScreen() {
   if (isScanning) {
     return (
       <SafeAreaView className="flex-1 bg-warmWhite items-center justify-center" edges={['bottom']}>
-        <ActivityIndicator size="large" color="#F97316" />
+        <ActivityIndicator size="large" color={colors.brand} />
         <Text className="text-lg text-warmGray-600 mt-4">
           Analyzing {capturedPhotos.length} photo{capturedPhotos.length !== 1 ? 's' : ''}...
         </Text>
