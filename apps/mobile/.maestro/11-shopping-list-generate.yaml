@@ -1,12 +1,17 @@
 appId: com.dinnertime.app
 name: "11 — shopping list: generate from meal plan, add manual item, check items off"
+tags:
+  - phase-19
 # Pre-condition: a meal plan must exist. Run 09-meal-plan-generate first.
 #
+# Phase 19 update: FAB + CTA buttons retinted terracotta (colors.brand).
+# Shopping list rows now use the shared ItemRow primitive (leading=checkbox,
+# struck strikethrough). No selector changes — screenshot baselines re-captured.
+#
 # Phase 15 update: add-item FAB glyph swapped from Ionicons add to SF Symbol
-# plus (orange container #F97316, tint #FFFFFF preserved). Empty shopping list
-# now uses EmptyState primitive with SF Symbol cart. FAB coordinate tap
-# 88%,78% unchanged. Text selectors (Generate from Meal Plan, Order on
-# Instacart, Add item, e.g. Oranges) all stable.
+# plus. Empty shopping list now uses EmptyState primitive with SF Symbol cart.
+# FAB coordinate tap 88%,78% unchanged. Text selectors (Generate from Meal Plan,
+# Order on Instacart, Add item, e.g. Oranges) all stable.
 ---
 # Force a clean app restart to avoid stale modal state from previous flows.
 - launchApp:

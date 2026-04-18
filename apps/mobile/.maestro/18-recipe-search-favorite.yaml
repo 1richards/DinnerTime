@@ -1,14 +1,35 @@
 appId: com.dinnertime.app
-name: "18 — recipe search + favorite: search recipes and toggle a favorite"
+name: "18 — recipe search + favorite: sticky pill modal + Favorites chip + heart toggle"
+tags:
+  - phase-19
 # Pre-condition: at least one recipe must exist in the UAT user's library.
 #
+# Phase 19 update: the inline SearchBar and "Toggle search" action button
+# are GONE. Search now lives in a StickySearchPill that taps out to the
+# /search modal (Phase 17 will wire actual search results). For now the
+# flow just verifies the pill -> modal -> dismiss round-trip works, then
+# covers the Favorites chip + per-recipe heart toggle path.
+#
 # Phase 15 update: heart glyph migrated from Ionicons heart to SF heart.fill
-# (active) / heart (inactive) with orange #F97316 tint on active — Phase 15
-# baseline preserved. Favorite tap target is a Pressable with
-# accessibilityLabel so coordinate taps at 88%,15% still work. Toggle search
-# and Favorites chip selectors unchanged. Screenshot baselines will show SF
-# Symbol renders but layout is identical.
+# (active) / heart (inactive); Phase 19 retcon'd tint to terracotta
+# (colors.brand). Favorite tap target is a Pressable with accessibilityLabel
+# so coordinate taps at 88%,15% still work.
 ---
+# Force a clean app restart — upstream flows can leave modals or sheets open
+# that bleed into this flow's initial state.
+- launchApp:
+    clearState: true
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: ".*Open.*"
+    optional: true
+- tapOn:
+    text: ".*Continue.*"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+
 - runFlow: _ensure-logged-in.yaml
 
 - takeScreenshot: 02-home
@@ -17,32 +38,38 @@ name: "18 — recipe search + favorite: search recipes and toggle a favorite"
 - tapOn:
     text: ".*Kitchen.*"
 - tapOn:
-    text: ".*Library.*"
+    text: ".*Recipe Box.*"
 
-# Wait for Library segment to load — search bar placeholder is the stable post-merge marker
+# Wait for Library segment to load — "in your library" is the stable marker.
 - extendedWaitUntil:
     visible:
-      text: ".*in your library.*"
+      text: ".*in your recipe box.*"
     timeout: 15000
 - takeScreenshot: 03-recipes-list
 
-# SearchBar is hidden by default on Library — tap the search toggle (top-right
-# action button with "Toggle search" accessibility label) to reveal it.
-- tapOn:
-    text: ".*Toggle search.*"
-    optional: true
-- tapOn:
-    text: ".*Search recipes.*"
-    optional: true
-- inputText: "egg"
-- takeScreenshot: 04-search-active
+# Sticky search pill is present above the large-title header.
+- assertVisible:
+    text: "Search recipes"
+- takeScreenshot: 04-sticky-pill-visible
 
-# Results may be empty or filtered — take a screenshot regardless
-- takeScreenshot: 05-search-results
+# Tap pill -> /search modal. Modal shows a "Search" title + context echo.
+- tapOn:
+    text: "Search recipes"
+- extendedWaitUntil:
+    visible:
+      text: "Search"
+    timeout: 10000
+- takeScreenshot: 05-search-modal-open
 
-# Clear the search text
-- eraseText: 10
-- takeScreenshot: 06-search-cleared
+# Dismiss the modal (swipe-down on modal presentation).
+- swipe:
+    start: "50%,10%"
+    end: "50%,90%"
+- extendedWaitUntil:
+    visible:
+      text: ".*in your recipe box.*"
+    timeout: 10000
+- takeScreenshot: 06-back-on-library
 
 # Toggle "Favorites" chip to see favorite-only view (only visible with recipes)
 - tapOn:
@@ -62,7 +89,7 @@ name: "18 — recipe search + favorite: search recipes and toggle a favorite"
     optional: true
 - takeScreenshot: 09-recipe-or-empty
 
-# If on recipe detail, try to toggle favorite
+# If on recipe detail, try to toggle favorite (heart in top-right of hero).
 - tapOn:
     point: "88%,15%"
     optional: true

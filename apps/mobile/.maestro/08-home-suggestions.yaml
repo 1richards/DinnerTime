@@ -1,8 +1,13 @@
 appId: com.dinnertime.app
 name: "08 — kitchen: suggestions segment renders after login"
+tags:
+  - phase-19
 # Verifies the Kitchen tab opens on the Suggestions segment (default) with
 # greeting + "What should we cook tonight" hero after auth hydrates.
 # Settings navigation is tested in flow 13 via deep link.
+#
+# Phase 19 update: RegenerateFab on Suggestions is now terracotta (colors.brand)
+# instead of raw orange. No selector changes; screenshots re-baseline.
 ---
 - runFlow: _ensure-logged-in.yaml
 

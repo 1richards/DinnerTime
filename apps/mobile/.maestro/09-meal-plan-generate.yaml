@@ -1,8 +1,14 @@
 appId: com.dinnertime.app
 name: "09 — meal plan: generate a 7-day plan and verify day rows render"
+tags:
+  - phase-19
 # Pre-condition: UAT user is logged in, has no active meal plan (or any plan is fine).
 # If a plan already exists, this flow verifies the existing plan renders.
 # To force re-generation, use the Regenerate button.
+#
+# Phase 19 update: DayRow reshuffled to a denser layout (day label + thumbnail
+# + meal name + status chips); generate/regenerate CTAs retinted terracotta
+# (colors.brand). No selector changes — screenshot baselines re-captured.
 ---
 - runFlow: _ensure-logged-in.yaml
 

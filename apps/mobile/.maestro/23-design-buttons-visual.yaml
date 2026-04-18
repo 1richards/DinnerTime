@@ -1,0 +1,105 @@
+appId: com.dinnertime.app
+name: "23 — design buttons visual: tour the Phase 19 button surfaces"
+tags:
+  - phase-19
+  - design
+  - visual
+# Phase 19 Plan 06 — visual regression flow.
+#
+# Walks every primary button + FAB surface and captures screenshots so the
+# Gate A human UAT reviewer can compare against the terracotta-first design
+# system. Maestro cannot inspect variant props programmatically — this flow
+# is PURELY screenshot-driven visual regression.
+#
+# Deviation note: the plan's files_modified list called this
+# `21-design-buttons-visual.yaml`, but slots 21 (modal-dismiss) and 22
+# (dirty-form-guard) were already taken by Phase 15 flows. Numbered 23 so
+# `uat.sh all` includes it without renaming Phase 15 artifacts.
+#
+# Surfaces exercised:
+#   - Kitchen Library: StickySearchPill + ImportFab (terracotta)
+#   - Kitchen Suggestions: RegenerateFab (terracotta)
+#   - Pantry: ScanButton FAB (terracotta)
+#   - Shopping: FAB + primary CTAs (terracotta)
+#   - Settings: Sign Out (destructive red) + Continue-with-Google (secondary)
+---
+# Force a clean app restart — upstream flows can leave modals open that
+# bleed into this flow's initial state.
+- launchApp:
+    clearState: true
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: ".*Open.*"
+    optional: true
+- tapOn:
+    text: ".*Continue.*"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+
+- runFlow: _ensure-logged-in.yaml
+
+# 1. Landing screen — Kitchen Suggestions (default)
+- extendedWaitUntil:
+    visible:
+      text: ".*What should we cook tonight.*"
+    timeout: 15000
+- takeScreenshot: 23-01-kitchen-suggestions-fab
+
+# 2. Kitchen -> Library: StickySearchPill + ImportFab (terracotta FAB)
+- tapOn:
+    text: ".*Recipe Box.*"
+- extendedWaitUntil:
+    visible:
+      text: ".*in your recipe box.*"
+    timeout: 10000
+- assertVisible:
+    text: "Search recipes"
+- takeScreenshot: 23-02-library-import-fab-and-pill
+
+# 3. Back to Suggestions: RegenerateFab (terracotta)
+- tapOn:
+    text: ".*Suggestions.*"
+- assertVisible:
+    text: ".*What should we cook tonight.*"
+- takeScreenshot: 23-03-suggestions-regenerate-fab
+
+# 4. Plan tab: CTAs + DayRow status chips
+- tapOn:
+    text: ".*Plan.*"
+- extendedWaitUntil:
+    visible:
+      text: ".*week.*"
+    timeout: 15000
+- takeScreenshot: 23-04-plan-ctas-and-rows
+
+# 5. Pantry tab: ScanButton FAB (terracotta, 64x64)
+- tapOn:
+    text: ".*Pantry.*"
+- takeScreenshot: 23-05-pantry-scan-button-fab
+
+# 6. Shopping tab: FAB + primary CTAs (terracotta)
+- tapOn:
+    text: ".*Shopping.*"
+- takeScreenshot: 23-06-shopping-ctas-and-fab
+
+# 7. Settings tab: scroll to Sign Out (destructive red button)
+- tapOn:
+    text: ".*Settings.*"
+- takeScreenshot: 23-07-settings-top
+- scrollUntilVisible:
+    element:
+      text: ".*Sign Out.*"
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: 23-08-settings-sign-out-destructive
+
+# 8. Return to Kitchen (clean exit)
+- tapOn:
+    text: ".*Kitchen.*"
+- extendedWaitUntil:
+    visible:
+      text: ".*What should we cook tonight.*|.*in your recipe box.*"
+    timeout: 10000
+- takeScreenshot: 23-09-final-kitchen

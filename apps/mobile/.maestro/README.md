@@ -67,6 +67,7 @@ Screenshots land in `~/.maestro/tests/<run-id>/` and are also embedded in the ru
 | `20-kitchen-segment-toggle.yaml` | Kitchen tab segment toggle preserves search-query state (Phase 12). | — |
 | `21-modal-dismiss.yaml` | Scan modal presents from pantry FAB and dismisses via swipe-down (Phase 15). | — |
 | `22-dirty-form-guard.yaml` | Edit recipe + attempt back swipe triggers Unsaved changes Alert (Phase 15). **Manual-only if flaky** (see below). | ≥1 recipe |
+| `23-design-buttons-visual.yaml` | Phase 19 visual regression — tours every FAB + primary CTA + destructive button surface capturing screenshots for Gate A. | — |
 
 ## Phase 15 note — manual-only flows
 
