@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 15-02 (pending) — 15-01 complete
-status: in_progress
-stopped_at: Completed 15-01-PLAN.md (shared primitives + purity grep scripts)
-last_updated: "2026-04-18T21:31:05.843Z"
-last_activity: 2026-04-18 -- Completed 15-01 (shared UI primitives + purity grep scripts; 34 tests green)
+current_plan: 15-03 (icon sweep) — pending
+status: executing
+stopped_at: Completed 15-02-PLAN.md (navigation migration + dirty-form guards + scoped Ionicons swap)
+last_updated: "2026-04-18T21:40:46.303Z"
+last_activity: 2026-04-18 -- Completed 15-02 (native stack headers, scan/recipes modal presentation, useDirtyFormGuard wired on 3 screens)
 progress:
   total_phases: 25
   completed_phases: 14
   total_plans: 66
-  completed_plans: 57
-  percent: 86
+  completed_plans: 58
+  percent: 88
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 15 of 25 (UI Polish & Navigation Consistency Audit) — In Progress (1/4 plans)
-Current Plan: 15-02 (navigation migration) — pending
+Phase: 15 of 25 (UI Polish & Navigation Consistency Audit) — In Progress (2/4 plans)
+Current Plan: 15-03 (icon sweep) — pending
 Status: In Progress
-Last activity: 2026-04-18 -- Completed 15-01 (shared UI primitives + purity grep scripts; 34 tests green)
+Last activity: 2026-04-18 -- Completed 15-02 (native stack headers, scan/recipes modal presentation, useDirtyFormGuard wired on 3 screens)
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -110,6 +110,7 @@ Progress: [█████████░] 86%
 | Phase 12-combine-home-recipes P02 | 1 min | 2 tasks | 6 files |
 | Phase 12-combine-home-recipes P03 | 68min | 4 tasks | 8 files |
 | Phase 15 P01 | 5min | 2 tasks | 14 files |
+| Phase 15 P02 | 6min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -303,6 +304,12 @@ Recent decisions affecting current work:
 - [Phase 15-01]: Global react-native vi.mock in vitest.setup.ts — sentinel function-component stubs for View/Text/Pressable/etc. sidesteps rolldown's Flow-parse failure
 - [Phase 15-01]: Component-as-function vitest pattern (call component, traverse element tree by .type identity) — no renderer dependency, no @testing-library install
 - [Phase 15-01]: Baseline purity counts: 37 Ionicons files, 7 decorative emoji in src/app, 1 hand-rolled back Pressable (recipes/[id]/index hero, within budget)
+- [Phase 15-02]: HeaderCloseButton shared primitive calls router.dismissAll() (not router.back()) — X on modal root must exit entire stack (Research Pitfall 4)
+- [Phase 15-02]: scan/_layout cascades presentation: 'modal'; scan/review overrides to presentation: 'card' to push inside the modal (Research Pitfall 2 avoided)
+- [Phase 15-02]: recipes/_layout does NOT cascade modal — imports modal per-screen, destinations push — mixed group avoids override complexity
+- [Phase 15-02]: Touched-flag dirty guard with editDraft/handleX wrappers — hydration from async sources uses raw setDraft (no guard trigger); only user edits flip touched
+- [Phase 15-02]: Guard predicate gates on !saving/!isLoading/!isConfirming so successful save/submit flow unsubscribes guard before router.back/replace
+- [Phase 15-02]: Explicit Discard buttons call setTouched(false) before router.back/replace to avoid double-alert (guard + in-component confirm)
 
 ### Pending Todos
 
@@ -346,6 +353,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T21:30:51.581Z
-Stopped at: Completed 15-01-PLAN.md (shared primitives + purity grep scripts)
+Last session: 2026-04-18T21:40:46.299Z
+Stopped at: Completed 15-02-PLAN.md (navigation migration + dirty-form guards + scoped Ionicons swap)
 Resume file: None
