@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 19-01 (design-token foundation) — complete (1/6 plans)
-status: Phase 19 Wave 1 landed — token substrate ready; Plans 02–06 unblocked
-stopped_at: "Completed 19-01-PLAN.md (design-token foundation: terracotta palette + 5-step type scale + SF Symbol sizing helpers + vitest parity guard)"
-last_updated: "2026-04-18T22:22:14.633Z"
-last_activity: "2026-04-18 -- Completed 19-01 (design-token foundation: CSS vars + tailwind tokens + typed exports + parity tests)"
+current_plan: 19-03 (sticky-pill SearchBar + ItemRow) — complete (2/6 plans)
+status: Phase 19 Wave 2 partial — 19-03 landed (SearchBar + ItemRow); 19-02 still pending
+stopped_at: "Completed 19-03-PLAN.md (StickySearchPill + ItemRow primitives: sticky-pill search, /search modal route, 3-variant row with checkbox|stepper|icon leading)"
+last_updated: "2026-04-18T22:29:28.090Z"
+last_activity: 2026-04-18 -- Completed 19-03 (StickySearchPill + /search modal route + shared ItemRow primitive with 3 leading variants)
 progress:
   total_phases: 25
   completed_phases: 15
   total_plans: 66
-  completed_plans: 61
-  percent: 92
+  completed_plans: 62
+  percent: 94
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 19 of 25 (Design Professionalization — Icons, Buttons, Navigation, Search Bars)
-Current Plan: 19-01 (design-token foundation) — complete (1/6 plans)
-Status: Phase 19 Wave 1 landed — token substrate ready; Plans 02–06 unblocked
-Last activity: 2026-04-18 -- Completed 19-01 (design-token foundation: CSS vars + tailwind tokens + typed exports + parity tests)
+Current Plan: 19-03 (sticky-pill SearchBar + ItemRow) — complete (2/6 plans)
+Status: Phase 19 Wave 2 partial — 19-03 landed (SearchBar + ItemRow); 19-02 still pending
+Last activity: 2026-04-18 -- Completed 19-03 (StickySearchPill + /search modal route + shared ItemRow primitive with 3 leading variants)
 
-Progress: [█████████░] 92%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -114,6 +114,7 @@ Progress: [█████████░] 92%
 | Phase 15 P03 | 15min | 2 tasks | 43 files |
 | Phase Phase 15 PP04 | 6min | 3 tasks | 16 files |
 | Phase 19 P01 | 3min | 4 tasks | 9 files |
+| Phase 19 P03 | 3min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -329,6 +330,11 @@ Recent decisions affecting current work:
 - [Phase 19]: [Phase 19-01]: CSS variables use space-separated RGB channels (not hex) in global.css so NativeWind <alpha-value> opacity modifiers (bg-brand/15) work (Pitfall 1)
 - [Phase 19]: [Phase 19-01]: tokens.test.ts text-parses tailwind.config.js (fs.readFileSync + regex) instead of require() — nativewind/preset can't resolve outside Metro and would false-RED
 - [Phase 19]: [Phase 19-01]: warmWhite + warmGray legacy palette preserved for migration safety — Plan 19-05 owns the orange→terracotta atomic sweep; tokens-purity.test.ts authored as describe.skip and flipped on there
+- [Phase 19-03]: StickySearchPill uses scrollY.interpolate([0,40]→[0.05,0.18]) for shadow; zIndex:20 layers above compactHeader (5/10); modal route /search?context=<ctx> via expo-router chosen over inline expansion
+- [Phase 19-03]: buildSearchHref kept as pure (ctx: string) => string for testing; cast to /search?${string} Href union at call site inside StickySearchPill
+- [Phase 19-03]: ItemRow inline trailing chip (not <Chip />) — Plan 19-02 not yet executed; ChipTone union co-located in ItemRow.tsx so Plan 19-05 swap is a symbol-level rename
+- [Phase 19-03]: itemRowHelpers.ts exports pure resolvers (resolveTitleClasses, resolveCheckboxBoxClasses, CONTAINER_CLASSES, STEPPER_BUTTON_CLASSES); ItemRow composes them in JSX — enables Nyquist-rate variant coverage without RNTL
+- [Phase 19-03]: SearchBar.test.ts inline-mocks expo-symbols + expo-router (not in global vitest.setup.ts) — follows existing SymbolIcon.test.tsx pattern
 
 ### Pending Todos
 
@@ -372,6 +378,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T22:21:41.484Z
-Stopped at: Completed 19-01-PLAN.md (design-token foundation: terracotta palette + 5-step type scale + SF Symbol sizing helpers + vitest parity guard)
+Last session: 2026-04-18T22:29:03.262Z
+Stopped at: Completed 19-03-PLAN.md (StickySearchPill + ItemRow primitives: sticky-pill search, /search modal route, 3-variant row with checkbox|stepper|icon leading)
 Resume file: None
