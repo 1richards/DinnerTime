@@ -15,10 +15,11 @@ export default defineConfig({
     exclude: [
       'node_modules',
       'src/**/*.native.test.*',
-      // Narrowed: only exclude non-ui components (they import RN modules without mocks).
-      // ui/__tests__/* is explicitly re-included above because those primitives mock
-      // expo-symbols/expo-image/@react-navigation/native upfront.
-      'src/components/!(ui)/**',
+      // Narrowed per Phase 19-04: only exclude explicit .native.test.* files
+      // inside src/components. Pure helper *.test.ts (e.g., recipeCardStyles,
+      // dayRowHelpers) that don't import React Native runtime modules can run
+      // under node env and should not be blanket-excluded.
+      'src/components/**/*.native.test.*',
     ],
   },
 });
