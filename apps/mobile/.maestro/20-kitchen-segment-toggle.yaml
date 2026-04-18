@@ -1,9 +1,50 @@
 appId: com.dinnertime.app
 name: "20 — kitchen: segment toggle preserves state"
+# Proves the Phase 12 Kitchen tab:
+#   (a) opens on Suggestions by default,
+#   (b) switches to Library and shows the search-bar placeholder,
+#   (c) preserves Library search-query state across a Suggestions round-trip
+#       (CONTEXT-locked display:none dual-mount behavior — if this flow ever
+#       regresses, conditional render has sneaked back in).
 ---
 - runFlow: _ensure-logged-in.yaml
-# TODO (Plan 03): tap Library segment, assert 'Search recipes' placeholder visible,
-# tap Suggestions segment, assert 'What should we cook tonight' visible,
-# take screenshots, verify FABs swap (ImportFab on Library, RegenerateFab on Suggestions).
-- tapOn: "Kitchen"
-- takeScreenshot: 20-kitchen-stub
+
+# 1. Verify default segment is Suggestions (hero + "What should we cook tonight")
+- assertVisible:
+    text: ".*What should we cook tonight.*"
+- takeScreenshot: 20-01-suggestions-default
+
+# 2. Switch to Library, verify search bar placeholder visible
+- tapOn:
+    text: "Library"
+- assertVisible:
+    text: "Search recipes"
+- takeScreenshot: 20-02-library-active
+
+# 3. Open search bar (SearchToggleButton) and type a query.
+#    search-toggle id is best-effort — if the SearchBar is already expanded
+#    on mount, the optional tap is a no-op.
+- tapOn:
+    id: "search-toggle"
+    optional: true
+- tapOn:
+    text: "Search recipes"
+    optional: true
+- inputText: "chicken"
+- takeScreenshot: 20-03-library-search-typed
+
+# 4. Switch to Suggestions, verify hero/greeting visible (segment swap works).
+- tapOn:
+    text: "Suggestions"
+- assertVisible:
+    text: ".*What should we cook tonight.*"
+- takeScreenshot: 20-04-back-to-suggestions
+
+# 5. Switch back to Library, verify the typed search query persisted.
+#    This is the key assertion — display:none dual-mount keeps the SearchBar
+#    TextInput's value across segment toggles. Conditional render would drop
+#    the "chicken" text and cause this step to fail.
+- tapOn:
+    text: "Library"
+- assertVisible: "chicken"
+- takeScreenshot: 20-05-library-state-preserved
