@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 2 of 2
-status: completed
-stopped_at: Completed 14-02-PLAN.md (Phase 14 complete)
-last_updated: "2026-04-18T03:47:51.470Z"
-last_activity: 2026-04-17 -- Completed 14-02 mobile multi-photo scan + review fixes + pantry-aware dedup (Phase 14 complete)
+current_plan: 1 of 2 (13-01 complete, 13-02 next)
+status: executing
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-04-18T04:16:47.167Z"
+last_activity: 2026-04-17 -- Completed 13-01 backend receipt + instacart vision extraction (identifyReceiptItems + two Hono routes)
 progress:
   total_phases: 15
   completed_phases: 12
-  total_plans: 51
-  completed_plans: 51
-  percent: 100
+  total_plans: 53
+  completed_plans: 52
+  percent: 98
 ---
 
 # Project State
@@ -22,16 +22,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Open the fridge, take a photo, get dinner ideas -- zero mental effort from "what do we have?" to "what should we cook?"
-**Current focus:** Phase 14: Multi-photo Pantry Scan with Smarter Item Filtering
+**Current focus:** Phase 13: Receipt Scan and Instacart Import for Bulk Pantry Loading
 
 ## Current Position
 
-Phase: 14 of 15 (Multi-photo Pantry Scan) -- COMPLETE
-Current Plan: 2 of 2
-Status: Phase Complete
-Last activity: 2026-04-17 -- Completed 14-02 mobile multi-photo scan + review fixes + pantry-aware dedup (Phase 14 complete)
+Phase: 13 of 15 (Receipt Scan and Instacart Import)
+Current Plan: 1 of 2 (13-01 complete, 13-02 next)
+Status: In Progress
+Last activity: 2026-04-17 -- Completed 13-01 backend receipt + instacart vision extraction (identifyReceiptItems + two Hono routes)
 
-Progress: [██████████] 100%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -104,6 +104,7 @@ Progress: [██████████] 100%
 | Phase 11-hybrid-ai-client P05 | 3min | 3 tasks | 3 files |
 | Phase 14 P01 | 4min | 2 tasks | 9 files |
 | Phase 14 P02 | 22h | 3 tasks | 7 files |
+| Phase 13 P01 | 6min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -263,6 +264,11 @@ Recent decisions affecting current work:
 - [Phase 14]: [Phase 14-02]: Thumbnail row uses fixed-width slots (screenWidth/6) instead of FlatList so 5 photos + add button fit one row without horizontal scroll
 - [Phase 14]: [Phase 14-02]: Location picker locks after first photo — one scan session = one location, enforced with visible note to user
 - [Phase 14]: [Phase 14-02]: Confidence threshold (0.7) applied at store layer (startBatchScan), review screen stays dumb renderer reading item.accepted
+- [Phase 13]: [Phase 13-01]: Reuse vision.pantryScan task route for receipt/Instacart — same ScanResult[] output shape, no new taskRouting slot needed
+- [Phase 13]: [Phase 13-01]: Single identifyReceiptItems fn + variant enum ('receipt' | 'instacart_screenshot') instead of two services — preamble-only difference
+- [Phase 13]: [Phase 13-01]: Server-side RECEIPT_NAME_DENYLIST runs AFTER AI call (case-insensitive trim+lowercase Set lookup) — prompt alone not trustworthy for financial lines
+- [Phase 13]: [Phase 13-01]: /scan-receipt defaults source_location='pantry' (CONTEXT locked); /import-instacart hardcodes 'pantry' and 'instacart_screenshot' variant
+- [Phase 13]: [Phase 13-01]: Thenable supabase chain mock pattern — chain.then(resolve => resolve({ data: seeded })) lets tests seed existing-items while keeping method chaining intact
 
 ### Pending Todos
 
@@ -306,6 +312,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T03:47:51.467Z
-Stopped at: Completed 14-02-PLAN.md (Phase 14 complete)
+Last session: 2026-04-18T04:16:47.163Z
+Stopped at: Completed 13-01-PLAN.md
 Resume file: None

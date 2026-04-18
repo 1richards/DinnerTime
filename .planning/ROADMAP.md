@@ -265,7 +265,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 11. Hybrid AI Client | 4/5 | Complete    | 2026-04-13 |
 | 12. Combine Home & Recipes | 0/0 | Not planned | — |
 
-| 13. Receipt Scan & Instacart Import | 0/2 | Planned | — |
+| 13. Receipt Scan & Instacart Import | 1/2 | In Progress|  |
 | 14. Multi-Photo Scan & Smarter Filtering | 2/2 | Complete   | 2026-04-18 |
 
 ### Phase 13: Receipt Scan & Instacart Import
@@ -279,7 +279,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
   4. Both flows are accessible from the Pantry tab alongside the existing camera scan
 **Plans**: 2 plans
 Plans:
-- [ ] 13-01-PLAN.md — Backend: identifyReceiptItems service (receipt + Instacart variants, denylist), POST /scan-receipt + /import-instacart routes, TDD
+- [x] 13-01-PLAN.md — Backend: identifyReceiptItems service (receipt + Instacart variants, denylist), POST /scan-receipt + /import-instacart routes, TDD
 - [ ] 13-02-PLAN.md — Mobile: pantryStore actions, BulkImportSheet launcher, /scan/receipt + /scan/instacart screens, Maestro smoke, iOS Simulator UAT checkpoint
 **UI hint**: yes
 
