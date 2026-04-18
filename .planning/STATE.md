@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: Phase 12 complete (all 3 plans landed)
-status: completed
-stopped_at: Phase 19 plans created (6 plans, 3 waves); execution halted at 19-01 Task 0 — Phase 15 prerequisite not yet built
-last_updated: "2026-04-18T18:39:12.376Z"
-last_activity: 2026-04-18 -- Completed 12-03 Maestro UAT closure (20/21 flows green; Phase 12 unified Kitchen tab shipped)
+current_plan: 15-02 (pending) — 15-01 complete
+status: in_progress
+stopped_at: Completed 15-01-PLAN.md (shared primitives + purity grep scripts)
+last_updated: "2026-04-18T21:31:05.843Z"
+last_activity: 2026-04-18 -- Completed 15-01 (shared UI primitives + purity grep scripts; 34 tests green)
 progress:
   total_phases: 25
   completed_phases: 14
-  total_plans: 62
-  completed_plans: 56
-  percent: 100
+  total_plans: 66
+  completed_plans: 57
+  percent: 86
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 12 of 15 (Combine Home + Recipes) — COMPLETE
-Current Plan: Phase 12 complete (all 3 plans landed)
-Status: Complete
-Last activity: 2026-04-18 -- Completed 12-03 Maestro UAT closure (20/21 flows green; Phase 12 unified Kitchen tab shipped)
+Phase: 15 of 25 (UI Polish & Navigation Consistency Audit) — In Progress (1/4 plans)
+Current Plan: 15-02 (navigation migration) — pending
+Status: In Progress
+Last activity: 2026-04-18 -- Completed 15-01 (shared UI primitives + purity grep scripts; 34 tests green)
 
-Progress: [██████████] 100%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -109,6 +109,7 @@ Progress: [██████████] 100%
 | Phase 12-combine-home-recipes P01 | 2 min | 3 tasks | 4 files |
 | Phase 12-combine-home-recipes P02 | 1 min | 2 tasks | 6 files |
 | Phase 12-combine-home-recipes P03 | 68min | 4 tasks | 8 files |
+| Phase 15 P01 | 5min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -297,6 +298,11 @@ Recent decisions affecting current work:
 - [Phase 12-combine-home-recipes]: [Phase 12-03]: Regex wildcards for Maestro tab-bar selectors — bare 'Kitchen' fails against accessibilityText-only nodes; use .*Kitchen.*/.*Library.* consistently
 - [Phase 12-combine-home-recipes]: [Phase 12-03]: '.*in your library.*' is the stable post-merge marker on Library segment (SearchBar collapsed by default, 'Search recipes' placeholder not always visible)
 - [Phase 12-combine-home-recipes]: [Phase 12-03]: Deep-link pattern for small action-row icons (dinnertime://recipes/discover) — XCUITest taps on 38x38 targets unreliable; mirrors Phase 13-02 receipt/Instacart approach
+- [Phase 15-01]: useDirtyFormGuard dispatches NavigationAction via useNavigation().dispatch(data.action) — React Navigation 7's NavigationAction is an object, not a callable
+- [Phase 15-01]: vitest.config narrowed 'src/components/**' exclude to 'src/components/!(ui)/**' and added explicit include for primitive tests (minimally-invasive per plan)
+- [Phase 15-01]: Global react-native vi.mock in vitest.setup.ts — sentinel function-component stubs for View/Text/Pressable/etc. sidesteps rolldown's Flow-parse failure
+- [Phase 15-01]: Component-as-function vitest pattern (call component, traverse element tree by .type identity) — no renderer dependency, no @testing-library install
+- [Phase 15-01]: Baseline purity counts: 37 Ionicons files, 7 decorative emoji in src/app, 1 hand-rolled back Pressable (recipes/[id]/index hero, within budget)
 
 ### Pending Todos
 
@@ -340,6 +346,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T18:39:12.372Z
-Stopped at: Phase 19 plans created (6 plans, 3 waves); execution halted at 19-01 Task 0 — Phase 15 prerequisite not yet built
-Resume file: .planning/phases/19-design-professionalization-icons-buttons-navigation-search-bars-inspired-by-spotify-strava-doordash/19-01-PLAN.md
+Last session: 2026-04-18T21:30:51.581Z
+Stopped at: Completed 15-01-PLAN.md (shared primitives + purity grep scripts)
+Resume file: None
