@@ -392,7 +392,7 @@ Plans:
 - [x] 19-02-PLAN.md — Primitive rewrites: Button (5 variants @ 44pt), Chip (filter|display kinds), Input retheme; pure-className tests; ChipToggle deprecation shim
 - [x] 19-03-PLAN.md — StickySearchPill + /search modal route + shared ItemRow primitive (checkbox|stepper|icon leading variants)
 - [x] 19-04-PLAN.md — Mode-aware RecipeCard (grid + list) + denser DayRow with Chip status indicators
-- [ ] 19-05-PLAN.md — One-pass sweep: orange->terracotta across ~25 files, tab-bar/FAB/collapsingHeader retint, Shopping+Pantry adopt ItemRow, ChipToggle+legacy SearchBar deleted, tokens-purity test enabled
+- [x] 19-05-PLAN.md — One-pass sweep: orange->terracotta across ~25 files, tab-bar/FAB/collapsingHeader retint, Shopping+Pantry adopt ItemRow, ChipToggle+legacy SearchBar deleted, tokens-purity test enabled
 - [ ] 19-06-PLAN.md — Maestro flow updates (sticky pill, tab tint, FAB visual), new 21-design-buttons-visual flow, Metro cache clear, human UAT Gate A
 **UI hint**: yes
 

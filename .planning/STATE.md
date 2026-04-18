@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: "19-04 (card treatments: mode-aware RecipeCard + dense DayRow) — complete (4/6 plans)"
-status: Phase 19 Wave 2 progressing — 19-01 + 19-02 + 19-03 + 19-04 landed (tokens, primitives, search/row, card treatments); 19-05/06 queued
-stopped_at: Completed 19-04-PLAN.md (mode-aware RecipeCard + dense DayRow with Chip-driven status via deriveStatusChips helper)
-last_updated: "2026-04-18T22:32:06.816Z"
-last_activity: 2026-04-18 -- Completed 19-04 (mode-aware RecipeCard + dense DayRow with Chip status; deriveStatusChips helper matrix-tested)
+current_plan: "19-05 (one-pass terracotta token sweep + ItemRow integration + StickySearchPill on Library + purity test green) — complete (5/6 plans)"
+status: Phase 19 Wave 3 progressing — 19-01..19-05 landed (tokens, primitives, search/row, card treatments, token sweep); 19-06 queued for visual verification + Maestro UAT (requires Metro cache clear)
+stopped_at: Completed 19-05-PLAN.md (token sweep + ItemRow integration + StickySearchPill on Library + purity test green)
+last_updated: "2026-04-18T22:55:18.484Z"
+last_activity: 2026-04-18 -- Completed 19-05 (one-pass terracotta token sweep across 53 files + Shopping/Pantry rows on ItemRow primitive + Kitchen StickySearchPill + ChipToggle/recipes-SearchBar DELETED + tokens-purity.test.ts GREEN)
 progress:
   total_phases: 25
   completed_phases: 15
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 19 of 25 (Design Professionalization — Icons, Buttons, Navigation, Search Bars)
-Current Plan: 19-04 (card treatments: mode-aware RecipeCard + dense DayRow) — complete (4/6 plans)
-Status: Phase 19 Wave 2 progressing — 19-01 + 19-02 + 19-03 + 19-04 landed (tokens, primitives, search/row, card treatments); 19-05/06 queued
-Last activity: 2026-04-18 -- Completed 19-04 (mode-aware RecipeCard + dense DayRow with Chip status; deriveStatusChips helper matrix-tested)
+Current Plan: 19-05 (one-pass terracotta token sweep + ItemRow integration + StickySearchPill on Library + purity test green) — complete (5/6 plans)
+Status: Phase 19 Wave 3 progressing — 19-01..19-05 landed (tokens, primitives, search/row, card treatments, token sweep); 19-06 queued for visual verification + Maestro UAT (requires Metro cache clear)
+Last activity: 2026-04-18 -- Completed 19-05 (one-pass terracotta token sweep across 53 files + Shopping/Pantry rows on ItemRow primitive + Kitchen StickySearchPill + ChipToggle/recipes-SearchBar DELETED + tokens-purity.test.ts GREEN)
 
 Progress: [██████████] 98%
 
@@ -117,6 +117,7 @@ Progress: [██████████] 98%
 | Phase 19 P03 | 3min | 2 tasks | 7 files |
 | Phase 19 P02 | 4min | 3 tasks | 8 files |
 | Phase 19 P04 | 5min | 2 tasks | 7 files |
+| Phase 19 P05 | 17min | 5 tasks | 53 files |
 
 ## Accumulated Context
 
@@ -345,6 +346,9 @@ Recent decisions affecting current work:
 - [Phase 19]: [Phase 19-04]: Status-chip derivation extracted to pure deriveStatusChips helper with matrix test (4 statuses × stretch × pantryReady) so silent regressions cannot hide behind Plan tab screenshots
 - [Phase 19]: [Phase 19-04]: vitest.config exclude narrowed from 'src/components/!(ui)/**' to 'src/components/**/*.native.test.*' — unblocks pure helper tests under recipes/ and plan/ without exposing RN-renderer-coupled tests
 - [Phase 19]: [Phase 19-04]: isStretch/pantryReady flags threaded through deriveStatusChips even though MealPlanEntry lacks them today — one-line data binding when Phase 22 plan refactor adds the fields
+- [Phase 19]: [Phase 19-05]: One-pass token sweep completed; zero #F97316/orange-* in src/**; tokens-purity.test.ts GREEN
+- [Phase 19]: [Phase 19-05]: PantryItemCard leading=icon deviation (stepper deferred to Phase 21 pantry intelligence — pantryStore has no updateItemQuantity)
+- [Phase 19]: [Phase 19-05]: ChipToggle + components/recipes/SearchBar DELETED; 5 ChipToggle call sites migrated to Chip kind=filter|display (allergies become kind=display tone=destructive)
 
 ### Pending Todos
 
@@ -388,6 +392,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T22:32:06.811Z
-Stopped at: Completed 19-04-PLAN.md (mode-aware RecipeCard + dense DayRow with Chip-driven status via deriveStatusChips helper)
+Last session: 2026-04-18T22:55:18.480Z
+Stopped at: Completed 19-05-PLAN.md (token sweep + ItemRow integration + StickySearchPill on Library + purity test green)
 Resume file: None
