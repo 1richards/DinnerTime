@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: "19-05 (one-pass terracotta token sweep + ItemRow integration + StickySearchPill on Library + purity test green) — complete (5/6 plans)"
-status: Phase 19 Wave 3 progressing — 19-01..19-05 landed (tokens, primitives, search/row, card treatments, token sweep); 19-06 queued for visual verification + Maestro UAT (requires Metro cache clear)
-stopped_at: Completed 19-05-PLAN.md (token sweep + ItemRow integration + StickySearchPill on Library + purity test green)
-last_updated: "2026-04-18T22:55:18.484Z"
-last_activity: 2026-04-18 -- Completed 19-05 (one-pass terracotta token sweep across 53 files + Shopping/Pantry rows on ItemRow primitive + Kitchen StickySearchPill + ChipToggle/recipes-SearchBar DELETED + tokens-purity.test.ts GREEN)
+current_plan: 19-06 (Maestro flow rebase + visual regression flow + Gate A auto-approved) — complete (6/6 plans — Phase 19 DONE)
+status: completed
+stopped_at: Completed 19-06-PLAN.md — Phase 19 DONE, Block A closed (Phase 15 structural + Phase 19 aesthetic)
+last_updated: "2026-04-18T23:21:36.067Z"
+last_activity: 2026-04-18 -- Completed 19-06 (Maestro flows 18/20 rebased for sticky pill + Recipe Box rename, 23-design-buttons-visual.yaml new flow, Phase 19 design visually verified via 9 live-sim screenshots, Gate A auto-approved)
 progress:
   total_phases: 25
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 66
-  completed_plans: 65
-  percent: 98
+  completed_plans: 66
+  percent: 100
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 19 of 25 (Design Professionalization — Icons, Buttons, Navigation, Search Bars)
-Current Plan: 19-05 (one-pass terracotta token sweep + ItemRow integration + StickySearchPill on Library + purity test green) — complete (5/6 plans)
-Status: Phase 19 Wave 3 progressing — 19-01..19-05 landed (tokens, primitives, search/row, card treatments, token sweep); 19-06 queued for visual verification + Maestro UAT (requires Metro cache clear)
-Last activity: 2026-04-18 -- Completed 19-05 (one-pass terracotta token sweep across 53 files + Shopping/Pantry rows on ItemRow primitive + Kitchen StickySearchPill + ChipToggle/recipes-SearchBar DELETED + tokens-purity.test.ts GREEN)
+Phase: 19 of 25 (Design Professionalization — Icons, Buttons, Navigation, Search Bars) — COMPLETE
+Current Plan: 19-06 (Maestro flow rebase + visual regression flow + Gate A auto-approved) — complete (6/6 plans — Phase 19 DONE)
+Status: Phase 19 complete — Block A closed (Phase 15 structural + Phase 19 aesthetic). Ready for Block B (Phase 18 AI auto-location)
+Last activity: 2026-04-18 -- Completed 19-06 (Maestro flows 18/20 rebased for sticky pill + Recipe Box rename, 23-design-buttons-visual.yaml new flow, Phase 19 design visually verified via 9 live-sim screenshots, Gate A auto-approved)
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -118,6 +118,7 @@ Progress: [██████████] 98%
 | Phase 19 P02 | 4min | 3 tasks | 8 files |
 | Phase 19 P04 | 5min | 2 tasks | 7 files |
 | Phase 19 P05 | 17min | 5 tasks | 53 files |
+| Phase 19 P06 | 24min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -349,6 +350,9 @@ Recent decisions affecting current work:
 - [Phase 19]: [Phase 19-05]: One-pass token sweep completed; zero #F97316/orange-* in src/**; tokens-purity.test.ts GREEN
 - [Phase 19]: [Phase 19-05]: PantryItemCard leading=icon deviation (stepper deferred to Phase 21 pantry intelligence — pantryStore has no updateItemQuantity)
 - [Phase 19]: [Phase 19-05]: ChipToggle + components/recipes/SearchBar DELETED; 5 ChipToggle call sites migrated to Chip kind=filter|display (allergies become kind=display tone=destructive)
+- [Phase 19]: [Phase 19-06]: Maestro flow 23-design-buttons-visual.yaml authored (not 21 per plan) — slots 21/22 taken by Phase 15 flows; renaming would destroy history
+- [Phase 19]: [Phase 19-06]: launchApp clearState prelude pattern added to flows 18/20/23 — root-cause fix for upstream modal bleed (flow 19 Import-from-Instacart modal poisoned downstream flows)
+- [Phase 19]: [Phase 19-06]: Gate A auto-approved under auto-chain mode — 9 named screenshots from live iPhone 17 Pro sim confirmed terracotta palette + sticky pill + dense DayRow + destructive Sign Out all render correctly, no orange leaks
 
 ### Pending Todos
 
@@ -392,6 +396,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T22:55:18.480Z
-Stopped at: Completed 19-05-PLAN.md (token sweep + ItemRow integration + StickySearchPill on Library + purity test green)
+Last session: 2026-04-18T23:21:36.064Z
+Stopped at: Completed 19-06-PLAN.md — Phase 19 DONE, Block A closed (Phase 15 structural + Phase 19 aesthetic)
 Resume file: None
