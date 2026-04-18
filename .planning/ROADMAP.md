@@ -28,6 +28,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 14: Multi-Photo Scan & Smarter Item Filtering** - Multiple photos per scan session, AI only returns identifiable cooking ingredients (completed 2026-04-18)
 - [ ] **Phase 15: UI Polish & Navigation Consistency** - Systematic audit + fixes: system icons replace emojis, consistent nav headers/back buttons, unified empty/loading states
 - [ ] **Phase 16: Cooking Mode UX Enhancements** - Upgraded voice interaction + model, UI polish, better information display during cooking
+- [ ] **Phase 17: "Something New" — AI Recipe Exploration** - Reimagines the Suggestions segment: keyword search over AI-generated recipes, "from the pantry" filter, persisted results, remix-and-save to Recipe Box
+- [ ] **Phase 18: AI Auto-Location for Pantry Imports** - Remove forced fridge/pantry/freezer choice; AI infers per-item location across scan, receipt, and Instacart flows
+- [ ] **Phase 19: Design Professionalization** - Polish icons, buttons, navigation, search bars, and shared design patterns; reference Spotify, Strava, DoorDash aesthetics
 
 **Milestone v1.0 shipped 2026-04-14.** Post-v1 polish (UAT harness, visual pass, remix, collapsing headers, filter sheet, sign out, SecureStore fix, Cook tab removal) landed out-of-band on `main` and is logged in `STATE.md` under "Post-v1 Polish" rather than re-planned as a GSD phase. See `.planning/UAT-NIGHT-REPORT.md` for the overnight work summary. Plan tab multi-week navigation is deferred; candidate for a future Phase 12 when formalized.
 
@@ -328,6 +331,51 @@ Plans:
   3. Cooking mode UI is polished and consistent with Apple HIG — typography, spacing, state transitions, and icons meet Phase 15's design standards
   4. During cooking, users see at a glance: current step, upcoming steps, active timers, remaining ingredients/quantities without scrolling
   5. Voice commands to navigate (next/previous step, repeat, pause timer, set timer, show ingredients) work reliably with clear visual confirmation
+**Plans**: 0 plans
+Plans: (not yet planned)
+**UI hint**: yes
+
+### Phase 17: "Something New" — AI Recipe Exploration
+**Goal**: Reimagine the Suggestions segment from a reactive "tap to regenerate" loop into a proactive recipe search. Users type keywords, get AI-generated recipes, optionally filter to only ones possible with current pantry, and remix-and-save the ones they like
+**Depends on**: Phase 12, Phase 4
+**Requirements**: Suggestions UX reimagining (post-v1)
+**Success Criteria** (what must be TRUE):
+  1. Suggestions segment renamed to "Something New"
+  2. Landing on the segment shows persisted previous results (no empty state with a blocking FAB)
+  3. User can type keywords in a search bar to explore AI-generated recipe ideas
+  4. "From the pantry" filter toggle restricts results to recipes feasible with current pantry
+  5. Tap-to-remix on any result opens the existing remix/edit flow, with save-to-Recipe Box
+  6. Sparkles regenerate FAB is either replaced or repositioned so it doesn't feel like the only entry point
+**Plans**: 0 plans
+Plans: (not yet planned)
+**UI hint**: yes
+
+### Phase 18: AI Auto-Location for Pantry Imports
+**Goal**: Remove the forced choice between fridge/pantry/freezer on pantry import flows. The AI infers per-item location from context (ingredient type, temperature requirements, packaging) so users don't have to think about it
+**Depends on**: Phase 3, Phase 13, Phase 14
+**Requirements**: Pantry UX improvement (post-v1)
+**Success Criteria** (what must be TRUE):
+  1. AI returns a suggested source_location per item across camera scan, receipt scan, and Instacart import
+  2. Review screen shows location per item as an editable chip (override possible if AI is wrong)
+  3. LocationPicker is removed as a gating step before scanning (or reduced to an optional hint)
+  4. Default locations are sensible: dairy/meat/produce → fridge; frozen → freezer; shelf-stable → pantry
+  5. Receipt/Instacart imports correctly distribute items across all three locations in one session
+**Plans**: 0 plans
+Plans: (not yet planned)
+**UI hint**: yes
+
+### Phase 19: Design Professionalization
+**Goal**: App feels polished enough to ship commercially — icons, buttons, navigation, search bars, typography, and shared design patterns are consistent and premium-feeling. Reference points: Spotify (dark premium feel, typography, tab bar), Strava (information density, chip design, activity cards), DoorDash (search bar pattern, filter chips, cart CTAs)
+**Depends on**: Phase 15
+**Requirements**: Design quality (post-v1)
+**Success Criteria** (what must be TRUE):
+  1. Icon set is coherent — one icon family (SF Symbols or Ionicons) used consistently, sized and weighted to a documented scale
+  2. Button system has documented variants (primary, secondary, ghost, destructive, icon-only) with consistent heights, padding, and states
+  3. Search bars follow one pattern across Recipe Box, Something New, and any other searchable surfaces
+  4. Navigation headers use a consistent pattern — large title collapses to compact, back buttons styled identically, right-side action slots ordered predictably
+  5. Filter chips, category chips, and toggle chips share one design language
+  6. Color palette documented — semantic roles (primary/accent/warning/destructive/surface/subtle) with usage rules
+  7. Typography scale documented (display/title/body/caption/label) with consistent line heights
 **Plans**: 0 plans
 Plans: (not yet planned)
 **UI hint**: yes
