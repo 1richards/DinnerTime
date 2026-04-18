@@ -265,20 +265,22 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 11. Hybrid AI Client | 4/5 | Complete    | 2026-04-13 |
 | 12. Combine Home & Recipes | 0/0 | Not planned | — |
 
-| 13. Receipt Scan & Instacart Import | 0/0 | Not planned | — |
+| 13. Receipt Scan & Instacart Import | 0/2 | Planned | — |
 | 14. Multi-Photo Scan & Smarter Filtering | 2/2 | Complete   | 2026-04-18 |
 
 ### Phase 13: Receipt Scan & Instacart Import
-**Goal**: Users can bulk-load pantry items by scanning a grocery receipt or importing Instacart purchase history, instead of photographing every item individually
+**Goal**: Users can bulk-load pantry items by scanning a grocery receipt or importing an Instacart order screenshot, instead of photographing every item individually
 **Depends on**: Phase 3, Phase 8
 **Requirements**: Pantry scalability (post-v1)
 **Success Criteria** (what must be TRUE):
   1. User can photograph a grocery store receipt and get items extracted and added to pantry
-  2. User can import items from their Instacart order history into the pantry
+  2. User can upload an Instacart order screenshot and get items extracted (descoped from API import — Instacart Developer Platform does not expose order history; see 13-RESEARCH.md)
   3. Imported items are reconciled with existing pantry inventory (no duplicates)
   4. Both flows are accessible from the Pantry tab alongside the existing camera scan
-**Plans**: 0 plans
-Plans: (not yet planned)
+**Plans**: 2 plans
+Plans:
+- [ ] 13-01-PLAN.md — Backend: identifyReceiptItems service (receipt + Instacart variants, denylist), POST /scan-receipt + /import-instacart routes, TDD
+- [ ] 13-02-PLAN.md — Mobile: pantryStore actions, BulkImportSheet launcher, /scan/receipt + /scan/instacart screens, Maestro smoke, iOS Simulator UAT checkpoint
 **UI hint**: yes
 
 ### Phase 14: Multi-Photo Scan & Smarter Item Filtering
