@@ -7,6 +7,7 @@ import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/authStore';
 import { OfflineBanner } from '../components/OfflineBanner';
+import { colors } from '../design/tokens';
 // Importing networkStore here ensures its module-side-effect NetInfo
 // listener is wired at app boot even before any screen mounts.
 import '../stores/networkStore';
@@ -33,8 +34,8 @@ function RootNavigator() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFBF5' }}>
-        <ActivityIndicator size="large" color="#F97316" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg }}>
+        <ActivityIndicator size="large" color={colors.brand} />
       </View>
     );
   }
@@ -49,8 +50,8 @@ function RootNavigator() {
             options={{
               headerShown: true,
               title: 'Settings',
-              headerStyle: { backgroundColor: '#FFFBF5' },
-              headerTintColor: '#1F2937',
+              headerStyle: { backgroundColor: colors.bg },
+              headerTintColor: colors.textPrimary,
               headerShadowVisible: false,
               headerBackTitle: '',
             }}
@@ -73,9 +74,11 @@ function AuthStateBanner() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const isOnboarded = useAuthStore((s) => s.isOnboarded);
   const isLoading = useAuthStore((s) => s.isLoading);
+  // Dev-only sentinel banner — uses bg-brand/15 + text-brand tokens via inline style
+  // (can't use className on StyleSheet-style View backgroundColor).
   return (
-    <View style={{ padding: 16, paddingTop: 60, backgroundColor: '#FED7AA' }}>
-      <Text style={{ fontSize: 13, color: '#7C2D12' }}>
+    <View style={{ padding: 16, paddingTop: 60, backgroundColor: colors.surfaceSubtle }}>
+      <Text style={{ fontSize: 13, color: colors.textSecondary }}>
         loading={String(isLoading)} loggedIn={String(isLoggedIn)} onboarded={String(isOnboarded)}
       </Text>
     </View>

@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { Animated, StyleSheet } from 'react-native';
+import { colors, typography } from '../../design/tokens';
 
 export const LARGE_HEADER_HEIGHT = 68;
 export const COLLAPSED_HEADER_HEIGHT = 52;
@@ -33,6 +34,12 @@ export function useCollapsingHeader() {
   return { scrollY, onScroll, largeTitleOpacity, largeTitleTranslate, compactHeaderOpacity };
 }
 
+// Translucent compact-header background derived from colors.bg (#FAF7F2) at 95% alpha.
+// Inlined as an rgba literal because RN doesn't accept `${hex}F2` — comment documents derivation.
+const COMPACT_HEADER_BG = 'rgba(250,247,242,0.95)';
+// Surface white at 90% alpha for the neutral action-button fill.
+const ACTION_BTN_BG = 'rgba(255,255,255,0.9)';
+
 export const collapsingHeaderStyles = StyleSheet.create({
   largeHeader: {
     paddingHorizontal: 20,
@@ -41,15 +48,13 @@ export const collapsingHeaderStyles = StyleSheet.create({
     marginTop: -6,
   },
   largeTitle: {
-    fontSize: 34,
-    fontWeight: '900',
-    color: '#1A140F',
-    letterSpacing: -0.8,
+    ...typography.display,
+    color: colors.textPrimary,
     marginBottom: 2,
   },
   largeSubtitle: {
-    fontSize: 14,
-    color: '#7A6651',
+    ...typography.caption,
+    color: colors.textSecondary,
   },
   compactHeader: {
     position: 'absolute',
@@ -57,17 +62,18 @@ export const collapsingHeaderStyles = StyleSheet.create({
     left: 0,
     right: 0,
     height: COLLAPSED_HEADER_HEIGHT,
-    backgroundColor: 'rgba(255,251,245,0.95)',
+    backgroundColor: COMPACT_HEADER_BG,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F1EAE0',
+    borderBottomColor: colors.borderSubtle,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 5,
   },
   compactTitle: {
     fontSize: 17,
-    fontWeight: '800',
-    color: '#1A140F',
+    lineHeight: 22,
+    fontWeight: '600',
+    color: colors.textPrimary,
     letterSpacing: -0.2,
   },
   actionRow: {
@@ -86,15 +92,15 @@ export const collapsingHeaderStyles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: ACTION_BTN_BG,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5D9CA',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionBtnActive: {
-    backgroundColor: '#F97316',
-    borderColor: '#F97316',
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
   badge: {
     position: 'absolute',
@@ -103,12 +109,12 @@ export const collapsingHeaderStyles = StyleSheet.create({
     minWidth: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#DC2626',
+    backgroundColor: colors.destructive,
     paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#FFFBF5',
+    borderColor: colors.bg,
   },
   badgeText: {
     fontSize: 10,

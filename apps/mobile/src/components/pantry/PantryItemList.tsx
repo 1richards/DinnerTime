@@ -1,6 +1,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { View, Text, SectionList, RefreshControl, Animated } from 'react-native';
 import { PantryItemCard } from './PantryItemCard';
+import { colors } from '../../design/tokens';
 import type { EnrichedPantryItem } from '../../hooks/usePantryItems';
 
 const CATEGORY_ORDER: string[] = [
@@ -83,7 +84,7 @@ export function PantryItemList({
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor="#F97316"
+          tintColor={colors.brand}
         />
       }
       contentContainerStyle={contentContainerStyle ?? { paddingBottom: 100 }}

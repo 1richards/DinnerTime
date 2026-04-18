@@ -8,6 +8,8 @@ import {
 } from 'react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { SymbolIcon } from '../ui/SymbolIcon';
+import { ItemRow } from '../ui/ItemRow';
+import { colors } from '../../design/tokens';
 import type { ShoppingListItem } from '../../types/shopping';
 
 interface ShoppingItemRowProps {
@@ -64,7 +66,7 @@ export function ShoppingItemRow({
           onDelete();
         }}
         style={{
-          backgroundColor: '#DC2626',
+          backgroundColor: colors.destructive,
           justifyContent: 'center',
           alignItems: 'center',
           width: 84,
@@ -73,26 +75,25 @@ export function ShoppingItemRow({
         }}
       >
         <SymbolIcon name="trash" size={22} tintColor="#FFFFFF" />
-        <Text className="text-white text-xs font-semibold mt-1">Delete</Text>
+        <Text className="text-white text-caption font-semibold mt-1">Delete</Text>
       </RectButton>
     );
   };
 
-  const qtyLabel =
-    item.quantity != null
-      ? `${item.quantity}${item.unit ? ` ${item.unit}` : ''}`
-      : item.unit ?? '';
-
+  // Editing mode keeps the inline text input affordance — ItemRow doesn't
+  // support inline edit, so editing mode renders a bespoke row that matches
+  // ItemRow's visual language via tokens.
   if (editing) {
     return (
-      <View className="flex-row items-center bg-white rounded-xl px-4 py-3 my-1 border border-orange-200">
+      <View className="flex-row items-center bg-surface rounded-card px-4 py-3 my-1 border border-brand">
         <TextInput
           value={name}
           onChangeText={setName}
           onBlur={commit}
           autoFocus
-          className="flex-1 text-base text-warmGray-900 py-1"
+          className="flex-1 text-body text-text-primary py-1"
           placeholder="Item name"
+          placeholderTextColor={colors.textTertiary}
           returnKeyType="done"
           onSubmitEditing={commit}
         />
@@ -100,18 +101,28 @@ export function ShoppingItemRow({
           value={quantity}
           onChangeText={setQuantity}
           onBlur={commit}
-          className="w-16 text-base text-warmGray-700 text-right py-1 ml-2"
+          className="w-16 text-body text-text-secondary text-right py-1 ml-2"
           placeholder="qty"
+          placeholderTextColor={colors.textTertiary}
           keyboardType="numeric"
           returnKeyType="done"
           onSubmitEditing={commit}
         />
         <Pressable onPress={cancelEdit} hitSlop={8} className="ml-3" accessibilityLabel="Cancel edit">
-          <SymbolIcon name="xmark" size={20} tintColor="#9CA3AF" />
+          <SymbolIcon name="xmark" size={20} tintColor={colors.textTertiary} />
         </Pressable>
       </View>
     );
   }
+
+  const qtySubtitle = [
+    item.quantity != null
+      ? `${item.quantity}${item.unit ? ` ${item.unit}` : ''}`
+      : item.unit ?? '',
+    item.sources && item.sources.length > 0 ? item.sources.join(', ') : '',
+  ]
+    .filter(Boolean)
+    .join(' \u2022 ');
 
   return (
     <Swipeable
@@ -119,58 +130,13 @@ export function ShoppingItemRow({
       renderRightActions={renderRightActions}
       overshootRight={false}
     >
-      <Pressable
+      <ItemRow
+        leading={{ kind: 'checkbox', checked: !!item.checked, onToggle }}
+        title={item.name}
+        subtitle={qtySubtitle || undefined}
+        struck={!!item.checked}
         onLongPress={() => setEditing(true)}
-        delayLongPress={350}
-        className="flex-row items-center bg-white rounded-xl px-4 py-3 my-1 active:bg-warmGray-50"
-        style={{ minHeight: 52 }}
-      >
-        <Pressable
-          onPress={onToggle}
-          hitSlop={10}
-          className={`w-7 h-7 rounded-full border-2 items-center justify-center ${
-            item.checked
-              ? 'bg-orange-500 border-orange-500'
-              : 'border-warmGray-300 bg-white'
-          }`}
-          accessibilityLabel={item.checked ? 'Uncheck item' : 'Check item'}
-        >
-          {item.checked && (
-            <SymbolIcon name="checkmark" size={18} weight="bold" tintColor="#FFFFFF" />
-          )}
-        </Pressable>
-
-        <View className="flex-1 ml-3">
-          <Text
-            className={`text-base ${
-              item.checked
-                ? 'line-through text-warmGray-400'
-                : 'text-warmGray-900'
-            }`}
-            numberOfLines={1}
-          >
-            {item.name}
-          </Text>
-          {item.sources && item.sources.length > 0 && (
-            <Text
-              className="text-xs text-warmGray-400 mt-0.5"
-              numberOfLines={1}
-            >
-              {item.sources.join(', ')}
-            </Text>
-          )}
-        </View>
-
-        {qtyLabel !== '' && (
-          <Text
-            className={`text-sm ml-2 ${
-              item.checked ? 'text-warmGray-400' : 'text-warmGray-600'
-            }`}
-          >
-            {qtyLabel}
-          </Text>
-        )}
-      </Pressable>
+      />
     </Swipeable>
   );
 }

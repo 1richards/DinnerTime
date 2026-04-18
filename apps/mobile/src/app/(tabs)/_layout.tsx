@@ -1,7 +1,8 @@
 import { Redirect, Tabs } from 'expo-router';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { useAuthStore } from '../../stores/authStore';
+import { colors } from '../../design/tokens';
 
 export default function TabLayout() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
@@ -13,16 +14,17 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#F97316',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: colors.brand,
+        tabBarInactiveTintColor: colors.textTertiary,
         tabBarStyle: {
-          backgroundColor: '#FFFBF5',
-          borderTopColor: '#F3F0EB',
+          backgroundColor: colors.bg,
+          borderTopColor: colors.borderSubtle,
+          borderTopWidth: StyleSheet.hairlineWidth,
         },
         headerStyle: {
-          backgroundColor: '#FFFBF5',
+          backgroundColor: colors.bg,
         },
-        headerTintColor: '#1F2937',
+        headerTintColor: colors.textPrimary,
         headerShadowVisible: false,
       }}
     >
