@@ -1,5 +1,4 @@
-import { Redirect, Tabs, router } from 'expo-router';
-import { Pressable } from 'react-native';
+import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -26,28 +25,23 @@ export default function TabLayout() {
         headerShadowVisible: false,
       }}
     >
+      {/*
+        Kitchen MUST be the first Tabs.Screen — expo-router resolves the
+        /(tabs) group redirect to whichever screen is declared first. See
+        12-RESEARCH.md Pitfall 1.
+      */}
       <Tabs.Screen
-        name="index"
+        name="kitchen"
         options={{
           headerShown: false,
-          title: 'Home',
-          tabBarLabel: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="recipes"
-        options={{
-          // The Recipes screen owns its own collapsing header now, so
-          // hide the default navigation header. Otherwise we end up with
-          // two "Recipes" titles stacked on top of each other.
-          headerShown: false,
-          title: 'Recipes',
-          tabBarLabel: 'Recipes',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book-outline" size={size} color={color} />
+          title: 'Kitchen',
+          tabBarLabel: 'Kitchen',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? 'restaurant' : 'restaurant-outline'}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
