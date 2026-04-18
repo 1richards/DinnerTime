@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 19-03 (sticky-pill SearchBar + ItemRow) — complete (2/6 plans)
-status: Phase 19 Wave 2 partial — 19-03 landed (SearchBar + ItemRow); 19-02 still pending
-stopped_at: "Completed 19-03-PLAN.md (StickySearchPill + ItemRow primitives: sticky-pill search, /search modal route, 3-variant row with checkbox|stepper|icon leading)"
-last_updated: "2026-04-18T22:29:28.090Z"
-last_activity: 2026-04-18 -- Completed 19-03 (StickySearchPill + /search modal route + shared ItemRow primitive with 3 leading variants)
+current_plan: 19-02 (button + chip + input rewrite) — complete (3/6 plans)
+status: Phase 19 Wave 2 progressing — 19-01 + 19-02 + 19-03 landed (tokens, primitives, search/row); 19-04/05/06 queued
+stopped_at: Completed 19-02-PLAN.md (5-variant Button + two-family Chip + rethemed Input; pure-className tests; outline and ChipToggle as deprecation shims for Plan 05 sweep)
+last_updated: "2026-04-18T22:30:50.957Z"
+last_activity: 2026-04-18 -- Completed 19-02 (Button 5-variant 44pt + Chip filter/display kinds + Input semantic-token retheme)
 progress:
   total_phases: 25
   completed_phases: 15
   total_plans: 66
-  completed_plans: 62
-  percent: 94
+  completed_plans: 64
+  percent: 97
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 19 of 25 (Design Professionalization — Icons, Buttons, Navigation, Search Bars)
-Current Plan: 19-03 (sticky-pill SearchBar + ItemRow) — complete (2/6 plans)
-Status: Phase 19 Wave 2 partial — 19-03 landed (SearchBar + ItemRow); 19-02 still pending
-Last activity: 2026-04-18 -- Completed 19-03 (StickySearchPill + /search modal route + shared ItemRow primitive with 3 leading variants)
+Current Plan: 19-02 (button + chip + input rewrite) — complete (3/6 plans)
+Status: Phase 19 Wave 2 progressing — 19-01 + 19-02 + 19-03 landed (tokens, primitives, search/row); 19-04/05/06 queued
+Last activity: 2026-04-18 -- Completed 19-02 (Button 5-variant 44pt + Chip filter/display kinds + Input semantic-token retheme)
 
-Progress: [█████████░] 94%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -115,6 +115,7 @@ Progress: [█████████░] 94%
 | Phase Phase 15 PP04 | 6min | 3 tasks | 16 files |
 | Phase 19 P01 | 3min | 4 tasks | 9 files |
 | Phase 19 P03 | 3min | 2 tasks | 7 files |
+| Phase 19 P02 | 4min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -335,6 +336,9 @@ Recent decisions affecting current work:
 - [Phase 19-03]: ItemRow inline trailing chip (not <Chip />) — Plan 19-02 not yet executed; ChipTone union co-located in ItemRow.tsx so Plan 19-05 swap is a symbol-level rename
 - [Phase 19-03]: itemRowHelpers.ts exports pure resolvers (resolveTitleClasses, resolveCheckboxBoxClasses, CONTAINER_CLASSES, STEPPER_BUTTON_CLASSES); ItemRow composes them in JSX — enables Nyquist-rate variant coverage without RNTL
 - [Phase 19-03]: SearchBar.test.ts inline-mocks expo-symbols + expo-router (not in global vitest.setup.ts) — follows existing SymbolIcon.test.tsx pattern
+- [Phase 19]: [Phase 19-02]: Button rewritten to 5-variant 44pt system with pure variantStyles + test; 'outline' kept as deprecated alias mapping to 'secondary' for 23 legacy call sites (Plan 05 sweep removes)
+- [Phase 19]: [Phase 19-02]: Chip is two-family (kind=filter|display) in a single component file; chipStyles.ts resolveChipClasses is a pure function asserted as data in vitest node env; ChipToggle reduced to deprecation shim forwarding to Chip(kind=filter)
+- [Phase 19]: [Phase 19-02]: Input API preserved exactly (error?: string, not error?: boolean) — existing 5 call sites use error:string; plan explicitly permitted preserving existing shape while swapping only color/border/text classes to tokens
 
 ### Pending Todos
 
@@ -378,6 +382,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T22:29:03.262Z
-Stopped at: Completed 19-03-PLAN.md (StickySearchPill + ItemRow primitives: sticky-pill search, /search modal route, 3-variant row with checkbox|stepper|icon leading)
+Last session: 2026-04-18T22:30:31.346Z
+Stopped at: Completed 19-02-PLAN.md (5-variant Button + two-family Chip + rethemed Input; pure-className tests; outline and ChipToggle as deprecation shims for Plan 05 sweep)
 Resume file: None
