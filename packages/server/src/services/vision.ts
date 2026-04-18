@@ -75,6 +75,28 @@ const foodItemsTool: StructuredTool<{ items: ScanResult[] }> = {
 
 const MAX_BASE64_BYTES = 5 * 1024 * 1024; // Anthropic's 5 MB limit
 
+/**
+ * Receipt/Instacart extraction: names the AI might emit for ledger lines
+ * (subtotal, taxes, fees, discounts, credits). These are filtered out server-side
+ * after the AI call — prompt instructions alone are not reliable enough to trust.
+ * All entries are lowercase; matching trims + lowercases the returned name.
+ */
+export const RECEIPT_NAME_DENYLIST: ReadonlySet<string> = new Set([
+  'subtotal',
+  'total',
+  'tax',
+  'tip',
+  'fee',
+  'delivery fee',
+  'service fee',
+  'bag fee',
+  'deposit',
+  'discount',
+  'coupon',
+  'credit',
+  'change',
+]);
+
 const FILTERING_RULES = `For each item, report ONLY items you can specifically name as a cooking ingredient or food product. Examples of GOOD items: "milk", "cheddar cheese", "sriracha", "ground beef", "sourdough bread", "olive oil".
 
 DO NOT report:
@@ -88,6 +110,32 @@ All beverages ARE included (e.g., orange juice, soda, water, beer).
 
 Assign confidence 0.0-1.0 based on how clearly you can identify each item. Only report items with confidence >= 0.5.
 The category field MUST be exactly one of the nine values in the schema.`;
+
+/**
+ * Receipt / Instacart-screenshot-specific extraction rules.
+ * Extends FILTERING_RULES with line-item parsing, abbreviation expansion, and
+ * explicit denylist guidance. Pairs with server-side RECEIPT_NAME_DENYLIST
+ * filtering (prompt alone is not sufficient — belt-and-suspenders).
+ *
+ * Source: 13-RESEARCH.md "Pattern 1". Pitfall 2 mitigation appended:
+ * empty items array when image is too faded/blurry to read reliably.
+ */
+export const RECEIPT_FILTERING_RULES = `${FILTERING_RULES}
+
+This image is a GROCERY RECEIPT (or a screenshot of an Instacart order summary).
+- Each line typically shows: item name, quantity, unit or weight, price.
+- Extract ONLY purchased food/grocery items.
+- DO NOT report: subtotal, total, tax, tip, fees, discounts, coupons, store loyalty
+  credits, deposits, bag fees, delivery fees, service fees, or store name.
+- DO NOT report non-food items (cleaning supplies, paper goods, beauty products,
+  medicine) even if they appear on the receipt.
+- Expand common receipt abbreviations (e.g., "CHKN BRST" -> "chicken breast",
+  "ORG BANANA" -> "organic bananas", "GV WHL MLK" -> "whole milk").
+- If a quantity column is present, use it. If only a price is present, default
+  quantity to 1 and unit to "piece".
+- If an item appears multiple times on separate lines, report it once with the
+  summed quantity.
+- If the receipt is too faded or blurry to read reliably, return an empty items array.`;
 
 export async function identifyFoodItems(
   base64Image: string,
@@ -151,4 +199,61 @@ export async function identifyFoodItemsBatch(
     ...item,
     category: coerceCategory(item.category),
   }));
+}
+
+/**
+ * Extract pantry items from a single receipt photo or Instacart order
+ * screenshot. Single function with a `variant` param (receipt vs instacart
+ * screenshot) because both are single-image structured-OCR tasks with the
+ * same ScanResult[] output shape.
+ *
+ * Pantry-aware dedup (`existingItemNames`) mirrors identifyFoodItemsBatch so
+ * shelf-stable items (oils, condiments) don't clutter repeat imports.
+ *
+ * Server-side denylist (RECEIPT_NAME_DENYLIST) catches ledger lines the AI
+ * may emit despite prompt instructions (research Pitfall 4).
+ */
+export async function identifyReceiptItems(
+  base64Image: string,
+  sourceLocation: 'fridge' | 'pantry' | 'freezer',
+  existingItemNames: string[] = [],
+  variant: 'receipt' | 'instacart_screenshot' = 'receipt'
+): Promise<ScanResult[]> {
+  const imageBytes = Buffer.from(base64Image, 'base64').length;
+  if (imageBytes > MAX_BASE64_BYTES) {
+    throw new Error(
+      `Image too large (${(imageBytes / 1024 / 1024).toFixed(1)} MB). Please retake at lower resolution.`
+    );
+  }
+
+  const ai = getClientFor('vision.pantryScan');
+
+  const existingBlock = existingItemNames.length > 0
+    ? `\n\nALREADY IN PANTRY (do NOT report these — they are already tracked):\n${existingItemNames.map((n) => `- ${n}`).join('\n')}\n\nIf you see any of the above items on the receipt, exclude them from your response. Only report NEW items not already in this list.`
+    : '';
+
+  const variantPreamble = variant === 'instacart_screenshot'
+    ? 'You are analyzing a screenshot of an Instacart order summary or order confirmation.'
+    : 'You are analyzing a photograph of a printed grocery store receipt.';
+
+  const result = await ai.analyzeImageStructured<{ items: ScanResult[] }>({
+    user: `${variantPreamble}\n\n${RECEIPT_FILTERING_RULES}${existingBlock}`,
+    imageBase64: base64Image,
+    mimeType: 'image/jpeg',
+    tool: foodItemsTool,
+    maxTokens: 4096,
+  });
+
+  // Coerce category and filter out denylisted ledger lines. The denylist
+  // is a safety net — the prompt already instructs Claude not to emit these,
+  // but we can't rely on prompt adherence alone for financial-looking lines.
+  return (result.items ?? [])
+    .map((item) => ({
+      ...item,
+      category: coerceCategory(item.category),
+    }))
+    .filter((item) => {
+      const normalized = typeof item.name === 'string' ? item.name.trim().toLowerCase() : '';
+      return !RECEIPT_NAME_DENYLIST.has(normalized);
+    });
 }

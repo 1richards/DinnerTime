@@ -239,7 +239,8 @@ describe('identifyReceiptItems', () => {
 
     const callArgs = mockAnalyzeImageStructured.mock.calls[0][0];
     expect(callArgs.user.toLowerCase()).toContain('printed grocery store receipt');
-    expect(callArgs.user).not.toContain('Instacart order summary');
+    // Preamble is the receipt one, not the instacart screenshot one.
+    expect(callArgs.user).not.toContain('You are analyzing a screenshot of an Instacart order summary');
   });
 
   it('includes ALREADY IN PANTRY block when existingItemNames provided', async () => {
