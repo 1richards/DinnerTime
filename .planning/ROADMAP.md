@@ -24,7 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 10: Skill Progression & Offline** - Gentle skill coaching, creative variations, and offline support (completed 2026-04-13)
 - [x] **Phase 11: Hybrid AI Client** - Refactor all AI services behind a provider-agnostic AIClient with per-task Anthropic/Gemini routing (completed 2026-04-13)
 - [ ] **Phase 12: Combine Home & Recipes** - Rationalize Home and Recipes into a single unified page
-- [ ] **Phase 13: Receipt Scan & Instacart Import** - Bulk pantry loading from grocery receipts and Instacart purchase history
+- [x] **Phase 13: Receipt Scan & Instacart Import** - Bulk pantry loading from grocery receipts and Instacart purchase history (completed 2026-04-18)
 - [x] **Phase 14: Multi-Photo Scan & Smarter Item Filtering** - Multiple photos per scan session, AI only returns identifiable cooking ingredients (completed 2026-04-18)
 - [ ] **Phase 15: UI Polish & Navigation Consistency** - Systematic audit + fixes: system icons replace emojis, consistent nav headers/back buttons, unified empty/loading states
 
@@ -265,7 +265,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 11. Hybrid AI Client | 4/5 | Complete    | 2026-04-13 |
 | 12. Combine Home & Recipes | 0/0 | Not planned | — |
 
-| 13. Receipt Scan & Instacart Import | 1/2 | In Progress|  |
+| 13. Receipt Scan & Instacart Import | 2/2 | Complete   | 2026-04-18 |
 | 14. Multi-Photo Scan & Smarter Filtering | 2/2 | Complete   | 2026-04-18 |
 
 ### Phase 13: Receipt Scan & Instacart Import
@@ -280,7 +280,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 **Plans**: 2 plans
 Plans:
 - [x] 13-01-PLAN.md — Backend: identifyReceiptItems service (receipt + Instacart variants, denylist), POST /scan-receipt + /import-instacart routes, TDD
-- [ ] 13-02-PLAN.md — Mobile: pantryStore actions, BulkImportSheet launcher, /scan/receipt + /scan/instacart screens, Maestro smoke, iOS Simulator UAT checkpoint
+- [x] 13-02-PLAN.md — Mobile: pantryStore actions, BulkImportSheet launcher, /scan/receipt + /scan/instacart screens, Maestro smoke, iOS Simulator UAT checkpoint
 **UI hint**: yes
 
 ### Phase 14: Multi-Photo Scan & Smarter Item Filtering
