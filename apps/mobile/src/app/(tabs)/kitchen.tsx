@@ -18,7 +18,6 @@ import { useNetworkStore } from '../../stores/networkStore';
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
 
 import { SuggestionList } from '../../components/suggestions/SuggestionList';
-import { HeroImage } from '../../components/ui/HeroImage';
 import { RecipeCard } from '../../components/recipes/RecipeCard';
 import { SearchBar } from '../../components/recipes/SearchBar';
 import {
@@ -28,7 +27,6 @@ import {
   type RecipeFilterState,
   type TimeFilter,
 } from '../../components/recipes/RecipeFilterSheet';
-import { FOOD_IMAGES } from '../../constants/foodImages';
 import {
   useCollapsingHeader,
   collapsingHeaderStyles,
@@ -41,12 +39,6 @@ import type { Recipe, ParsedIngredient } from '../../types/recipe';
 // -----------------------------------------------------------------------------
 
 type Segment = 'suggestions' | 'library';
-
-// -----------------------------------------------------------------------------
-// Stable hero image for the Suggestions segment (changes daily, not per render)
-// -----------------------------------------------------------------------------
-
-const HERO_URI = FOOD_IMAGES.hero[new Date().getDay() % FOOD_IMAGES.hero.length];
 
 // -----------------------------------------------------------------------------
 // Library filter helpers (copied verbatim from recipes.tsx)
@@ -211,28 +203,6 @@ function SuggestionsHeader({
   setSegment: (s: Segment) => void;
 }) {
   const titleText = displayName ? `Hey, ${displayName}!` : 'Kitchen';
-  const hero = (
-    <HeroImage uri={HERO_URI} height={160}>
-      <View>
-        <Text
-          style={{
-            fontSize: 24,
-            fontWeight: '900',
-            color: '#FFFFFF',
-            letterSpacing: -0.5,
-          }}
-          numberOfLines={1}
-        >
-          {titleText}
-        </Text>
-        <Text
-          style={{ fontSize: 14, color: 'rgba(255,255,255,0.82)', marginTop: 4 }}
-        >
-          What should we cook tonight?
-        </Text>
-      </View>
-    </HeroImage>
-  );
 
   return (
     <View>
@@ -246,7 +216,6 @@ function SuggestionsHeader({
           <Text style={styles.largeTitle}>{titleText}</Text>
           <Text style={styles.largeSubtitle}>What should we cook tonight?</Text>
         </View>
-        {hero}
       </Animated.View>
       <SegmentedControl segment={segment} setSegment={setSegment} />
     </View>
@@ -372,7 +341,7 @@ export default function KitchenScreen() {
         <Text style={styles.compactTitle}>Kitchen</Text>
       </Animated.View>
 
-      {/* Action row (top-right): settings + library-only affordances */}
+      {/* Action row (top-right): library-only affordances. Settings is a tab now. */}
       <View style={styles.actionRow} pointerEvents="box-none">
         <View style={{ flex: 1 }} />
 
@@ -420,15 +389,6 @@ export default function KitchenScreen() {
             </Pressable>
           </>
         )}
-
-        <Pressable
-          onPress={() => router.push('/settings')}
-          style={styles.actionBtn}
-          hitSlop={8}
-          accessibilityLabel="Settings"
-        >
-          <Ionicons name="settings-outline" size={20} color="#3E332A" />
-        </Pressable>
       </View>
 
       {/* Both lists mounted in parallel; hide the inactive one with display:none

@@ -80,6 +80,11 @@ export function ReviewItemRow({ item, onUpdate, onRemove }: ReviewItemRowProps) 
         <Text className="text-sm text-warmGray-500 mt-0.5">
           {item.quantity} {item.unit} · {item.category}
         </Text>
+        {item.probableDupe && (
+          <Text className="text-xs text-orange-600 font-medium mt-1">
+            Already in pantry — tap to add anyway
+          </Text>
+        )}
       </View>
 
       {/* Confidence badge */}

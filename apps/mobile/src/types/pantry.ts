@@ -43,4 +43,7 @@ export interface ReviewItem extends ScanResult {
   id: string;
   accepted: boolean;
   userEdited: boolean;
+  /** Flagged when item name matches something already in the user's pantry.
+   * When true, defaults to accepted=false so the user must opt-in to re-adding. */
+  probableDupe?: boolean;
 }

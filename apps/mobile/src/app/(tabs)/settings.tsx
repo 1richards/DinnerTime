@@ -2,15 +2,15 @@ import React, { useEffect } from 'react';
 import { View, ScrollView, ActivityIndicator, Alert, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, router } from 'expo-router';
-import { useAuthStore } from '../stores/authStore';
-import { usePreferencesStore } from '../stores/preferencesStore';
-import { useToast } from '../components/ui/Toast';
-import { Button } from '../components/ui/Button';
-import { FamilyMembersSection } from '../components/settings/FamilyMembersSection';
-import { DietarySection } from '../components/settings/DietarySection';
-import { CuisineSection } from '../components/settings/CuisineSection';
-import { DislikesSection } from '../components/settings/DislikesSection';
-import { SkillLevelSection } from '../components/settings/SkillLevelSection';
+import { useAuthStore } from '../../stores/authStore';
+import { usePreferencesStore } from '../../stores/preferencesStore';
+import { useToast } from '../../components/ui/Toast';
+import { Button } from '../../components/ui/Button';
+import { FamilyMembersSection } from '../../components/settings/FamilyMembersSection';
+import { DietarySection } from '../../components/settings/DietarySection';
+import { CuisineSection } from '../../components/settings/CuisineSection';
+import { DislikesSection } from '../../components/settings/DislikesSection';
+import { SkillLevelSection } from '../../components/settings/SkillLevelSection';
 
 export default function SettingsScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -21,8 +21,8 @@ export default function SettingsScreen() {
   const { show, ToastComponent } = useToast();
 
   // If the user signs out while on this screen, kick them to login.
-  // Settings lives outside the (tabs) group so the group's redirect guard
-  // doesn't apply here.
+  // Settings is now inside the (tabs) group — the layout's redirect also
+  // catches this, but keeping the guard here makes the behavior explicit.
   if (!isLoggedIn) return <Redirect href="/(auth)/login" />;
 
   const handleSignOut = () => {

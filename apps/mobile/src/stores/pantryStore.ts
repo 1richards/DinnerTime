@@ -37,6 +37,40 @@ const getAuthToken = async (): Promise<string> => {
   return data.session.access_token;
 };
 
+/**
+ * Build a ReviewItem[] from raw scan results, flagging any item whose
+ * normalized name already exists in the user's pantry as a probable duplicate.
+ * Probable dupes default to accepted=false so the user must opt-in to re-adding
+ * them. Confidence-based accept rule still applies for non-dupes.
+ */
+function mapScanResultsToReview(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rawItems: any[],
+  existingItems: PantryItem[],
+  confidenceThreshold = 0.7,
+): ReviewItem[] {
+  const existingNames = new Set(
+    existingItems.map((p) => p.name.trim().toLowerCase()),
+  );
+  return rawItems.map((item, index) => {
+    const normalized = String(item.name ?? '').trim().toLowerCase();
+    const probableDupe = existingNames.has(normalized);
+    // Dupes default OFF; otherwise use confidence threshold.
+    const accepted = probableDupe ? false : item.confidence >= confidenceThreshold;
+    return {
+      id: `scan-${Date.now()}-${index}`,
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      confidence: item.confidence,
+      category: item.category,
+      accepted,
+      userEdited: false,
+      probableDupe,
+    };
+  });
+}
+
 export const usePantryStore = create<PantryState>()(
   persist(
     (set, get) => ({
@@ -82,19 +116,7 @@ export const usePantryStore = create<PantryState>()(
       }
 
       const data = await response.json();
-      const reviewItems: ReviewItem[] = (data.data ?? []).map(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (item: any, index: number) => ({
-          id: `scan-${Date.now()}-${index}`,
-          name: item.name,
-          quantity: item.quantity,
-          unit: item.unit,
-          confidence: item.confidence,
-          category: item.category,
-          accepted: true,
-          userEdited: false,
-        })
-      );
+      const reviewItems = mapScanResultsToReview(data.data ?? [], get().items);
 
       set({ scanResults: reviewItems, isScanning: false });
     } catch (err) {
@@ -122,19 +144,7 @@ export const usePantryStore = create<PantryState>()(
       }
 
       const data = await response.json();
-      const reviewItems: ReviewItem[] = (data.data ?? []).map(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (item: any, index: number) => ({
-          id: `scan-${Date.now()}-${index}`,
-          name: item.name,
-          quantity: item.quantity,
-          unit: item.unit,
-          confidence: item.confidence,
-          category: item.category,
-          accepted: item.confidence >= 0.7,
-          userEdited: false,
-        })
-      );
+      const reviewItems = mapScanResultsToReview(data.data ?? [], get().items);
 
       set({ scanResults: reviewItems, isScanning: false });
     } catch (err) {
@@ -162,19 +172,7 @@ export const usePantryStore = create<PantryState>()(
       }
 
       const data = await response.json();
-      const reviewItems: ReviewItem[] = (data.data ?? []).map(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (item: any, index: number) => ({
-          id: `scan-${Date.now()}-${index}`,
-          name: item.name,
-          quantity: item.quantity,
-          unit: item.unit,
-          confidence: item.confidence,
-          category: item.category,
-          accepted: item.confidence >= 0.7,
-          userEdited: false,
-        })
-      );
+      const reviewItems = mapScanResultsToReview(data.data ?? [], get().items);
 
       set({ scanResults: reviewItems, isScanning: false });
     } catch (err) {
@@ -202,19 +200,7 @@ export const usePantryStore = create<PantryState>()(
       }
 
       const data = await response.json();
-      const reviewItems: ReviewItem[] = (data.data ?? []).map(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (item: any, index: number) => ({
-          id: `scan-${Date.now()}-${index}`,
-          name: item.name,
-          quantity: item.quantity,
-          unit: item.unit,
-          confidence: item.confidence,
-          category: item.category,
-          accepted: item.confidence >= 0.7,
-          userEdited: false,
-        })
-      );
+      const reviewItems = mapScanResultsToReview(data.data ?? [], get().items);
 
       set({ scanResults: reviewItems, isScanning: false });
     } catch (err) {
