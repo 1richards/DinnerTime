@@ -1,41 +1,37 @@
 import React, { forwardRef, useState } from 'react';
 import { View, Text, TextInput, type TextInputProps } from 'react-native';
+import { colors } from '../../design/tokens';
 
 interface InputProps extends TextInputProps {
   label?: string;
+  /** Error message string. Truthy value switches border to destructive and renders the error text below. */
   error?: string;
   containerClassName?: string;
 }
 
 export const Input = forwardRef<TextInput, InputProps>(function Input(
-  {
-    label,
-    error,
-    containerClassName = '',
-    secureTextEntry,
-    ...props
-  },
-  ref
+  { label, error, containerClassName = '', secureTextEntry, ...props },
+  ref,
 ) {
   const [isFocused, setIsFocused] = useState(false);
+
+  const borderCls = error
+    ? 'border-destructive'
+    : isFocused
+      ? 'border-brand'
+      : 'border-border';
 
   return (
     <View className={`mb-4 ${containerClassName}`}>
       {label && (
-        <Text className="text-sm font-medium text-warmGray-700 mb-1.5">
+        <Text className="text-caption text-text-secondary mb-1.5">
           {label}
         </Text>
       )}
       <TextInput
         ref={ref}
-        className={`bg-warmGray-50 border rounded-xl px-4 py-3.5 text-base text-warmGray-900 ${
-          error
-            ? 'border-red-400'
-            : isFocused
-              ? 'border-orange-400'
-              : 'border-warmGray-200'
-        }`}
-        placeholderTextColor="#9CA3AF"
+        className={`bg-surface border rounded-button px-4 py-3.5 text-body text-text-primary ${borderCls}`}
+        placeholderTextColor={colors.textTertiary}
         secureTextEntry={secureTextEntry}
         onFocus={(e) => {
           setIsFocused(true);
@@ -48,7 +44,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         {...props}
       />
       {error && (
-        <Text className="text-sm text-red-500 mt-1">{error}</Text>
+        <Text className="text-caption text-destructive mt-1">{error}</Text>
       )}
     </View>
   );
