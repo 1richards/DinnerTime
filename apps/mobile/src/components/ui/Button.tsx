@@ -5,63 +5,67 @@ import {
   ActivityIndicator,
   type PressableProps,
 } from 'react-native';
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import { variantStyles, type ButtonVariant } from './buttonStyles';
+import { iconPropsForText } from '../../design/icons';
 
-type ButtonVariant = 'primary' | 'outline' | 'ghost';
+/**
+ * Legacy variant alias. The pre-Phase-19 Button shipped `primary | outline | ghost`.
+ * CONTEXT D-02 locked a new 5-variant system (`primary | secondary | ghost | destructive | iconOnly`)
+ * where `outline` conceptually maps to `secondary`. Plan 05's sweep migrates call sites
+ * (~23 files) to `variant="secondary"` explicitly; until then we accept `outline` as an
+ * alias at the prop-type boundary and resolve it to `secondary` internally.
+ */
+type ButtonVariantInput = ButtonVariant | 'outline';
 
 interface ButtonProps extends Omit<PressableProps, 'children'> {
-  title: string;
-  variant?: ButtonVariant;
+  /** Required for non-iconOnly variants. */
+  title?: string;
+  variant?: ButtonVariantInput;
   loading?: boolean;
+  /** Required when variant='iconOnly'. */
+  icon?: SymbolViewProps['name'];
   className?: string;
 }
 
-const variantStyles: Record<
-  ButtonVariant,
-  { container: string; text: string; pressed: string }
-> = {
-  primary: {
-    container: 'bg-orange-500 rounded-xl py-4 px-6',
-    text: 'text-white text-base font-semibold text-center',
-    pressed: 'bg-orange-600',
-  },
-  outline: {
-    container:
-      'border-2 border-orange-500 rounded-xl py-4 px-6 bg-transparent',
-    text: 'text-orange-500 text-base font-semibold text-center',
-    pressed: 'bg-orange-50',
-  },
-  ghost: {
-    container: 'rounded-xl py-4 px-6 bg-transparent',
-    text: 'text-orange-500 text-base font-semibold text-center',
-    pressed: 'bg-orange-50',
-  },
-};
+function resolveVariant(v: ButtonVariantInput | undefined): ButtonVariant {
+  if (v === 'outline') return 'secondary';
+  return v ?? 'primary';
+}
 
 export function Button({
   title,
-  variant = 'primary',
+  variant,
   loading = false,
   disabled = false,
+  icon,
   className = '',
   ...props
 }: ButtonProps) {
-  const styles = variantStyles[variant];
+  const resolved = resolveVariant(variant);
+  const s = variantStyles[resolved];
   const isDisabled = disabled || loading;
 
   return (
     <Pressable
-      className={`${styles.container} ${isDisabled ? 'opacity-50' : ''} ${className}`}
+      className={`${s.container} ${isDisabled ? 'opacity-50' : ''} ${className}`}
       disabled={isDisabled}
+      accessibilityRole="button"
       {...props}
     >
       {loading ? (
-        <ActivityIndicator
-          color={variant === 'primary' ? '#FFFFFF' : '#F97316'}
-          size="small"
+        <ActivityIndicator color={s.spinnerColor} size="small" />
+      ) : resolved === 'iconOnly' && icon ? (
+        <SymbolView
+          name={icon}
+          {...iconPropsForText('body')}
+          tintColor={s.spinnerColor}
         />
       ) : (
-        <Text className={styles.text}>{title}</Text>
+        <Text className={s.text}>{title}</Text>
       )}
     </Pressable>
   );
 }
+
+export type { ButtonVariant };
