@@ -3,10 +3,8 @@
  *   "Orange -> terracotta migration is a one-pass token swap. Do not leave
  *    mixed orange+terracotta states in the codebase at the end of the phase."
  *
- * STATUS: describe.skip in Plan 19-01.
- *   Plan 05's sweep is what drives this green. Flip `describe.skip` to
- *   `describe` after every #F97316 / orange-[0-9]+ has been replaced with a
- *   semantic brand/* class or colors.brand token.
+ * STATUS: ENABLED in Plan 19-05 (Task 3).
+ *   Plan 05's sweep drove this green. This test now enforces on every run.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -37,7 +35,7 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-describe.skip('token purity (Plan 19-05 enables this)', () => {
+describe('token purity', () => {
   const srcRoot = join(__dirname, '..');
   const files = walk(srcRoot);
   const hexRegex = /#F97316/i;
