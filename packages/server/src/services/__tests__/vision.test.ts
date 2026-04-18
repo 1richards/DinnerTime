@@ -26,7 +26,7 @@ vi.mock('../../ai/clientFactory.js', () => ({
 }));
 
 // Must import after mock setup
-import { identifyFoodItems, identifyFoodItemsBatch } from '../vision.js';
+import { identifyFoodItems, identifyFoodItemsBatch, identifyReceiptItems } from '../vision.js';
 
 describe('identifyFoodItems', () => {
   beforeEach(() => {
@@ -193,5 +193,129 @@ describe('identifyFoodItemsBatch', () => {
 
     const result = await identifyFoodItemsBatch(['IMG1'], 'fridge');
     expect(result).toEqual([]);
+  });
+});
+
+describe('identifyReceiptItems', () => {
+  beforeEach(() => {
+    mockAnalyzeImageStructured.mockReset();
+    mockGetClientFor.mockClear();
+  });
+
+  it('routes via vision.pantryScan and uses receipt preamble by default', async () => {
+    mockAnalyzeImageStructured.mockResolvedValue({ items: [] });
+
+    await identifyReceiptItems('base64data', 'pantry');
+
+    expect(mockGetClientFor).toHaveBeenCalledWith('vision.pantryScan');
+    expect(mockAnalyzeImageStructured).toHaveBeenCalledOnce();
+
+    const callArgs = mockAnalyzeImageStructured.mock.calls[0][0];
+    expect(callArgs).toMatchObject({
+      imageBase64: 'base64data',
+      mimeType: 'image/jpeg',
+      maxTokens: 4096,
+    });
+    expect(callArgs.tool).toMatchObject({ name: 'report_food_items' });
+    // Receipt preamble mentions printed grocery store receipt
+    expect(callArgs.user.toLowerCase()).toContain('printed grocery store receipt');
+  });
+
+  it('uses instacart preamble when variant=instacart_screenshot', async () => {
+    mockAnalyzeImageStructured.mockResolvedValue({ items: [] });
+
+    await identifyReceiptItems('base64data', 'pantry', [], 'instacart_screenshot');
+
+    const callArgs = mockAnalyzeImageStructured.mock.calls[0][0];
+    expect(callArgs.user).toContain('Instacart order summary');
+    // Should not include the receipt preamble
+    expect(callArgs.user.toLowerCase()).not.toContain('printed grocery store receipt');
+  });
+
+  it('uses receipt preamble when variant explicitly receipt', async () => {
+    mockAnalyzeImageStructured.mockResolvedValue({ items: [] });
+
+    await identifyReceiptItems('base64data', 'pantry', [], 'receipt');
+
+    const callArgs = mockAnalyzeImageStructured.mock.calls[0][0];
+    expect(callArgs.user.toLowerCase()).toContain('printed grocery store receipt');
+    expect(callArgs.user).not.toContain('Instacart order summary');
+  });
+
+  it('includes ALREADY IN PANTRY block when existingItemNames provided', async () => {
+    mockAnalyzeImageStructured.mockResolvedValue({ items: [] });
+
+    await identifyReceiptItems('base64data', 'pantry', ['milk', 'eggs'], 'receipt');
+
+    const callArgs = mockAnalyzeImageStructured.mock.calls[0][0];
+    expect(callArgs.user).toContain('ALREADY IN PANTRY');
+    expect(callArgs.user).toContain('- milk');
+    expect(callArgs.user).toContain('- eggs');
+  });
+
+  it('does NOT include ALREADY IN PANTRY block when existingItemNames empty', async () => {
+    mockAnalyzeImageStructured.mockResolvedValue({ items: [] });
+
+    await identifyReceiptItems('base64data', 'pantry', [], 'receipt');
+
+    const callArgs = mockAnalyzeImageStructured.mock.calls[0][0];
+    expect(callArgs.user).not.toContain('ALREADY IN PANTRY');
+  });
+
+  it('filters out denylist items (subtotal, total, tax, delivery fee, coupon) case-insensitively', async () => {
+    mockAnalyzeImageStructured.mockResolvedValue({
+      items: [
+        { name: 'subtotal', quantity: 1, unit: 'item', confidence: 1, category: 'other' },
+        { name: 'Total', quantity: 1, unit: 'item', confidence: 1, category: 'other' },
+        { name: 'TAX', quantity: 1, unit: 'item', confidence: 1, category: 'other' },
+        { name: 'Delivery Fee', quantity: 1, unit: 'item', confidence: 1, category: 'other' },
+        { name: 'Coupon', quantity: 1, unit: 'item', confidence: 1, category: 'other' },
+        { name: ' Tip ', quantity: 1, unit: 'item', confidence: 1, category: 'other' },
+        { name: 'chicken breast', quantity: 1, unit: 'lb', confidence: 0.9, category: 'protein' },
+      ],
+    });
+
+    const result = await identifyReceiptItems('base64data', 'pantry');
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe('chicken breast');
+  });
+
+  it('coerces returned categories (meat -> protein)', async () => {
+    mockAnalyzeImageStructured.mockResolvedValue({
+      items: [
+        { name: 'chicken', quantity: 1, unit: 'lb', confidence: 0.9, category: 'meat' },
+        { name: 'apple', quantity: 3, unit: 'piece', confidence: 0.8, category: 'fruit' },
+      ],
+    });
+
+    const result = await identifyReceiptItems('base64data', 'pantry');
+
+    expect(result[0].category).toBe('protein');
+    expect(result[1].category).toBe('produce');
+  });
+
+  it('returns empty array when items missing from result', async () => {
+    mockAnalyzeImageStructured.mockResolvedValue({});
+
+    const result = await identifyReceiptItems('base64data', 'pantry');
+    expect(result).toEqual([]);
+  });
+
+  it('throws when image exceeds 5MB limit', async () => {
+    const oversized = Buffer.alloc(6 * 1024 * 1024).toString('base64');
+
+    await expect(identifyReceiptItems(oversized, 'pantry')).rejects.toThrow(/too large/i);
+  });
+
+  it('prompt includes receipt-specific rules (skip totals, expand abbreviations)', async () => {
+    mockAnalyzeImageStructured.mockResolvedValue({ items: [] });
+
+    await identifyReceiptItems('base64data', 'pantry');
+
+    const callArgs = mockAnalyzeImageStructured.mock.calls[0][0];
+    // Should mention receipt-specific rules per RECEIPT_FILTERING_RULES
+    expect(callArgs.user).toMatch(/subtotal|total|tax/i);
+    expect(callArgs.user).toMatch(/abbreviation/i);
   });
 });
