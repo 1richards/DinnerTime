@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 2 of 3 (Phase 12 in progress)
-status: executing
-stopped_at: Completed 12-02-PLAN.md
-last_updated: "2026-04-18T05:25:34.940Z"
-last_activity: 2026-04-18 -- Completed 12-02 route-call-site sweep (all /(tabs) refs now target /(tabs)/kitchen; typecheck green)
+current_plan: Phase 12 complete (all 3 plans landed)
+status: completed
+stopped_at: Completed 12-03-PLAN.md — Phase 12 shipped
+last_updated: "2026-04-18T06:37:41.175Z"
+last_activity: 2026-04-18 -- Completed 12-03 Maestro UAT closure (20/21 flows green; Phase 12 unified Kitchen tab shipped)
 progress:
   total_phases: 15
-  completed_phases: 13
+  completed_phases: 14
   total_plans: 56
-  completed_plans: 55
-  percent: 98
+  completed_plans: 56
+  percent: 100
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 12 of 15 (Combine Home + Recipes)
-Current Plan: 2 of 3 (Phase 12 in progress)
-Status: In Progress
-Last activity: 2026-04-18 -- Completed 12-02 route-call-site sweep (all /(tabs) refs now target /(tabs)/kitchen; typecheck green)
+Phase: 12 of 15 (Combine Home + Recipes) — COMPLETE
+Current Plan: Phase 12 complete (all 3 plans landed)
+Status: Complete
+Last activity: 2026-04-18 -- Completed 12-03 Maestro UAT closure (20/21 flows green; Phase 12 unified Kitchen tab shipped)
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -108,6 +108,7 @@ Progress: [██████████] 98%
 | Phase 13 P02 | 14min | 3 tasks | 8 files |
 | Phase 12-combine-home-recipes P01 | 2 min | 3 tasks | 4 files |
 | Phase 12-combine-home-recipes P02 | 1 min | 2 tasks | 6 files |
+| Phase 12-combine-home-recipes P03 | 68min | 4 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -283,6 +284,9 @@ Recent decisions affecting current work:
 - [Phase 12-combine-home-recipes]: Atomic swap: rewrite _layout.tsx + delete old index/recipes files in same task so /(tabs) redirect never resolves stale
 - [Phase 12-combine-home-recipes]: Save-flow redirects use /(tabs)/kitchen?segment=library so saved recipes are immediately visible (Research Pitfall 3)
 - [Phase 12-combine-home-recipes]: Auth/root/onboarding redirects target /(tabs)/kitchen — no index tab after 12-01 consolidation
+- [Phase 12-combine-home-recipes]: [Phase 12-03]: Regex wildcards for Maestro tab-bar selectors — bare 'Kitchen' fails against accessibilityText-only nodes; use .*Kitchen.*/.*Library.* consistently
+- [Phase 12-combine-home-recipes]: [Phase 12-03]: '.*in your library.*' is the stable post-merge marker on Library segment (SearchBar collapsed by default, 'Search recipes' placeholder not always visible)
+- [Phase 12-combine-home-recipes]: [Phase 12-03]: Deep-link pattern for small action-row icons (dinnertime://recipes/discover) — XCUITest taps on 38x38 targets unreliable; mirrors Phase 13-02 receipt/Instacart approach
 
 ### Pending Todos
 
@@ -326,6 +330,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T05:25:31.470Z
-Stopped at: Completed 12-02-PLAN.md
+Last session: 2026-04-18T06:37:41.172Z
+Stopped at: Completed 12-03-PLAN.md — Phase 12 shipped
 Resume file: None
