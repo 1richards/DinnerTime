@@ -43,7 +43,7 @@ function RootNavigator() {
     <View style={{ flex: 1 }}>
       <OfflineBanner />
       <View style={{ flex: 1 }}>
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack screenOptions={{ headerShown: false, headerBackTitle: '' }}>
           <Stack.Screen
             name="settings"
             options={{
@@ -52,6 +52,7 @@ function RootNavigator() {
               headerStyle: { backgroundColor: '#FFFBF5' },
               headerTintColor: '#1F2937',
               headerShadowVisible: false,
+              headerBackTitle: '',
             }}
           />
         </Stack>

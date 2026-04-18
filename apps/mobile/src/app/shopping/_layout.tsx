@@ -7,6 +7,7 @@ export default function ShoppingLayout() {
         headerStyle: { backgroundColor: '#FFFBF5' },
         headerTintColor: '#1F2937',
         headerShadowVisible: false,
+        headerBackTitle: '',
       }}
     >
       <Stack.Screen name="orders" options={{ title: 'Orders' }} />
