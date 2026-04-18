@@ -388,7 +388,7 @@ Plans: (not yet planned)
   7. Typography scale documented (display/title/body/caption/label) with consistent line heights
 **Plans**: 6 plans
 Plans:
-- [ ] 19-01-PLAN.md — Design token foundation: CSS variables in global.css, tailwind.config.js extension, tokens.ts/icons.ts/typography.ts typed re-exports, Wave 0 parity + purity + icon unit tests
+- [x] 19-01-PLAN.md — Design token foundation: CSS variables in global.css, tailwind.config.js extension, tokens.ts/icons.ts/typography.ts typed re-exports, Wave 0 parity + purity + icon unit tests
 - [ ] 19-02-PLAN.md — Primitive rewrites: Button (5 variants @ 44pt), Chip (filter|display kinds), Input retheme; pure-className tests; ChipToggle deprecation shim
 - [ ] 19-03-PLAN.md — StickySearchPill + /search modal route + shared ItemRow primitive (checkbox|stepper|icon leading variants)
 - [ ] 19-04-PLAN.md — Mode-aware RecipeCard (grid + list) + denser DayRow with Chip status indicators

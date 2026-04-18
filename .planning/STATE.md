@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 15-04 (maestro rebaseline + HeaderEllipsis overflow) — complete
-status: "Phase 15 closed — ROADMAP criteria 1/2/3/5 satisfied; #4 DEFERRED to Phase 19"
-stopped_at: Completed 15-04-PLAN.md (HeaderEllipsis overflow + Maestro flows 21/22 + 10 flows annotated; Phase 15 Wave 3 complete)
-last_updated: "2026-04-18T22:15:14.415Z"
-last_activity: 2026-04-18 -- Completed 15-04 (HeaderEllipsis ActionSheetIOS + 2 new Maestro flows + 10 flows annotated; Phase 15 closed)
+current_plan: 19-01 (design-token foundation) — complete (1/6 plans)
+status: Phase 19 Wave 1 landed — token substrate ready; Plans 02–06 unblocked
+stopped_at: "Completed 19-01-PLAN.md (design-token foundation: terracotta palette + 5-step type scale + SF Symbol sizing helpers + vitest parity guard)"
+last_updated: "2026-04-18T22:22:14.633Z"
+last_activity: "2026-04-18 -- Completed 19-01 (design-token foundation: CSS vars + tailwind tokens + typed exports + parity tests)"
 progress:
   total_phases: 25
   completed_phases: 15
   total_plans: 66
-  completed_plans: 60
-  percent: 91
+  completed_plans: 61
+  percent: 92
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 15 of 25 (UI Polish & Navigation Consistency Audit) — Complete (4/4 plans)
-Current Plan: 15-04 (maestro rebaseline + HeaderEllipsis overflow) — complete
-Status: Phase 15 closed — ROADMAP criteria 1/2/3/5 satisfied; #4 DEFERRED to Phase 19
-Last activity: 2026-04-18 -- Completed 15-04 (HeaderEllipsis ActionSheetIOS + 2 new Maestro flows + 10 flows annotated; Phase 15 closed)
+Phase: 19 of 25 (Design Professionalization — Icons, Buttons, Navigation, Search Bars)
+Current Plan: 19-01 (design-token foundation) — complete (1/6 plans)
+Status: Phase 19 Wave 1 landed — token substrate ready; Plans 02–06 unblocked
+Last activity: 2026-04-18 -- Completed 19-01 (design-token foundation: CSS vars + tailwind tokens + typed exports + parity tests)
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -113,6 +113,7 @@ Progress: [█████████░] 91%
 | Phase 15 P02 | 6min | 2 tasks | 10 files |
 | Phase 15 P03 | 15min | 2 tasks | 43 files |
 | Phase Phase 15 PP04 | 6min | 3 tasks | 16 files |
+| Phase 19 P01 | 3min | 4 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -324,6 +325,10 @@ Recent decisions affecting current work:
 - [Phase Phase 15-04]: Maestro flow rebase was comment-annotation-only — audit found zero 'Back' text assertions, zero emoji-specific assertions, zero Ionicons-specific visual assertions; all selectors remain stable under SF Symbol refresh
 - [Phase Phase 15-04]: ROADMAP Phase 15 criterion #4 (typography/spacing/color documentation) EXPLICITLY DEFERRED to Phase 19 per plan — Phase 15 closes criteria 1, 2, 3, 5
 - [Phase Phase 15-04]: 22-dirty-form-guard.yaml registered as manual-only fallback in Maestro README — iOS Alert UIWindow occasionally unreachable from XCUITest; included cleanup-save step for idempotency
+- [Phase 19]: [Phase 19-01]: Brand anchor = terracotta #C65D3A; 5-step SF Pro scale (display 34/41/700, title 22/28/600, body 17/22/400, caption 13/18/400, label 11/16/600 upper); iconPropsForText(scale) pulls weight from typography token
+- [Phase 19]: [Phase 19-01]: CSS variables use space-separated RGB channels (not hex) in global.css so NativeWind <alpha-value> opacity modifiers (bg-brand/15) work (Pitfall 1)
+- [Phase 19]: [Phase 19-01]: tokens.test.ts text-parses tailwind.config.js (fs.readFileSync + regex) instead of require() — nativewind/preset can't resolve outside Metro and would false-RED
+- [Phase 19]: [Phase 19-01]: warmWhite + warmGray legacy palette preserved for migration safety — Plan 19-05 owns the orange→terracotta atomic sweep; tokens-purity.test.ts authored as describe.skip and flipped on there
 
 ### Pending Todos
 
@@ -367,6 +372,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-18T22:10:21.487Z
-Stopped at: Completed 15-04-PLAN.md (HeaderEllipsis overflow + Maestro flows 21/22 + 10 flows annotated; Phase 15 Wave 3 complete)
+Last session: 2026-04-18T22:21:41.484Z
+Stopped at: Completed 19-01-PLAN.md (design-token foundation: terracotta palette + 5-step type scale + SF Symbol sizing helpers + vitest parity guard)
 Resume file: None
