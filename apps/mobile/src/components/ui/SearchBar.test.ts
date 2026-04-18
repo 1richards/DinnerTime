@@ -1,4 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Mock expo-symbols + expo-router so SearchBar.tsx import chain resolves in
+// node env. The helper tests below do not exercise the component — they only
+// assert the pure href/shadow config math.
+vi.mock('expo-symbols', () => ({ SymbolView: (_p: unknown) => null }));
+vi.mock('expo-router', () => ({
+  router: { push: vi.fn() },
+}));
+
 import { buildSearchHref, shadowOpacityConfig } from './SearchBar';
 
 describe('SearchBar helpers', () => {

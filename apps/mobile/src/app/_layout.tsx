@@ -55,6 +55,14 @@ function RootNavigator() {
               headerBackTitle: '',
             }}
           />
+          <Stack.Screen
+            name="search"
+            options={{
+              presentation: 'modal',
+              headerShown: true,
+              title: 'Search',
+            }}
+          />
         </Stack>
       </View>
     </View>
