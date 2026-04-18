@@ -6,6 +6,11 @@ name: "20 — kitchen: segment toggle preserves state"
 #   (c) preserves Library search-query state across a Suggestions round-trip
 #       (CONTEXT-locked display:none dual-mount behavior — if this flow ever
 #       regresses, conditional render has sneaked back in).
+#
+# Phase 15 update: Kitchen tab icon swapped from Ionicons restaurant to SF
+# fork.knife.circle.fill / fork.knife. Text-based .*Kitchen.* / .*Library.*
+# tab selectors still resolve correctly. "Toggle search" accessibility label
+# and "Search recipes" placeholder preserved.
 ---
 - runFlow: _ensure-logged-in.yaml
 

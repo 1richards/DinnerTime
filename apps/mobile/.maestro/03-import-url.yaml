@@ -1,5 +1,12 @@
 appId: com.dinnertime.app
 name: "03 — recipe import: paste URL, wait for AI parse, review and save"
+# Phase 15 update: recipes/import and recipes/import-url now present as modals
+# with a native header (headerBackTitle: '' / HeaderCloseButton X on import
+# root). Text selectors used here (Paste URL, Recipe URL, Import, Save Recipe,
+# View Existing, in your library) remain stable — the native header title is
+# "Paste URL" on import-url, "Import Recipe" on import root. No "Back" text
+# assertions — pop gesture is native chevron. Screenshots will capture new
+# SymbolIcon-based UI; existing baselines accepted (icon-swap-only diff).
 ---
 - runFlow: _ensure-logged-in.yaml
 

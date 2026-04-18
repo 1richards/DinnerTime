@@ -1,5 +1,10 @@
 appId: com.dinnertime.app
 name: "07 — pantry: add item manually via scan button sheet"
+# Phase 15 update: ScanButton FAB camera glyph swapped from Ionicons
+# camera to SF Symbol camera.fill (orange container preserved, tint #FFFFFF).
+# Empty-state "Scan Now" copy replaced by EmptyState primitive with food
+# photography (EMPTY_STATE_IMAGES.emptyPantry). No text-selector changes —
+# existing .*Fridge./.*Pantry./.*Freezer./.*All.* filter selectors still valid.
 # NOTE: The Pantry tab's primary CTA on an empty pantry is "Scan Now" (camera).
 # Since camera is not available in simulator, this flow tests the path where
 # the user has at least one item (or we navigate directly to the pantry).

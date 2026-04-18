@@ -1,5 +1,9 @@
 appId: com.dinnertime.app
 name: "06 — recipe discover: open Discover tab, get AI suggestions, save one"
+# Phase 15 update: /recipes/discover is a push destination (not modal). Native
+# header with chevron-only back (headerBackTitle: '') — deep-link entry and
+# text selectors unchanged. Screenshot baselines may differ for SF Symbols
+# (sparkles, cart, etc.) but layout is stable.
 ---
 - runFlow: _ensure-logged-in.yaml
 

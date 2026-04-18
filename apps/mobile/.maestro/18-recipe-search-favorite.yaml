@@ -1,6 +1,13 @@
 appId: com.dinnertime.app
 name: "18 — recipe search + favorite: search recipes and toggle a favorite"
 # Pre-condition: at least one recipe must exist in the UAT user's library.
+#
+# Phase 15 update: heart glyph migrated from Ionicons heart to SF heart.fill
+# (active) / heart (inactive) with orange #F97316 tint on active — Phase 15
+# baseline preserved. Favorite tap target is a Pressable with
+# accessibilityLabel so coordinate taps at 88%,15% still work. Toggle search
+# and Favorites chip selectors unchanged. Screenshot baselines will show SF
+# Symbol renders but layout is identical.
 ---
 - runFlow: _ensure-logged-in.yaml
 

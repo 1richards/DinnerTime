@@ -1,6 +1,11 @@
 appId: com.dinnertime.app
 name: "10 — meal plan: swap a day's recipe via the SwapSheet"
 # Pre-condition: a meal plan must already exist. Run 09-meal-plan-generate first.
+#
+# Phase 15 update: SwapSheet close chevron + swap/flame day-row icons migrated
+# from Ionicons to SF Symbols (arrow.left.arrow.right, flame, xmark).
+# swap-btn-<Day> testIDs preserved. Text selectors (Swap this meal, Pick
+# something else, This Week) unchanged.
 ---
 - runFlow: _ensure-logged-in.yaml
 

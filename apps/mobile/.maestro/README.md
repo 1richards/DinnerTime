@@ -63,6 +63,18 @@ Screenshots land in `~/.maestro/tests/<run-id>/` and are also embedded in the ru
 | `16-pantry-scan-stub.yaml` | **STUB — SKIPPED** Pantry photo scan requires CAMERA. | physical device |
 | `17-recipe-import-photo-stub.yaml` | **STUB — SKIPPED** Recipe photo import requires CAMERA. | physical device |
 | `18-recipe-search-favorite.yaml` | Search recipes, toggle Favorites filter, toggle favorite on detail. | ≥1 recipe |
+| `19-receipt-scan-stub.yaml` | Deep-link into receipt scan + Instacart import modals (Phase 13-02). | — |
+| `20-kitchen-segment-toggle.yaml` | Kitchen tab segment toggle preserves search-query state (Phase 12). | — |
+| `21-modal-dismiss.yaml` | Scan modal presents from pantry FAB and dismisses via swipe-down (Phase 15). | — |
+| `22-dirty-form-guard.yaml` | Edit recipe + attempt back swipe triggers Unsaved changes Alert (Phase 15). **Manual-only if flaky** (see below). | ≥1 recipe |
+
+## Phase 15 note — manual-only flows
+
+`22-dirty-form-guard.yaml` asserts on an iOS Alert, which XCUITest reaches
+through a separate UIWindow. This selector is occasionally flaky on simulator
+CI runs. If the flow fails but manual UAT confirms the Alert appears and
+Keep editing / Discard work correctly, exclude `22-dirty-form-guard.yaml`
+from the `uat.sh all` target and mark it as a manual-only gate.
 
 ## Sentinel banner
 

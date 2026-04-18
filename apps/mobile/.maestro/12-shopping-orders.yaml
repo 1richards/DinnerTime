@@ -3,6 +3,11 @@ name: "12 — shopping orders: navigate to order history screen"
 # This flow tests the Orders sub-screen (shopping/orders.tsx).
 # The "Order on Instacart" button opens an in-app browser (WebBrowser) which we
 # cannot automate. We only test that the Orders screen renders correctly.
+#
+# Phase 15 update: empty orders state now uses EmptyState primitive with SF
+# Symbol shippingbox (replaces 📦 decorative emoji). Order row icons
+# (cart, chevron.forward) migrated to SF Symbols. No emoji text assertions
+# to prune — flow was coordinate/text-based and remains stable.
 ---
 - runFlow: _ensure-logged-in.yaml
 

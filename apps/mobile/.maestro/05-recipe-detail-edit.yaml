@@ -2,6 +2,12 @@ appId: com.dinnertime.app
 name: "05 — recipe detail + edit: open first recipe, view detail, edit title, save"
 # Pre-condition: at least one recipe must exist in the UAT user's library.
 # Run the reset script then 03-import-url first if the library is empty.
+#
+# Phase 15 update: recipes/[id]/index now consolidates 3 secondary actions
+# (Add to Plan / Remix / Delete) into a HeaderEllipsis overflow menu at the
+# top-right of the floating hero overlay. Edit remains an inline full-width
+# body CTA. The flow still taps ".*Edit.*" (unchanged). Save Changes still
+# short-circuits the useDirtyFormGuard (touched=false after successful save).
 ---
 - runFlow: _ensure-logged-in.yaml
 

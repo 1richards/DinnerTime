@@ -1,5 +1,9 @@
 appId: com.dinnertime.app
 name: "04 — recipe import: paste freeform text, parse with AI, save"
+# Phase 15 update: recipes/import-manual now presents as a modal. The flow
+# completes a full save (Parse Recipe → Save Recipe) so the dirty-form guard
+# installed in Plan 15-02 never fires (save flips touched=false before
+# router.back). Text selectors unchanged.
 ---
 - runFlow: _ensure-logged-in.yaml
 
