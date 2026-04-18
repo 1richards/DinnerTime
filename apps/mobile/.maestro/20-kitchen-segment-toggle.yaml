@@ -14,28 +14,26 @@ name: "20 — kitchen: segment toggle preserves state"
     text: ".*What should we cook tonight.*"
 - takeScreenshot: 20-01-suggestions-default
 
-# 2. Switch to Library, verify search bar placeholder visible
+# 2. Switch to Library, verify the library stable marker visible
 - tapOn:
-    text: "Library"
+    text: ".*Library.*"
 - assertVisible:
-    text: "Search recipes"
+    text: ".*in your library.*"
 - takeScreenshot: 20-02-library-active
 
-# 3. Open search bar (SearchToggleButton) and type a query.
-#    search-toggle id is best-effort — if the SearchBar is already expanded
-#    on mount, the optional tap is a no-op.
+# 3. Open SearchBar via "Toggle search" action button, then type a query.
 - tapOn:
-    id: "search-toggle"
-    optional: true
+    text: ".*Toggle search.*"
+- assertVisible:
+    text: "Search recipes"
 - tapOn:
     text: "Search recipes"
-    optional: true
 - inputText: "chicken"
 - takeScreenshot: 20-03-library-search-typed
 
 # 4. Switch to Suggestions, verify hero/greeting visible (segment swap works).
 - tapOn:
-    text: "Suggestions"
+    text: ".*Suggestions.*"
 - assertVisible:
     text: ".*What should we cook tonight.*"
 - takeScreenshot: 20-04-back-to-suggestions
@@ -45,6 +43,6 @@ name: "20 — kitchen: segment toggle preserves state"
 #    TextInput's value across segment toggles. Conditional render would drop
 #    the "chicken" text and cause this step to fail.
 - tapOn:
-    text: "Library"
+    text: ".*Library.*"
 - assertVisible: "chicken"
 - takeScreenshot: 20-05-library-state-preserved

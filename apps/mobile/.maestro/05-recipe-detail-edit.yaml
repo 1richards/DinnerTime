@@ -9,13 +9,13 @@ name: "05 — recipe detail + edit: open first recipe, view detail, edit title, 
 
 # Kitchen tab → Library segment (Phase 12 consolidation)
 - tapOn:
-    text: "Kitchen"
+    text: ".*Kitchen.*"
 - tapOn:
-    text: "Library"
+    text: ".*Library.*"
 
 - extendedWaitUntil:
     visible:
-      text: "Search recipes"
+      text: ".*in your library.*"
 
     timeout: 15000
 - takeScreenshot: 03-recipes-list

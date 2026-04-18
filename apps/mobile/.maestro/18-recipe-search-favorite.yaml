@@ -8,18 +8,22 @@ name: "18 — recipe search + favorite: search recipes and toggle a favorite"
 
 # Kitchen tab → Library segment (Phase 12 consolidation)
 - tapOn:
-    text: "Kitchen"
+    text: ".*Kitchen.*"
 - tapOn:
-    text: "Library"
+    text: ".*Library.*"
 
 # Wait for Library segment to load — search bar placeholder is the stable post-merge marker
 - extendedWaitUntil:
     visible:
-      text: "Search recipes"
+      text: ".*in your library.*"
     timeout: 15000
 - takeScreenshot: 03-recipes-list
 
-# SearchBar — only visible when "My Recipes" view is shown (not empty state)
+# SearchBar is hidden by default on Library — tap the search toggle (top-right
+# action button with "Toggle search" accessibility label) to reveal it.
+- tapOn:
+    text: ".*Toggle search.*"
+    optional: true
 - tapOn:
     text: ".*Search recipes.*"
     optional: true

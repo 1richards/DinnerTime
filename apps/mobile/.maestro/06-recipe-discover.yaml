@@ -8,27 +8,32 @@ name: "06 — recipe discover: open Discover tab, get AI suggestions, save one"
 # Kitchen tab → Library segment (Phase 12 consolidation)
 # The Discover action button now lives in the action row on the Library segment.
 - tapOn:
-    text: "Kitchen"
+    text: ".*Kitchen.*"
 - tapOn:
-    text: "Library"
+    text: ".*Library.*"
 
 - extendedWaitUntil:
     visible:
-      text: "Search recipes"
+      text: ".*in your library.*"
 
     timeout: 15000
 - takeScreenshot: 03-recipes-tab
 
-# Tap "Discover" chip button
-- tapOn:
-    text: ".*Discover.*"
+# Deep-link into /recipes/discover. The Discover button now lives in the
+# Kitchen action row as a tiny sparkles icon — text- and coord-based Maestro
+# taps against the 38x38 button proved unreliable on the iOS Simulator (the
+# accessibility tree renders it but XCUITest taps occasionally don't dispatch
+# the Pressable handler). Deep-linking is stable and exercises the same route
+# (Phase 13-02 uses the same pattern for /scan/receipt and /scan/instacart).
+- openLink: "dinnertime://recipes/discover"
 
 - takeScreenshot: 04-discover-loading
 
-# Wait for AI to return suggestions ("Brewing ideas..." then recipes)
+# Wait for AI to return suggestions — post-v1 Discover UI shows cards with
+# "View recipe" CTA; tapping a card opens a preview modal with Save button.
 - extendedWaitUntil:
     visible:
-      text: ".*Save to Library.*"
+      text: ".*View recipe.*"
 
     timeout: 60000
 - takeScreenshot: 05-suggestions-loaded
@@ -37,16 +42,20 @@ name: "06 — recipe discover: open Discover tab, get AI suggestions, save one"
 - assertVisible:
     text: ".*Discover.*"
 
-- assertVisible:
-    text: ".*AI-suggested recipes tailored to your household.*"
+# Tap the first suggestion card to open the preview modal
+- tapOn:
+    text: ".*View recipe.*"
+- takeScreenshot: 06-preview-modal
 
-    optional: true
-
-# Tap "Save to Library" on the first suggestion
+# Tap "Save to Library" in the modal
+- extendedWaitUntil:
+    visible:
+      text: ".*Save to Library.*"
+    timeout: 10000
 - tapOn:
     text: ".*Save to Library.*"
 
-- takeScreenshot: 06-saving-suggestion
+- takeScreenshot: 07-saving-suggestion
 
 # Confirm save (the button changes to "Saved to library" with a checkmark)
 - extendedWaitUntil:
@@ -54,4 +63,4 @@ name: "06 — recipe discover: open Discover tab, get AI suggestions, save one"
       text: ".*Saved to library.*"
 
     timeout: 15000
-- takeScreenshot: 07-saved-to-library
+- takeScreenshot: 08-saved-to-library
