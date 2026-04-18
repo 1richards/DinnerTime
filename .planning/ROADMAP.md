@@ -34,6 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 20: Shopping Refactor — Push to Draft Cart** - Replace order placement with pushing items to an Instacart draft cart so users manage payment, delivery window, and substitutions inside Instacart itself
 - [ ] **Phase 21: Pantry Intelligence** - Smarter dedup (fuzzy name matching, variant rollup), better pantry-tab presentation (grouping, sections, search), AI categorization learning from history, and user-defined scan rules for commonly purchased items
 - [ ] **Phase 22: Plan Experience Refactor** - Better UX between Plan ↔ Recipes ↔ Suggestions ↔ Shopping; date pickers; multi-scale actions (day / week / month); skill-progression integration so planning uplevels cooking skills over time
+- [ ] **Phase 23: Settings, Auth & Non-Functional** - Account management (password reset, email change, delete account), session lifecycle polish, biometric unlock, security hardening, error handling, observability, performance budgets
 
 **Milestone v1.0 shipped 2026-04-14.** Post-v1 polish (UAT harness, visual pass, remix, collapsing headers, filter sheet, sign out, SecureStore fix, Cook tab removal) landed out-of-band on `main` and is logged in `STATE.md` under "Post-v1 Polish" rather than re-planned as a GSD phase. See `.planning/UAT-NIGHT-REPORT.md` for the overnight work summary. Plan tab multi-week navigation is deferred; candidate for a future Phase 12 when formalized.
 
@@ -442,6 +443,59 @@ Plans: (not yet planned)
  14. Each day card shows: meal name, cook time, one stretch/new indicator, cook status, pantry-readiness indicator
  15. Visual distinction between cooked / scheduled / skipped / unplanned
  16. Quick edit inline (swap day, mark cooked, skip) without leaving Plan tab
+
+**Plans**: 0 plans
+Plans: (not yet planned)
+**UI hint**: yes
+
+### Phase 23: Settings, Auth & Non-Functional Requirements
+**Goal**: Bring Settings, auth, and the app's non-functional posture up to production-grade. Users can fully manage their account (password, email, data export, delete). Auth lifecycle is smooth (biometric unlock, graceful session recovery, clear sign-out). Non-functional posture (error handling, observability, performance, security) meets App Store and commercial-app expectations
+**Depends on**: Phase 1, Phase 2, Phase 19
+**Requirements**: Platform readiness (post-v1)
+**Success Criteria** (what must be TRUE):
+
+### Settings — account management
+  1. Change password (current password verification, new password rules, success feedback)
+  2. Change email (verification email sent, old email kept until confirmed)
+  3. Export data — user can download JSON dump of their profile, pantry, recipes, meal plans, cook history
+  4. Delete account — destructive action with confirmation, clearly communicated data-retention policy, Supabase auth + data deletion
+  5. Connected services — show/revoke Instacart connection (if any), future integrations
+  6. About section — app version, build number, privacy policy link, terms link, support contact
+
+### Auth lifecycle
+  7. Face ID / Touch ID unlock option — opt-in, wraps existing session retrieval, graceful fallback to password
+  8. Session refresh / graceful re-auth — if access token expires mid-use, refresh silently; if refresh fails, re-auth modal instead of kicking to login
+  9. Forgot password flow — email-based reset, in-app deep link handles reset URL
+ 10. Sign out confirmation — current "Sign out?" alert polished, clear what gets cleared locally vs. cloud
+ 11. First-time login vs. returning — returning users skip onboarding if already onboarded; onboarding resumable if interrupted
+
+### Non-functional: error handling
+ 12. Global error boundary — any uncaught error shows a friendly fallback screen, not a white-screen crash; "Report issue" action
+ 13. Network errors — consistent pattern (inline banner, retry affordance) across all screens; offline mode visible and dismissible
+ 14. Rate-limit / quota errors from Claude or Supabase — surfaced to the user with actionable language ("We're a bit busy — try again in a minute") not raw error codes
+
+### Non-functional: observability
+ 15. Client-side error reporting — Sentry or equivalent wired up (errors, breadcrumbs, user-correlated session IDs)
+ 16. Server-side request logging — structured logs with request IDs, user IDs, endpoint, latency, status
+ 17. AI call telemetry — tokens in/out, model used, task route, latency per task (informs cost and performance work)
+
+### Non-functional: performance
+ 18. Startup budget — cold-start to interactive < 2 seconds on a recent iPhone
+ 19. Screen transition budget — tab switches feel instant (< 16ms frame budget), no dropped frames during collapsing-header animations
+ 20. Scan + AI response budget — user sees feedback within 500ms, full result within target per task (receipt ≤ 8s, pantry scan ≤ 6s)
+ 21. Image handling — base64 images processed off-main-thread where possible; file sizes kept under Anthropic's 5MB via existing quality settings
+
+### Non-functional: security
+ 22. Keychain storage verified for all sensitive tokens (Supabase access, refresh, Instacart)
+ 23. HTTPS-only API calls enforced (no fallback to HTTP in prod)
+ 24. Deep link allowlist — only known `/recipes/*`, `/scan/*`, password-reset paths accepted
+ 25. No PII or secrets in client-side logs or server logs
+
+### Non-functional: App Store readiness
+ 26. Privacy nutrition label matches actual data collection
+ 27. App Store screenshots, description, keywords drafted
+ 28. Required legal pages (Privacy Policy, Terms of Service) linked from Settings and reachable without login
+ 29. Support contact email or in-app report form
 
 **Plans**: 0 plans
 Plans: (not yet planned)
