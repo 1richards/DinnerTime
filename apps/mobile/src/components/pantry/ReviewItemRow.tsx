@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import type { ReviewItem } from '../../types/pantry';
+import { colors } from '../../design/tokens';
 
 interface ReviewItemRowProps {
   item: ReviewItem;
@@ -56,7 +57,7 @@ export function ReviewItemRow({ item, onUpdate, onRemove }: ReviewItemRowProps) 
         <SymbolIcon
           name={item.accepted ? 'checkmark.square.fill' : 'square'}
           size={24}
-          tintColor={item.accepted ? '#F97316' : '#9CA3AF'}
+          tintColor={item.accepted ? colors.brand : colors.textTertiary}
         />
       </Pressable>
 
@@ -69,7 +70,7 @@ export function ReviewItemRow({ item, onUpdate, onRemove }: ReviewItemRowProps) 
             onBlur={handleNameSubmit}
             onSubmitEditing={handleNameSubmit}
             autoFocus
-            className="text-base text-warmGray-900 font-medium border-b border-orange-400 pb-0.5"
+            className="text-base text-warmGray-900 font-medium border-b border-brand pb-0.5"
           />
         ) : (
           <Pressable onPress={() => setIsEditingName(true)}>
@@ -86,7 +87,7 @@ export function ReviewItemRow({ item, onUpdate, onRemove }: ReviewItemRowProps) 
           {item.quantity} {item.unit} · {item.category}
         </Text>
         {item.probableDupe && (
-          <Text className="text-xs text-orange-600 font-medium mt-1">
+          <Text className="text-xs text-brand font-medium mt-1">
             Already in pantry — tap to add anyway
           </Text>
         )}

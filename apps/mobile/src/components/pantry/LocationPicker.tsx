@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import type { SourceLocation } from '../../types/pantry';
+import { colors } from '../../design/tokens';
 
 interface LocationOption {
   value: SourceLocation;
@@ -32,10 +33,10 @@ export function LocationPicker({ selected, onSelect }: LocationPickerProps) {
           <Pressable
             key={loc.value}
             onPress={() => onSelect(loc.value)}
-            className={`flex-1 items-center justify-center py-5 rounded-2xl border-2 ${
+            className={`flex-1 items-center justify-center py-5 rounded-card border-2 ${
               isSelected
-                ? 'border-orange-500 bg-orange-50'
-                : 'border-warmGray-200 bg-white'
+                ? 'border-brand bg-brand/10'
+                : 'border-border bg-surface'
             }`}
             accessibilityLabel={loc.label}
             accessibilityState={{ selected: isSelected }}
@@ -44,12 +45,12 @@ export function LocationPicker({ selected, onSelect }: LocationPickerProps) {
               <SymbolIcon
                 name={loc.symbol as never}
                 size={28}
-                tintColor={isSelected ? '#F97316' : '#9CA3AF'}
+                tintColor={isSelected ? colors.brand : colors.textTertiary}
               />
             </View>
             <Text
-              className={`text-base font-semibold ${
-                isSelected ? 'text-orange-600' : 'text-warmGray-600'
+              className={`text-body font-semibold ${
+                isSelected ? 'text-brand' : 'text-text-secondary'
               }`}
             >
               {loc.label}

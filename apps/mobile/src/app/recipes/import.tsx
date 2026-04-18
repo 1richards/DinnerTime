@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
+import { colors } from '../../design/tokens';
 
 interface MethodCardProps {
   // SF Symbols has no typed glyphMap — icon names are plain strings.
@@ -25,8 +26,8 @@ function MethodCard({ icon, title, description, onPress }: MethodCardProps) {
         elevation: 2,
       }}
     >
-      <View className="w-14 h-14 rounded-full bg-orange-100 items-center justify-center mr-4">
-        <SymbolIcon name={icon as never} size={28} tintColor="#F97316" />
+      <View className="w-14 h-14 rounded-full bg-brand/15 items-center justify-center mr-4">
+        <SymbolIcon name={icon as never} size={28} tintColor={colors.brand} />
       </View>
       <View className="flex-1">
         <Text className="text-lg font-semibold text-warmGray-900 mb-1">

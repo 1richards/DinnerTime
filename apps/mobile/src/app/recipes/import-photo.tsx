@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Button } from '../../components/ui/Button';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { useRecipeStore } from '../../stores/recipeStore';
+import { colors } from '../../design/tokens';
 
 export default function ImportPhotoScreen() {
   const { importFromPhoto, isImporting, importedRecipe, error } =
@@ -64,7 +65,7 @@ export default function ImportPhotoScreen() {
         className="flex-1 bg-warmWhite items-center justify-center"
         edges={['bottom']}
       >
-        <ActivityIndicator size="large" color="#F97316" />
+        <ActivityIndicator size="large" color={colors.brand} />
         <Text className="text-lg text-warmGray-600 mt-4">
           Extracting recipe...
         </Text>

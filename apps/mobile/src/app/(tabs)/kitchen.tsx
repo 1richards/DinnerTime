@@ -19,7 +19,7 @@ import { useSuggestionsStore } from '../../stores/suggestionsStore';
 
 import { SuggestionList } from '../../components/suggestions/SuggestionList';
 import { RecipeCard } from '../../components/recipes/RecipeCard';
-import { SearchBar } from '../../components/recipes/SearchBar';
+import { StickySearchPill } from '../../components/ui/SearchBar';
 import {
   RecipeFilterSheet,
   EMPTY_FILTERS,
@@ -31,6 +31,7 @@ import {
   useCollapsingHeader,
   collapsingHeaderStyles,
 } from '../../components/ui/useCollapsingHeader';
+import { colors } from '../../design/tokens';
 
 import type { Recipe, ParsedIngredient } from '../../types/recipe';
 
@@ -249,9 +250,10 @@ export default function KitchenScreen() {
   const { recipes, isLoading, fetchRecipes } = useRecipeStore();
   const isOnline = useNetworkStore((s) => s.isOnline);
 
-  const [searchQuery, setSearchQuery] = useState('');
+  // searchQuery retained as dead state for now — StickySearchPill taps out
+  // to /search modal. Phase 17 will wire modal input back to this filter.
+  const [searchQuery] = useState('');
   const deferredQuery = useDeferredValue(searchQuery);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [filters, setFilters] = useState<RecipeFilterState>(EMPTY_FILTERS);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
@@ -301,7 +303,12 @@ export default function KitchenScreen() {
 
   const activeFilterCount = countActiveFilters(filters);
 
-  // ---------- library list header (large title + segmented control + SearchBar) ----------
+  // ---------- library list header (large title + segmented control) ----------
+  // Phase 19 Plan 05 deviation: inline SearchBar REMOVED — replaced by the
+  // StickySearchPill mounted as an absolute-positioned sibling below. Tapping
+  // the pill routes to /search?context=library (Phase 17 will wire results
+  // back to this Library list). Local searchQuery state is preserved for now;
+  // the in-header action row's search-toggle affordance is also removed.
   const libraryListHeader = (
     <View>
       <Animated.View
@@ -310,7 +317,7 @@ export default function KitchenScreen() {
           transform: [{ translateY: libraryHeader.largeTitleTranslate }],
         }}
       >
-        <View style={styles.largeHeader}>
+        <View style={[styles.largeHeader, { paddingTop: 48 }]}>
           <Text style={styles.largeTitle}>Kitchen</Text>
           <Text style={styles.largeSubtitle}>
             {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'} in your recipe box
@@ -318,11 +325,6 @@ export default function KitchenScreen() {
         </View>
       </Animated.View>
       <SegmentedControl segment={segment} setSegment={setSegment} />
-      {searchOpen && (
-        <View style={styles.searchRow}>
-          <SearchBar value={searchQuery} onChange={setSearchQuery} />
-        </View>
-      )}
     </View>
   );
 
@@ -332,7 +334,7 @@ export default function KitchenScreen() {
 
   // ---------- render ----------
   return (
-    <SafeAreaView className="flex-1 bg-warmWhite" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-bg" edges={['top', 'bottom']}>
       {/* Compact nav bar — fades in on scroll (active segment drives it) */}
       <Animated.View
         pointerEvents="box-none"
@@ -341,24 +343,24 @@ export default function KitchenScreen() {
         <Text style={styles.compactTitle}>Kitchen</Text>
       </Animated.View>
 
-      {/* Action row (top-right): library-only affordances. Settings is a tab now. */}
+      {/* StickySearchPill (library segment only) — DoorDash-style top search
+          affordance. Taps out to /search?context=library modal. Sits above the
+          large-title header (zIndex:20 inside SearchBar.tsx). */}
+      {segment === 'library' && (
+        <StickySearchPill
+          placeholder="Search recipes"
+          context="library"
+          scrollY={libraryHeader.scrollY}
+        />
+      )}
+
+      {/* Action row (top-right): library-only filter + discover. Search moved
+          to the sticky pill above. */}
       <View style={styles.actionRow} pointerEvents="box-none">
         <View style={{ flex: 1 }} />
 
         {segment === 'library' && (
           <>
-            <Pressable
-              onPress={() => setSearchOpen((v) => !v)}
-              style={[styles.actionBtn, searchOpen && styles.actionBtnActive]}
-              hitSlop={8}
-              accessibilityLabel="Toggle search"
-            >
-              <SymbolIcon
-                name={searchOpen ? 'xmark' : 'magnifyingglass'}
-                size={20}
-                tintColor={searchOpen ? '#FFFFFF' : '#3E332A'}
-              />
-            </Pressable>
             <Pressable
               onPress={() => setFilterSheetOpen(true)}
               style={[
@@ -371,7 +373,7 @@ export default function KitchenScreen() {
               <SymbolIcon
                 name="line.3.horizontal.decrease.circle"
                 size={20}
-                tintColor={activeFilterCount > 0 ? '#FFFFFF' : '#3E332A'}
+                tintColor={activeFilterCount > 0 ? '#FFFFFF' : colors.textPrimary}
               />
               {activeFilterCount > 0 && (
                 <View style={styles.badge}>
@@ -385,7 +387,7 @@ export default function KitchenScreen() {
               hitSlop={8}
               accessibilityLabel="Discover recipes"
             >
-              <SymbolIcon name="sparkles" size={20} tintColor="#B45309" />
+              <SymbolIcon name="sparkles" size={20} tintColor={colors.warning} />
             </Pressable>
           </>
         )}
@@ -431,7 +433,7 @@ export default function KitchenScreen() {
           )}
           ListEmptyComponent={
             <View className="items-center mt-12 px-6">
-              <Text className="text-base text-warmGray-500 text-center">
+              <Text className="text-body text-text-secondary text-center">
                 {activeFilterCount > 0
                   ? 'No recipes match your filters.'
                   : deferredQuery
@@ -447,7 +449,7 @@ export default function KitchenScreen() {
             <RefreshControl
               refreshing={isLoading}
               onRefresh={() => fetchRecipes({})}
-              tintColor="#F97316"
+              tintColor={colors.brand}
             />
           }
         />
@@ -485,17 +487,17 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: '#F3EDE3', // warmGray-100
+    backgroundColor: colors.surfaceSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
   segmentActive: {
-    backgroundColor: '#F97316',
+    backgroundColor: colors.brand,
   },
   segmentLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#5C4A38', // warmGray-700
+    color: colors.textSecondary,
   },
   segmentLabelActive: {
     color: '#FFFFFF',
@@ -512,7 +514,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#F97316',
+    backgroundColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',

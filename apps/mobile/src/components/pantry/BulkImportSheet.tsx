@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Modal, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { SymbolIcon } from '../ui/SymbolIcon';
+import { colors } from '../../design/tokens';
 
 interface BulkImportSheetProps {
   visible: boolean;
@@ -23,8 +24,8 @@ function OptionRow({ icon, title, subtitle, onPress }: OptionRowProps) {
       accessibilityLabel={title}
       className="bg-white rounded-2xl p-4 flex-row items-center gap-4 mb-3 border border-warmGray-200"
     >
-      <View className="w-12 h-12 rounded-full bg-orange-50 items-center justify-center">
-        <SymbolIcon name={icon as never} size={26} tintColor="#F97316" />
+      <View className="w-12 h-12 rounded-full bg-brand/10 items-center justify-center">
+        <SymbolIcon name={icon as never} size={26} tintColor={colors.brand} />
       </View>
       <View className="flex-1">
         <Text className="text-base font-semibold text-warmGray-800">{title}</Text>

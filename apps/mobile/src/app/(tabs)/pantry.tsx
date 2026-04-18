@@ -14,6 +14,7 @@ import {
   collapsingHeaderStyles,
   LARGE_HEADER_HEIGHT,
 } from '../../components/ui/useCollapsingHeader';
+import { colors } from '../../design/tokens';
 
 type LocationFilter = 'all' | SourceLocation;
 
@@ -66,7 +67,7 @@ export default function PantryScreen() {
           key={tab.value}
           onPress={() => setLocationFilter(tab.value)}
           className={`px-4 py-2 rounded-full ${
-            locationFilter === tab.value ? 'bg-orange-500' : 'bg-warmGray-100'
+            locationFilter === tab.value ? 'bg-brand' : 'bg-warmGray-100'
           }`}
         >
           <Text
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#F97316',
+    backgroundColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',

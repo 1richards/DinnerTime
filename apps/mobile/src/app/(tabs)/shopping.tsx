@@ -24,6 +24,7 @@ import {
   collapsingHeaderStyles,
   LARGE_HEADER_HEIGHT,
 } from '../../components/ui/useCollapsingHeader';
+import { colors } from '../../design/tokens';
 
 const CATEGORY_ORDER: GroceryCategory[] = [
   'produce', 'protein', 'dairy', 'pantry', 'bakery',
@@ -105,7 +106,7 @@ export default function ShoppingScreen() {
         className="flex-1 bg-warmWhite items-center justify-center"
         edges={['bottom']}
       >
-        <ActivityIndicator size="large" color="#F97316" />
+        <ActivityIndicator size="large" color={colors.brand} />
         <Text className="text-sm text-warmGray-500 mt-3">Loading shopping list...</Text>
       </SafeAreaView>
     );
@@ -213,7 +214,7 @@ export default function ShoppingScreen() {
 
       <Pressable
         onPress={() => setAddVisible(true)}
-        className="absolute right-5 bottom-24 w-14 h-14 rounded-full bg-orange-500 items-center justify-center active:bg-orange-600"
+        className="absolute right-5 bottom-24 w-14 h-14 rounded-full bg-brand items-center justify-center active:bg-brand-pressed"
         style={{
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },

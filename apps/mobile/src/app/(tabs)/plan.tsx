@@ -21,6 +21,7 @@ import {
   collapsingHeaderStyles,
   LARGE_HEADER_HEIGHT,
 } from '../../components/ui/useCollapsingHeader';
+import { colors } from '../../design/tokens';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTH_SHORT = [
@@ -138,7 +139,7 @@ export default function PlanScreen() {
         className="flex-1 bg-warmWhite items-center justify-center"
         edges={['bottom']}
       >
-        <ActivityIndicator size="large" color="#F97316" />
+        <ActivityIndicator size="large" color={colors.brand} />
         <Text className="text-sm text-warmGray-500 mt-3">Loading plan...</Text>
       </SafeAreaView>
     );

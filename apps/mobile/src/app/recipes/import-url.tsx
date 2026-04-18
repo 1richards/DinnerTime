@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { useRecipeStore } from '../../stores/recipeStore';
+import { colors } from '../../design/tokens';
 
 export default function ImportUrlScreen() {
   const [url, setUrl] = useState('');
@@ -83,7 +84,7 @@ export default function ImportUrlScreen() {
 
         {isImporting ? (
           <View className="items-center py-6">
-            <ActivityIndicator size="large" color="#F97316" />
+            <ActivityIndicator size="large" color={colors.brand} />
             <Text className="text-sm text-warmGray-500 mt-3">
               Fetching and parsing recipe...
             </Text>

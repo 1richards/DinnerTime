@@ -13,6 +13,7 @@ import type {
   ShoppingOrderSnapshotItem,
   VariationSuggestion,
 } from '../../../types/shopping';
+import { colors } from '../../../design/tokens';
 
 type SnapshotItem = ShoppingOrderSnapshotItem;
 
@@ -78,7 +79,7 @@ export default function OrderDetailScreen() {
         className="flex-1 bg-warmWhite items-center justify-center"
         edges={['bottom']}
       >
-        <ActivityIndicator size="large" color="#F97316" />
+        <ActivityIndicator size="large" color={colors.brand} />
         <Text className="text-sm text-warmGray-500 mt-3">Loading order...</Text>
       </SafeAreaView>
     );
@@ -180,7 +181,7 @@ export default function OrderDetailScreen() {
                     {v.instead_of}
                   </Text>
                 </Text>
-                <Text className="text-base font-semibold text-orange-600 mt-1">
+                <Text className="text-base font-semibold text-brand mt-1">
                   Try {v.swap}
                 </Text>
                 <Text className="text-sm text-warmGray-600 mt-1 leading-5">

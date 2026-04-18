@@ -7,7 +7,7 @@ export function ScanButton() {
   return (
     <Pressable
       onPress={() => router.push('/scan')}
-      className="absolute bottom-6 right-6 w-16 h-16 bg-orange-500 rounded-full items-center justify-center"
+      className="absolute bottom-6 right-6 w-16 h-16 bg-brand rounded-full items-center justify-center"
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },

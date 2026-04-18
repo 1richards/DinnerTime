@@ -21,6 +21,7 @@ import { AddToPlanSheet } from '../../../components/recipes/AddToPlanSheet';
 import { Button } from '../../../components/ui/Button';
 import { HeroImage } from '../../../components/ui/HeroImage';
 import { getRecipeImage } from '../../../constants/foodImages';
+import { colors } from '../../../design/tokens';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -51,7 +52,7 @@ export default function RecipeDetailScreen() {
         className="flex-1 bg-warmWhite items-center justify-center"
         edges={['bottom']}
       >
-        <ActivityIndicator size="large" color="#F97316" />
+        <ActivityIndicator size="large" color={colors.brand} />
         <Text className="text-sm text-warmGray-500 mt-3">Loading recipe...</Text>
       </SafeAreaView>
     );

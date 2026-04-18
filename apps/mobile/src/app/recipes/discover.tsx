@@ -18,6 +18,7 @@ import { useRecipeStore } from '../../stores/recipeStore';
 import { supabase } from '../../lib/supabase';
 import { getRecipeImage } from '../../constants/foodImages';
 import type { ParsedRecipe } from '../../types/recipe';
+import { colors } from '../../design/tokens';
 
 const getApiBaseUrl = (): string => {
   return process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -113,7 +114,7 @@ export default function DiscoverScreen() {
         className="flex-1 px-4"
         contentContainerStyle={{ paddingBottom: 80, paddingTop: 12 }}
       >
-        <Text className="text-xs font-bold text-orange-700 uppercase tracking-wider mb-1">
+        <Text className="text-xs font-bold text-brand-pressed uppercase tracking-wider mb-1">
           New ideas
         </Text>
         <Text className="text-2xl font-black text-warmGray-900 mb-1 -tracking-wider">
@@ -137,7 +138,7 @@ export default function DiscoverScreen() {
           <Pressable
             onPress={() => fetchDiscover(prompt)}
             disabled={isLoading}
-            className="px-4 rounded-xl bg-orange-500 items-center justify-center"
+            className="px-4 rounded-button bg-brand items-center justify-center"
           >
             <SymbolIcon name="arrow.clockwise" size={20} tintColor="#FFFFFF" />
           </Pressable>
@@ -145,7 +146,7 @@ export default function DiscoverScreen() {
 
         {isLoading && (
           <View className="items-center py-12">
-            <ActivityIndicator size="large" color="#F97316" />
+            <ActivityIndicator size="large" color={colors.brand} />
             <Text className="text-sm text-warmGray-500 mt-3">
               Brewing ideas...
             </Text>
@@ -213,7 +214,7 @@ export default function DiscoverScreen() {
                       </View>
                     )}
                     <View style={styles.cardMetaItem}>
-                      <SymbolIcon name="chevron.forward" size={16} tintColor="#F97316" />
+                      <SymbolIcon name="chevron.forward" size={16} tintColor={colors.brand} />
                       <Text style={styles.cardCtaText}>View recipe</Text>
                     </View>
                   </View>
@@ -413,7 +414,7 @@ const styles = StyleSheet.create({
   cardCtaText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#F97316',
+    color: colors.brand,
   },
   savedBadge: {
     flexDirection: 'row',
@@ -518,7 +519,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#F97316',
+    backgroundColor: colors.brand,
     marginTop: 8,
     marginRight: 10,
   },

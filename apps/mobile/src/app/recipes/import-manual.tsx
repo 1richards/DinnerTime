@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Button } from '../../components/ui/Button';
 import { useRecipeStore } from '../../stores/recipeStore';
+import { colors } from '../../design/tokens';
 
 const PLACEHOLDER = `Paste or type your recipe here...
 
@@ -72,7 +73,7 @@ export default function ImportManualScreen() {
 
           {isImporting ? (
             <View className="items-center py-6">
-              <ActivityIndicator size="large" color="#F97316" />
+              <ActivityIndicator size="large" color={colors.brand} />
               <Text className="text-sm text-warmGray-500 mt-3">
                 Parsing recipe...
               </Text>

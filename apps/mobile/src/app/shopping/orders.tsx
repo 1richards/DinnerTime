@@ -12,6 +12,7 @@ import { useShoppingStore } from '../../stores/shoppingStore';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { EmptyState } from '../../components/ui/EmptyState';
 import type { ShoppingOrder } from '../../types/shopping';
+import { colors } from '../../design/tokens';
 
 function formatDate(iso: string): string {
   try {
@@ -43,7 +44,7 @@ export default function OrdersScreen() {
         className="flex-1 bg-warmWhite items-center justify-center"
         edges={['bottom']}
       >
-        <ActivityIndicator size="large" color="#F97316" />
+        <ActivityIndicator size="large" color={colors.brand} />
       </SafeAreaView>
     );
   }
@@ -73,8 +74,8 @@ export default function OrdersScreen() {
         onPress={() => router.push(`/shopping/order/${item.id}`)}
         className="bg-white rounded-xl px-4 py-4 mx-4 my-1 flex-row items-center active:bg-warmGray-50"
       >
-        <View className="w-10 h-10 rounded-full bg-orange-50 items-center justify-center mr-3">
-          <SymbolIcon name="cart" size={20} tintColor="#F97316" />
+        <View className="w-10 h-10 rounded-full bg-brand/10 items-center justify-center mr-3">
+          <SymbolIcon name="cart" size={20} tintColor={colors.brand} />
         </View>
         <View className="flex-1">
           <Text className="text-base font-semibold text-warmGray-900">
