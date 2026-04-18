@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 1 of 2
-status: executing
-stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-04-17T05:26:35.810Z"
-last_activity: 2026-04-17 -- Completed 14-01 multi-image batch scan API (analyzeImagesStructured, identifyFoodItemsBatch, POST /scan-batch, filtering prompt)
+current_plan: 2 of 2
+status: completed
+stopped_at: Completed 14-02-PLAN.md (Phase 14 complete)
+last_updated: "2026-04-18T03:47:51.470Z"
+last_activity: 2026-04-17 -- Completed 14-02 mobile multi-photo scan + review fixes + pantry-aware dedup (Phase 14 complete)
 progress:
-  total_phases: 14
-  completed_phases: 11
+  total_phases: 15
+  completed_phases: 12
   total_plans: 51
-  completed_plans: 50
-  percent: 98
+  completed_plans: 51
+  percent: 100
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 14 of 14 (Multi-photo Pantry Scan) -- IN PROGRESS
-Current Plan: 1 of 2
-Status: In Progress
-Last activity: 2026-04-17 -- Completed 14-01 multi-image batch scan API (analyzeImagesStructured, identifyFoodItemsBatch, POST /scan-batch, filtering prompt)
+Phase: 14 of 15 (Multi-photo Pantry Scan) -- COMPLETE
+Current Plan: 2 of 2
+Status: Phase Complete
+Last activity: 2026-04-17 -- Completed 14-02 mobile multi-photo scan + review fixes + pantry-aware dedup (Phase 14 complete)
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -103,6 +103,7 @@ Progress: [██████████] 98%
 | Phase 11-hybrid-ai-client P03 | 6min | 3 tasks | 11 files |
 | Phase 11-hybrid-ai-client P05 | 3min | 3 tasks | 3 files |
 | Phase 14 P01 | 4min | 2 tasks | 9 files |
+| Phase 14 P02 | 22h | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,7 @@ Progress: [██████████] 98%
 - Phase 12 added: Rationalize Home and Recipes into a single unified page
 - Phase 13 added: Receipt scan and Instacart import for bulk pantry loading
 - Phase 14 added: Multi-photo pantry scan with smarter item filtering (no vague/unidentifiable items)
+- Phase 15 added: UI polish and navigation consistency audit (Apple HIG alignment, system icons, consistent nav)
 
 ### Decisions
 
@@ -256,6 +258,11 @@ Recent decisions affecting current work:
 - [Phase 11-hybrid-ai-client]: [Phase 11-05]: Smoke script iterates ALL_TASKS and dispatches by task family (image vs text-only vs structured) -- single script covers every route
 - [Phase 11-hybrid-ai-client]: [Phase 11-05]: config/anthropic.ts deleted after zero-leakage grep sweep; only ai/adapters/ import provider SDKs now
 - [Phase 14]: [Phase 14-01]: GeminiAdapter.analyzeImagesStructured throws not-implemented (vision routes to Anthropic only); batch maxTokens 8192; single-image prompt also updated with filtering rules
+- [Phase 14]: [Phase 14-02]: CapturedPhoto buffer in useState (not Zustand) — photos only enter global state after startBatchScan submits (research Pattern 3)
+- [Phase 14]: [Phase 14-02]: Pantry-aware dedup — /scan-batch fetches existing items at scan location and passes existingItemNames to AI so shelf-stable items don't clutter repeat scans
+- [Phase 14]: [Phase 14-02]: Thumbnail row uses fixed-width slots (screenWidth/6) instead of FlatList so 5 photos + add button fit one row without horizontal scroll
+- [Phase 14]: [Phase 14-02]: Location picker locks after first photo — one scan session = one location, enforced with visible note to user
+- [Phase 14]: [Phase 14-02]: Confidence threshold (0.7) applied at store layer (startBatchScan), review screen stays dumb renderer reading item.accepted
 
 ### Pending Todos
 
@@ -299,6 +306,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-17T05:26:35.806Z
-Stopped at: Completed 14-01-PLAN.md
+Last session: 2026-04-18T03:47:51.467Z
+Stopped at: Completed 14-02-PLAN.md (Phase 14 complete)
 Resume file: None

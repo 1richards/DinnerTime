@@ -25,7 +25,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 11: Hybrid AI Client** - Refactor all AI services behind a provider-agnostic AIClient with per-task Anthropic/Gemini routing (completed 2026-04-13)
 - [ ] **Phase 12: Combine Home & Recipes** - Rationalize Home and Recipes into a single unified page
 - [ ] **Phase 13: Receipt Scan & Instacart Import** - Bulk pantry loading from grocery receipts and Instacart purchase history
-- [ ] **Phase 14: Multi-Photo Scan & Smarter Item Filtering** - Multiple photos per scan session, AI only returns identifiable cooking ingredients
+- [x] **Phase 14: Multi-Photo Scan & Smarter Item Filtering** - Multiple photos per scan session, AI only returns identifiable cooking ingredients (completed 2026-04-18)
+- [ ] **Phase 15: UI Polish & Navigation Consistency** - Systematic audit + fixes: system icons replace emojis, consistent nav headers/back buttons, unified empty/loading states
 
 **Milestone v1.0 shipped 2026-04-14.** Post-v1 polish (UAT harness, visual pass, remix, collapsing headers, filter sheet, sign out, SecureStore fix, Cook tab removal) landed out-of-band on `main` and is logged in `STATE.md` under "Post-v1 Polish" rather than re-planned as a GSD phase. See `.planning/UAT-NIGHT-REPORT.md` for the overnight work summary. Plan tab multi-week navigation is deferred; candidate for a future Phase 12 when formalized.
 
@@ -265,7 +266,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 12. Combine Home & Recipes | 0/0 | Not planned | — |
 
 | 13. Receipt Scan & Instacart Import | 0/0 | Not planned | — |
-| 14. Multi-Photo Scan & Smarter Filtering | 1/2 | In Progress|  |
+| 14. Multi-Photo Scan & Smarter Filtering | 2/2 | Complete   | 2026-04-18 |
 
 ### Phase 13: Receipt Scan & Instacart Import
 **Goal**: Users can bulk-load pantry items by scanning a grocery receipt or importing Instacart purchase history, instead of photographing every item individually
@@ -293,5 +294,22 @@ Plans: (not yet planned)
 **Plans**: 2 plans
 Plans:
 - [x] 14-01-PLAN.md — Server: AIClient multi-image extension, vision batch service with filtering prompt, POST /scan-batch route
-- [ ] 14-02-PLAN.md — Mobile: multi-photo capture UI with thumbnail strip, pantryStore batch scan, review screen fixes
+- [x] 14-02-PLAN.md — Mobile: multi-photo capture UI with thumbnail strip, pantryStore batch scan, review screen fixes
 **UI hint**: yes
+
+### Phase 15: UI Polish & Navigation Consistency
+**Goal**: Every screen feels native, polished, and consistent with Apple HIG — system iconography replaces emojis, back-button/nav patterns are consistent, visual hierarchy is coherent across the app
+**Depends on**: Phase 14
+**Requirements**: UI quality (post-v1)
+**Success Criteria** (what must be TRUE):
+  1. Every pushed/modal screen has a consistent navigation header with back button
+  2. Decorative emojis (📸, 🎉, ⚠️, etc.) replaced with Ionicons/SF Symbol equivalents
+  3. Empty states, loading states, and error states use a consistent component pattern
+  4. Typography scale, spacing, and color usage documented and applied consistently
+  5. /gsd:ui-review audit passes with no BLOCK-level issues
+**Plans**: 0 plans
+Plans: (not yet planned)
+**UI hint**: yes
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 15 to break down)
