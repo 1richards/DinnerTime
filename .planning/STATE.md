@@ -124,6 +124,7 @@ Progress: [██████████] 100%
 - Phase 19 added: Design professionalization — icons, buttons, nav, search bars inspired by Spotify/Strava/DoorDash
 - Phase 20 added: Shopping refactor — push items to Instacart draft cart; user manages payment/delivery/substitutions inside Instacart
 - Phase 21 added: Pantry intelligence — fuzzy dedup, presentation improvements, AI categorization learning, user-defined scan rules + staples list
+- Phase 22 added: Plan experience refactor — cross-flow Plan↔Recipes↔Suggestions↔Shopping, date pickers, day/week/month actions, skill-progression integration
 
 ### Decisions
 

@@ -33,6 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 19: Design Professionalization** - Polish icons, buttons, navigation, search bars, and shared design patterns; reference Spotify, Strava, DoorDash aesthetics
 - [ ] **Phase 20: Shopping Refactor — Push to Draft Cart** - Replace order placement with pushing items to an Instacart draft cart so users manage payment, delivery window, and substitutions inside Instacart itself
 - [ ] **Phase 21: Pantry Intelligence** - Smarter dedup (fuzzy name matching, variant rollup), better pantry-tab presentation (grouping, sections, search), AI categorization learning from history, and user-defined scan rules for commonly purchased items
+- [ ] **Phase 22: Plan Experience Refactor** - Better UX between Plan ↔ Recipes ↔ Suggestions ↔ Shopping; date pickers; multi-scale actions (day / week / month); skill-progression integration so planning uplevels cooking skills over time
 
 **Milestone v1.0 shipped 2026-04-14.** Post-v1 polish (UAT harness, visual pass, remix, collapsing headers, filter sheet, sign out, SecureStore fix, Cook tab removal) landed out-of-band on `main` and is logged in `STATE.md` under "Post-v1 Polish" rather than re-planned as a GSD phase. See `.planning/UAT-NIGHT-REPORT.md` for the overnight work summary. Plan tab multi-week navigation is deferred; candidate for a future Phase 12 when formalized.
 
@@ -408,6 +409,40 @@ Plans: (not yet planned)
   4. User-defined scan rules — users can add rules like "always call 'skim milk 2%' 'milk'", "treat 'honeycrisp apple' as 'apple'", or "frozen peas always go in freezer". Rules apply to all future scans pre-review
   5. Commonly purchased items list — users can mark items as staples; staples are auto-accepted on future scans even at lower confidence
   6. Rules are manageable — list view in Settings, edit/delete/reorder, preview of which recent scans would have been affected
+**Plans**: 0 plans
+Plans: (not yet planned)
+**UI hint**: yes
+
+### Phase 22: Plan Experience Refactor
+**Goal**: Meal planning becomes the backbone of the weekly cooking workflow — seamlessly pulling from Recipe Box and AI suggestions, flowing naturally into shopping, and exposing useful actions at day / week / month scales. Planning itself is a vehicle for progression: the plan nudges users toward new skills and tracks growth over time
+**Depends on**: Phase 7, Phase 4, Phase 6, Phase 8, Phase 10, Phase 12, Phase 17, Phase 20
+**Requirements**: Planning UX improvement (post-v1)
+**Success Criteria** (what must be TRUE):
+
+### Cross-flow navigation
+  1. Plan → Recipe: any planned meal is one tap from full recipe view; back from recipe returns to the same day in the plan
+  2. Recipe → Plan: from any recipe (Recipe Box or Something New search result), user can add to a specific day with a date picker, not just "generate a week"
+  3. Plan → Shopping: selecting days or whole plan generates a shopping list with one tap; shopping list knows which items came from which planned meals
+  4. Suggestions → Plan: any AI suggestion can be pinned to a specific day immediately
+
+### Date pickers and scale
+  5. Native iOS date picker for adding individual meals to any future date
+  6. Week view (current default) and a month overview — month view shows planned days at a glance, empty days, and cooked-vs-planned ratio
+  7. Day drill-down: tap a day → see planned meal, ingredients checklist, timer shortcuts, "cook now" entry point to Voice Cooking Mode
+  8. Week-level actions: regenerate week, shift week forward/back, duplicate last week, shopping list for week
+  9. Month-level actions: see patterns (repeat meals, protein balance, cuisine distribution), plan around known events (travel days skipped, dinner parties marked)
+
+### Skill progression integration
+ 10. Plan suggestions nudge toward skill level above current (one "stretch" meal per week)
+ 11. Completed plans feed progression metrics — which techniques, cuisines, complexity levels the user has executed
+ 12. "Weekly skill focus" concept: plan intentionally exposes user to a specific technique (knife skills, pan sauces, fermentation) across the week's meals
+ 13. Plan generation respects progression gate — doesn't suggest advanced recipes until prerequisite basics are cooked
+
+### Information density on Plan tab
+ 14. Each day card shows: meal name, cook time, one stretch/new indicator, cook status, pantry-readiness indicator
+ 15. Visual distinction between cooked / scheduled / skipped / unplanned
+ 16. Quick edit inline (swap day, mark cooked, skip) without leaving Plan tab
+
 **Plans**: 0 plans
 Plans: (not yet planned)
 **UI hint**: yes
