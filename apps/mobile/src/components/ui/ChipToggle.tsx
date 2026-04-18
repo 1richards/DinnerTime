@@ -1,5 +1,22 @@
+/**
+ * DEPRECATED — use `Chip` from './Chip' instead.
+ *
+ * Kept as a thin shim so Plan 19-02 doesn't break the ~6 existing call sites
+ * (settings/IngredientSearch, DislikesSection, CuisineSection, DietarySection,
+ * MemberFormModal). Plan 19-05's sweep migrates every call site to `Chip` and
+ * removes this file.
+ *
+ * Notes:
+ * - `variant='removable'` appends a trailing "×" when selected; the underlying
+ *   Chip does not render a close affordance.
+ * - `colorScheme='red'` is a DELIBERATE visual regression in the shim — those
+ *   call sites should migrate to `kind='display' tone='destructive'` in Plan
+ *   05. For now both colorSchemes render as the standard filter kind (brand
+ *   terracotta when selected, neutral when not).
+ */
+
 import React from 'react';
-import { Pressable, Text } from 'react-native';
+import { Chip } from './Chip';
 
 interface ChipToggleProps {
   label: string;
@@ -13,29 +30,18 @@ export function ChipToggle({
   label,
   selected,
   onToggle,
-  variant = 'default',
-  colorScheme = 'orange',
+  variant,
+  // colorScheme intentionally ignored — see deprecation note above.
+  colorScheme: _colorScheme,
 }: ChipToggleProps) {
-  const selectedBg = colorScheme === 'red' ? 'bg-red-100' : 'bg-orange-500';
-  const selectedText = colorScheme === 'red' ? 'text-red-700' : 'text-white';
-
+  const displayLabel =
+    variant === 'removable' && selected ? `${label} \u00d7` : label;
   return (
-    <Pressable
+    <Chip
+      label={displayLabel}
+      kind="filter"
+      selected={selected}
       onPress={onToggle}
-      className={`px-4 py-2 rounded-full ${
-        selected
-          ? selectedBg
-          : 'bg-warmGray-100 border border-warmGray-200'
-      }`}
-    >
-      <Text
-        className={`text-sm font-medium ${
-          selected ? selectedText : 'text-warmGray-700'
-        }`}
-      >
-        {label}
-        {variant === 'removable' && selected ? ' \u00d7' : ''}
-      </Text>
-    </Pressable>
+    />
   );
 }
