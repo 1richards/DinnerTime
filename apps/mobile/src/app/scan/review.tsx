@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ReviewItemRow } from '../../components/pantry/ReviewItemRow';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { useDirtyFormGuard } from '../../components/ui/useDirtyFormGuard';
 import { usePantryStore } from '../../stores/pantryStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
@@ -37,6 +38,23 @@ export default function ReviewScreen() {
   const [newUnit, setNewUnit] = useState('item');
   const [newCategory, setNewCategory] = useState<FoodCategory>('other');
   const [isConfirming, setIsConfirming] = useState(false);
+  // Dirty flag flipped on any item toggle / add / remove after mount. The
+  // initial scan-results render does NOT count as dirty.
+  const [touched, setTouched] = useState(false);
+  useDirtyFormGuard(touched && !isConfirming);
+
+  const handleUpdateItem: typeof updateReviewItem = (...args) => {
+    setTouched(true);
+    updateReviewItem(...args);
+  };
+  const handleAddItemTouched: typeof addReviewItem = (item) => {
+    setTouched(true);
+    addReviewItem(item);
+  };
+  const handleRemoveItem: typeof removeReviewItem = (id) => {
+    setTouched(true);
+    removeReviewItem(id);
+  };
 
   const acceptedCount = scanResults.filter((item) => item.accepted).length;
 
@@ -54,7 +72,7 @@ export default function ReviewScreen() {
       userEdited: true,
     };
 
-    addReviewItem(item);
+    handleAddItemTouched(item);
     setNewName('');
     setNewQuantity('1');
     setNewUnit('item');
@@ -113,6 +131,9 @@ export default function ReviewScreen() {
           style: 'destructive',
           onPress: () => {
             usePantryStore.setState({ scanResults: [] });
+            // Reset dirty flag so the useDirtyFormGuard doesn't re-prompt
+            // on top of the explicit Discard action.
+            setTouched(false);
             router.back();
           },
         },
@@ -123,8 +144,8 @@ export default function ReviewScreen() {
   const renderItem = ({ item }: { item: ReviewItem }) => (
     <ReviewItemRow
       item={item}
-      onUpdate={updateReviewItem}
-      onRemove={removeReviewItem}
+      onUpdate={handleUpdateItem}
+      onRemove={handleRemoveItem}
     />
   );
 

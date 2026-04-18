@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../components/ui/Button';
+import { SymbolIcon } from '../../components/ui/SymbolIcon';
+import { useDirtyFormGuard } from '../../components/ui/useDirtyFormGuard';
 import { useRecipeStore } from '../../stores/recipeStore';
 import type { ParsedIngredient, ParsedRecipe } from '../../types/recipe';
 
@@ -44,6 +45,15 @@ export default function ReviewScreen() {
     useRecipeStore();
 
   const [draft, setDraft] = useState<ParsedRecipe | null>(null);
+  // Dirty flag flipped on any user edit via editDraft below. Hydration from
+  // `importedRecipe` uses raw setDraft so it does NOT trigger the guard.
+  const [touched, setTouched] = useState(false);
+  useDirtyFormGuard(touched && !isLoading);
+
+  const editDraft: typeof setDraft = (updater) => {
+    setTouched(true);
+    setDraft(updater);
+  };
 
   useEffect(() => {
     if (importedRecipe) {
@@ -73,7 +83,7 @@ export default function ReviewScreen() {
     idx: number,
     patch: Partial<ParsedIngredient>
   ) => {
-    setDraft((d) => {
+    editDraft((d) => {
       if (!d) return d;
       const next = [...d.ingredients];
       next[idx] = { ...next[idx], ...patch };
@@ -82,7 +92,7 @@ export default function ReviewScreen() {
   };
 
   const removeIngredient = (idx: number) => {
-    setDraft((d) => {
+    editDraft((d) => {
       if (!d) return d;
       return {
         ...d,
@@ -92,7 +102,7 @@ export default function ReviewScreen() {
   };
 
   const addIngredient = () => {
-    setDraft((d) => {
+    editDraft((d) => {
       if (!d) return d;
       return {
         ...d,
@@ -105,7 +115,7 @@ export default function ReviewScreen() {
   };
 
   const updateStep = (idx: number, value: string) => {
-    setDraft((d) => {
+    editDraft((d) => {
       if (!d) return d;
       const next = [...d.steps];
       next[idx] = value;
@@ -114,14 +124,14 @@ export default function ReviewScreen() {
   };
 
   const removeStep = (idx: number) => {
-    setDraft((d) => {
+    editDraft((d) => {
       if (!d) return d;
       return { ...d, steps: d.steps.filter((_, i) => i !== idx) };
     });
   };
 
   const addStep = () => {
-    setDraft((d) => {
+    editDraft((d) => {
       if (!d) return d;
       return { ...d, steps: [...d.steps, ''] };
     });
@@ -154,6 +164,9 @@ export default function ReviewScreen() {
         style: 'destructive',
         onPress: () => {
           clearImport();
+          // Reset dirty flag so the useDirtyFormGuard doesn't re-prompt
+          // on top of the explicit Discard action.
+          setTouched(false);
           router.replace('/(tabs)/kitchen?segment=library');
         },
       },
@@ -174,7 +187,7 @@ export default function ReviewScreen() {
           <FieldLabel>Title</FieldLabel>
           <BaseInput
             value={draft.title}
-            onChangeText={(v) => setDraft({ ...draft, title: v })}
+            onChangeText={(v) => editDraft({ ...draft, title: v })}
             placeholder="Recipe title"
           />
 
@@ -182,7 +195,7 @@ export default function ReviewScreen() {
           <BaseInput
             value={draft.description ?? ''}
             onChangeText={(v) =>
-              setDraft({ ...draft, description: v || null })
+              editDraft({ ...draft, description: v || null })
             }
             placeholder="Short description"
             multiline
@@ -199,7 +212,7 @@ export default function ReviewScreen() {
                     : ''
                 }
                 onChangeText={(v) =>
-                  setDraft({ ...draft, prep_time_minutes: numOrNull(v) })
+                  editDraft({ ...draft, prep_time_minutes: numOrNull(v) })
                 }
                 keyboardType="numeric"
                 placeholder="0"
@@ -214,7 +227,7 @@ export default function ReviewScreen() {
                     : ''
                 }
                 onChangeText={(v) =>
-                  setDraft({ ...draft, cook_time_minutes: numOrNull(v) })
+                  editDraft({ ...draft, cook_time_minutes: numOrNull(v) })
                 }
                 keyboardType="numeric"
                 placeholder="0"
@@ -225,7 +238,7 @@ export default function ReviewScreen() {
               <BaseInput
                 value={draft.servings != null ? String(draft.servings) : ''}
                 onChangeText={(v) =>
-                  setDraft({ ...draft, servings: numOrNull(v) })
+                  editDraft({ ...draft, servings: numOrNull(v) })
                 }
                 keyboardType="numeric"
                 placeholder="4"
@@ -263,7 +276,7 @@ export default function ReviewScreen() {
                   onPress={() => removeIngredient(idx)}
                   className="px-2 justify-center"
                 >
-                  <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                  <SymbolIcon name="trash" size="body" tintColor="#EF4444" />
                 </Pressable>
               </View>
               <BaseInput
@@ -313,7 +326,7 @@ export default function ReviewScreen() {
                 onPress={() => removeStep(idx)}
                 className="px-2 py-3"
               >
-                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                <SymbolIcon name="trash" size="body" tintColor="#EF4444" />
               </Pressable>
             </View>
           ))}

@@ -80,10 +80,6 @@ export default function InstacartImportScreen() {
   return (
     <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
       <View className="flex-1 px-4 pt-6">
-        <Text className="text-lg font-semibold text-warmGray-800 mb-4 px-4">
-          Import from Instacart
-        </Text>
-
         <View className="bg-white rounded-2xl p-4 mx-4 mb-6 border border-warmGray-200">
           <Text className="text-sm font-semibold text-warmGray-800 mb-2">
             Works best with:

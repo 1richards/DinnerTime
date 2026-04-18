@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../../components/ui/Button';
+import { SymbolIcon } from '../../../components/ui/SymbolIcon';
+import { useDirtyFormGuard } from '../../../components/ui/useDirtyFormGuard';
 import { useRecipeStore } from '../../../stores/recipeStore';
 import type { ParsedIngredient, Recipe } from '../../../types/recipe';
 
@@ -57,6 +58,18 @@ export default function EditRecipeScreen() {
 
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
+  // Dirty flag flipped on any user edit (see markDirty). Keeps the guard
+  // decoupled from deep-equality on the recipe snapshot.
+  const [touched, setTouched] = useState(false);
+  useDirtyFormGuard(touched && !saving);
+
+  // Wrap setDraft so ANY edit flips `touched` once. Initial hydration from
+  // `recipe` runs inside useEffect (below) and must NOT trigger the guard —
+  // that's why we use a separate `setDraft` call there.
+  const editDraft: typeof setDraft = (updater) => {
+    setTouched(true);
+    setDraft(updater);
+  };
 
   useEffect(() => {
     if (recipe && !draft) {
@@ -87,7 +100,7 @@ export default function EditRecipeScreen() {
     idx: number,
     patch: Partial<ParsedIngredient>
   ) => {
-    setDraft((d) => {
+    editDraft((d) => {
       if (!d) return d;
       const next = [...d.ingredients];
       next[idx] = { ...next[idx], ...patch };
@@ -96,13 +109,13 @@ export default function EditRecipeScreen() {
   };
 
   const removeIngredient = (idx: number) => {
-    setDraft((d) =>
+    editDraft((d) =>
       d ? { ...d, ingredients: d.ingredients.filter((_, i) => i !== idx) } : d
     );
   };
 
   const addIngredient = () => {
-    setDraft((d) =>
+    editDraft((d) =>
       d
         ? {
             ...d,
@@ -116,7 +129,7 @@ export default function EditRecipeScreen() {
   };
 
   const updateStep = (idx: number, value: string) => {
-    setDraft((d) => {
+    editDraft((d) => {
       if (!d) return d;
       const next = [...d.steps];
       next[idx] = value;
@@ -125,13 +138,13 @@ export default function EditRecipeScreen() {
   };
 
   const removeStep = (idx: number) => {
-    setDraft((d) =>
+    editDraft((d) =>
       d ? { ...d, steps: d.steps.filter((_, i) => i !== idx) } : d
     );
   };
 
   const addStep = () => {
-    setDraft((d) => (d ? { ...d, steps: [...d.steps, ''] } : d));
+    editDraft((d) => (d ? { ...d, steps: [...d.steps, ''] } : d));
   };
 
   const handleSave = async () => {
@@ -173,7 +186,7 @@ export default function EditRecipeScreen() {
           <FieldLabel>Title</FieldLabel>
           <BaseInput
             value={draft.title}
-            onChangeText={(v) => setDraft({ ...draft, title: v })}
+            onChangeText={(v) => editDraft({ ...draft, title: v })}
             placeholder="Recipe title"
           />
 
@@ -181,7 +194,7 @@ export default function EditRecipeScreen() {
           <BaseInput
             value={draft.description ?? ''}
             onChangeText={(v) =>
-              setDraft({ ...draft, description: v || null })
+              editDraft({ ...draft, description: v || null })
             }
             placeholder="Short description"
             multiline
@@ -198,7 +211,7 @@ export default function EditRecipeScreen() {
                     : ''
                 }
                 onChangeText={(v) =>
-                  setDraft({ ...draft, prep_time_minutes: numOrNull(v) })
+                  editDraft({ ...draft, prep_time_minutes: numOrNull(v) })
                 }
                 keyboardType="numeric"
                 placeholder="0"
@@ -213,7 +226,7 @@ export default function EditRecipeScreen() {
                     : ''
                 }
                 onChangeText={(v) =>
-                  setDraft({ ...draft, cook_time_minutes: numOrNull(v) })
+                  editDraft({ ...draft, cook_time_minutes: numOrNull(v) })
                 }
                 keyboardType="numeric"
                 placeholder="0"
@@ -224,7 +237,7 @@ export default function EditRecipeScreen() {
               <BaseInput
                 value={draft.servings != null ? String(draft.servings) : ''}
                 onChangeText={(v) =>
-                  setDraft({ ...draft, servings: numOrNull(v) })
+                  editDraft({ ...draft, servings: numOrNull(v) })
                 }
                 keyboardType="numeric"
                 placeholder="4"
@@ -262,7 +275,7 @@ export default function EditRecipeScreen() {
                   onPress={() => removeIngredient(idx)}
                   className="px-2 justify-center"
                 >
-                  <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                  <SymbolIcon name="trash" size="body" tintColor="#EF4444" />
                 </Pressable>
               </View>
               <BaseInput
@@ -309,7 +322,7 @@ export default function EditRecipeScreen() {
                 onPress={() => removeStep(idx)}
                 className="px-2 py-3"
               >
-                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                <SymbolIcon name="trash" size="body" tintColor="#EF4444" />
               </Pressable>
             </View>
           ))}

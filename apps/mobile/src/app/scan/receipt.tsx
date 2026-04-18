@@ -85,10 +85,6 @@ export default function ReceiptScanScreen() {
   return (
     <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
       <View className="flex-1 px-4 pt-6">
-        <Text className="text-lg font-semibold text-warmGray-800 mb-4 px-4">
-          Scan Receipt
-        </Text>
-
         <Text className="text-sm text-warmGray-500 mb-3 px-4">
           Where do most items go?
         </Text>
