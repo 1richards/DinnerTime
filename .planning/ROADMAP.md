@@ -266,7 +266,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 | 9. Voice Cooking Mode | 5/5 | Complete   | 2026-04-13 |
 | 10. Skill Progression & Offline | 5/5 | Complete    | 2026-04-13 |
 | 11. Hybrid AI Client | 4/5 | Complete    | 2026-04-13 |
-| 12. Combine Home & Recipes | 3/3 | Complete   | 2026-04-18 |
+| 12. Combine Home & Recipes | 3/3 | Complete    | 2026-04-18 |
 
 | 13. Receipt Scan & Instacart Import | 2/2 | Complete    | 2026-04-18 |
 | 14. Multi-Photo Scan & Smarter Filtering | 2/2 | Complete   | 2026-04-18 |
