@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/authStore';
 import { usePantryStore } from '../../stores/pantryStore';
 import { useRecipeStore } from '../../stores/recipeStore';
-import { useProgressionStore } from '../../stores/progressionStore';
 import { useNetworkStore } from '../../stores/networkStore';
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
 
@@ -22,7 +21,6 @@ import { SuggestionList } from '../../components/suggestions/SuggestionList';
 import { HeroImage } from '../../components/ui/HeroImage';
 import { RecipeCard } from '../../components/recipes/RecipeCard';
 import { SearchBar } from '../../components/recipes/SearchBar';
-import { SuggestedForYou } from '../../components/SuggestedForYou';
 import {
   RecipeFilterSheet,
   EMPTY_FILTERS,
@@ -141,17 +139,76 @@ function RegenerateFab() {
 }
 
 // -----------------------------------------------------------------------------
-// Suggestions header (hero + greeting). Large title fades on scroll.
+// Segmented control — rendered inside each list's ListHeaderComponent so it
+// sits below the page header and scrolls with the content.
+// -----------------------------------------------------------------------------
+
+function SegmentedControl({
+  segment,
+  setSegment,
+}: {
+  segment: Segment;
+  setSegment: (s: Segment) => void;
+}) {
+  return (
+    <View style={styles.segmentWrap}>
+      <Pressable
+        onPress={() => setSegment('suggestions')}
+        style={[
+          styles.segment,
+          segment === 'suggestions' && styles.segmentActive,
+        ]}
+        accessibilityLabel="Suggestions segment"
+        accessibilityState={{ selected: segment === 'suggestions' }}
+      >
+        <Text
+          style={[
+            styles.segmentLabel,
+            segment === 'suggestions' && styles.segmentLabelActive,
+          ]}
+        >
+          Suggestions
+        </Text>
+      </Pressable>
+      <Pressable
+        onPress={() => setSegment('library')}
+        style={[
+          styles.segment,
+          segment === 'library' && styles.segmentActive,
+        ]}
+        accessibilityLabel="Recipe Box segment"
+        accessibilityState={{ selected: segment === 'library' }}
+      >
+        <Text
+          style={[
+            styles.segmentLabel,
+            segment === 'library' && styles.segmentLabelActive,
+          ]}
+        >
+          Recipe Box
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Suggestions header (hero + greeting + segmented control).
+// Large title fades on scroll; segmented control scrolls with content.
 // -----------------------------------------------------------------------------
 
 function SuggestionsHeader({
   displayName,
   largeTitleOpacity,
   largeTitleTranslate,
+  segment,
+  setSegment,
 }: {
   displayName: string | null | undefined;
   largeTitleOpacity: Animated.AnimatedInterpolation<number>;
   largeTitleTranslate: Animated.AnimatedInterpolation<number>;
+  segment: Segment;
+  setSegment: (s: Segment) => void;
 }) {
   const titleText = displayName ? `Hey, ${displayName}!` : 'Kitchen';
   const hero = (
@@ -178,18 +235,21 @@ function SuggestionsHeader({
   );
 
   return (
-    <Animated.View
-      style={{
-        opacity: largeTitleOpacity,
-        transform: [{ translateY: largeTitleTranslate }],
-      }}
-    >
-      <View style={styles.largeHeader}>
-        <Text style={styles.largeTitle}>{titleText}</Text>
-        <Text style={styles.largeSubtitle}>What should we cook tonight?</Text>
-      </View>
-      {hero}
-    </Animated.View>
+    <View>
+      <Animated.View
+        style={{
+          opacity: largeTitleOpacity,
+          transform: [{ translateY: largeTitleTranslate }],
+        }}
+      >
+        <View style={styles.largeHeader}>
+          <Text style={styles.largeTitle}>{titleText}</Text>
+          <Text style={styles.largeSubtitle}>What should we cook tonight?</Text>
+        </View>
+        {hero}
+      </Animated.View>
+      <SegmentedControl segment={segment} setSegment={setSegment} />
+    </View>
   );
 }
 
@@ -218,9 +278,6 @@ export default function KitchenScreen() {
 
   // ---------- library state (all verbatim from recipes.tsx) ----------
   const { recipes, isLoading, fetchRecipes } = useRecipeStore();
-  const ambitionSuggestions = useProgressionStore((s) => s.ambitionSuggestions);
-  const fetchProgressionSuggestions = useProgressionStore((s) => s.fetchSuggestions);
-  const fetchCookStats = useProgressionStore((s) => s.fetchCookStats);
   const isOnline = useNetworkStore((s) => s.isOnline);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -252,12 +309,6 @@ export default function KitchenScreen() {
     if (profileId) loadItems(profileId);
   }, [filters.pantryOnly, pantryItems.length, profileId, loadItems]);
 
-  useEffect(() => {
-    if (!isOnline) return;
-    void fetchProgressionSuggestions();
-    void fetchCookStats();
-  }, [isOnline, fetchProgressionSuggestions, fetchCookStats]);
-
   // ---------- library filtering ----------
   const pantryNames = useMemo(
     () => new Set(pantryItems.map((p) => normalize(p.name))),
@@ -281,27 +332,29 @@ export default function KitchenScreen() {
 
   const activeFilterCount = countActiveFilters(filters);
 
-  // ---------- library list header (large title + SuggestedForYou + SearchBar) ----------
+  // ---------- library list header (large title + segmented control + SearchBar) ----------
   const libraryListHeader = (
-    <Animated.View
-      style={{
-        opacity: libraryHeader.largeTitleOpacity,
-        transform: [{ translateY: libraryHeader.largeTitleTranslate }],
-      }}
-    >
-      <View style={styles.largeHeader}>
-        <Text style={styles.largeTitle}>Kitchen</Text>
-        <Text style={styles.largeSubtitle}>
-          {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'} in your library
-        </Text>
-      </View>
-      <SuggestedForYou suggestions={ambitionSuggestions} />
+    <View>
+      <Animated.View
+        style={{
+          opacity: libraryHeader.largeTitleOpacity,
+          transform: [{ translateY: libraryHeader.largeTitleTranslate }],
+        }}
+      >
+        <View style={styles.largeHeader}>
+          <Text style={styles.largeTitle}>Kitchen</Text>
+          <Text style={styles.largeSubtitle}>
+            {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'} in your recipe box
+          </Text>
+        </View>
+      </Animated.View>
+      <SegmentedControl segment={segment} setSegment={setSegment} />
       {searchOpen && (
         <View style={styles.searchRow}>
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
         </View>
       )}
-    </Animated.View>
+    </View>
   );
 
   const handleCardPress = (recipe: Recipe) => {
@@ -378,46 +431,6 @@ export default function KitchenScreen() {
         </Pressable>
       </View>
 
-      {/* Segmented control (custom Pressable pair — no native-module dep) */}
-      <View style={styles.segmentWrap}>
-        <Pressable
-          onPress={() => setSegment('suggestions')}
-          style={[
-            styles.segment,
-            segment === 'suggestions' && styles.segmentActive,
-          ]}
-          accessibilityLabel="Suggestions segment"
-          accessibilityState={{ selected: segment === 'suggestions' }}
-        >
-          <Text
-            style={[
-              styles.segmentLabel,
-              segment === 'suggestions' && styles.segmentLabelActive,
-            ]}
-          >
-            Suggestions
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setSegment('library')}
-          style={[
-            styles.segment,
-            segment === 'library' && styles.segmentActive,
-          ]}
-          accessibilityLabel="Library segment"
-          accessibilityState={{ selected: segment === 'library' }}
-        >
-          <Text
-            style={[
-              styles.segmentLabel,
-              segment === 'library' && styles.segmentLabelActive,
-            ]}
-          >
-            Library
-          </Text>
-        </Pressable>
-      </View>
-
       {/* Both lists mounted in parallel; hide the inactive one with display:none
           so its scroll position, search, and filter state survive segment toggles. */}
       <View
@@ -434,6 +447,8 @@ export default function KitchenScreen() {
               displayName={displayName}
               largeTitleOpacity={suggestionsHeader.largeTitleOpacity}
               largeTitleTranslate={suggestionsHeader.largeTitleTranslate}
+              segment={segment}
+              setSegment={setSegment}
             />
           }
           onScroll={suggestionsHeader.onScroll}
