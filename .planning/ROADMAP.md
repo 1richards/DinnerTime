@@ -36,6 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 22: Plan Experience Refactor** - Better UX between Plan ↔ Recipes ↔ Suggestions ↔ Shopping; date pickers; multi-scale actions (day / week / month); skill-progression integration so planning uplevels cooking skills over time
 - [ ] **Phase 23: Settings, Auth & Non-Functional** - Account management (password reset, email change, delete account), session lifecycle polish, biometric unlock, security hardening, error handling, observability, performance budgets
 - [ ] **Phase 24: AI Vision & Pantry Data-Model Deep Refactor** - Systematically upgrade scan quality (prompting, multi-pass reasoning, retry logic), item creation logic, category consistency, canonical-name resolution for dedup, quantity/unit extraction, and the underlying data model (canonical ingredient table, item events, quantity semantics)
+- [ ] **Phase 25: Private Beta Launch** - Seed DinnerTime with real kitchen data, invite family and friends as beta users via TestFlight, submit to the App Store for private/unlisted distribution
 
 **Milestone v1.0 shipped 2026-04-14.** Post-v1 polish (UAT harness, visual pass, remix, collapsing headers, filter sheet, sign out, SecureStore fix, Cook tab removal) landed out-of-band on `main` and is logged in `STATE.md` under "Post-v1 Polish" rather than re-planned as a GSD phase. See `.planning/UAT-NIGHT-REPORT.md` for the overnight work summary. Plan tab multi-week navigation is deferred; candidate for a future Phase 12 when formalized.
 
@@ -551,3 +552,51 @@ Plans: (not yet planned)
 **Plans**: 0 plans
 Plans: (not yet planned)
 **UI hint**: no (primarily backend + data model; UI changes are invisible preserves)
+
+### Phase 25: Private Beta Launch
+**Goal**: Ship DinnerTime to a small circle of real users — Patrick's household + family + friends. Seed the app with real kitchen data, distribute via TestFlight (with App Store review path), gather structured feedback, and establish a release rhythm. This is the first real validation of the app outside the builder's phone
+**Depends on**: Phase 19, Phase 23
+**Requirements**: Launch readiness (post-v1)
+**Success Criteria** (what must be TRUE):
+
+### Real kitchen data (dogfooding)
+  1. Patrick's actual pantry is captured — fridge, pantry, freezer scanned and confirmed; weekly re-scans are habitual
+  2. At least 30 recipes imported from real sources (bookmarked URLs, cookbook photos, family recipes)
+  3. One real week of meal plans generated, cooked, shopped — end-to-end flow validated on live data
+  4. AI suggestions evaluated against real pantry state — noted which suggestions felt right and which didn't, feedback logged for future tuning
+
+### User invites
+  5. Invite list confirmed — household + target family/friends (target: 5–15 beta users)
+  6. Onboarding flow tested with a non-builder — someone outside the household signs up, onboards, and completes their first scan unassisted
+  7. Each invited user has a path to give feedback (in-app feedback form, email, or TestFlight feedback)
+
+### TestFlight distribution
+  8. TestFlight build uploaded via EAS Submit
+  9. Internal testing group configured (Patrick's Apple ID + invited testers)
+ 10. External testing group configured if > 25 users (requires App Review for external beta)
+ 11. TestFlight crash reports and feedback wired to Patrick's review workflow
+ 12. Build numbering / versioning strategy documented (semver + build number auto-increment via EAS)
+
+### App Store submission
+ 13. App Store Connect listing drafted — name, subtitle, description, keywords, category (Food & Drink)
+ 14. Screenshots captured — required device sizes (iPhone 6.9", 6.5", 5.5" per current Apple requirements), showing Kitchen / Plan / Pantry / Shopping / voice cooking
+ 15. App Preview video optional but drafted — 30s showing the core loop (snap → suggest → plan → cook)
+ 16. Privacy nutrition label filled out accurately — matches actual data collection (Supabase, Anthropic, Instacart)
+ 17. Privacy Policy and Terms of Service published and linked from Settings
+ 18. Age rating set; content warnings (if any) declared
+ 19. Export compliance answered (no encryption beyond HTTPS/Keychain required)
+ 20. App submitted to App Review for TestFlight external beta OR full public release — decision based on maturity
+
+### Release rhythm
+ 21. Release checklist documented (see `.planning/RELEASE.md` or equivalent) — version bump, changelog, EAS build, submit, announce
+ 22. Backend deployment path confirmed — server running on Fly.io or Railway (NOT localhost+cloudflared tunnel) with HTTPS and uptime
+ 23. Backend secrets rotated from dev keys to prod keys
+ 24. Feedback loop established — at least one structured check-in with each beta user after a week
+
+### Decision: private/unlisted vs. public
+ 25. Distribution posture decided — TestFlight-only (max ~10k testers, 90-day expiry) vs. App Store unlisted vs. App Store public
+ 26. If App Store: understand family-and-friends is the initial audience but the app is publicly installable
+
+**Plans**: 0 plans
+Plans: (not yet planned)
+**UI hint**: yes (screenshots, App Store assets, onboarding polish may reveal UI issues)
