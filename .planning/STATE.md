@@ -126,6 +126,7 @@ Progress: [██████████] 100%
 - Phase 21 added: Pantry intelligence — fuzzy dedup, presentation improvements, AI categorization learning, user-defined scan rules + staples list
 - Phase 22 added: Plan experience refactor — cross-flow Plan↔Recipes↔Suggestions↔Shopping, date pickers, day/week/month actions, skill-progression integration
 - Phase 23 added: Settings, auth, and non-functional requirements — account management, auth lifecycle, error handling, observability, performance, security, App Store readiness
+- Phase 24 added: AI vision & pantry data-model deep refactor — prompt eval harness, multi-pass reasoning, canonical ingredient table, identity-based dedup, quantity+unit semantics, immutable scan events
 
 ### Decisions
 

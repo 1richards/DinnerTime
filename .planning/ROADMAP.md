@@ -35,6 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 21: Pantry Intelligence** - Smarter dedup (fuzzy name matching, variant rollup), better pantry-tab presentation (grouping, sections, search), AI categorization learning from history, and user-defined scan rules for commonly purchased items
 - [ ] **Phase 22: Plan Experience Refactor** - Better UX between Plan ↔ Recipes ↔ Suggestions ↔ Shopping; date pickers; multi-scale actions (day / week / month); skill-progression integration so planning uplevels cooking skills over time
 - [ ] **Phase 23: Settings, Auth & Non-Functional** - Account management (password reset, email change, delete account), session lifecycle polish, biometric unlock, security hardening, error handling, observability, performance budgets
+- [ ] **Phase 24: AI Vision & Pantry Data-Model Deep Refactor** - Systematically upgrade scan quality (prompting, multi-pass reasoning, retry logic), item creation logic, category consistency, canonical-name resolution for dedup, quantity/unit extraction, and the underlying data model (canonical ingredient table, item events, quantity semantics)
 
 **Milestone v1.0 shipped 2026-04-14.** Post-v1 polish (UAT harness, visual pass, remix, collapsing headers, filter sheet, sign out, SecureStore fix, Cook tab removal) landed out-of-band on `main` and is logged in `STATE.md` under "Post-v1 Polish" rather than re-planned as a GSD phase. See `.planning/UAT-NIGHT-REPORT.md` for the overnight work summary. Plan tab multi-week navigation is deferred; candidate for a future Phase 12 when formalized.
 
@@ -500,3 +501,53 @@ Plans: (not yet planned)
 **Plans**: 0 plans
 Plans: (not yet planned)
 **UI hint**: yes
+
+### Phase 24: AI Vision & Pantry Data-Model Deep Refactor
+**Goal**: Upgrade the engineering substrate under every pantry flow. The vision pipeline becomes more accurate and self-correcting, items are resolved to canonical ingredients instead of raw strings, categorization is consistent across sources, deduplication works on identity (not just name), quantity is properly modeled (not crammed into a number+unit), and the data model supports all the smart behaviors the upstream UX phases want to express
+**Depends on**: Phase 3, Phase 11, Phase 14, Phase 18, Phase 21
+**Requirements**: Platform quality (post-v1)
+**Success Criteria** (what must be TRUE):
+
+### Scan quality — vision pipeline
+  1. Prompt engineering is formalized — prompts live in versioned files with an evaluation harness (golden fixture images with expected outputs)
+  2. Regression harness catches prompt drift — if a prompt change drops accuracy on any fixture, the PR fails
+  3. Multi-pass reasoning for tough scans — first pass identifies regions/shelves, second pass extracts items per region; improves accuracy for dense scenes
+  4. Retry + fallback — structured-tool failures fall back to text parsing; text-parsing failures surface a clear user error (not silent empty results)
+  5. Model routing per variant — receipt / fridge-photo / Instacart-screenshot may use different prompts or even different models, all routed through the Phase 11 AIClient abstraction
+
+### Item creation logic
+  6. Raw AI output → canonical ingredient resolution — "CHKN BRST", "chicken breast", "organic boneless skinless chicken breast" all resolve to the same canonical ingredient
+  7. Canonical ingredient table — seed with a curated list (produce, proteins, dairy, grains, condiments, beverages); extensible via admin and via usage
+  8. Aliases table — maps observed names to canonical IDs, learns from user corrections
+  9. Item creation is idempotent — re-scanning an existing item updates `last_seen_at` and `quantity` without creating a new row
+
+### Categorization consistency
+ 10. Category is a property of the canonical ingredient, not the scanned instance — "milk" is always dairy regardless of which scan produced it
+ 11. Category override is a user preference on the canonical ingredient, not the item — changing "olive oil" from condiment to pantry applies everywhere
+ 12. Mixed categorizations (AI returns different categories for the same ingredient across scans) are resolved via canonical ingredient table
+
+### Deduplication on identity, not name
+ 13. Duplicates detected by canonical ingredient ID + source_location (not fuzzy string match) — reliably catches "organic bananas" + "bananas" + "banana" as one
+ 14. Identity-based dedup replaces the fuzzy helper added in Phase 21 (it becomes a fallback when no canonical match exists)
+ 15. Batch scan dedup (Phase 14) also uses canonical IDs — merging across photos is deterministic
+
+### Quantity and unit semantics
+ 16. Quantity is modeled as a value + unit + unit-system — not a free-form number+string. Examples: {value: 2, unit: "piece", system: "count"}, {value: 1, unit: "lb", system: "imperial-weight"}, {value: 500, unit: "ml", system: "metric-volume"}
+ 17. Unit conversion library — known equivalences for cooking units (cups, tbsp, tsp, ml, l, oz, lb, g, kg, pieces)
+ 18. Pantry quantity aggregation — when the same canonical item is scanned multiple times, quantities accumulate in compatible units; incompatible units are stored as multiple entries with a UX hint
+ 19. Confidence per field — name, quantity, unit, category each have their own confidence; review UI surfaces low-confidence fields inline
+
+### Data storage logic
+ 20. Database migration: new `canonical_ingredients` and `ingredient_aliases` tables; `pantry_items` gains `canonical_ingredient_id` FK
+ 21. Migration is reversible and non-destructive — existing pantry items get alias entries auto-created on first match
+ 22. Immutable event log — each scan produces `scan_events` rows for auditability and future ML feedback
+ 23. Existing reconcileItems rewritten to use canonical IDs; all four scan flows (camera, batch, receipt, Instacart) adopt the new path
+
+### Quality gates
+ 24. Fixture-based accuracy metric — we can say "receipt scan is 94% accurate on the test set"; each release must not regress
+ 25. Performance doesn't regress — multi-pass reasoning stays within Phase 23's latency budgets
+ 26. User-facing behavior preserved — existing review screen still works, category chips still editable, dupe flag still fires
+
+**Plans**: 0 plans
+Plans: (not yet planned)
+**UI hint**: no (primarily backend + data model; UI changes are invisible preserves)
