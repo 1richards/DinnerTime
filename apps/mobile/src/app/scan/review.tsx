@@ -90,7 +90,7 @@ export default function ReviewScreen() {
             text: 'Get Dinner Ideas',
             onPress: () => {
               useSuggestionsStore.getState().setAutoFetch(true);
-              router.replace('/(tabs)');
+              router.replace('/(tabs)/kitchen');
             },
           },
         ]
