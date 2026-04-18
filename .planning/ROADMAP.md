@@ -27,6 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 13: Receipt Scan & Instacart Import** - Bulk pantry loading from grocery receipts and Instacart purchase history (completed 2026-04-18)
 - [x] **Phase 14: Multi-Photo Scan & Smarter Item Filtering** - Multiple photos per scan session, AI only returns identifiable cooking ingredients (completed 2026-04-18)
 - [ ] **Phase 15: UI Polish & Navigation Consistency** - Systematic audit + fixes: system icons replace emojis, consistent nav headers/back buttons, unified empty/loading states
+- [ ] **Phase 16: Cooking Mode UX Enhancements** - Upgraded voice interaction + model, UI polish, better information display during cooking
 
 **Milestone v1.0 shipped 2026-04-14.** Post-v1 polish (UAT harness, visual pass, remix, collapsing headers, filter sheet, sign out, SecureStore fix, Cook tab removal) landed out-of-band on `main` and is logged in `STATE.md` under "Post-v1 Polish" rather than re-planned as a GSD phase. See `.planning/UAT-NIGHT-REPORT.md` for the overnight work summary. Plan tab multi-week navigation is deferred; candidate for a future Phase 12 when formalized.
 
@@ -316,3 +317,17 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 15 to break down)
+
+### Phase 16: Cooking Mode UX Enhancements
+**Goal**: Hands-free cooking becomes genuinely delightful — voice recognition is fast and accurate with a better model, the UI during cooking is polished and iOS-native, and essential information (current step, ingredients, timers) is displayed clearly without clutter
+**Depends on**: Phase 9, Phase 15
+**Requirements**: Cooking UX improvement (post-v1)
+**Success Criteria** (what must be TRUE):
+  1. Voice interaction feels responsive — latency between user utterance and Claude response is noticeably improved vs. current Phase 9 implementation
+  2. Voice model upgrade evaluated — on-device speech recognition (expo-speech-recognition) verified against current quality, or upgraded path chosen (better model, server-side Whisper fallback, etc.)
+  3. Cooking mode UI is polished and consistent with Apple HIG — typography, spacing, state transitions, and icons meet Phase 15's design standards
+  4. During cooking, users see at a glance: current step, upcoming steps, active timers, remaining ingredients/quantities without scrolling
+  5. Voice commands to navigate (next/previous step, repeat, pause timer, set timer, show ingredients) work reliably with clear visual confirmation
+**Plans**: 0 plans
+Plans: (not yet planned)
+**UI hint**: yes

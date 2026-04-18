@@ -118,6 +118,7 @@ Progress: [██████████] 100%
 - Phase 13 added: Receipt scan and Instacart import for bulk pantry loading
 - Phase 14 added: Multi-photo pantry scan with smarter item filtering (no vague/unidentifiable items)
 - Phase 15 added: UI polish and navigation consistency audit (Apple HIG alignment, system icons, consistent nav)
+- Phase 16 added: Cooking mode UX enhancements (voice interaction + model upgrade, UI polish, information display)
 
 ### Decisions
 
