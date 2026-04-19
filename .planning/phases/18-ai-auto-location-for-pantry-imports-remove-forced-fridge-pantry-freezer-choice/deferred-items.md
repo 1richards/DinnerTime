@@ -35,3 +35,11 @@ re-running the suite: same 4 failures.
 None of these touch pantryStore or the scan/review flow that Phase 18-03 owns.
 Logged here so the plan-wide verify tally stays honest.
 
+## Pre-existing mobile test failures re-verified (out-of-scope for 18-04)
+
+Same 4 failures above re-observed during 18-04 post-LocationPicker-removal run.
+338/342 mobile tests green; 4 out-of-scope pre-existing failures unchanged.
+Plan 18-04 scope (pantryStore, LocationChip, LocationChoiceSheet, reviewHelpers,
+logOverrideEvent) is 40/40 green. No new regressions introduced by removing
+LocationPicker or rebasing Maestro flows.
+

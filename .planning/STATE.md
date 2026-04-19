@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 18-03 (Wave 3 mobile review-chip + override telemetry) — complete (3/4 plans in Phase 18)
-status: Phase 18 Wave 3 landed. Wave 4 (Plan 18-04) unblocked — atomically remove LocationPicker + dead route params + rebase Maestro flows (07/16/19)
-stopped_at: "Completed 18-03-PLAN.md (Wave 3 mobile review-chip + override telemetry: LocationChip+Sheet primitives, fire-and-forget override-events POST, pantryStore signatures drop sourceLocation; 40/40 scope tests green)"
-last_updated: "2026-04-19T04:36:18.076Z"
-last_activity: "2026-04-19 -- Completed 18-03 (Wave 3 mobile review-chip + override telemetry: LocationChip + LocationChoiceSheet primitives (12 tests), logOverrideEvents fire-and-forget helper (5 tests), deriveOverrideEvents (6 tests), pantryStore signatures drop sourceLocation + aiLocation seeding + override dispatch, ReviewItemRow + review.tsx integration; 40/40 scope tests green, tsc clean)"
+current_plan: 18-04 (Wave 4 LocationPicker removal + UAT closeout) — complete (4/4 plans in Phase 18, Phase COMPLETE)
+status: completed
+stopped_at: Completed 18-04-PLAN.md (LocationPicker retired; Phase 18 UX vision shipped — per-item AI classification across all 4 scan flows; purity gate script live; Maestro 07/16/19/smoke green on iPhone 17 Pro sim; 40/40 scope tests)
+last_updated: "2026-04-19T04:46:48.965Z"
+last_activity: "2026-04-19 -- Completed 18-04 (Wave 4 LocationPicker retirement + UAT closeout: LocationPicker.tsx deleted, import + state + JSX stripped from scan/index.tsx + scan/receipt.tsx, hardcoded sourceLocation nav param dropped from scan/instacart.tsx, EmptyState copy on scan/index.tsx now location-agnostic, verify-no-location-picker-scan.sh purity gate shipped, Maestro flows 07/16/19/smoke rebased comment-only + verified green on iPhone 17 Pro sim; 40/40 scope tests green, tsc clean — Phase 18 COMPLETE)"
 progress:
   total_phases: 25
-  completed_phases: 16
+  completed_phases: 17
   total_plans: 70
-  completed_plans: 69
+  completed_plans: 70
   percent: 96
 ---
 
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 18 of 25 (AI Auto-Location for Pantry Imports) — IN PROGRESS
-Current Plan: 18-03 (Wave 3 mobile review-chip + override telemetry) — complete (3/4 plans in Phase 18)
-Status: Phase 18 Wave 3 landed. Wave 4 (Plan 18-04) unblocked — atomically remove LocationPicker + dead route params + rebase Maestro flows (07/16/19)
-Last activity: 2026-04-19 -- Completed 18-03 (Wave 3 mobile review-chip + override telemetry: LocationChip + LocationChoiceSheet primitives (12 tests), logOverrideEvents fire-and-forget helper (5 tests), deriveOverrideEvents (6 tests), pantryStore signatures drop sourceLocation + aiLocation seeding + override dispatch, ReviewItemRow + review.tsx integration; 40/40 scope tests green, tsc clean)
+Phase: 18 of 25 (AI Auto-Location for Pantry Imports) — COMPLETE
+Current Plan: 18-04 (Wave 4 LocationPicker removal + UAT closeout) — complete (4/4 plans in Phase 18, Phase COMPLETE)
+Status: Phase 18 COMPLETE. LocationPicker retired across all four scan flows; per-item AI classification + review-chip overrides shipped end-to-end. Next up: Phase 20 (Shopping refactor — push items to Instacart draft cart).
+Last activity: 2026-04-19 -- Completed 18-04 (Wave 4 LocationPicker retirement + UAT closeout: LocationPicker.tsx deleted, import + state + JSX stripped from scan/index.tsx + scan/receipt.tsx, hardcoded sourceLocation nav param dropped from scan/instacart.tsx, EmptyState copy on scan/index.tsx now location-agnostic, verify-no-location-picker-scan.sh purity gate shipped, Maestro flows 07/16/19/smoke rebased comment-only + verified green on iPhone 17 Pro sim; 40/40 scope tests green, tsc clean — Phase 18 COMPLETE)
 
 Progress: [██████████] 96%
 
@@ -122,6 +122,7 @@ Progress: [██████████] 96%
 | Phase 18 P01 | 5min | 2 tasks | 6 files |
 | Phase 18 P02 | 12min | 3 tasks | 9 files |
 | Phase Phase 18 PP03 | 9min | 3 tasks tasks | 18 files files |
+| Phase 18 P04 | 6min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -370,6 +371,10 @@ Recent decisions affecting current work:
 - [Phase 18-03]: confirmScan fires logOverrideEvents via void (not awaited) so 'Pantry Updated!' Alert never waits on telemetry POST; getAuthTokenOrNull wrapper swallows mid-session sign-outs
 - [Phase 18-03]: Review-only fields (id, accepted, userEdited, aiLocation, probableDupe) stripped from /confirm payload via destructure-and-spread; aiLocation stays mobile-only provenance
 - [Phase 18-03]: LocationPicker intentionally stays mounted through 18-03; Plan 18-04 atomically deletes component + dead route params + rebases Maestro flows
+- [Phase 18-04]: DELETED LocationPicker.tsx (not preserved for Phase 21 reuse) — dead code invites reintroduction; Phase 21 will build fresh rules UI against own schema
+- [Phase 18-04]: Location-agnostic EmptyState copy on scan/index.tsx ('Take photos of your fridge, pantry, or freezer — we'll sort each item automatically.') — sets expectation that AI does the sorting
+- [Phase 18-04]: Maestro flows 07/16/19 rebased comment-only (no step changes) — RESEARCH Q14 audit had confirmed none of the three flows tap or assert against LocationPicker element
+- [Phase 18-04]: verify-no-location-picker-scan.sh purity gate (4 grep checks: no imports, no JSX, no hardcoded 'pantry' nav param, file deleted) — mirrors Phase 15 verify-no-ionicons.sh / verify-no-decorative-emoji.sh shape
 
 ### Pending Todos
 
@@ -413,6 +418,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T04:36:18.071Z
-Stopped at: Completed 18-03-PLAN.md (Wave 3 mobile review-chip + override telemetry: LocationChip+Sheet primitives, fire-and-forget override-events POST, pantryStore signatures drop sourceLocation; 40/40 scope tests green)
+Last session: 2026-04-19T04:46:13.381Z
+Stopped at: Completed 18-04-PLAN.md (LocationPicker retired; Phase 18 UX vision shipped — per-item AI classification across all 4 scan flows; purity gate script live; Maestro 07/16/19/smoke green on iPhone 17 Pro sim; 40/40 scope tests)
 Resume file: None
