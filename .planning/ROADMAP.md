@@ -563,9 +563,18 @@ Plans: (not yet planned)
  25. Performance doesn't regress — multi-pass reasoning stays within Phase 23's latency budgets
  26. User-facing behavior preserved — existing review screen still works, category chips still editable, dupe flag still fires
 
-**Plans**: 0 plans
-Plans: (not yet planned)
-**UI hint**: no (primarily backend + data model; UI changes are invisible preserves)
+**Plans**: 6 plans (Phase 24a — data-model + dedup, criteria 6-23)
+Plans:
+- [ ] 24-01-PLAN.md — Migrations 00011-00015 + canonical (~300) + alias (~2000-3000) seed JSONs + migrations.test.ts extension
+- [ ] 24-02-PLAN.md — units.ts unit conversion library (TDD) — REQ-16/17
+- [ ] 24-03-PLAN.md — canonicalResolver.ts: exact canonical → alias → fuzzy → candidate auto-create (TDD) — REQ-07/09/14
+- [ ] 24-04-PLAN.md — vision.ts + identifyReceiptItems.ts tool schema extensions (nested Quantity + nested FieldConfidence) — REQ-16/19 at AI boundary
+- [ ] 24-05-PLAN.md — Rewritten reconcileItems (canonical-identity dedup + quantity aggregation) + scan_events write-path on 4 scan flows — REQ-13/15/18/19/23
+- [ ] 24-06-PLAN.md — Mobile ScanResult mirror + inline low-confidence UI on ReviewItemRow + Maestro smoke UAT checkpoint
+
+**Scope note:** Phase 24a covers ROADMAP criteria 6-23. Criteria 1-2, 4-5, 24-26 (versioned prompts, eval harness, accuracy metric, retry/fallback, model routing per variant) are Phase 24b — scheduled for a future `/gsd:plan-phase` invocation. Criterion 3 (multi-pass reasoning) is DESCOPED entirely.
+
+**UI hint**: no (primarily backend + data model; minimum inline confidence UI on review screen is the only mobile-visible change)
 
 ### Phase 25: Private Beta Launch
 **Goal**: Ship DinnerTime to a small circle of real users — Patrick's household + family + friends. Seed the app with real kitchen data, distribute via TestFlight (with App Store review path), gather structured feedback, and establish a release rhythm. This is the first real validation of the app outside the builder's phone
