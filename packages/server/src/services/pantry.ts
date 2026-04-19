@@ -3,6 +3,7 @@ import type { ScanResult, SourceLocation } from './vision.js';
 import { resolveCanonicalBatch } from './canonicalResolver.js';
 import { add as addQuantities, sanitize as sanitizeQuantity, type Quantity } from './units.js';
 import { SOURCE_LOCATIONS } from './sourceLocation.js';
+import { applyLocationRules, loadUserLocationRules } from './ruleEvaluator.js';
 
 /**
  * Phase 24-05: reconcileItems consumes ScanResult[] directly (post Phase 24-04
@@ -61,6 +62,12 @@ export interface ReconcileResult {
   /** Rows that created a second pantry_items entry because the scan's unit
    * system was incompatible with the existing row (units.add returned null). */
   incompatibleUnits: number;
+  /**
+   * Phase 21-03 (W2): distinct canonical IDs touched during this reconcile.
+   * Deduped. Consumed by the /confirm route to fire-and-forget
+   * `incrementScanCounts` for the learning pipeline (canonical promotion).
+   */
+  canonicalIds: string[];
 }
 
 /**
@@ -102,7 +109,7 @@ export async function reconcileItems(
   items: ScanResult[],
 ): Promise<ReconcileResult> {
   if (!items || items.length === 0) {
-    return { inserted: 0, updated: 0, incompatibleUnits: 0 };
+    return { inserted: 0, updated: 0, incompatibleUnits: 0, canonicalIds: [] };
   }
 
   // 1. Batch-resolve canonical IDs for every name.
@@ -110,6 +117,11 @@ export async function reconcileItems(
     supabase,
     items.map((it) => it.name),
   );
+
+  // Phase 21-03: fetch user location rules once per reconcile — reused per-item
+  // inside the loop. Rules apply AFTER canonical resolution, BEFORE
+  // source_location finalize (per RESEARCH Pattern 1).
+  const userRules = await loadUserLocationRules(supabase, profileId);
 
   // 2. User category overrides (one query).
   const overrideMap = new Map<string, string>();
@@ -127,17 +139,17 @@ export async function reconcileItems(
   }
 
   // 3. Canonical category lookup (one query over the set of resolved IDs).
-  const canonicalIds = [
+  const allCanonicalIds = [
     ...new Set(
       [...resolveMap.values()].map((m) => m.canonicalId),
     ),
   ];
   const canonicalCategoryMap = new Map<string, string>();
-  if (canonicalIds.length > 0) {
+  if (allCanonicalIds.length > 0) {
     const { data } = await supabase
       .from('canonical_ingredients')
       .select('id, category')
-      .in('id', canonicalIds);
+      .in('id', allCanonicalIds);
     for (const row of (data ?? []) as Array<{ id: string; category: string }>) {
       canonicalCategoryMap.set(row.id, row.category);
     }
@@ -146,6 +158,9 @@ export async function reconcileItems(
   let inserted = 0;
   let updated = 0;
   let incompatibleUnits = 0;
+  // Phase 21-03: track distinct canonicals touched for the /confirm fire-and-forget
+  // learning-pipeline increments (promote_candidate_canonicals threshold counter).
+  const seenCanonical = new Set<string>();
 
   for (const raw of items) {
     const name = String(raw.name ?? '').trim();
@@ -154,8 +169,14 @@ export async function reconcileItems(
     const match = resolveMap.get(raw.name);
     if (!match) continue; // defensive — every name should be in the map
     const canonicalId = match.canonicalId;
+    seenCanonical.add(canonicalId);
 
-    const source_location = resolveSourceLocation(raw.source_location);
+    // Phase 21-03: user location rule evaluation — AFTER canonical resolve,
+    // BEFORE source_location finalize. applyLocationRules returns the original
+    // scanItem on no-op (identity preserved) or a shallow clone with
+    // source_location overridden on first-match-wins by precedence ASC.
+    const ruled = applyLocationRules(match, raw, userRules);
+    const source_location = resolveSourceLocation(ruled.source_location);
     const quantity: Quantity = sanitizeQuantity(raw.quantity);
     const resolvedCategory =
       overrideMap.get(canonicalId) ??
@@ -248,5 +269,10 @@ export async function reconcileItems(
     }
   }
 
-  return { inserted, updated, incompatibleUnits };
+  return {
+    inserted,
+    updated,
+    incompatibleUnits,
+    canonicalIds: Array.from(seenCanonical),
+  };
 }

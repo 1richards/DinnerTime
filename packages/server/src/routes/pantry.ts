@@ -8,6 +8,11 @@ import {
 } from '../services/vision.js';
 import { reconcileItems } from '../services/pantry.js';
 import { SOURCE_LOCATIONS, type SourceLocation } from '../services/sourceLocation.js';
+import { aggregateLocationSuggestions } from '../services/suggestionAggregator.js';
+import {
+  incrementScanCounts,
+  promoteCandidateCanonicals,
+} from '../services/canonicalPromoter.js';
 
 const pantry = new Hono();
 
@@ -275,6 +280,20 @@ pantry.post('/confirm', async (c) => {
 
   try {
     const data = await reconcileItems(supabase, user.id, body.items as ScanResult[]);
+
+    // Phase 21-03: learning-pipeline fire-and-forget. Each call is wrapped in
+    // try/catch at the service layer so void-not-awaited is safe, but we
+    // also .catch here to silence UnhandledPromiseRejection warnings during
+    // test runs where mocks may reject. Scan commit MUST NOT be blocked on
+    // any of these telemetry calls. Promise.resolve() wrapper guarantees a
+    // .catch is available even if a mock returns undefined.
+    const canonicalIds = Array.isArray((data as any)?.canonicalIds)
+      ? ((data as any).canonicalIds as string[])
+      : [];
+    void Promise.resolve(incrementScanCounts(supabase, canonicalIds)).catch(() => {});
+    void Promise.resolve(promoteCandidateCanonicals(supabase)).catch(() => {});
+    void Promise.resolve(aggregateLocationSuggestions(supabase, user.id)).catch(() => {});
+
     return c.json({ data });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Reconciliation failed';

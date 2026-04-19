@@ -19,6 +19,14 @@ vi.mock('../canonicalResolver.js', () => ({
   }),
 }));
 
+// Phase 21-03: reconcileItems integrates ruleEvaluator.loadUserLocationRules +
+// applyLocationRules. Mock ruleEvaluator at module load so reconcile can pick it
+// up without a real supabase-side user_location_rules fetch.
+vi.mock('../ruleEvaluator.js', () => ({
+  loadUserLocationRules: vi.fn(async () => ({ locationRules: [] })),
+  applyLocationRules: vi.fn((_match, scanItem, _rules) => scanItem),
+}));
+
 import { reconcileItems, normalizeName } from '../pantry.js';
 import type { ScanResult } from '../vision.js';
 import type { Quantity } from '../units.js';
@@ -380,9 +388,38 @@ describe('reconcileItems — canonical-identity dedup (24-05)', () => {
   it('returns counts on an empty input without querying', async () => {
     const { supabase, captured } = makeSupabase();
     const result = await reconcileItems(supabase as any, 'user-1', []);
-    expect(result).toEqual({ inserted: 0, updated: 0, incompatibleUnits: 0 });
+    expect(result).toEqual({
+      inserted: 0,
+      updated: 0,
+      incompatibleUnits: 0,
+      canonicalIds: [],
+    });
     expect(captured.inserts).toHaveLength(0);
     expect(captured.updates).toHaveLength(0);
+  });
+
+  it('Phase 21-03 W2: returns deduped canonicalIds from resolved items', async () => {
+    const { supabase } = makeSupabase({
+      canonical_ingredients: [
+        { id: 'canon-milk', category: 'dairy' },
+        { id: 'canon-eggs', category: 'protein' },
+      ],
+    });
+
+    // 3 items; two resolve to canon-milk (duplicate), one to canon-eggs.
+    const result = await reconcileItems(supabase as any, 'user-1', [
+      scan('milk', { value: 1, unit: 'gallon', system: 'custom' }, 'fridge'),
+      scan('eggs', { value: 12, unit: 'piece', system: 'count' }, 'fridge'),
+      scan('milk', { value: 1, unit: 'gallon', system: 'custom' }, 'fridge'),
+    ]);
+
+    expect(result.canonicalIds).toBeDefined();
+    // Deduped: 2 unique canonicals despite 3 items.
+    expect(result.canonicalIds.length).toBe(2);
+    expect(new Set(result.canonicalIds).size).toBe(2);
+    expect(result.canonicalIds).toEqual(
+      expect.arrayContaining(['canon-milk', 'canon-eggs']),
+    );
   });
 
   it('uses normalized item name on INSERT (lowercase + trim)', async () => {

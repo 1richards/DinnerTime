@@ -1,6 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockIdentifyFoodItems, mockIdentifyFoodItemsBatch, mockIdentifyReceiptItems, mockReconcileItems, mockAuthMiddleware, supabase, supabaseState } = vi.hoisted(() => {
+const {
+  mockIdentifyFoodItems,
+  mockIdentifyFoodItemsBatch,
+  mockIdentifyReceiptItems,
+  mockReconcileItems,
+  mockAggregateLocationSuggestions,
+  mockPromoteCandidateCanonicals,
+  mockIncrementScanCounts,
+  mockAuthMiddleware,
+  supabase,
+  supabaseState,
+} = vi.hoisted(() => {
   // Mutable shared state so individual tests can seed existing-items rows +
   // observe insert() payloads (override-events).
   const supabaseState = {
@@ -61,6 +72,10 @@ const { mockIdentifyFoodItems, mockIdentifyFoodItemsBatch, mockIdentifyReceiptIt
     mockIdentifyFoodItemsBatch: vi.fn(),
     mockIdentifyReceiptItems: vi.fn(),
     mockReconcileItems: vi.fn(),
+    // Phase 21-03: learning-pipeline services (fire-and-forget on /confirm)
+    mockAggregateLocationSuggestions: vi.fn(),
+    mockPromoteCandidateCanonicals: vi.fn(),
+    mockIncrementScanCounts: vi.fn(),
     mockAuthMiddleware: vi.fn(async (c: any, next: any) => {
       const auth = c.req.header('Authorization');
       if (!auth) return c.json({ error: 'Missing auth' }, 401);
@@ -85,6 +100,18 @@ vi.mock('../../services/vision.js', () => ({
 
 vi.mock('../../services/pantry.js', () => ({
   reconcileItems: mockReconcileItems,
+}));
+
+// Phase 21-03 — learning-pipeline services (imported at routes/pantry.ts load
+// so they must be mocked hoisted). All three are fire-and-forget from /confirm;
+// tests may configure them to reject so the fire-and-forget contract is
+// stressed under failure.
+vi.mock('../../services/suggestionAggregator.js', () => ({
+  aggregateLocationSuggestions: mockAggregateLocationSuggestions,
+}));
+vi.mock('../../services/canonicalPromoter.js', () => ({
+  promoteCandidateCanonicals: mockPromoteCandidateCanonicals,
+  incrementScanCounts: mockIncrementScanCounts,
 }));
 
 import { Hono } from 'hono';
@@ -763,5 +790,110 @@ describe('REQ-15 convergence: POST /confirm dispatches to rewritten reconcileIte
     expect(args[1]).toBe('user-1');
     expect(Array.isArray(args[2])).toBe(true);
     expect(args[2][0].source_location).toBe('fridge');
+  });
+});
+
+/**
+ * Phase 21-03 — Rule evaluator integration + learning-pipeline fire-and-forget
+ * contract on POST /confirm.
+ *
+ * - reconcileItems is the integration point for user_location_rules (verified
+ *   via services/pantry.test.ts Phase 21-03 W2 test).
+ * - /confirm MUST fire aggregateLocationSuggestions + promoteCandidateCanonicals
+ *   + incrementScanCounts as `void` — scan never blocked even when all three
+ *   reject. Test asserts each was called exactly once with a 200 response.
+ */
+describe('Phase 21-03 — /confirm fires learning-pipeline services fire-and-forget', () => {
+  const sampleItem = {
+    name: 'milk',
+    quantity: { value: 1, unit: 'gallon', system: 'custom' },
+    category: 'dairy',
+    confidence: 0.9,
+    source_location: 'fridge',
+    fieldConfidence: { name: 0.9, quantity: 0.9, unit: 0.9, category: 0.9 },
+  };
+
+  beforeEach(() => {
+    mockReconcileItems.mockReset();
+    mockAggregateLocationSuggestions.mockReset();
+    mockPromoteCandidateCanonicals.mockReset();
+    mockIncrementScanCounts.mockReset();
+  });
+
+  it('fires aggregator + promoter + incrementScanCounts exactly once on success', async () => {
+    mockReconcileItems.mockResolvedValue({
+      inserted: 1,
+      updated: 0,
+      incompatibleUnits: 0,
+      canonicalIds: ['canon-milk'],
+    });
+    mockAggregateLocationSuggestions.mockResolvedValue(undefined);
+    mockPromoteCandidateCanonicals.mockResolvedValue(0);
+    mockIncrementScanCounts.mockResolvedValue(undefined);
+
+    const res = await req('/confirm', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: [sampleItem],
+        profile_id: 'user-1',
+      }),
+    });
+    expect(res.status).toBe(200);
+
+    expect(mockAggregateLocationSuggestions).toHaveBeenCalledTimes(1);
+    expect(mockPromoteCandidateCanonicals).toHaveBeenCalledTimes(1);
+    expect(mockIncrementScanCounts).toHaveBeenCalledTimes(1);
+
+    // Pitfall 1: aggregator uses the request's authedSupabase, not service role.
+    // The mock supabase is the same reference set by authMiddleware; assert it
+    // was passed as the first arg to aggregateLocationSuggestions.
+    expect(mockAggregateLocationSuggestions.mock.calls[0][0]).toBe(supabase);
+    expect(mockAggregateLocationSuggestions.mock.calls[0][1]).toBe('user-1');
+
+    // incrementScanCounts receives the canonicalIds from the reconcile result.
+    expect(mockIncrementScanCounts.mock.calls[0][1]).toEqual(['canon-milk']);
+  });
+
+  it('returns 200 even when aggregator/promoter/counter all reject (fire-and-forget)', async () => {
+    mockReconcileItems.mockResolvedValue({
+      inserted: 1,
+      updated: 0,
+      incompatibleUnits: 0,
+      canonicalIds: ['canon-milk'],
+    });
+    // All three reject — the handler MUST NOT await them. Unhandled-rejection
+    // noise is swallowed by .catch inside the route or by the service itself.
+    mockAggregateLocationSuggestions.mockRejectedValue(new Error('agg boom'));
+    mockPromoteCandidateCanonicals.mockRejectedValue(new Error('promote boom'));
+    mockIncrementScanCounts.mockRejectedValue(new Error('count boom'));
+
+    // Quiet any unhandled-rejection logs during this test.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await req('/confirm', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: [sampleItem],
+        profile_id: 'user-1',
+      }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data).toEqual({
+      inserted: 1,
+      updated: 0,
+      incompatibleUnits: 0,
+      canonicalIds: ['canon-milk'],
+    });
+
+    expect(mockAggregateLocationSuggestions).toHaveBeenCalledTimes(1);
+    expect(mockPromoteCandidateCanonicals).toHaveBeenCalledTimes(1);
+    expect(mockIncrementScanCounts).toHaveBeenCalledTimes(1);
+
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 });
