@@ -203,7 +203,7 @@ describe('identifyFoodItemsBatch', () => {
       { base64: 'IMG1', mimeType: 'image/jpeg' },
       { base64: 'IMG2', mimeType: 'image/jpeg' },
     ]);
-    expect(callArgs.user).toContain('2 photos');
+    expect(callArgs.user).toMatch(/2\s+(kitchen\s+)?photos/);
     // No single-location lock in the prompt.
     expect(callArgs.user).not.toMatch(/You are analyzing \d+ photos of a (fridge|pantry|freezer)/);
     expect(callArgs.user).toContain('deduplicate');

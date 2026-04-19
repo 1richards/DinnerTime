@@ -2,8 +2,8 @@
 
 import { getClientFor } from '../ai/clientFactory.js';
 import type { StructuredTool } from '../ai/types.js';
-import type { SourceLocation } from './vision.js';
-import { SOURCE_LOCATIONS } from './vision.js';
+import type { SourceLocation } from './sourceLocation.js';
+import { SOURCE_LOCATIONS } from './sourceLocation.js';
 
 /**
  * Static map of ~150 common ingredients → kitchen location. O(1) zero-cost

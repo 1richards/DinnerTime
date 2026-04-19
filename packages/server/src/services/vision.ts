@@ -1,14 +1,15 @@
 import { getClientFor } from '../ai/clientFactory.js';
 import type { JsonSchema, StructuredTool } from '../ai/types.js';
+import { classifyLocationStatic } from './itemLocation.js';
+import { SOURCE_LOCATIONS, type SourceLocation } from './sourceLocation.js';
 
 /**
- * Phase 18: where an item lives in the kitchen. Schema-fixed at these three;
- * any expansion (counter, spice rack, deep freeze) requires a ROADMAP decision.
- * Consumed by itemLocation.ts classifier, reconcileItems dual-write, and the
- * review-screen LocationChip.
+ * Phase 18: where an item lives in the kitchen. Canonical enum lives in
+ * sourceLocation.ts (leaf module) to avoid a circular import with
+ * itemLocation.ts. Re-exported here so existing consumers keep working.
  */
-export const SOURCE_LOCATIONS = ['fridge', 'pantry', 'freezer'] as const;
-export type SourceLocation = (typeof SOURCE_LOCATIONS)[number];
+export { SOURCE_LOCATIONS };
+export type { SourceLocation };
 
 export const VALID_CATEGORIES = [
   'produce',
@@ -29,6 +30,12 @@ export interface ScanResult {
   unit: string;
   confidence: number;
   category: PantryCategory;
+  /**
+   * Phase 18: AI-inferred kitchen location for this item (post-corrected by
+   * LOCATION_STATIC_MAP when a known name is present). Every scan return path
+   * carries this field — consumers (reconcileItems, review screen) depend on it.
+   */
+  source_location: SourceLocation;
 }
 
 const foodItemsSchema: JsonSchema = {
@@ -49,8 +56,14 @@ const foodItemsSchema: JsonSchema = {
             description:
               'MUST be exactly one of: produce, dairy, protein, grain, condiment, beverage, frozen, snack, other. Meat/fish goes under "protein". Vegetables/fruit go under "produce". Anything unclear goes under "other".',
           },
+          source_location: {
+            type: 'string',
+            enum: [...SOURCE_LOCATIONS],
+            description:
+              'Where a typical US household stores this item. fridge = dairy, fresh meat/produce, opened condiments. freezer = frozen foods, ice cream. pantry = shelf-stable, canned, dried, spices, oils, baked goods.',
+          },
         },
-        required: ['name', 'quantity', 'unit', 'confidence', 'category'],
+        required: ['name', 'quantity', 'unit', 'confidence', 'category', 'source_location'],
       },
     },
   },
@@ -74,6 +87,21 @@ export function coerceCategory(raw: unknown): PantryCategory {
   if (lower === 'sauce' || lower === 'spice' || lower === 'oil' || lower === 'vinegar') return 'condiment';
   if (lower === 'drink' || lower === 'juice') return 'beverage';
   return 'other';
+}
+
+/**
+ * Normalize + classify post-AI. STATIC_MAP wins over the AI response (Pitfall 1,
+ * RESEARCH Q4 Option C). Invalid enums fall back to STATIC_MAP hit or 'pantry'
+ * default (shelf-stable bias, matching Wave 1 classifyItems behavior).
+ */
+function correctLocation(rawName: unknown, rawLoc: unknown): SourceLocation {
+  const name = typeof rawName === 'string' ? rawName.trim().toLowerCase() : '';
+  const staticHit = name ? classifyLocationStatic(name) : null;
+  if (staticHit) return staticHit;
+  if (typeof rawLoc === 'string' && (SOURCE_LOCATIONS as readonly string[]).includes(rawLoc)) {
+    return rawLoc as SourceLocation;
+  }
+  return 'pantry';
 }
 
 const foodItemsTool: StructuredTool<{ items: ScanResult[] }> = {
@@ -106,6 +134,13 @@ export const RECEIPT_NAME_DENYLIST: ReadonlySet<string> = new Set([
   'change',
 ]);
 
+/**
+ * Phase 18: location-agnostic per-item classification directive folded into the
+ * existing filter/identification rules. The AI picks a location per item;
+ * STATIC_MAP corrects known entries post-call.
+ */
+const LOCATION_CLASSIFICATION_RULES = `For each item, infer where a typical US household stores it — fridge (dairy, fresh meat/produce, opened condiments), freezer (frozen foods, ice cream, frozen vegetables), or pantry (shelf-stable, canned, dried, spices, oils, baked goods). Set source_location accordingly.`;
+
 const FILTERING_RULES = `For each item, report ONLY items you can specifically name as a cooking ingredient or food product. Examples of GOOD items: "milk", "cheddar cheese", "sriracha", "ground beef", "sourdough bread", "olive oil".
 
 DO NOT report:
@@ -118,7 +153,9 @@ Named condiments and sauces ARE included (e.g., ketchup, soy sauce, ranch dressi
 All beverages ARE included (e.g., orange juice, soda, water, beer).
 
 Assign confidence 0.0-1.0 based on how clearly you can identify each item. Only report items with confidence >= 0.5.
-The category field MUST be exactly one of the nine values in the schema.`;
+The category field MUST be exactly one of the nine values in the schema.
+
+${LOCATION_CLASSIFICATION_RULES}`;
 
 /**
  * Receipt / Instacart-screenshot-specific extraction rules.
@@ -144,12 +181,26 @@ This image is a GROCERY RECEIPT (or a screenshot of an Instacart order summary).
   quantity to 1 and unit to "piece".
 - If an item appears multiple times on separate lines, report it once with the
   summed quantity.
-- If the receipt is too faded or blurry to read reliably, return an empty items array.`;
+- If the receipt is too faded or blurry to read reliably, return an empty items array.
+Dairy/fresh meat/produce → fridge. Frozen items → freezer. Shelf-stable → pantry.`;
 
-export async function identifyFoodItems(
-  base64Image: string,
-  sourceLocation: 'fridge' | 'pantry' | 'freezer'
-): Promise<ScanResult[]> {
+/**
+ * Map raw AI items to ScanResult[], coercing category and correcting
+ * source_location via STATIC_MAP-wins. Shared by all three vision entrypoints
+ * so the invariant is enforced in exactly one place.
+ */
+function normalizeScanItems(raw: Array<Partial<ScanResult>> | undefined): ScanResult[] {
+  return (raw ?? []).map((item) => ({
+    name: String(item.name ?? ''),
+    quantity: typeof item.quantity === 'number' ? item.quantity : 1,
+    unit: typeof item.unit === 'string' ? item.unit : 'piece',
+    confidence: typeof item.confidence === 'number' ? item.confidence : 0,
+    category: coerceCategory(item.category),
+    source_location: correctLocation(item.name, item.source_location),
+  }));
+}
+
+export async function identifyFoodItems(base64Image: string): Promise<ScanResult[]> {
   const imageBytes = Buffer.from(base64Image, 'base64').length;
   if (imageBytes > MAX_BASE64_BYTES) {
     throw new Error(
@@ -158,22 +209,17 @@ export async function identifyFoodItems(
   }
   const ai = getClientFor('vision.pantryScan');
   const result = await ai.analyzeImageStructured<{ items: ScanResult[] }>({
-    user: `You are analyzing a photo of a ${sourceLocation}. Identify all visible food items.\n\n${FILTERING_RULES}`,
+    user: `You are analyzing a kitchen photo. Identify each visible food item and infer where a typical US household stores it (fridge/pantry/freezer).\n\n${FILTERING_RULES}`,
     imageBase64: base64Image,
     mimeType: 'image/jpeg',
     tool: foodItemsTool,
     maxTokens: 4096,
   });
-  // Coerce category in case the model ignored the enum.
-  return (result.items ?? []).map((item) => ({
-    ...item,
-    category: coerceCategory(item.category),
-  }));
+  return normalizeScanItems(result.items);
 }
 
 export async function identifyFoodItemsBatch(
   base64Images: string[],
-  sourceLocation: 'fridge' | 'pantry' | 'freezer',
   existingItemNames: string[] = []
 ): Promise<ScanResult[]> {
   // Validate each image against the 5MB limit.
@@ -198,16 +244,12 @@ export async function identifyFoodItemsBatch(
     : '';
 
   const result = await ai.analyzeImagesStructured<{ items: ScanResult[] }>({
-    user: `You are analyzing ${count} photos of a ${sourceLocation}. These photos may show overlapping areas -- deduplicate items that appear in multiple photos.\n\n${FILTERING_RULES}${existingBlock}`,
+    user: `You are analyzing ${count} kitchen photos. These photos may show overlapping areas -- deduplicate items that appear in multiple photos. For each item, infer where a typical US household stores it (fridge/pantry/freezer).\n\n${FILTERING_RULES}${existingBlock}`,
     images: base64Images.map((b64) => ({ base64: b64, mimeType: 'image/jpeg' as const })),
     tool: foodItemsTool,
     maxTokens: 8192,
   });
-  // Coerce category in case the model ignored the enum.
-  return (result.items ?? []).map((item) => ({
-    ...item,
-    category: coerceCategory(item.category),
-  }));
+  return normalizeScanItems(result.items);
 }
 
 /**
@@ -221,10 +263,12 @@ export async function identifyFoodItemsBatch(
  *
  * Server-side denylist (RECEIPT_NAME_DENYLIST) catches ledger lines the AI
  * may emit despite prompt instructions (research Pitfall 4).
+ *
+ * Phase 18: no longer takes a source_location parameter. AI classifies per item;
+ * STATIC_MAP corrects known names post-call.
  */
 export async function identifyReceiptItems(
   base64Image: string,
-  sourceLocation: 'fridge' | 'pantry' | 'freezer',
   existingItemNames: string[] = [],
   variant: 'receipt' | 'instacart_screenshot' = 'receipt'
 ): Promise<ScanResult[]> {
@@ -253,16 +297,12 @@ export async function identifyReceiptItems(
     maxTokens: 4096,
   });
 
-  // Coerce category and filter out denylisted ledger lines. The denylist
-  // is a safety net — the prompt already instructs Claude not to emit these,
-  // but we can't rely on prompt adherence alone for financial-looking lines.
-  return (result.items ?? [])
-    .map((item) => ({
-      ...item,
-      category: coerceCategory(item.category),
-    }))
-    .filter((item) => {
-      const normalized = typeof item.name === 'string' ? item.name.trim().toLowerCase() : '';
-      return !RECEIPT_NAME_DENYLIST.has(normalized);
-    });
+  // Coerce category + correct location via STATIC_MAP, then filter denylisted
+  // ledger lines. The denylist is a safety net — the prompt already instructs
+  // Claude not to emit these, but we can't rely on prompt adherence alone for
+  // financial-looking lines.
+  return normalizeScanItems(result.items).filter((item) => {
+    const normalized = item.name.trim().toLowerCase();
+    return !RECEIPT_NAME_DENYLIST.has(normalized);
+  });
 }
