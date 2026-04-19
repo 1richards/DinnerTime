@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 24-04 (Wave 2 vision tool schema — nested Quantity + per-field confidence) — complete
-status: Phase 24 Wave 2 in progress — 24-04 vision schema landed; next 24-05 reconcileItems rewrite + scan_events write, then 24-06 mobile inline confidence hints.
-stopped_at: "Completed 24-04-PLAN.md (vision tool schema: nested quantity + per-field confidence, 40 vision tests green)"
-last_updated: "2026-04-19T17:57:00.892Z"
-last_activity: "2026-04-19 -- Completed 24-04 (vision.ts ScanResult extended with Quantity + FieldConfidence; foodItemsSchema nests quantity {value,unit,system} + confidence {name,quantity,unit,category}; normalizeScanItems sanitizes via units.sanitize + clamp01; legacy flat shapes still accepted for backward-compat; overall confidence = min(fieldConfidence.*) preserves Phase 14 0.7 threshold gate; prompts edited in place — 24b prompt-versioning deferred; 40/40 vision tests green, 517/518 server suite green, 0 new tsc errors)"
+current_plan: 24-05 (Wave 2 reconcileItems rewrite + scan_events writer) — complete
+status: executing
+stopped_at: "Completed 24-05-PLAN.md (canonical-identity dedup + quantity aggregation + scan_events writer on 4 scan flows; 47/47 pantry tests GREEN; 526/528 server suite GREEN)"
+last_updated: "2026-04-19T18:12:00.000Z"
+last_activity: 2026-04-19 -- Completed 24-05 (reconcileItems rewritten to key dedup on (profile_id, canonical_ingredient_id, source_location); quantity aggregation via units.add with incompatible-unit multi-row fallback + item_attributes.reconcile_hint='incompatible_units'; canonical_category_override > canonical.category > 'other' precedence; scan_events writer fire-and-forget on all 4 scan routes with scan_variant + raw_ai_output + final_items + field_confidence [{item_index, name, quantity, unit, category}]; /confirm response surfaces {inserted, updated, incompatibleUnits}; GET /pantry preserves legacy canonical_ingredient_id=NULL readability (REQ-23 forward-only); 47/47 pantry tests green, 526/528 server suite green, services/pantry.ts 0 new tsc errors)
 progress:
   total_phases: 25
   completed_phases: 17
   total_plans: 76
-  completed_plans: 74
+  completed_plans: 75
   percent: 93
 ---
 
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 24 of 25 (AI Vision & Pantry Data-Model Deep Refactor) — IN PROGRESS
-Current Plan: 24-04 (Wave 2 vision tool schema — nested Quantity + per-field confidence) — complete
-Status: Phase 24 Wave 2 in progress — 24-04 vision schema landed; ready for 24-05 reconcileItems rewrite + scan_events write, then 24-06 mobile inline confidence hints.
-Last activity: 2026-04-19 -- Completed 24-04 (vision.ts ScanResult extended with Quantity + FieldConfidence; foodItemsSchema nests quantity {value,unit,system} + confidence {name,quantity,unit,category}; normalizeScanItems sanitizes via units.sanitize + clamp01; legacy flat shapes still accepted for backward-compat; overall confidence = min(fieldConfidence.*) preserves Phase 14 0.7 threshold gate; prompts edited in place — 24b prompt-versioning deferred; 40/40 vision tests green, 517/518 server suite green, 0 new tsc errors)
+Current Plan: 24-05 (Wave 2 reconcileItems rewrite + scan_events writer) — complete
+Status: Phase 24 Wave 2 in progress — 24-05 reconcileItems + scan_events landed; ready for 24-06 mobile pass-through + inline low-confidence UI hints (final plan in Phase 24a).
+Last activity: 2026-04-19 -- Completed 24-05 (reconcileItems rewritten to key dedup on (profile_id, canonical_ingredient_id, source_location); quantity aggregation via units.add with incompatible-unit multi-row fallback + item_attributes.reconcile_hint='incompatible_units'; canonical_category_override > canonical.category > 'other' precedence; scan_events writer fire-and-forget on all 4 scan routes with scan_variant + raw_ai_output + final_items + field_confidence [{item_index, name, quantity, unit, category}]; /confirm response surfaces {inserted, updated, incompatibleUnits}; GET /pantry preserves legacy canonical_ingredient_id=NULL readability (REQ-23 forward-only); 47/47 pantry tests green, 526/528 server suite green, services/pantry.ts 0 new tsc errors)
 
-Progress: [█████████░] 93%
+Progress: [██████████] 99%
 
 ## Performance Metrics
 
@@ -127,6 +127,8 @@ Progress: [█████████░] 93%
 | Phase 24 P03 | 3.5min | 2 tasks | 2 files |
 | Phase 24 P01 | 13min | 3 tasks | 9 files |
 | Phase 24 P04 | 6min | 2 tasks | 2 files |
+| Phase 24 P05 | 10.5min | 2 tasks | 4 files |
+| Phase 24 P05 | 10.5min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -394,6 +396,13 @@ Recent decisions affecting current work:
 - [Phase 24-04]: Overall legacy ScanResult.confidence = Math.min(fieldConfidence.*) so Phase 14's 0.7 threshold gate continues filtering low-confidence items without a consumer rewrite; surfaces worst-case attribute
 - [Phase 24-04]: Missing per-field confidence defaults to 0.5 (not 1.0) — surface uncertainty instead of hiding it; matches < 0.7 dashed-underline UI gate (24-06)
 - [Phase 24-04]: Backward-compat via raw-shape sniffing ('value' in q → new nested shape; typeof q === 'number' → legacy flat); same ScanResult output either way; clean rollout without dual code path
+- [Phase 24-05]: reconcileItems keys dedup on (profile_id, canonical_ingredient_id, source_location) tuple — replaces legacy (profile_id, normalized_name) string match; legacy rows with canonical_ingredient_id=NULL never merge with new canonical rows (REQ-23 forward-only, no backfill)
+- [Phase 24-05]: Incompatible-unit aggregation inserts a SECOND pantry_items row with item_attributes.reconcile_hint='incompatible_units' rather than dropping/overwriting; 24-01 dedup index intentionally NOT UNIQUE to permit this; review UI (future plan) can surface 'merge these' affordance
+- [Phase 24-05]: Category precedence at insert: canonical_category_override (per-user) > canonical.category > 'other'; ScanResult.category (what AI emitted) is IGNORED — canonical table is source of truth per REQ-10 + REQ-11
+- [Phase 24-05]: scan_events writes happen on the SCAN routes (pre-canonical), not at /confirm — final_items stores the post-normalize, pre-canonical ScanResult[] so event log remains a faithful AI-to-mobile roundtrip snapshot; canonical_ingredient_id only lives in pantry_items via /confirm
+- [Phase 24-05]: scan_events fire-and-forget — try/catch + console.warn around insert; scan succeeds even on telemetry failure; raw_ai_output==final_items for now (vision.ts does not expose pre-normalize raw; 24b eval can extend vision.ts later if needed, Rule 4 gate respected)
+- [Phase 24-05]: /confirm response shape changed to {inserted, updated, incompatibleUnits} (ReconcileResult) — intentional wire-contract break for mobile 24-06 to consume per-scan counts; acceptable during Wave 2 active dev (no beta users)
+- [Phase 24-05]: PantryItem.quantity kept as number at TS level despite DB JSONB column — refactoring downstream consumers (shoppingList, ingredientMatching, mealPlanner) to sanitize() at boundary is Phase 21 scope; runtime safe because only test data flows through those readers per user directive
 
 ### Pending Todos
 
@@ -437,6 +446,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T17:56:47.014Z
-Stopped at: Completed 24-04-PLAN.md (vision tool schema: nested quantity + per-field confidence, 40 vision tests green)
+Last session: 2026-04-19T18:12:00.000Z
+Stopped at: Completed 24-05-PLAN.md (canonical-identity dedup + quantity aggregation + scan_events writer on 4 scan flows; 47/47 pantry tests GREEN)
 Resume file: None
