@@ -20,3 +20,18 @@ cleanliness today.
 
 Recommendation: address in a dedicated typing cleanup pass or during Phase 23
 (Non-Functional Requirements).
+
+## Pre-existing mobile test failures (out-of-scope for 18-03)
+
+`apps/mobile && pnpm test --run` reports 4 failing tests that were red BEFORE
+Phase 18-03 touched the mobile store. Verified by stashing 18-03 changes and
+re-running the suite: same 4 failures.
+
+- `__tests__/auth-store.test.ts > Auth Store > initialize > should set isOnboarded based on profile.onboarding_complete`
+- `src/stores/__tests__/progressionStore.test.ts > progressionStore > fetchVariations returns string[] on 200`
+- `src/stores/__tests__/shoppingStore.test.ts > generateList > POSTs meal_plan_id and populates currentList + items` — expects `{ id, ... }` but receives `{ list: { id, ... } }` (response-shape drift)
+- `src/stores/__tests__/shoppingStore.test.ts > fetchCurrent > populates list + items on 200` — same shape drift
+
+None of these touch pantryStore or the scan/review flow that Phase 18-03 owns.
+Logged here so the plan-wide verify tally stays honest.
+

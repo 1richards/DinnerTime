@@ -230,7 +230,7 @@ describe('pantryStore', () => {
   });
 
   describe('startReceiptScan', () => {
-    it('POSTs to /api/v1/pantry/scan-receipt with auth + source_location', async () => {
+    it('POSTs to /api/v1/pantry/scan-receipt with auth and NO top-level source_location', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () =>
@@ -242,11 +242,12 @@ describe('pantryStore', () => {
                 unit: 'lb',
                 confidence: 0.9,
                 category: 'protein',
+                source_location: 'fridge',
               },
             ],
           }),
       });
-      await usePantryStore.getState().startReceiptScan('b64', 'pantry');
+      await usePantryStore.getState().startReceiptScan('b64');
 
       const [url, init] = mockFetch.mock.calls[0];
       expect(url).toContain('/api/v1/pantry/scan-receipt');
@@ -254,10 +255,11 @@ describe('pantryStore', () => {
       expect(init.headers.Authorization).toBe('Bearer test-token');
       const body = JSON.parse(init.body);
       expect(body.image).toBe('b64');
-      expect(body.source_location).toBe('pantry');
+      // Post-18-02: /scan-receipt no longer accepts a top-level source_location.
+      expect(body.source_location).toBeUndefined();
     });
 
-    it('maps response data into scanResults with correct id/accepted/userEdited', async () => {
+    it('maps per-item source_location into review items and seeds aiLocation', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () =>
@@ -269,18 +271,37 @@ describe('pantryStore', () => {
                 unit: 'lb',
                 confidence: 0.9,
                 category: 'protein',
+                source_location: 'fridge',
+              },
+              {
+                name: 'rice',
+                quantity: 1,
+                unit: 'bag',
+                confidence: 0.9,
+                category: 'grain',
+                source_location: 'pantry',
+              },
+              {
+                name: 'ice cream',
+                quantity: 1,
+                unit: 'pint',
+                confidence: 0.9,
+                category: 'frozen',
+                source_location: 'freezer',
               },
             ],
           }),
       });
-      await usePantryStore.getState().startReceiptScan('b64', 'pantry');
+      await usePantryStore.getState().startReceiptScan('b64');
 
       const { scanResults, isScanning } = usePantryStore.getState();
-      expect(scanResults).toHaveLength(1);
-      expect(scanResults[0].id).toMatch(/^scan-\d+-0$/);
-      expect(scanResults[0].accepted).toBe(true); // 0.9 >= 0.7
-      expect(scanResults[0].userEdited).toBe(false);
-      expect(scanResults[0].name).toBe('chicken');
+      expect(scanResults).toHaveLength(3);
+      expect(scanResults[0].source_location).toBe('fridge');
+      expect(scanResults[0].aiLocation).toBe('fridge');
+      expect(scanResults[1].source_location).toBe('pantry');
+      expect(scanResults[1].aiLocation).toBe('pantry');
+      expect(scanResults[2].source_location).toBe('freezer');
+      expect(scanResults[2].aiLocation).toBe('freezer');
       expect(isScanning).toBe(false);
     });
 
@@ -290,12 +311,12 @@ describe('pantryStore', () => {
         json: () =>
           Promise.resolve({
             data: [
-              { name: 'low', quantity: 1, unit: 'ea', confidence: 0.5, category: 'other' },
-              { name: 'edge', quantity: 1, unit: 'ea', confidence: 0.7, category: 'other' },
+              { name: 'low', quantity: 1, unit: 'ea', confidence: 0.5, category: 'other', source_location: 'pantry' },
+              { name: 'edge', quantity: 1, unit: 'ea', confidence: 0.7, category: 'other', source_location: 'pantry' },
             ],
           }),
       });
-      await usePantryStore.getState().startReceiptScan('b64', 'pantry');
+      await usePantryStore.getState().startReceiptScan('b64');
 
       const { scanResults } = usePantryStore.getState();
       expect(scanResults[0].accepted).toBe(false);
@@ -309,7 +330,7 @@ describe('pantryStore', () => {
       });
 
       await expect(
-        usePantryStore.getState().startReceiptScan('b64', 'pantry')
+        usePantryStore.getState().startReceiptScan('b64')
       ).rejects.toThrow('upstream error');
       expect(usePantryStore.getState().isScanning).toBe(false);
     });
@@ -328,6 +349,7 @@ describe('pantryStore', () => {
                 unit: 'carton',
                 confidence: 0.88,
                 category: 'beverage',
+                source_location: 'fridge',
               },
             ],
           }),
@@ -343,7 +365,7 @@ describe('pantryStore', () => {
       expect(body.source_location).toBeUndefined();
     });
 
-    it('maps response data into scanResults with correct shape', async () => {
+    it('maps response data into scanResults and seeds aiLocation', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () =>
@@ -355,6 +377,7 @@ describe('pantryStore', () => {
                 unit: 'carton',
                 confidence: 0.88,
                 category: 'beverage',
+                source_location: 'fridge',
               },
             ],
           }),
@@ -366,6 +389,8 @@ describe('pantryStore', () => {
       expect(scanResults[0].id).toMatch(/^scan-\d+-0$/);
       expect(scanResults[0].accepted).toBe(true);
       expect(scanResults[0].userEdited).toBe(false);
+      expect(scanResults[0].source_location).toBe('fridge');
+      expect(scanResults[0].aiLocation).toBe('fridge');
     });
 
     it('throws upstream error and resets isScanning on !ok response', async () => {
@@ -382,7 +407,7 @@ describe('pantryStore', () => {
   });
 
   describe('confirmScan', () => {
-    it('sends only accepted items and merges results into items', async () => {
+    it('sends only accepted items (no top-level source_location) and merges results', async () => {
       const acceptedItem = { ...mockReviewItem, accepted: true };
       const rejectedItem = {
         ...mockReviewItem,
@@ -417,7 +442,7 @@ describe('pantryStore', () => {
         json: () => Promise.resolve({ data: [confirmedPantryItem] }),
       });
 
-      await usePantryStore.getState().confirmScan('profile-1', 'fridge');
+      await usePantryStore.getState().confirmScan('profile-1');
 
       const state = usePantryStore.getState();
       // Merged: original item + confirmed item
@@ -426,11 +451,115 @@ describe('pantryStore', () => {
       // scanResults cleared
       expect(state.scanResults).toHaveLength(0);
 
-      // Verify only accepted items were sent
+      // Verify only accepted items were sent and NO top-level source_location.
       const fetchCall = mockFetch.mock.calls[0];
       const body = JSON.parse(fetchCall[1].body);
       expect(body.items).toHaveLength(1);
       expect(body.items[0].name).toBe('Butter');
+      // Per-item source_location survives the strip of id/accepted/userEdited.
+      expect(body.items[0].source_location).toBe('fridge');
+      expect(body.source_location).toBeUndefined();
+    });
+
+    it('fires override-events fire-and-forget for items where source_location !== aiLocation', async () => {
+      // Accepted + edited: AI said pantry, user moved to fridge.
+      const editedItem: ReviewItem = {
+        ...mockReviewItem,
+        id: 'r-edit',
+        name: 'Butter',
+        accepted: true,
+        userEdited: true,
+        source_location: 'fridge',
+        aiLocation: 'pantry',
+      };
+      // Accepted + not edited (AI said fridge, no override).
+      const unchangedItem: ReviewItem = {
+        ...mockReviewItem,
+        id: 'r-keep',
+        name: 'Milk',
+        accepted: true,
+        userEdited: false,
+        source_location: 'fridge',
+        aiLocation: 'fridge',
+      };
+
+      usePantryStore.setState({
+        scanResults: [editedItem, unchangedItem],
+        items: [],
+      });
+
+      // /confirm happy path.
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [] }),
+      });
+      // /override-events happy path (fire-and-forget).
+      mockFetch.mockResolvedValueOnce({ ok: true });
+
+      await usePantryStore.getState().confirmScan('profile-1');
+      // Let the fire-and-forget microtask flush.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Two calls: /confirm and /override-events.
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      const overrideCall = mockFetch.mock.calls.find((call) =>
+        String(call[0]).includes('/override-events'),
+      );
+      expect(overrideCall).toBeDefined();
+      const overrideBody = JSON.parse(overrideCall![1].body);
+      expect(overrideBody.events).toHaveLength(1);
+      expect(overrideBody.events[0]).toEqual({
+        item_name: 'butter',
+        ai_location: 'pantry',
+        user_location: 'fridge',
+      });
+    });
+
+    it('does not POST to /override-events when no items were edited', async () => {
+      const unchangedItem: ReviewItem = {
+        ...mockReviewItem,
+        id: 'r-keep',
+        accepted: true,
+        userEdited: false,
+        source_location: 'fridge',
+        aiLocation: 'fridge',
+      };
+
+      usePantryStore.setState({ scanResults: [unchangedItem], items: [] });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      await usePantryStore.getState().confirmScan('profile-1');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Only /confirm — no /override-events POST because there was nothing to log.
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(String(mockFetch.mock.calls[0][0])).toContain('/confirm');
+    });
+
+    it('/confirm failures still bubble up but do not throw from fire-and-forget override telemetry', async () => {
+      const editedItem: ReviewItem = {
+        ...mockReviewItem,
+        id: 'r-edit',
+        name: 'Butter',
+        accepted: true,
+        userEdited: true,
+        source_location: 'fridge',
+        aiLocation: 'pantry',
+      };
+      usePantryStore.setState({ scanResults: [editedItem], items: [] });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'confirm failed' }),
+      });
+
+      await expect(
+        usePantryStore.getState().confirmScan('profile-1'),
+      ).rejects.toThrow('confirm failed');
     });
   });
 });
