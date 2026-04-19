@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { ReviewItemRow } from '../../components/pantry/ReviewItemRow';
+import { LocationChoiceSheet } from '../../components/pantry/LocationChoiceSheet';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useDirtyFormGuard } from '../../components/ui/useDirtyFormGuard';
 import { usePantryStore } from '../../stores/pantryStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
-import type { FoodCategory, ReviewItem, SourceLocation } from '../../types/pantry';
+import type { FoodCategory, ReviewItem } from '../../types/pantry';
 
 const CATEGORY_OPTIONS: FoodCategory[] = [
   'produce', 'protein', 'dairy', 'grain', 'condiment',
@@ -25,12 +26,9 @@ export default function ReviewScreen() {
     confirmScan,
   } = usePantryStore();
   const profile = useAuthStore((s) => s.profile);
-  const { sourceLocation: locationParam } = useLocalSearchParams<{ sourceLocation?: string }>();
-  const sourceLocation: SourceLocation = (
-    ['fridge', 'pantry', 'freezer'].includes(locationParam ?? '')
-      ? locationParam as SourceLocation
-      : 'fridge'
-  );
+  // Phase 18-03: sourceLocation route param no longer consumed — each item
+  // carries its own source_location. Plan 18-04 removes the param at the
+  // callers (scan/index, scan/receipt, scan/instacart).
 
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -38,6 +36,9 @@ export default function ReviewScreen() {
   const [newUnit, setNewUnit] = useState('item');
   const [newCategory, setNewCategory] = useState<FoodCategory>('other');
   const [isConfirming, setIsConfirming] = useState(false);
+  // Which item's LocationChoiceSheet is currently open (null => closed).
+  const [openSheetItemId, setOpenSheetItemId] = useState<string | null>(null);
+  const openSheetItem = scanResults.find((i) => i.id === openSheetItemId);
   // Dirty flag flipped on any item toggle / add / remove after mount. The
   // initial scan-results render does NOT count as dirty.
   const [touched, setTouched] = useState(false);
@@ -149,6 +150,7 @@ export default function ReviewScreen() {
       item={item}
       onUpdate={handleUpdateItem}
       onRemove={handleRemoveItem}
+      onLocationPress={setOpenSheetItemId}
     />
   );
 
@@ -256,6 +258,22 @@ export default function ReviewScreen() {
           onPress={handleDiscard}
         />
       </View>
+
+      {/* Phase 18-03: per-item location override sheet. */}
+      <LocationChoiceSheet
+        visible={!!openSheetItem}
+        currentValue={openSheetItem?.source_location ?? 'pantry'}
+        onSelect={(newLoc) => {
+          if (openSheetItemId) {
+            handleUpdateItem(openSheetItemId, {
+              source_location: newLoc,
+              userEdited: true,
+            });
+          }
+          setOpenSheetItemId(null);
+        }}
+        onClose={() => setOpenSheetItemId(null)}
+      />
     </SafeAreaView>
   );
 }

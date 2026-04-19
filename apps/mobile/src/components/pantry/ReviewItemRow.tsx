@@ -3,11 +3,17 @@ import { View, Text, TextInput, Pressable } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import type { ReviewItem } from '../../types/pantry';
 import { colors } from '../../design/tokens';
+import { LocationChip } from './LocationChip';
 
 interface ReviewItemRowProps {
   item: ReviewItem;
   onUpdate: (id: string, updates: Partial<ReviewItem>) => void;
   onRemove: (id: string) => void;
+  /**
+   * Fires when the user taps the item's LocationChip. Parent owns the
+   * open-sheet state; this row just forwards the item id upward.
+   */
+  onLocationPress?: (itemId: string) => void;
 }
 
 function getConfidenceColor(confidence: number): string {
@@ -22,7 +28,12 @@ function getConfidenceLabel(confidence: number): string {
   return 'Low';
 }
 
-export function ReviewItemRow({ item, onUpdate, onRemove }: ReviewItemRowProps) {
+export function ReviewItemRow({
+  item,
+  onUpdate,
+  onRemove,
+  onLocationPress,
+}: ReviewItemRowProps) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState(item.name);
   const confidenceColor = getConfidenceColor(item.confidence);
@@ -86,6 +97,14 @@ export function ReviewItemRow({ item, onUpdate, onRemove }: ReviewItemRowProps) 
         <Text className="text-sm text-warmGray-500 mt-0.5">
           {item.quantity} {item.unit} · {item.category}
         </Text>
+        {/* Phase 18-03: per-item location chip. Tap opens the sheet in the
+            parent screen (review.tsx owns the open-item state). */}
+        <View className="mt-1 flex-row">
+          <LocationChip
+            value={item.source_location}
+            onPress={() => onLocationPress?.(item.id)}
+          />
+        </View>
         {item.probableDupe && (
           <Text className="text-xs text-brand font-medium mt-1">
             Already in pantry — tap to add anyway
