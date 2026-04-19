@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 18-04 (Wave 4 LocationPicker removal + UAT closeout) — complete (4/4 plans in Phase 18, Phase COMPLETE)
-status: completed
-stopped_at: Phase 21 context gathered (re-scoped post-Phase-24a)
-last_updated: "2026-04-19T13:13:43.887Z"
-last_activity: "2026-04-19 -- Completed 18-04 (Wave 4 LocationPicker retirement + UAT closeout: LocationPicker.tsx deleted, import + state + JSX stripped from scan/index.tsx + scan/receipt.tsx, hardcoded sourceLocation nav param dropped from scan/instacart.tsx, EmptyState copy on scan/index.tsx now location-agnostic, verify-no-location-picker-scan.sh purity gate shipped, Maestro flows 07/16/19/smoke rebased comment-only + verified green on iPhone 17 Pro sim; 40/40 scope tests green, tsc clean — Phase 18 COMPLETE)"
+current_plan: 24-02 (Wave 1 units.ts conversion library) — complete (1/6 plans in Phase 24)
+status: Phase 24 Wave 1 progress — units.ts landed as pure-function module. Parallel plans 24-01 (migrations + canonicalResolver) and 24-03 (seed data) still in-flight on the same wave. 24-04 (vision schema) + 24-05 (reconcileItems) in Wave 2 depend on Quantity contract shipped here.
+stopped_at: Completed 24-03 (canonicalResolver 4-stage lookup — GREEN 14/14)
+last_updated: "2026-04-19T17:36:46.890Z"
+last_activity: "2026-04-19 -- Completed 24-02 (units.ts quantity conversion library: pure-function module with areCompatible/convert/add/sanitize, dimension-pure conversion table for imperial-volume/weight + metric-volume/weight + count, no density conversion, 41/41 vitest green, zero external deps, Quantity type is now the shared wire contract for 24-04 vision schema + 24-05 reconcileItems aggregation)"
 progress:
   total_phases: 25
   completed_phases: 17
-  total_plans: 70
-  completed_plans: 70
-  percent: 96
+  total_plans: 76
+  completed_plans: 72
+  percent: 93
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 18 of 25 (AI Auto-Location for Pantry Imports) — COMPLETE
-Current Plan: 18-04 (Wave 4 LocationPicker removal + UAT closeout) — complete (4/4 plans in Phase 18, Phase COMPLETE)
-Status: Phase 18 COMPLETE. LocationPicker retired across all four scan flows; per-item AI classification + review-chip overrides shipped end-to-end. Next up: Phase 20 (Shopping refactor — push items to Instacart draft cart).
-Last activity: 2026-04-19 -- Completed 18-04 (Wave 4 LocationPicker retirement + UAT closeout: LocationPicker.tsx deleted, import + state + JSX stripped from scan/index.tsx + scan/receipt.tsx, hardcoded sourceLocation nav param dropped from scan/instacart.tsx, EmptyState copy on scan/index.tsx now location-agnostic, verify-no-location-picker-scan.sh purity gate shipped, Maestro flows 07/16/19/smoke rebased comment-only + verified green on iPhone 17 Pro sim; 40/40 scope tests green, tsc clean — Phase 18 COMPLETE)
+Phase: 24 of 25 (AI Vision & Pantry Data-Model Deep Refactor) — IN PROGRESS
+Current Plan: 24-02 (Wave 1 units.ts conversion library) — complete (1/6 plans in Phase 24)
+Status: Phase 24 Wave 1 progress — units.ts landed as pure-function module. Parallel plans 24-01 (migrations + canonicalResolver) and 24-03 (seed data) still in-flight on the same wave. 24-04 (vision schema) + 24-05 (reconcileItems) in Wave 2 depend on Quantity contract shipped here.
+Last activity: 2026-04-19 -- Completed 24-02 (units.ts quantity conversion library: pure-function module with areCompatible/convert/add/sanitize, dimension-pure conversion table for imperial-volume/weight + metric-volume/weight + count, no density conversion, 41/41 vitest green, zero external deps, Quantity type is now the shared wire contract for 24-04 vision schema + 24-05 reconcileItems aggregation)
 
-Progress: [██████████] 96%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -123,6 +123,8 @@ Progress: [██████████] 96%
 | Phase 18 P02 | 12min | 3 tasks | 9 files |
 | Phase Phase 18 PP03 | 9min | 3 tasks tasks | 18 files files |
 | Phase 18 P04 | 6min | 3 tasks | 9 files |
+| Phase 24 P02 | 3min | 2 tasks | 2 files |
+| Phase 24 P03 | 3.5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -375,6 +377,14 @@ Recent decisions affecting current work:
 - [Phase 18-04]: Location-agnostic EmptyState copy on scan/index.tsx ('Take photos of your fridge, pantry, or freezer — we'll sort each item automatically.') — sets expectation that AI does the sorting
 - [Phase 18-04]: Maestro flows 07/16/19 rebased comment-only (no step changes) — RESEARCH Q14 audit had confirmed none of the three flows tap or assert against LocationPicker element
 - [Phase 18-04]: verify-no-location-picker-scan.sh purity gate (4 grep checks: no imports, no JSX, no hardcoded 'pantry' nav param, file deleted) — mirrors Phase 15 verify-no-ionicons.sh / verify-no-decorative-emoji.sh shape
+- [Phase 24-02]: units.ts: custom system is never compatible with anything (including another custom) — forces reconcileItems multi-row fallback rather than silently aggregating unlike units
+- [Phase 24-02]: units.ts: sanitize() top-level non-object returns count-piece-1 default, but object-with-missing-fields returns system='custom' to preserve any user-provided unit/value while forcing the multi-row path for unrecognized systems
+- [Phase 24-02]: units.ts: zero density conversion (cup↔oz, g↔ml return null) per 24-CONTEXT lockdown — volume↔weight conversion would require per-canonical-ingredient density metadata, deliberately deferred indefinitely
+- [Phase 24-02]: units.ts: RED test file written in Task 1 with no automated verify (plan W1 revision) — Task 2 GREEN run is single contract gate; avoids brittle negated-grep RED checks that mask vitest infra failures
+- [Phase 24]: [Phase 24-03]: canonicalResolver uses iterative two-row DP Levenshtein with row-min early-exit — stack-safe, ~45 lines, zero npm dep, 60-80% worst-case reduction on no-match inputs
+- [Phase 24]: [Phase 24-03]: 60s TTL cache with live-append invalidation — cache.rows.push(newRow) on candidate INSERT is equivalent to invalidate+refetch because cache is status-filtered at load time and the only mutations the resolver emits are candidate inserts
+- [Phase 24]: [Phase 24-03]: FUZZY_MIN_LEN=4 gate — 2 edits against a 3-char canonical matches nearly anything; 4-char minimum eliminates that false-positive class while preserving real typo recovery (chikn → chicken)
+- [Phase 24]: [Phase 24-03]: resolveCanonicalBatch preserves raw-input-string keys (not normalized) so callers like reconcileItems can zip back to ScanResult[] using the exact AI-produced string
 
 ### Pending Todos
 
@@ -418,6 +428,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T13:13:43.883Z
-Stopped at: Phase 21 context gathered (re-scoped post-Phase-24a)
-Resume file: .planning/phases/21-pantry-intelligence-smarter-dedup-presentation-categorization-user-defined-scan-rules/21-CONTEXT.md
+Last session: 2026-04-19T17:36:36.535Z
+Stopped at: Completed 24-03 (canonicalResolver 4-stage lookup — GREEN 14/14)
+Resume file: None
