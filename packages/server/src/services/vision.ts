@@ -1,6 +1,15 @@
 import { getClientFor } from '../ai/clientFactory.js';
 import type { JsonSchema, StructuredTool } from '../ai/types.js';
 
+/**
+ * Phase 18: where an item lives in the kitchen. Schema-fixed at these three;
+ * any expansion (counter, spice rack, deep freeze) requires a ROADMAP decision.
+ * Consumed by itemLocation.ts classifier, reconcileItems dual-write, and the
+ * review-screen LocationChip.
+ */
+export const SOURCE_LOCATIONS = ['fridge', 'pantry', 'freezer'] as const;
+export type SourceLocation = (typeof SOURCE_LOCATIONS)[number];
+
 export const VALID_CATEGORIES = [
   'produce',
   'dairy',
