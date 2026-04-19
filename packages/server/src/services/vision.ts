@@ -2,6 +2,7 @@ import { getClientFor } from '../ai/clientFactory.js';
 import type { JsonSchema, StructuredTool } from '../ai/types.js';
 import { classifyLocationStatic } from './itemLocation.js';
 import { SOURCE_LOCATIONS, type SourceLocation } from './sourceLocation.js';
+import { type Quantity, sanitize as sanitizeQuantity } from './units.js';
 
 /**
  * Phase 18: where an item lives in the kitchen. Canonical enum lives in
@@ -24,11 +25,49 @@ export const VALID_CATEGORIES = [
 ] as const;
 export type PantryCategory = (typeof VALID_CATEGORIES)[number];
 
+/**
+ * Phase 24-04: per-field confidence exposed by the AI vision tool.
+ *
+ * Each score is in [0, 1] and describes how sure the model is about that
+ * single field on a scanned item. Consumers use these for inline UI hints
+ * (< 0.7 → dashed underline / caution) and scan_events.field_confidence
+ * JSONB persistence (24-05). The overall legacy `ScanResult.confidence`
+ * number remains for the Phase 14 0.7 threshold gate and is derived as
+ * the minimum of the four field scores so the worst-case surfaces.
+ */
+export interface FieldConfidence {
+  name: number;
+  quantity: number;
+  /**
+   * Kept for forward-compat even though unit is now nested inside
+   * `quantity` — the AI still scores its confidence in the unit token
+   * independently of the numeric value.
+   */
+  unit: number;
+  category: number;
+}
+
 export interface ScanResult {
   name: string;
-  quantity: number;
-  unit: string;
+  /**
+   * Phase 24-04: quantity as `{ value, unit, system }` (see units.ts).
+   * Was a flat number + sibling unit string pre-24a. normalizeScanItems
+   * accepts both shapes (backward-compat) and always sanitizes via
+   * units.sanitize so downstream consumers never see NaN/Infinity.
+   */
+  quantity: Quantity;
+  /**
+   * Overall/legacy confidence — computed as min(fieldConfidence.*) so the
+   * Phase 14 0.7 threshold gate continues to work. Prefer reading
+   * `fieldConfidence` when showing per-field UI hints.
+   */
   confidence: number;
+  /**
+   * Phase 24-04: per-field confidence breakdown (name, quantity, unit,
+   * category). Consumed by the review screen for inline low-confidence
+   * hints and persisted to scan_events.field_confidence (24-05).
+   */
+  fieldConfidence: FieldConfidence;
   category: PantryCategory;
   /**
    * Phase 18: AI-inferred kitchen location for this item (post-corrected by
@@ -37,6 +76,15 @@ export interface ScanResult {
    */
   source_location: SourceLocation;
 }
+
+const QUANTITY_SYSTEMS = [
+  'count',
+  'imperial-weight',
+  'imperial-volume',
+  'metric-weight',
+  'metric-volume',
+  'custom',
+] as const;
 
 const foodItemsSchema: JsonSchema = {
   type: 'object',
@@ -47,9 +95,37 @@ const foodItemsSchema: JsonSchema = {
         type: 'object',
         properties: {
           name: { type: 'string', description: 'Common name of the food item (lowercase, singular)' },
-          quantity: { type: 'number', description: 'Estimated quantity (default 1)' },
-          unit: { type: 'string', description: 'Unit of measurement (e.g., "piece", "bag", "bottle", "lb", "bunch")' },
-          confidence: { type: 'number', description: 'Confidence score 0.0-1.0 for identification accuracy' },
+          quantity: {
+            type: 'object',
+            description:
+              'Estimated quantity as { value, unit, system }. system picks the dimension: count (pieces), imperial-weight (oz/lb), imperial-volume (tsp/tbsp/cup), metric-weight (g/kg), metric-volume (ml/l), or custom for unknown units.',
+            properties: {
+              value: { type: 'number', description: 'Numeric amount, default 1' },
+              unit: {
+                type: 'string',
+                description: 'Unit token (e.g. "piece", "lb", "oz", "cup", "tbsp", "g", "kg", "ml", "l", "bottle", "bag", "bunch")',
+              },
+              system: {
+                type: 'string',
+                enum: [...QUANTITY_SYSTEMS],
+                description:
+                  'Dimension: count (pieces), imperial-weight (oz/lb), imperial-volume (tsp/tbsp/cup), metric-weight (g/kg), metric-volume (ml/l), or custom (unknown/non-convertible units like bottle, bag, bunch).',
+              },
+            },
+            required: ['value', 'unit', 'system'],
+          },
+          confidence: {
+            type: 'object',
+            description:
+              'Per-field confidence scores 0.0-1.0 reflecting how sure you are about each attribute independently.',
+            properties: {
+              name: { type: 'number', description: 'Confidence in the identified item name' },
+              quantity: { type: 'number', description: 'Confidence in the numeric quantity value' },
+              unit: { type: 'number', description: 'Confidence in the unit token' },
+              category: { type: 'number', description: 'Confidence in the chosen category' },
+            },
+            required: ['name', 'quantity', 'unit', 'category'],
+          },
           category: {
             type: 'string',
             enum: [...VALID_CATEGORIES],
@@ -63,7 +139,7 @@ const foodItemsSchema: JsonSchema = {
               'Where a typical US household stores this item. fridge = dairy, fresh meat/produce, opened condiments. freezer = frozen foods, ice cream. pantry = shelf-stable, canned, dried, spices, oils, baked goods.',
           },
         },
-        required: ['name', 'quantity', 'unit', 'confidence', 'category', 'source_location'],
+        required: ['name', 'quantity', 'confidence', 'category', 'source_location'],
       },
     },
   },
@@ -104,7 +180,74 @@ function correctLocation(rawName: unknown, rawLoc: unknown): SourceLocation {
   return 'pantry';
 }
 
-const foodItemsTool: StructuredTool<{ items: ScanResult[] }> = {
+/**
+ * Phase 24-04: clamp an untrusted confidence number into [0, 1]. Non-finite
+ * inputs (NaN, ±Infinity, non-number) default to 0.5 so the review screen
+ * surfaces uncertainty instead of hiding it with a confident-looking 1.0.
+ */
+function clamp01(n: unknown): number {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return 0.5;
+  if (n < 0) return 0;
+  if (n > 1) return 1;
+  return n;
+}
+
+/**
+ * Phase 24-04: normalize a raw confidence payload to FieldConfidence.
+ *
+ * Accepts:
+ *   - Nested object { name, quantity, unit, category } (new 24a shape)
+ *   - Flat number (legacy shape — splits to all four fields)
+ *   - Missing fields (default to 0.5)
+ *   - Non-finite values (default to 0.5)
+ *   - Out-of-range values (clamp to [0, 1])
+ */
+function normalizeFieldConfidence(raw: unknown): FieldConfidence {
+  // Legacy flat shape: a bare number applies uniformly.
+  if (typeof raw === 'number') {
+    const c = clamp01(raw);
+    return { name: c, quantity: c, unit: c, category: c };
+  }
+  if (raw && typeof raw === 'object') {
+    const r = raw as Partial<Record<keyof FieldConfidence, unknown>>;
+    return {
+      name: clamp01(r.name),
+      quantity: clamp01(r.quantity),
+      unit: clamp01(r.unit),
+      category: clamp01(r.category),
+    };
+  }
+  // Missing entirely — uniform uncertainty default.
+  return { name: 0.5, quantity: 0.5, unit: 0.5, category: 0.5 };
+}
+
+/**
+ * Phase 24-04: normalize a raw quantity payload to a sanitized Quantity.
+ *
+ * Accepts:
+ *   - Nested { value, unit, system } (new 24a shape) → sanitize pass-through
+ *   - Legacy flat number + sibling unit → wrap with system='count' default
+ *     (legacy data was always piece-style counts)
+ *   - Missing / malformed → sanitize's default {value:1, unit:'piece', system:'count'}
+ *
+ * units.sanitize clamps NaN/Infinity/negative values and coerces unknown
+ * system strings to 'custom' so the reconcileItems multi-row fallback fires
+ * instead of silently aggregating incompatible units (24-05).
+ */
+function normalizeQuantity(raw: unknown, flatUnit?: unknown): Quantity {
+  // New nested shape — delegate entirely to sanitize (handles partial objects).
+  if (raw && typeof raw === 'object' && 'value' in (raw as Record<string, unknown>)) {
+    return sanitizeQuantity(raw);
+  }
+  // Legacy flat: quantity was a plain number, unit lived as a sibling string.
+  if (typeof raw === 'number') {
+    const unit = typeof flatUnit === 'string' && flatUnit.length > 0 ? flatUnit : 'piece';
+    return sanitizeQuantity({ value: raw, unit, system: 'count' });
+  }
+  return sanitizeQuantity(null);
+}
+
+const foodItemsTool: StructuredTool<{ items: RawScanItem[] }> = {
   name: 'report_food_items',
   description: 'Report all food items visible in the image with confidence scores',
   schema: foodItemsSchema,
@@ -141,6 +284,16 @@ export const RECEIPT_NAME_DENYLIST: ReadonlySet<string> = new Set([
  */
 const LOCATION_CLASSIFICATION_RULES = `For each item, infer where a typical US household stores it — fridge (dairy, fresh meat/produce, opened condiments), freezer (frozen foods, ice cream, frozen vegetables), or pantry (shelf-stable, canned, dried, spices, oils, baked goods). Set source_location accordingly.`;
 
+/**
+ * Phase 24-04: per-item quantity + per-field confidence directive. Appended to
+ * every vision prompt so Claude knows to emit the nested shapes declared by
+ * foodItemsSchema (not just rely on tool-schema enforcement).
+ *
+ * Prompt stays as an in-file string for 24a; versioned .md prompt files are
+ * 24b scope.
+ */
+const QUANTITY_AND_CONFIDENCE_RULES = `For each item, provide a quantity object with value, unit, and system (count for pieces; imperial-weight for oz/lb; imperial-volume for tsp/tbsp/cup; metric-weight for g/kg; metric-volume for ml/l; custom for any other unit like bottle/bag/bunch). Also provide per-field confidence for name, quantity, unit, and category from 0 to 1, reflecting how sure you are about each attribute independently.`;
+
 const FILTERING_RULES = `For each item, report ONLY items you can specifically name as a cooking ingredient or food product. Examples of GOOD items: "milk", "cheddar cheese", "sriracha", "ground beef", "sourdough bread", "olive oil".
 
 DO NOT report:
@@ -152,10 +305,12 @@ DO NOT report:
 Named condiments and sauces ARE included (e.g., ketchup, soy sauce, ranch dressing).
 All beverages ARE included (e.g., orange juice, soda, water, beer).
 
-Assign confidence 0.0-1.0 based on how clearly you can identify each item. Only report items with confidence >= 0.5.
+Only report items with overall confidence >= 0.5 (use the name field's confidence as the primary gate).
 The category field MUST be exactly one of the nine values in the schema.
 
-${LOCATION_CLASSIFICATION_RULES}`;
+${LOCATION_CLASSIFICATION_RULES}
+
+${QUANTITY_AND_CONFIDENCE_RULES}`;
 
 /**
  * Receipt / Instacart-screenshot-specific extraction rules.
@@ -165,6 +320,9 @@ ${LOCATION_CLASSIFICATION_RULES}`;
  *
  * Source: 13-RESEARCH.md "Pattern 1". Pitfall 2 mitigation appended:
  * empty items array when image is too faded/blurry to read reliably.
+ *
+ * Phase 24-04: receipts often show weight (lb/oz) — the quantity.system enum
+ * below lets Claude emit imperial-weight for those line items.
  */
 export const RECEIPT_FILTERING_RULES = `${FILTERING_RULES}
 
@@ -177,27 +335,57 @@ This image is a GROCERY RECEIPT (or a screenshot of an Instacart order summary).
   medicine) even if they appear on the receipt.
 - Expand common receipt abbreviations (e.g., "CHKN BRST" -> "chicken breast",
   "ORG BANANA" -> "organic bananas", "GV WHL MLK" -> "whole milk").
-- If a quantity column is present, use it. If only a price is present, default
-  quantity to 1 and unit to "piece".
+- Receipts often show weights in lb or oz — use imperial-weight system and the
+  exact unit token from the line when present. If only a price is present,
+  default quantity to { value: 1, unit: "piece", system: "count" }.
 - If an item appears multiple times on separate lines, report it once with the
   summed quantity.
 - If the receipt is too faded or blurry to read reliably, return an empty items array.
 Dairy/fresh meat/produce → fridge. Frozen items → freezer. Shelf-stable → pantry.`;
 
 /**
+ * Shape returned by the AI tool before normalization. Fields are all
+ * optional because malformed / partial responses must flow through
+ * normalizeScanItems → sanitize rather than crashing the scan.
+ */
+interface RawScanItem {
+  name?: unknown;
+  quantity?: unknown;
+  unit?: unknown; // legacy flat shape
+  confidence?: unknown;
+  category?: unknown;
+  source_location?: unknown;
+}
+
+/**
  * Map raw AI items to ScanResult[], coercing category and correcting
  * source_location via STATIC_MAP-wins. Shared by all three vision entrypoints
  * so the invariant is enforced in exactly one place.
+ *
+ * Phase 24-04: also sanitizes the new nested `quantity` and `confidence`
+ * shapes while tolerating legacy flat payloads (backward-compat path).
  */
-function normalizeScanItems(raw: Array<Partial<ScanResult>> | undefined): ScanResult[] {
-  return (raw ?? []).map((item) => ({
-    name: String(item.name ?? ''),
-    quantity: typeof item.quantity === 'number' ? item.quantity : 1,
-    unit: typeof item.unit === 'string' ? item.unit : 'piece',
-    confidence: typeof item.confidence === 'number' ? item.confidence : 0,
-    category: coerceCategory(item.category),
-    source_location: correctLocation(item.name, item.source_location),
-  }));
+function normalizeScanItems(raw: Array<RawScanItem> | undefined): ScanResult[] {
+  return (raw ?? []).map((item) => {
+    const quantity = normalizeQuantity(item.quantity, item.unit);
+    const fieldConfidence = normalizeFieldConfidence(item.confidence);
+    // Overall legacy confidence = min of per-field scores so the existing
+    // 0.7 threshold gate (Phase 14) reflects the worst-case attribute.
+    const confidence = Math.min(
+      fieldConfidence.name,
+      fieldConfidence.quantity,
+      fieldConfidence.unit,
+      fieldConfidence.category,
+    );
+    return {
+      name: String(item.name ?? ''),
+      quantity,
+      confidence,
+      fieldConfidence,
+      category: coerceCategory(item.category),
+      source_location: correctLocation(item.name, item.source_location),
+    };
+  });
 }
 
 export async function identifyFoodItems(base64Image: string): Promise<ScanResult[]> {
@@ -208,7 +396,7 @@ export async function identifyFoodItems(base64Image: string): Promise<ScanResult
     );
   }
   const ai = getClientFor('vision.pantryScan');
-  const result = await ai.analyzeImageStructured<{ items: ScanResult[] }>({
+  const result = await ai.analyzeImageStructured<{ items: RawScanItem[] }>({
     user: `You are analyzing a kitchen photo. Identify each visible food item and infer where a typical US household stores it (fridge/pantry/freezer).\n\n${FILTERING_RULES}`,
     imageBase64: base64Image,
     mimeType: 'image/jpeg',
@@ -243,7 +431,7 @@ export async function identifyFoodItemsBatch(
     ? `\n\nALREADY IN PANTRY (do NOT report these — they are already tracked):\n${existingItemNames.map((n) => `- ${n}`).join('\n')}\n\nIf you see any of the above items in the photos, exclude them from your response. Only report NEW items not already in this list.`
     : '';
 
-  const result = await ai.analyzeImagesStructured<{ items: ScanResult[] }>({
+  const result = await ai.analyzeImagesStructured<{ items: RawScanItem[] }>({
     user: `You are analyzing ${count} kitchen photos. These photos may show overlapping areas -- deduplicate items that appear in multiple photos. For each item, infer where a typical US household stores it (fridge/pantry/freezer).\n\n${FILTERING_RULES}${existingBlock}`,
     images: base64Images.map((b64) => ({ base64: b64, mimeType: 'image/jpeg' as const })),
     tool: foodItemsTool,
@@ -266,6 +454,9 @@ export async function identifyFoodItemsBatch(
  *
  * Phase 18: no longer takes a source_location parameter. AI classifies per item;
  * STATIC_MAP corrects known names post-call.
+ *
+ * Phase 24-04: shares foodItemsSchema + normalizeScanItems with the pantry-scan
+ * flows — single source of truth for the nested quantity + confidence shape.
  */
 export async function identifyReceiptItems(
   base64Image: string,
@@ -286,10 +477,10 @@ export async function identifyReceiptItems(
     : '';
 
   const variantPreamble = variant === 'instacart_screenshot'
-    ? 'You are analyzing a screenshot of an Instacart order summary or order confirmation.'
+    ? 'You are analyzing a screenshot of an Instacart order summary or order confirmation. For each line, extract the product from the label (size on package) as quantity.{value, unit, system}.'
     : 'You are analyzing a photograph of a printed grocery store receipt.';
 
-  const result = await ai.analyzeImageStructured<{ items: ScanResult[] }>({
+  const result = await ai.analyzeImageStructured<{ items: RawScanItem[] }>({
     user: `${variantPreamble}\n\n${RECEIPT_FILTERING_RULES}${existingBlock}`,
     imageBase64: base64Image,
     mimeType: 'image/jpeg',
