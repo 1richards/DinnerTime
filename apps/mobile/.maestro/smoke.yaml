@@ -18,6 +18,9 @@ name: smoke — app launches and reaches a known screen
     point: "90%,32%"
     optional: true
 - takeScreenshot: 01-bundle-loading
+# 24a: ScanResult shape now includes fieldConfidence + Quantity — existing
+# assertions remain stable; inline dashed-amber low-confidence treatment on
+# ReviewItemRow is purely visual and doesn't change any selector.
 # Sentinel banner from src/app/_layout.tsx prints loading/loggedIn/onboarded.
 - extendedWaitUntil:
     visible:
