@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 24-06 (Wave 3 mobile ScanResult mirror + inline low-confidence UI) — complete
-status: Phase 24a closes with 24-06 — ROADMAP criteria 6-23 delivered end-to-end (canonical + aliases + per-user category override + quantity JSONB + unit conversion library + canonicalResolver + reconcileItems canonical-identity dedup + scan_events writer + per-field confidence flowing from AI to mobile UI). 24b (vision quality — prompts, eval harness, model routing) remains explicitly deferred to a future phase.
-stopped_at: Completed 24-06-PLAN.md (mobile ScanResult mirror + inline low-confidence dashed-amber UI on ReviewItemRow; Maestro smoke green; Phase 24a closes)
-last_updated: "2026-04-19T18:33:08.437Z"
-last_activity: 2026-04-19 -- Completed 24-06 (mobile ScanResult/ReviewItem mirror 24-04 server shape; nested Quantity + FieldConfidence; formatQuantity migration-safe render; pantryStore passes fieldConfidence through with defensive coercion; confirmScan consumes ReconcileResult and reloads from Supabase; resolveFieldClass pure helper renders dashed amber-400 border-b when confidence < 0.7; quantity+unit merged via Math.min; accessibilityHint only when flagged; 11/11 new vitest cases + 349/353 mobile tests GREEN, tsc clean, Maestro smoke green on iPhone 17 Pro)
+current_plan: 21-01 (Wave 0 schema foundation — user_staples + user_location_rules + suggested_rules + canonical_scan_counts + promote_candidate_canonicals RPC) — complete
+status: Phase 21 opens with 21-01 — 4 new migrations (00016-00019) + migrations.test.ts extended with 23 new static SQL contract assertions (68/68 GREEN). Schema substrate ready for 21-02 (Wave 1 services) and 21-03 (Wave 2 routes).
+stopped_at: Completed 21-01-PLAN.md (4 new migrations 00016-00019 + migrations.test.ts extended with 23 static SQL assertions; 68/68 GREEN)
+last_updated: "2026-04-19T19:10:00.123Z"
+last_activity: 2026-04-19 -- Completed 21-01 (4 new Phase 21 migrations + migrations.test.ts extended; 68/68 GREEN; ready for 21-02 Wave 1 services)
 progress:
   total_phases: 25
   completed_phases: 18
-  total_plans: 76
-  completed_plans: 76
-  percent: 99
+  total_plans: 82
+  completed_plans: 77
+  percent: 94
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 24 of 25 (AI Vision & Pantry Data-Model Deep Refactor) — 24a COMPLETE
-Current Plan: 24-06 (Wave 3 mobile ScanResult mirror + inline low-confidence UI) — complete
-Status: Phase 24a closes with 24-06 — ROADMAP criteria 6-23 delivered end-to-end (canonical + aliases + per-user category override + quantity JSONB + unit conversion library + canonicalResolver + reconcileItems canonical-identity dedup + scan_events writer + per-field confidence flowing from AI to mobile UI). 24b (vision quality — prompts, eval harness, model routing) remains explicitly deferred to a future phase.
-Last activity: 2026-04-19 -- Completed 24-06 (mobile ScanResult/ReviewItem mirror 24-04 server shape; nested Quantity + FieldConfidence; formatQuantity migration-safe render; pantryStore passes fieldConfidence through with defensive coercion; confirmScan consumes ReconcileResult and reloads from Supabase; resolveFieldClass pure helper renders dashed amber-400 border-b when confidence < 0.7; quantity+unit merged via Math.min; accessibilityHint only when flagged; 11/11 new vitest cases + 349/353 mobile tests GREEN, tsc clean, Maestro smoke green on iPhone 17 Pro)
+Phase: 21 of 25 (Pantry Intelligence — Smarter dedup, presentation, categorization, user-defined scan rules)
+Current Plan: 21-01 (Wave 0 schema foundation — user_staples + user_location_rules + suggested_rules + canonical_scan_counts + promote_candidate_canonicals RPC) — complete
+Status: Phase 21 opens with 21-01 — 4 new migrations (00016-00019) + migrations.test.ts extended with 23 new static SQL contract assertions (68/68 GREEN). Schema substrate ready for 21-02 (Wave 1 services) and 21-03 (Wave 2 routes).
+Last activity: 2026-04-19 -- Completed 21-01 (4 new Phase 21 migrations + migrations.test.ts extended; 68/68 GREEN; ready for 21-02 Wave 1 services)
 
-Progress: [██████████] 99%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -130,6 +130,7 @@ Progress: [██████████] 99%
 | Phase 24 P05 | 10.5min | 2 tasks | 4 files |
 | Phase 24 P05 | 10.5min | 2 tasks | 4 files |
 | Phase 24-ai-vision-and-pantry-data-model-deep-refactor P06 | 9min | 3 tasks | 10 files |
+| Phase 21 P01 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -409,6 +410,10 @@ Recent decisions affecting current work:
 - [Phase 24-06]: Phase 24-06: Quantity+unit confidence merged via Math.min for the compound quantity display (single visual span covers value+unit) — conservative aggregation flags the underline if EITHER sub-field is low-confidence
 - [Phase 24-06]: Phase 24-06: confirmScan reloads pantry from Supabase after 24-05 /confirm (was: merge PantryItem[] from response body) — ReconcileResult counts response shape means mobile must refetch to pick up canonical aggregations + incompatible-unit multi-row inserts; mirrors offline-queue reload pattern
 - [Phase 24-06]: Phase 24-06: Strict <0.7 threshold for dashed-amber low-confidence treatment — exactly 0.7 is high-confidence (mirrors Phase 14 0.7 acceptance gate); legacy fieldConfidence=undefined renders no underline (backward compat + avoids misleading indicators on manual-adds)
+- [Phase 21]: [Phase 21-01]: Counter-table pattern (canonical_scan_counts + promote_candidate_canonicals RPC) over JSONB-path matching — O(1) increment + indexed UPDATE; RPC SECURITY DEFINER + search_path=public pinned; GRANT EXECUTE to authenticated + service_role
+- [Phase 21]: [Phase 21-01]: Composite unique (user_id, rule_type, payload) on suggested_rules enables aggregator upsert-on-conflict without duplication; partial index idx_suggested_rules_user_active scoped to WHERE dismissed_at IS NULL (majority query shape)
+- [Phase 21]: [Phase 21-01]: user_staples RLS has only SELECT+INSERT+DELETE policies (no UPDATE) — staples are on/off markers with no in-place edits; user_location_rules + suggested_rules get full CRUD RLS for drag-reorder + dismissed_at writes
+- [Phase 21]: [Phase 21-01]: Rule 2 auto-fix — added canonical_scan_counts_write_service_role policy missing from plan snippet; without it canonicalPromoter could not increment counter under RLS even with service_role client
 
 ### Pending Todos
 
@@ -452,6 +457,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T18:26:44.449Z
-Stopped at: Completed 24-06-PLAN.md (mobile ScanResult mirror + inline low-confidence dashed-amber UI on ReviewItemRow; Maestro smoke green; Phase 24a closes)
+Last session: 2026-04-19T19:10:00.120Z
+Stopped at: Completed 21-01-PLAN.md (4 new migrations 00016-00019 + migrations.test.ts extended with 23 static SQL assertions; 68/68 GREEN)
 Resume file: None
