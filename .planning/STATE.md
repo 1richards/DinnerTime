@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 21-01 (Wave 0 schema foundation — user_staples + user_location_rules + suggested_rules + canonical_scan_counts + promote_candidate_canonicals RPC) — complete
-status: Phase 21 opens with 21-01 — 4 new migrations (00016-00019) + migrations.test.ts extended with 23 new static SQL contract assertions (68/68 GREEN). Schema substrate ready for 21-02 (Wave 1 services) and 21-03 (Wave 2 routes).
-stopped_at: Completed 21-02-PLAN.md (TDD ruleEvaluator + suggestionAggregator + canonicalPromoter; 23/23 vitest GREEN; W3 canonical pre-resolved payload landed)
-last_updated: "2026-04-19T19:15:12.399Z"
-last_activity: 2026-04-19 -- Completed 21-01 (4 new Phase 21 migrations + migrations.test.ts extended; 68/68 GREEN; ready for 21-02 Wave 1 services)
+current_plan: 21-03 (Wave 2 routes — /staples, /rules, /suggestions, /preview, /category-override + reconcileItems rule-evaluator integration + /confirm fire-and-forget learning pipeline) — complete
+status: verifying
+stopped_at: Completed 21-03-PLAN.md
+last_updated: "2026-04-19T19:30:34.478Z"
+last_activity: 2026-04-19 -- Completed 21-03 (5 new route groups + reconcileItems rule integration + fire-and-forget /confirm; 75/75 GREEN; ready for 21-04 mobile)
 progress:
   total_phases: 25
   completed_phases: 18
   total_plans: 82
-  completed_plans: 78
-  percent: 94
+  completed_plans: 79
+  percent: 96
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 21 of 25 (Pantry Intelligence — Smarter dedup, presentation, categorization, user-defined scan rules)
-Current Plan: 21-01 (Wave 0 schema foundation — user_staples + user_location_rules + suggested_rules + canonical_scan_counts + promote_candidate_canonicals RPC) — complete
-Status: Phase 21 opens with 21-01 — 4 new migrations (00016-00019) + migrations.test.ts extended with 23 new static SQL contract assertions (68/68 GREEN). Schema substrate ready for 21-02 (Wave 1 services) and 21-03 (Wave 2 routes).
-Last activity: 2026-04-19 -- Completed 21-01 (4 new Phase 21 migrations + migrations.test.ts extended; 68/68 GREEN; ready for 21-02 Wave 1 services)
+Current Plan: 21-03 (Wave 2 routes — /staples, /rules, /suggestions, /preview, /category-override + reconcileItems rule-evaluator integration + /confirm fire-and-forget learning pipeline) — complete
+Status: Phase 21 Wave 2 landed — 12 new endpoints across 5 route groups + reconcileItems now honors user_location_rules + /confirm fires aggregator/promoter/counter as void. 75/75 routes+services vitest GREEN; W2 canonicalIds dedup + W3 suggestion-accept canonical guard + W4 singular table name all verified. Mobile Wave 3 (21-04/21-05) unblocked.
+Last activity: 2026-04-19 -- Completed 21-03 (5 new route groups + reconcileItems rule integration + fire-and-forget /confirm; 75/75 GREEN; ready for 21-04 mobile)
 
-Progress: [█████████░] 94%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
@@ -132,6 +132,7 @@ Progress: [█████████░] 94%
 | Phase 24-ai-vision-and-pantry-data-model-deep-refactor P06 | 9min | 3 tasks | 10 files |
 | Phase 21 P01 | 3min | 2 tasks | 5 files |
 | Phase 21-pantry-intelligence P02 | 7min | 3 tasks tasks | 6 files files |
+| Phase 21 P03 | 10min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -421,6 +422,9 @@ Recent decisions affecting current work:
 - [Phase 21-02]: Un-resolvable item_names skipped in aggregator (no orphan suggestions) — belt-and-braces since canonicalResolver auto-creates candidates
 - [Phase 21-02]: incrementScanCounts uses sequential read+upsert (not atomic RPC) — private-beta-acceptable; atomic-RPC follow-up documented for post-launch concurrency races
 - [Phase 21-02]: Name-mapping rules NOT in ruleEvaluator — they live in ingredient_aliases(source='user_rule') applied by canonicalResolver Stage 2
+- [Phase 21]: Phase 21-03: reconcileItems integrates ruleEvaluator + returns deduped canonicalIds; /confirm fires aggregator/promoter/counter as void Promise.resolve().catch() (fire-and-forget guarantees .catch tolerant)
+- [Phase 21]: Phase 21-03: 5 new route groups on pantry.ts (staples, rules, suggestions, preview, category-override) registered BEFORE PATCH /:id to avoid catch-all collision; 12 endpoints total. W4 singular canonical_category_override verified (grep returns 0 hits of plural)
+- [Phase 21]: Phase 21-03: suggestions/accept W3 guard — location_mapping reads canonical_ingredient_id from payload (pre-resolved by aggregator at aggregation time) and returns 400 CANONICAL_NOT_ACTIVE without dismissing when canonical is candidate (user can retry post-promotion)
 
 ### Pending Todos
 
@@ -464,6 +468,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T19:15:12.395Z
-Stopped at: Completed 21-02-PLAN.md (TDD ruleEvaluator + suggestionAggregator + canonicalPromoter; 23/23 vitest GREEN; W3 canonical pre-resolved payload landed)
+Last session: 2026-04-19T19:30:34.475Z
+Stopped at: Completed 21-03-PLAN.md
 Resume file: None
