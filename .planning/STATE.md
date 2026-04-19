@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 18-01 (Wave 1 foundation — migrations + hybrid classifier) — complete (1/4 plans in Phase 18)
-status: Phase 18 Wave 1 landed. Wave 2 (Plan 18-02) unblocked — SourceLocation type + classifyItems ready for vision tool-schema extension + reconcileItems dual-write
-stopped_at: "Completed 18-01-PLAN.md (Wave 1 foundation: migrations + hybrid classifier)"
-last_updated: "2026-04-19T04:05:30.211Z"
-last_activity: "2026-04-18 -- Completed 18-01 (Wave 1 foundation: item_attributes + item_override_events migrations, hybrid STATIC_MAP+AI classifier in itemLocation.ts, SourceLocation type exported from vision.ts, 31 tests green)"
+current_plan: 18-02 (Wave 2 backend end-to-end) — complete (2/4 plans in Phase 18)
+status: Phase 18 Wave 2 landed. Wave 3 (Plan 18-03) unblocked — mobile can consume ScanResult.source_location, drop LocationPicker, wire LocationChip + /override-events telemetry
+stopped_at: "Completed 18-02-PLAN.md (Wave 2 backend end-to-end: vision schema + reconcile dual-write + override-events route)"
+last_updated: "2026-04-19T04:21:35.282Z"
+last_activity: "2026-04-19 -- Completed 18-02 (Wave 2 backend end-to-end: vision tool schemas extended with source_location + STATIC_MAP post-correction, reconcileItems dual-writes item_attributes, scan routes strip source_location body, POST /override-events route added; 63/63 touched tests green)"
 progress:
   total_phases: 25
   completed_phases: 16
   total_plans: 70
-  completed_plans: 67
+  completed_plans: 68
   percent: 96
 ---
 
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 18 of 25 (AI Auto-Location for Pantry Imports) — IN PROGRESS
-Current Plan: 18-01 (Wave 1 foundation — migrations + hybrid classifier) — complete (1/4 plans in Phase 18)
-Status: Phase 18 Wave 1 landed. Wave 2 (Plan 18-02) unblocked — SourceLocation type + classifyItems ready for vision tool-schema extension + reconcileItems dual-write
-Last activity: 2026-04-18 -- Completed 18-01 (Wave 1 foundation: item_attributes + item_override_events migrations, hybrid STATIC_MAP+AI classifier in itemLocation.ts, SourceLocation type exported from vision.ts, 31 tests green)
+Current Plan: 18-02 (Wave 2 backend end-to-end) — complete (2/4 plans in Phase 18)
+Status: Phase 18 Wave 2 landed. Wave 3 (Plan 18-03) unblocked — mobile can consume ScanResult.source_location, drop LocationPicker, wire LocationChip + /override-events telemetry
+Last activity: 2026-04-19 -- Completed 18-02 (Wave 2 backend end-to-end: vision tool schemas extended with source_location + STATIC_MAP post-correction, reconcileItems dual-writes item_attributes, scan routes strip source_location body, POST /override-events route added; 63/63 touched tests green)
 
 Progress: [██████████] 96%
 
@@ -120,6 +120,7 @@ Progress: [██████████] 96%
 | Phase 19 P05 | 17min | 5 tasks | 53 files |
 | Phase 19 P06 | 24min | 2 tasks | 10 files |
 | Phase 18 P01 | 5min | 2 tasks | 6 files |
+| Phase 18 P02 | 12min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -358,6 +359,11 @@ Recent decisions affecting current work:
 - [Phase 18-01]: classifyItems degrades to 'pantry' default + console.warn on Gemini MalformedFunctionCallError (Pitfall 5) — best-effort classification beats a broken scan
 - [Phase 18-01]: item_override_events has no FK to pantry_items — item_name is Phase 21's rollup key and must survive pantry-item deletion
 - [Phase 18-01]: migrations.test.ts uses two-layer design: always-on static SQL regex for contract + optional live-DB probe that auto-skips on PGRST205 so CI stays green pre- and post-migration-push
+- [Phase 18-02]: Vision schema folds source_location into existing tool (Option C) — STATIC_MAP applied as POST-call correction in normalizeScanItems, AI returns are overridden when static map has a hit
+- [Phase 18-02]: reconcileItems dedup query drops source_location filter — existing items matched by (profile_id, normalized_name) alone; column NOT updated on UPDATE, only item_attributes refreshes each scan
+- [Phase 18-02]: Extracted SOURCE_LOCATIONS + SourceLocation to sourceLocation.ts leaf module to break vision<->itemLocation circular import; vision.ts re-exports for backward compat
+- [Phase 18-02]: POST /override-events silently filters invalid + no-op (ai===user) events, returns inserted:0 with 200; only empty array returns 400 — mobile fires telemetry optimistically
+- [Phase 18-02]: UPDATE merges item_attributes via {...prior, source_location} spread so Phase 24 forward-compat keys survive re-scans; test pins invariant with some_future_key fixture
 
 ### Pending Todos
 
@@ -401,6 +407,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T04:04:48.167Z
-Stopped at: Completed 18-01-PLAN.md (Wave 1 foundation: migrations + hybrid classifier)
+Last session: 2026-04-19T04:21:00.924Z
+Stopped at: Completed 18-02-PLAN.md (Wave 2 backend end-to-end: vision schema + reconcile dual-write + override-events route)
 Resume file: None
