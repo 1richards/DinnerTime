@@ -3,6 +3,7 @@ import { View, Text, SectionList, RefreshControl, Animated } from 'react-native'
 import { PantryItemCard } from './PantryItemCard';
 import { colors } from '../../design/tokens';
 import type { EnrichedPantryItem } from '../../hooks/usePantryItems';
+import type { PantrySection } from '../../hooks/usePantryItemsGrouped';
 
 const CATEGORY_ORDER: string[] = [
   'produce', 'protein', 'dairy', 'grain', 'condiment',
@@ -17,6 +18,13 @@ interface PantryItemListProps {
   onScroll?: ReturnType<typeof Animated.event>;
   scrollEventThrottle?: number;
   contentContainerStyle?: object;
+  /**
+   * Phase 21-04 — pre-grouped sections. When provided, the list renders these
+   * sections verbatim; `items` is ignored. When omitted, the legacy category-
+   * grouping path runs (backward compat for any consumer that still hands in a
+   * flat items array).
+   */
+  sections?: PantrySection[];
 }
 
 interface Section {
@@ -33,8 +41,19 @@ export function PantryItemList({
   onScroll,
   scrollEventThrottle,
   contentContainerStyle,
+  sections: externalSections,
 }: PantryItemListProps) {
   const sections: Section[] = useMemo(() => {
+    // Phase 21-04: if the caller hands us pre-grouped sections, adapt them to
+    // the SectionList shape (title + count + data). Skip the category bucket.
+    if (externalSections) {
+      return externalSections.map((s) => ({
+        title: s.title,
+        count: s.items.length,
+        data: s.items,
+      }));
+    }
+
     const grouped = new Map<string, EnrichedPantryItem[]>();
 
     for (const item of items) {
@@ -50,7 +69,7 @@ export function PantryItemList({
         count: grouped.get(cat)!.length,
         data: grouped.get(cat)!,
       }));
-  }, [items]);
+  }, [items, externalSections]);
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: Section }) => (
