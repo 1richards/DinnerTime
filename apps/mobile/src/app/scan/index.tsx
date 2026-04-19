@@ -13,13 +13,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { LocationPicker } from '../../components/pantry/LocationPicker';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { EMPTY_STATE_IMAGES } from '../../constants/emptyStateImages';
 import { usePantryStore } from '../../stores/pantryStore';
-import type { SourceLocation } from '../../types/pantry';
 import { colors } from '../../design/tokens';
 
 interface CapturedPhoto {
@@ -36,7 +34,6 @@ const SLOT_GAP = 6;
 const SLOT_SIZE = Math.floor((SCREEN_WIDTH - H_PADDING - SLOT_GAP * (MAX_PHOTOS + 1 - 1)) / (MAX_PHOTOS + 1));
 
 export default function ScanScreen() {
-  const [selectedLocation, setSelectedLocation] = useState<SourceLocation>('fridge');
   const [capturedPhotos, setCapturedPhotos] = useState<CapturedPhoto[]>([]);
   const [previewPhoto, setPreviewPhoto] = useState<CapturedPhoto | null>(null);
   const { startBatchScan, isScanning, scanResults } = usePantryStore();
@@ -46,15 +43,14 @@ export default function ScanScreen() {
     usePantryStore.setState({ scanResults: [] });
   }, []);
 
-  // Navigate to review when scan results arrive
+  // Navigate to review when scan results arrive. Phase 18-04: no more
+  // sourceLocation nav param — each item carries its own source_location
+  // from the AI classifier, and the review screen chip handles overrides.
   useEffect(() => {
     if (scanResults.length > 0 && !isScanning) {
-      router.push({
-        pathname: '/scan/review',
-        params: { sourceLocation: selectedLocation },
-      });
+      router.push('/scan/review');
     }
-  }, [scanResults, isScanning, selectedLocation]);
+  }, [scanResults, isScanning]);
 
   const handleTakePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -93,8 +89,9 @@ export default function ScanScreen() {
 
   const handleSubmitBatch = async () => {
     try {
-      // Phase 18-03: no more session-level location lock. AI classifies
-      // each item independently. Plan 18-04 removes LocationPicker.
+      // Phase 18-04: AI classifies each item's location independently.
+      // No session-level lock, no LocationPicker — the per-item chip on
+      // the review screen is the single point of override.
       await startBatchScan(capturedPhotos.map((p) => p.base64));
     } catch {
       Alert.alert('Scan Failed', 'Could not analyze the images. Please try again.');
@@ -166,27 +163,11 @@ export default function ScanScreen() {
   return (
     <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
       <View className="flex-1 px-4 pt-6">
-        <Text className="text-lg font-semibold text-warmGray-800 mb-4 px-4">
-          Where are you scanning?
-        </Text>
-
-        <View pointerEvents={hasPhotos ? 'none' : 'auto'} className={hasPhotos ? 'opacity-50' : ''}>
-          <LocationPicker
-            selected={selectedLocation}
-            onSelect={setSelectedLocation}
-          />
-        </View>
-        {hasPhotos && (
-          <Text className="text-xs text-warmGray-400 px-4 mt-1">
-            Location applies to all photos in this session
-          </Text>
-        )}
-
         {!hasPhotos ? (
           <EmptyState
             visual={{ kind: 'image', uri: EMPTY_STATE_IMAGES.scanReady }}
             title="Ready to scan your kitchen"
-            subtitle={`Take a photo of your ${selectedLocation} and we'll identify what's inside`}
+            subtitle="Take photos of your fridge, pantry, or freezer — we'll sort each item automatically."
             action={{ label: 'Take Photo', onPress: handleTakePhoto }}
           />
         ) : (

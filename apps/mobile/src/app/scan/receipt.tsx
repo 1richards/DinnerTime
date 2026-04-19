@@ -1,18 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { LocationPicker } from '../../components/pantry/LocationPicker';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { usePantryStore } from '../../stores/pantryStore';
-import type { SourceLocation } from '../../types/pantry';
 import { colors } from '../../design/tokens';
 
 export default function ReceiptScanScreen() {
-  // CONTEXT locked decision: default source_location = 'pantry' for receipts
-  const [sourceLocation, setSourceLocation] = useState<SourceLocation>('pantry');
   const { startReceiptScan, isScanning, scanResults } = usePantryStore();
 
   // Clear stale scan results on mount (Pitfall 3 mitigation)
@@ -20,15 +16,14 @@ export default function ReceiptScanScreen() {
     usePantryStore.setState({ scanResults: [] });
   }, []);
 
-  // Navigate to review when scan results arrive
+  // Navigate to review when scan results arrive. Phase 18-04: AI classifies
+  // per-item location automatically (dairy→fridge, shelf-stable→pantry,
+  // frozen→freezer). No LocationPicker gating step.
   useEffect(() => {
     if (scanResults.length > 0 && !isScanning) {
-      router.push({
-        pathname: '/scan/review',
-        params: { sourceLocation },
-      });
+      router.push('/scan/review');
     }
-  }, [scanResults, isScanning, sourceLocation]);
+  }, [scanResults, isScanning]);
 
   const handleTakePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -52,7 +47,8 @@ export default function ReceiptScanScreen() {
     }
 
     try {
-      // Phase 18-03: AI classifies per item; Plan 18-04 removes LocationPicker.
+      // Phase 18-04: AI classifies per item (receipt fan-out: dairy→fridge,
+      // chips→pantry, ice cream→freezer). Review screen chip handles overrides.
       await startReceiptScan(result.assets[0].base64!);
       // Pitfall 2 mitigation: inspect result length after resolution.
       const results = usePantryStore.getState().scanResults;
@@ -88,11 +84,6 @@ export default function ReceiptScanScreen() {
   return (
     <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
       <View className="flex-1 px-4 pt-6">
-        <Text className="text-sm text-warmGray-500 mb-3 px-4">
-          Where do most items go?
-        </Text>
-        <LocationPicker selected={sourceLocation} onSelect={setSourceLocation} />
-
         <EmptyState
           visual={{ kind: 'symbol', name: 'doc.text.viewfinder' }}
           title="Scan a grocery receipt"

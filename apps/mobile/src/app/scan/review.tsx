@@ -26,9 +26,9 @@ export default function ReviewScreen() {
     confirmScan,
   } = usePantryStore();
   const profile = useAuthStore((s) => s.profile);
-  // Phase 18-03: sourceLocation route param no longer consumed — each item
-  // carries its own source_location. Plan 18-04 removes the param at the
-  // callers (scan/index, scan/receipt, scan/instacart).
+  // Phase 18-04: sourceLocation route param fully retired. Each review item
+  // carries its own source_location (AI-classified or user-overridden via
+  // the LocationChip bottom sheet below). No LocationPicker gating step.
 
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');

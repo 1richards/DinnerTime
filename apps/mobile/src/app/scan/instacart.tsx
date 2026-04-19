@@ -16,13 +16,12 @@ export default function InstacartImportScreen() {
     usePantryStore.setState({ scanResults: [] });
   }, []);
 
-  // Navigate to review when results arrive (pantry is locked server-side).
+  // Navigate to review when results arrive. Phase 18-04: AI classifies
+  // per item across all four scan flows. No hardcoded sourceLocation —
+  // review-screen chip handles any overrides.
   useEffect(() => {
     if (scanResults.length > 0 && !isScanning) {
-      router.push({
-        pathname: '/scan/review',
-        params: { sourceLocation: 'pantry' },
-      });
+      router.push('/scan/review');
     }
   }, [scanResults, isScanning]);
 
