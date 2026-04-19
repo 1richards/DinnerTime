@@ -25,8 +25,9 @@ import { iconPropsForText } from '../../design/icons';
 import {
   resolveTitleClasses,
   resolveCheckboxBoxClasses,
-  CONTAINER_CLASSES,
+  resolveContainerClasses,
   STEPPER_BUTTON_CLASSES,
+  type ItemRowSize,
 } from './itemRowHelpers';
 
 export type ChipTone = 'default' | 'success' | 'warning' | 'destructive';
@@ -51,6 +52,14 @@ interface ItemRowProps {
   onLongPress?: () => void;
   /** Shopping checked state — applies line-through + 50% opacity to title. */
   struck?: boolean;
+  /**
+   * Phase 21-04 density axis.
+   *   - 'default' (omitted) → py-3, ~64pt tall (Phase 19 density)
+   *   - 'compact'           → py-2, ~48pt tall (pantry-tab dense rows)
+   * Only the outer container padding changes; icon/stepper/checkbox sizing
+   * stays token-driven so density doesn't cascade into unexpected spots.
+   */
+  size?: ItemRowSize;
 }
 
 // Inline trailing-chip styles — replace with <Chip /> once 19-02 lands.
@@ -78,8 +87,10 @@ export function ItemRow({
   onPress,
   onLongPress,
   struck,
+  size,
 }: ItemRowProps) {
   const titleCls = resolveTitleClasses({ struck });
+  const containerCls = resolveContainerClasses(size);
   const isInteractive = !!(onPress || onLongPress);
   const Container: React.ComponentType<any> = isInteractive ? Pressable : View;
 
@@ -87,7 +98,7 @@ export function ItemRow({
     <Container
       onPress={onPress}
       onLongPress={onLongPress}
-      className={CONTAINER_CLASSES}
+      className={containerCls}
     >
       {/* Leading affordance */}
       <View className="mr-3">

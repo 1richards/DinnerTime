@@ -6,6 +6,7 @@ import type { EnrichedPantryItem } from '../../hooks/usePantryItems';
 import { usePantryStore } from '../../stores/pantryStore';
 import { colors } from '../../design/tokens';
 import { LOCATION_SYMBOLS, FALLBACK_LOCATION_SYMBOL } from './locationSymbols';
+import { resolvePantryItemCardWrapperClasses } from './pantryItemCardHelpers';
 import { formatQuantity } from '../../types/pantry';
 
 interface PantryItemCardProps {
@@ -66,8 +67,14 @@ export function PantryItemCard({ item }: PantryItemCardProps) {
   const formattedQty = formatQuantity(item.quantity, item.unit);
   const subtitleParts = [formattedQty || null, item.category].filter(Boolean);
 
+  // Phase 21-04 stale treatment (21-CONTEXT ROADMAP #2): when confidence has
+  // dropped below 0.5 (after 7-day decay), render a dashed muted wrapper so the
+  // item fades into its natural group rather than getting a dedicated section.
+  // The resolver is pure so PantryItemCard tests can assert without a renderer.
+  const wrapperCls = resolvePantryItemCardWrapperClasses(item);
+
   return (
-    <View className={`mb-2 mx-4 ${item.isUncertain ? 'opacity-60' : ''}`}>
+    <View className={wrapperCls}>
       <ItemRow
         leading={{ kind: 'icon', name: locationIcon, tint: colors.textSecondary }}
         title={item.name}
