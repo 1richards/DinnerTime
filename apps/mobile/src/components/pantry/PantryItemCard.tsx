@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, ActionSheetIOS } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { ItemRow, type ChipTone } from '../ui/ItemRow';
 import type { EnrichedPantryItem } from '../../hooks/usePantryItems';
@@ -11,6 +11,12 @@ import { formatQuantity } from '../../types/pantry';
 
 interface PantryItemCardProps {
   item: EnrichedPantryItem;
+  /**
+   * Phase 21-05: position in the containing list. Used for the
+   * `testID="pantry-item-ellipsis-{index}"` contract that 21-06 Maestro flows
+   * depend on (I2). Optional — consumers not wiring Maestro can omit.
+   */
+  index?: number;
 }
 
 /**
@@ -34,8 +40,12 @@ function deriveTrailingChip(
   return undefined;
 }
 
-export function PantryItemCard({ item }: PantryItemCardProps) {
-  const { markItemUsed, markItemDepleted } = usePantryStore();
+export function PantryItemCard({ item, index }: PantryItemCardProps) {
+  const markItemUsed = usePantryStore((s) => s.markItemUsed);
+  const markItemDepleted = usePantryStore((s) => s.markItemDepleted);
+  const markStaple = usePantryStore((s) => s.markStaple);
+  const unmarkStaple = usePantryStore((s) => s.unmarkStaple);
+  const isStapleFn = usePantryStore((s) => s.isStaple);
   const [expanded, setExpanded] = useState(false);
 
   const handleMarkUsed = async () => {
@@ -52,6 +62,47 @@ export function PantryItemCard({ item }: PantryItemCardProps) {
     } catch {
       // Rollback handled by store
     }
+  };
+
+  // Phase 21-05: "Mark as staple" action via ActionSheetIOS. Mirrors the
+  // Phase 15-04 HeaderEllipsis + ActionSheetIOS pattern but inline on the
+  // card (the full HeaderEllipsis primitive is designed for navigation
+  // headers; a card-row overflow is a bare Pressable + ActionSheetIOS).
+  const canonicalId = item.canonical_ingredient_id;
+  const hasCanonical = typeof canonicalId === 'string' && canonicalId.length > 0;
+  const isStaple = hasCanonical && isStapleFn(canonicalId);
+
+  const handleOpenSheet = () => {
+    const actions: Array<{ label: string; onPress: () => void; destructive?: boolean }> = [
+      { label: 'Mark used', onPress: handleMarkUsed },
+      { label: 'Mark gone', onPress: handleMarkDepleted, destructive: true },
+    ];
+    if (hasCanonical && canonicalId) {
+      actions.splice(0, 0, {
+        label: isStaple ? 'Remove from staples' : 'Mark as staple',
+        onPress: () => {
+          if (isStaple) {
+            unmarkStaple(canonicalId).catch(() => {});
+          } else {
+            markStaple(canonicalId, item.name).catch(() => {});
+          }
+        },
+      });
+    }
+    const labels = actions.map((a) => a.label);
+    const destructiveIdx = actions.findIndex((a) => a.destructive);
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: [...labels, 'Cancel'],
+        cancelButtonIndex: labels.length,
+        destructiveButtonIndex: destructiveIdx >= 0 ? destructiveIdx : undefined,
+      },
+      (idx) => {
+        if (idx != null && idx < actions.length) {
+          actions[idx].onPress();
+        }
+      },
+    );
   };
 
   const locationIcon = LOCATION_SYMBOLS[item.source_location] ?? FALLBACK_LOCATION_SYMBOL;
@@ -75,13 +126,26 @@ export function PantryItemCard({ item }: PantryItemCardProps) {
 
   return (
     <View className={wrapperCls}>
-      <ItemRow
-        leading={{ kind: 'icon', name: locationIcon, tint: colors.textSecondary }}
-        title={item.name}
-        subtitle={subtitleParts.join(' \u2022 ')}
-        trailingChip={deriveTrailingChip(item)}
-        onPress={() => setExpanded(!expanded)}
-      />
+      <View className="flex-row items-center">
+        <View className="flex-1">
+          <ItemRow
+            leading={{ kind: 'icon', name: locationIcon, tint: colors.textSecondary }}
+            title={item.name}
+            subtitle={subtitleParts.join(' \u2022 ')}
+            trailingChip={deriveTrailingChip(item)}
+            onPress={() => setExpanded(!expanded)}
+          />
+        </View>
+        <Pressable
+          testID={typeof index === 'number' ? `pantry-item-ellipsis-${index}` : undefined}
+          onPress={handleOpenSheet}
+          hitSlop={10}
+          className="px-3 py-2"
+          accessibilityLabel="Item actions"
+        >
+          <SymbolIcon name="ellipsis" size="body" weight="medium" tintColor={colors.textSecondary} />
+        </Pressable>
+      </View>
 
       {/* Expand-to-act: used / gone actions */}
       {expanded && (

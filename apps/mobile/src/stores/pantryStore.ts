@@ -14,6 +14,48 @@ import type {
   SourceLocation,
 } from '../types/pantry';
 import { reorderByIds, type LocationRule } from '../app/settings/pantryRulesHelpers';
+import type { GroupingMode } from '../hooks/usePantryItemsGrouped';
+
+// ── Phase 21-04: staple-aware auto-accept thresholds ────────────────────
+
+/**
+ * Default acceptance threshold from Phase 14 — items with AI confidence at or
+ * above this auto-accept during scan review. Items below require explicit user
+ * opt-in.
+ */
+export const DEFAULT_THRESHOLD = 0.7;
+
+/**
+ * Phase 21-04 aggressive staples threshold (21-CONTEXT ROADMAP #5). User
+ * explicitly picked 0.3 (not 0.5). Signal: the user trusts the canonical-
+ * resolution layer more than raw AI confidence for known-recurring items.
+ * Only canonical ingredients the user has explicitly marked as staples get
+ * this reprieve.
+ */
+export const STAPLE_THRESHOLD = 0.3;
+
+/**
+ * Pure acceptance resolver for scan items. Exported for unit testing so the
+ * threshold arithmetic is covered without a full startBatchScan fixture.
+ *
+ * Rules (in order):
+ *   1. probable duplicate → always rejected (user must opt-in to re-add)
+ *   2. item's canonical is in the user's staples Set AND confidence ≥ 0.3
+ *      → accepted (aggressive staples threshold)
+ *   3. confidence ≥ 0.7 → accepted (default threshold)
+ *   4. otherwise → rejected
+ */
+export function resolveScanAcceptance(args: {
+  confidence: number;
+  canonicalId: string | null | undefined;
+  staples: Set<string>;
+  probableDupe: boolean;
+}): boolean {
+  if (args.probableDupe) return false;
+  const isStaple = !!args.canonicalId && args.staples.has(args.canonicalId);
+  const threshold = isStaple ? STAPLE_THRESHOLD : DEFAULT_THRESHOLD;
+  return args.confidence >= threshold;
+}
 
 // ── Phase 21-05: rules + suggestions types ──────────────────────────────
 
@@ -43,15 +85,15 @@ export interface SuggestedRule {
 }
 
 /**
- * Phase 21-05: staple wire shape. GET /pantry/staples returns each row as
+ * Staple wire shape. GET /pantry/staples returns each row as
  * `{canonical_ingredient_id, created_at, canonical_ingredients: {canonical_name}}`
- * via the supabase join. We store the flattened {id,name} shape for rendering.
+ * via the supabase join. We store the flattened {id, name} shape in
+ * `stapleRows` for the Settings → Staples list view (21-05).
  *
- * 21-04 will own the primary staples surface (Set<string> + auto-accept
- * threshold during scan). 21-05 needs just enough to render the Staples screen
- * + wire the PantryItemCard ellipsis "Mark as staple" action. When 21-04 lands
- * it can refine the state shape without breaking this plan's callers (we keep
- * `isStaple(id)` as the canonical read API).
+ * Phase 21-04 also maintains a parallel `staples: Set<string>` of the
+ * canonical_ingredient_ids for O(1) membership checks during scan-accept
+ * threshold resolution and the Pantry-tab 'Staples' filter chip. Both are
+ * updated atomically by mark/unmark/load actions.
  */
 export interface StapleRow {
   canonical_ingredient_id: string;
@@ -76,12 +118,23 @@ interface PantryState {
   isScanning: boolean;
   isLoading: boolean;
 
+  // Phase 21-04 — staples membership (Set for O(1) scan-accept lookup + filter
+  // chip). Parallel `stapleRows` holds the display list used by Settings →
+  // Staples (21-05). Persisted as an array; rehydrated into a Set on mount.
+  staples: Set<string>;
+  stapleRows: StapleRow[];
+
+  // Phase 21-04 — grouping mode for the Pantry tab (persisted user preference).
+  groupingMode: GroupingMode;
+
   // Phase 21-05 extensions
   rules: RulesState;
   suggestions: SuggestedRule[];
-  staples: StapleRow[];
 
   loadItems: (profileId: string) => Promise<void>;
+
+  // Phase 21-04 grouping setter (persisted)
+  setGroupingMode: (mode: GroupingMode) => void;
 
   // Phase 21-05 actions
   loadRules: () => Promise<void>;
@@ -192,12 +245,16 @@ function coerceFieldConfidence(raw: unknown): FieldConfidence | undefined {
  * normalized name already exists in the user's pantry as a probable duplicate.
  * Probable dupes default to accepted=false so the user must opt-in to re-adding
  * them. Confidence-based accept rule still applies for non-dupes.
+ *
+ * Phase 21-04: acceptance resolution is delegated to `resolveScanAcceptance`
+ * so the aggressive staples threshold (0.3 for items whose canonical is in
+ * `staples`) is applied uniformly across every scan-flow action.
  */
 function mapScanResultsToReview(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rawItems: any[],
   existingItems: PantryItem[],
-  confidenceThreshold = 0.7,
+  staples: Set<string> = new Set(),
 ): ReviewItem[] {
   const existingNames = new Set(
     existingItems.map((p) => p.name.trim().toLowerCase()),
@@ -209,8 +266,16 @@ function mapScanResultsToReview(
       typeof item.confidence === 'number' && Number.isFinite(item.confidence)
         ? item.confidence
         : 0.5;
-    // Dupes default OFF; otherwise use confidence threshold.
-    const accepted = probableDupe ? false : confidence >= confidenceThreshold;
+    const canonicalId =
+      typeof item.canonical_ingredient_id === 'string'
+        ? item.canonical_ingredient_id
+        : null;
+    const accepted = resolveScanAcceptance({
+      confidence,
+      canonicalId,
+      staples,
+      probableDupe,
+    });
     // Server (Phase 18-02) returns per-item source_location. Default to
     // 'pantry' defensively if a legacy/malformed response omits it.
     const source_location: SourceLocation =
@@ -249,6 +314,36 @@ function mapScanResultsToReview(
   });
 }
 
+// ── Phase 21-04: Zustand persist migration (Pitfall 8) ────────────────────
+
+/**
+ * Shape of the pantryStore's persisted slice. Set<string> is not JSON-
+ * serializable so `staples` is stored as `string[]` and rehydrated to a Set
+ * by `onRehydrateStorage`.
+ */
+export interface PantryPersistedShape {
+  items?: PantryItem[];
+  staples?: string[];
+  groupingMode?: GroupingMode;
+}
+
+/**
+ * Migrate a persisted pantryStore snapshot from any earlier version to the
+ * current (v2) shape. Pre-21 snapshots (v0/v1) only had `items`; Phase 21-04
+ * adds `staples` (as array on disk) + `groupingMode`. Missing fields receive
+ * sensible defaults. Exported for unit test coverage.
+ */
+export function migratePantryPersistState(
+  persisted: PantryPersistedShape,
+  _fromVersion: number,
+): PantryPersistedShape {
+  return {
+    items: persisted.items ?? [],
+    staples: Array.isArray(persisted.staples) ? persisted.staples : [],
+    groupingMode: persisted.groupingMode ?? 'location',
+  };
+}
+
 /**
  * Phase 21-05 authedFetch helper — thin wrapper that attaches the bearer token
  * and resolves the /api/v1 prefix. Mirrors mealPlanStore / shoppingStore
@@ -279,10 +374,16 @@ export const usePantryStore = create<PantryState>()(
   isScanning: false,
   isLoading: false,
 
-  // Phase 21-05 extensions — rules/suggestions/staples state
+  // Phase 21-04 — staples membership + display rows
+  staples: new Set<string>(),
+  stapleRows: [],
+
+  // Phase 21-04 — default grouping mode (overridable by user; persisted)
+  groupingMode: 'location',
+
+  // Phase 21-05 extensions — rules/suggestions state
   rules: { name_mapping: [], location_mapping: [] },
   suggestions: [],
-  staples: [],
 
   loadItems: async (profileId: string) => {
     set({ isLoading: true });
@@ -321,7 +422,7 @@ export const usePantryStore = create<PantryState>()(
       }
 
       const data = await response.json();
-      const reviewItems = mapScanResultsToReview(data.data ?? [], get().items);
+      const reviewItems = mapScanResultsToReview(data.data ?? [], get().items, get().staples);
 
       set({ scanResults: reviewItems, isScanning: false });
     } catch (err) {
@@ -349,7 +450,7 @@ export const usePantryStore = create<PantryState>()(
       }
 
       const data = await response.json();
-      const reviewItems = mapScanResultsToReview(data.data ?? [], get().items);
+      const reviewItems = mapScanResultsToReview(data.data ?? [], get().items, get().staples);
 
       set({ scanResults: reviewItems, isScanning: false });
     } catch (err) {
@@ -377,7 +478,7 @@ export const usePantryStore = create<PantryState>()(
       }
 
       const data = await response.json();
-      const reviewItems = mapScanResultsToReview(data.data ?? [], get().items);
+      const reviewItems = mapScanResultsToReview(data.data ?? [], get().items, get().staples);
 
       set({ scanResults: reviewItems, isScanning: false });
     } catch (err) {
@@ -405,7 +506,7 @@ export const usePantryStore = create<PantryState>()(
       }
 
       const data = await response.json();
-      const reviewItems = mapScanResultsToReview(data.data ?? [], get().items);
+      const reviewItems = mapScanResultsToReview(data.data ?? [], get().items, get().staples);
 
       set({ scanResults: reviewItems, isScanning: false });
     } catch (err) {
@@ -705,10 +806,16 @@ export const usePantryStore = create<PantryState>()(
     }
   },
 
-  // ── Phase 21-05: staples actions (min surface to support staples screen +
-  // PantryItemCard ellipsis). 21-04 will own the primary staples data path
-  // (Set<canonicalId> + auto-accept threshold in startBatchScan). This shape
-  // stays forward-compatible: isStaple(id) is the stable read API. ────────
+  // ── Phase 21-04: staples actions (primary data path) ────────────────────
+  // Maintains two parallel projections:
+  //   - staples: Set<string>  — O(1) membership for scan-accept threshold +
+  //                              pantry-tab filter chip
+  //   - stapleRows: StapleRow[] — display list for Settings → Staples (21-05)
+  // Both update atomically. Load/mark/unmark are optimistic with rollback.
+
+  setGroupingMode: (mode) => {
+    set({ groupingMode: mode });
+  },
 
   loadStaples: async () => {
     const response = await authedFetch('/pantry/staples', { method: 'GET' });
@@ -725,19 +832,27 @@ export const usePantryStore = create<PantryState>()(
       canonical_ingredient_id: row.canonical_ingredient_id,
       canonical_name: row.canonical_ingredients?.canonical_name ?? '',
     }));
-    set({ staples: rows });
+    set({
+      stapleRows: rows,
+      staples: new Set(rows.map((r) => r.canonical_ingredient_id)),
+    });
   },
 
   markStaple: async (canonicalId: string, canonicalName?: string) => {
-    const prev = get().staples;
+    const prevRows = get().stapleRows;
+    const prevSet = get().staples;
     // Optimistic append (dedup on canonical_ingredient_id).
-    if (!prev.some((s) => s.canonical_ingredient_id === canonicalId)) {
-      set({
-        staples: [
-          ...prev,
-          { canonical_ingredient_id: canonicalId, canonical_name: canonicalName ?? '' },
-        ],
-      });
+    if (!prevSet.has(canonicalId)) {
+      const nextRows = [
+        ...prevRows,
+        {
+          canonical_ingredient_id: canonicalId,
+          canonical_name: canonicalName ?? '',
+        },
+      ];
+      const nextSet = new Set(prevSet);
+      nextSet.add(canonicalId);
+      set({ stapleRows: nextRows, staples: nextSet });
     }
     try {
       const response = await authedFetch('/pantry/staples', {
@@ -748,40 +863,69 @@ export const usePantryStore = create<PantryState>()(
         throw new Error('Mark staple failed');
       }
     } catch (err) {
-      set({ staples: prev });
+      set({ stapleRows: prevRows, staples: prevSet });
       throw err;
     }
   },
 
   unmarkStaple: async (canonicalId: string) => {
-    const prev = get().staples;
+    const prevRows = get().stapleRows;
+    const prevSet = get().staples;
+    const nextSet = new Set(prevSet);
+    nextSet.delete(canonicalId);
     set({
-      staples: prev.filter((s) => s.canonical_ingredient_id !== canonicalId),
+      stapleRows: prevRows.filter(
+        (s) => s.canonical_ingredient_id !== canonicalId,
+      ),
+      staples: nextSet,
     });
     try {
-      const response = await authedFetch(
-        `/pantry/staples/${canonicalId}`,
-        { method: 'DELETE' },
-      );
+      const response = await authedFetch(`/pantry/staples/${canonicalId}`, {
+        method: 'DELETE',
+      });
       if (!response.ok) {
         throw new Error('Unmark staple failed');
       }
     } catch (err) {
-      set({ staples: prev });
+      set({ stapleRows: prevRows, staples: prevSet });
       throw err;
     }
   },
 
   isStaple: (canonicalId: string | null | undefined) => {
     if (!canonicalId) return false;
-    return get().staples.some((s) => s.canonical_ingredient_id === canonicalId);
+    return get().staples.has(canonicalId);
   },
     }),
     {
       name: 'dinnertime-pantry',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ items: state.items }),
-      version: 1,
+      // Phase 21-04: staples (as array for JSON safety) + groupingMode are
+      // persisted alongside items. Set<string> rehydrated by onRehydrateStorage.
+      partialize: (state) => ({
+        items: state.items,
+        staples: Array.from(state.staples),
+        groupingMode: state.groupingMode,
+      }),
+      // Pitfall 8 — bump to v2 so pre-21 v1 state hydrates through migrate.
+      version: 2,
+      migrate: (persisted, fromVersion) =>
+        migratePantryPersistState(
+          (persisted ?? {}) as PantryPersistedShape,
+          fromVersion,
+        ) as unknown as PantryState,
+      onRehydrateStorage: () => (state) => {
+        // Convert persisted `staples: string[]` back into Set<string> so the
+        // runtime membership check (isStaple / resolveScanAcceptance) works.
+        if (state) {
+          const raw = state.staples as unknown;
+          if (Array.isArray(raw)) {
+            state.staples = new Set<string>(raw as string[]);
+          } else if (!(raw instanceof Set)) {
+            state.staples = new Set<string>();
+          }
+        }
+      },
     }
   )
 );

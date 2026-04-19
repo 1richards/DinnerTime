@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, ScrollView, ActivityIndicator, Alert, Text } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Alert, Text, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, router } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
@@ -11,6 +11,7 @@ import { DietarySection } from '../../components/settings/DietarySection';
 import { CuisineSection } from '../../components/settings/CuisineSection';
 import { DislikesSection } from '../../components/settings/DislikesSection';
 import { SkillLevelSection } from '../../components/settings/SkillLevelSection';
+import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { colors } from '../../design/tokens';
 
 export default function SettingsScreen() {
@@ -96,6 +97,33 @@ export default function SettingsScreen() {
 
         {/* Cooking Skill */}
         <SkillLevelSection profileId={profile.id} onSaved={handleSaved} />
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Phase 21-05: Pantry intelligence management rows */}
+        <View className="mb-2">
+          <Text className="text-xs font-bold text-warmGray-500 uppercase tracking-wider mb-3">
+            Pantry
+          </Text>
+          <Pressable
+            onPress={() => router.push('/settings/pantry-rules')}
+            className="flex-row items-center py-3 border-b border-warmGray-100"
+            accessibilityRole="button"
+          >
+            <SymbolIcon name="slider.horizontal.3" size="body" tintColor={colors.textSecondary} />
+            <Text className="flex-1 ml-3 text-base text-warmGray-900">Pantry Rules</Text>
+            <SymbolIcon name="chevron.right" size="body" tintColor={colors.textSecondary} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/settings/staples')}
+            className="flex-row items-center py-3"
+            accessibilityRole="button"
+          >
+            <SymbolIcon name="star" size="body" tintColor={colors.textSecondary} />
+            <Text className="flex-1 ml-3 text-base text-warmGray-900">Staples</Text>
+            <SymbolIcon name="chevron.right" size="body" tintColor={colors.textSecondary} />
+          </Pressable>
+        </View>
 
         <View className="border-b border-warmGray-100 my-4" />
 
