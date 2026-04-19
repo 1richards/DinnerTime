@@ -2,6 +2,12 @@ appId: com.dinnertime.app
 name: "07 — pantry: add item manually via scan button sheet"
 tags:
   - phase-19
+# Phase 18 verified: pantry tab filter tabs (All / Fridge / Pantry / Freezer)
+# unchanged. Only the scan-entry LocationPicker was removed in Plan 18-04 —
+# the per-item LocationChip on the review screen is the sole override
+# surface now. Filter pills on the pantry tab itself are untouched because
+# they operate on already-categorized items.
+#
 # Phase 19 update: ScanButton FAB retinted terracotta (colors.brand).
 # PantryItemCard rewritten over shared ItemRow primitive (leading=icon with
 # location glyph, trailing chip for stale/low-confidence). Expand-to-act

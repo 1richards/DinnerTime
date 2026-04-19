@@ -5,6 +5,14 @@ name: "16 — STUB: pantry photo scan (SKIPPED — requires CAMERA)"
 # SKIPPED — requires CAMERA
 # ============================================================
 #
+# Phase 18-04 update: LocationPicker removed. Flow begins directly at
+# camera (no gating step). Tapping the pantry FAB now launches
+# expo-image-picker immediately — the former fridge/pantry/freezer
+# chooser screen is gone. When this flow is run on a real device, the
+# expected path is: Pantry tab → Scan Now → camera viewfinder (no
+# location picker intercept). Per-item location classification happens
+# server-side and is overridable via the chip on the review screen.
+#
 # The pantry scan flow at /scan uses expo-image-picker to capture
 # a photo of the fridge/pantry/freezer. The iOS Simulator's camera
 # returns a simulated still image (the spinning Earth), which does

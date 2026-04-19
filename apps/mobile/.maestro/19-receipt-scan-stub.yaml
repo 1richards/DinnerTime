@@ -1,5 +1,13 @@
 appId: com.dinnertime.app
 name: "19 — bulk import sheet: Camera / Receipt / Instacart"
+# Phase 18-04 update: LocationPicker removed from both scan/receipt and
+# scan/instacart. Flow begins directly at the receipt picker / screenshot
+# picker — no "where do most items go?" gating step. The selectors this
+# flow asserts on (".*Scan Receipt.*", ".*Take Photo.*",
+# ".*Import from Instacart.*", ".*Choose Screenshot.*") are all still
+# rendered by the EmptyState primitive on each screen. No functional
+# change to flow steps; AI classifies per-item location server-side now.
+#
 # Phase 15 update: scan/receipt and scan/instacart now present as modals
 # (Plan 15-02). Native header titles "Scan Receipt" / "Import from Instacart"
 # remain stable — the in-body duplicate title Text was removed per Plan 15-02
