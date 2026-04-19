@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 24-02 (Wave 1 units.ts conversion library) — complete (1/6 plans in Phase 24)
-status: Phase 24 Wave 1 progress — units.ts landed as pure-function module. Parallel plans 24-01 (migrations + canonicalResolver) and 24-03 (seed data) still in-flight on the same wave. 24-04 (vision schema) + 24-05 (reconcileItems) in Wave 2 depend on Quantity contract shipped here.
+current_plan: 24-03 (Wave 1 canonicalResolver 4-stage lookup) — complete
+status: Phase 24 Wave 1 progress — units.ts + canonicalResolver landed. 24-01 (migrations + seed) in-flight on same wave. 24-04 (vision schema) + 24-05 (reconcileItems) in Wave 2 depend on both Quantity contract + canonicalResolver API.
 stopped_at: Completed 24-03 (canonicalResolver 4-stage lookup — GREEN 14/14)
-last_updated: "2026-04-19T17:36:46.890Z"
-last_activity: "2026-04-19 -- Completed 24-02 (units.ts quantity conversion library: pure-function module with areCompatible/convert/add/sanitize, dimension-pure conversion table for imperial-volume/weight + metric-volume/weight + count, no density conversion, 41/41 vitest green, zero external deps, Quantity type is now the shared wire contract for 24-04 vision schema + 24-05 reconcileItems aggregation)"
+last_updated: "2026-04-19T17:38:06.556Z"
+last_activity: "2026-04-19 -- Completed 24-03 (canonicalResolver.ts 4-stage identity resolver: exact canonical → exact alias → Levenshtein ≤ 2 → auto-create candidate, strict REQ-14 ordering, 60s TTL cache with live-append invalidation on candidate INSERT, two-row DP Levenshtein with row-min early-exit, resolveCanonicalBatch dedups input + single canonical fetch across batch, 14/14 vitest green, zero new dependencies)"
 progress:
   total_phases: 25
   completed_phases: 17
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 24 of 25 (AI Vision & Pantry Data-Model Deep Refactor) — IN PROGRESS
-Current Plan: 24-02 (Wave 1 units.ts conversion library) — complete (1/6 plans in Phase 24)
-Status: Phase 24 Wave 1 progress — units.ts landed as pure-function module. Parallel plans 24-01 (migrations + canonicalResolver) and 24-03 (seed data) still in-flight on the same wave. 24-04 (vision schema) + 24-05 (reconcileItems) in Wave 2 depend on Quantity contract shipped here.
-Last activity: 2026-04-19 -- Completed 24-02 (units.ts quantity conversion library: pure-function module with areCompatible/convert/add/sanitize, dimension-pure conversion table for imperial-volume/weight + metric-volume/weight + count, no density conversion, 41/41 vitest green, zero external deps, Quantity type is now the shared wire contract for 24-04 vision schema + 24-05 reconcileItems aggregation)
+Current Plan: 24-03 (Wave 1 canonicalResolver 4-stage lookup) — complete
+Status: Phase 24 Wave 1 progress — units.ts + canonicalResolver landed. 24-01 (migrations + seed) in-flight on same wave. 24-04 (vision schema) + 24-05 (reconcileItems) in Wave 2 depend on both Quantity contract + canonicalResolver API.
+Last activity: 2026-04-19 -- Completed 24-03 (canonicalResolver.ts 4-stage identity resolver: exact canonical → exact alias → Levenshtein ≤ 2 → auto-create candidate, strict REQ-14 ordering, 60s TTL cache with live-append invalidation on candidate INSERT, two-row DP Levenshtein with row-min early-exit, resolveCanonicalBatch dedups input + single canonical fetch across batch, 14/14 vitest green, zero new dependencies)
 
 Progress: [█████████░] 93%
 
