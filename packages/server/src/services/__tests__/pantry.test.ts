@@ -42,7 +42,11 @@ interface TableFixtures {
   // rows already in the table, keyed by synthetic match predicate
   pantry_items: Array<Record<string, unknown>>;
   canonical_ingredients: Array<{ id: string; category: string }>;
-  canonical_category_override: Array<{ canonical_ingredient_id: string; category: string }>;
+  canonical_category_override: Array<{
+    user_id: string;
+    canonical_ingredient_id: string;
+    category: string;
+  }>;
 }
 
 interface Captured {
@@ -289,7 +293,7 @@ describe('reconcileItems — canonical-identity dedup (24-05)', () => {
     const { supabase, captured } = makeSupabase({
       canonical_ingredients: [{ id: 'canon-olive-oil', category: 'condiment' }],
       canonical_category_override: [
-        { canonical_ingredient_id: 'canon-olive-oil', category: 'pantry-staple' },
+        { user_id: 'user-1', canonical_ingredient_id: 'canon-olive-oil', category: 'pantry-staple' } as any,
       ],
     });
 
