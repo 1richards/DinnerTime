@@ -416,18 +416,24 @@ Plans: (not yet planned)
 **UI hint**: yes
 
 ### Phase 21: Pantry Intelligence
-**Goal**: Pantry feels smart — duplicates are caught even when names differ slightly, items are presented in a way that's easy to scan, categorization improves over time by learning from the user, and users can define rules for commonly purchased items so future scans are accurate without manual correction
-**Depends on**: Phase 3, Phase 14, Phase 18
+**Goal**: Pantry feels smart — identity-based dedup (shipped in Phase 24a), user-defined rules + staples for recurring items, silent category learning, improved pantry-tab presentation (4-way grouping, sticky search, stale treatment, compact rows). Criterion #1 (fuzzy dedup) is EXPLICITLY DROPPED — superseded by Phase 24a canonical-identity dedup.
+**Depends on**: Phase 3, Phase 14, Phase 18, Phase 24a (canonical substrate)
 **Requirements**: Pantry UX improvement (post-v1)
 **Success Criteria** (what must be TRUE):
-  1. Smarter deduplication — fuzzy name matching (e.g., "greek yogurt" + "greek yoghurt" + "plain greek yogurt 32oz" roll up to one item); variant normalization (plural/singular, brand vs generic)
-  2. Improved pantry-tab presentation — items grouped by category or location with clear section headers; search works within the pantry; items near expiry/stale are visually distinct
-  3. AI categorization learns from user corrections — when a user re-categorizes an item after scan, that correction is stored and applied to future scans of the same or similar items
-  4. User-defined scan rules — users can add rules like "always call 'skim milk 2%' 'milk'", "treat 'honeycrisp apple' as 'apple'", or "frozen peas always go in freezer". Rules apply to all future scans pre-review
-  5. Commonly purchased items list — users can mark items as staples; staples are auto-accepted on future scans even at lower confidence
-  6. Rules are manageable — list view in Settings, edit/delete/reorder, preview of which recent scans would have been affected
-**Plans**: 0 plans
-Plans: (not yet planned)
+  1. ~~Smarter deduplication — fuzzy name matching~~ (DROPPED — Phase 24a identity dedup supersedes)
+  2. Improved pantry-tab presentation — 4-way grouping toggle (Location/Category/Staples/Recent), sticky search pill, stale treatment (dashed border + opacity when confidence < 0.5), compact ItemRow variant
+  3. AI categorization learns — silent first-correction category override per user (writes to Phase 24a canonical_category_override); aggregator surfaces 2-occurrence-in-30-days repeats as Suggestions in Settings
+  4. User-defined scan rules — two rule types (name-mapping + location-mapping), drag-to-reorder precedence, Settings-only entry, 30-day preview panel
+  5. Commonly purchased items list — staples keyed by canonical_ingredient_id, auto-accept threshold 0.3 (vs default 0.7), mark via row ellipsis + Pantry filter chip + Settings management
+  6. Rules are manageable — Settings → Pantry Rules with edit/delete/drag-reorder + 30-day preview of affected items
+**Plans**: 6 plans
+Plans:
+- [ ] 21-01-PLAN.md — Migrations 00016-00019 (user_staples + user_location_rules + suggested_rules + canonical_scan_counts + promote RPC) + migrations.test.ts contract
+- [ ] 21-02-PLAN.md — TDD services: ruleEvaluator + suggestionAggregator + canonicalPromoter
+- [ ] 21-03-PLAN.md — reconcileItems rule-evaluator integration + 5 new route groups (staples/rules/suggestions/preview/category-override) + fire-and-forget aggregator+promoter on /confirm
+- [ ] 21-04-PLAN.md — Mobile Pantry tab: ItemRow compact variant + PantryItemCard stale treatment + 4-way grouping hook + StickySearchPill + Staples filter chip + pantryStore staples auto-accept + persist migration
+- [ ] 21-05-PLAN.md — Mobile Settings/Rules UI: draggable-flatlist install + pantryStore rules/suggestions actions + settings/pantry-rules.tsx + settings/staples.tsx + PantryItemCard ellipsis Mark-as-staple
+- [ ] 21-06-PLAN.md — Maestro flows 24/25/26 + full suite regression + human UAT checkpoint
 **UI hint**: yes
 
 ### Phase 22: Plan Experience Refactor
