@@ -13,6 +13,62 @@ import type {
   ReviewItem,
   SourceLocation,
 } from '../types/pantry';
+import { reorderByIds, type LocationRule } from '../app/settings/pantryRulesHelpers';
+
+// ── Phase 21-05: rules + suggestions types ──────────────────────────────
+
+/**
+ * Wire shape from GET /pantry/rules — name_mapping rows.
+ * Note: canonical_ingredients join is optional; we tolerate its absence.
+ */
+export interface NameMappingRule {
+  id: string;
+  alias_name: string;
+  canonical_ingredient_id: string;
+  canonical_ingredients?: { canonical_name: string };
+}
+
+export interface RulesState {
+  name_mapping: NameMappingRule[];
+  location_mapping: LocationRule[];
+}
+
+export interface SuggestedRule {
+  id: string;
+  rule_type: 'name_mapping' | 'location_mapping';
+  payload: Record<string, unknown>;
+  occurrence_count: number;
+  first_seen: string;
+  last_seen: string;
+}
+
+/**
+ * Phase 21-05: staple wire shape. GET /pantry/staples returns each row as
+ * `{canonical_ingredient_id, created_at, canonical_ingredients: {canonical_name}}`
+ * via the supabase join. We store the flattened {id,name} shape for rendering.
+ *
+ * 21-04 will own the primary staples surface (Set<string> + auto-accept
+ * threshold during scan). 21-05 needs just enough to render the Staples screen
+ * + wire the PantryItemCard ellipsis "Mark as staple" action. When 21-04 lands
+ * it can refine the state shape without breaking this plan's callers (we keep
+ * `isStaple(id)` as the canonical read API).
+ */
+export interface StapleRow {
+  canonical_ingredient_id: string;
+  canonical_name: string;
+}
+
+export type CreateRuleInput =
+  | {
+      rule_type: 'name_mapping';
+      alias_name: string;
+      target_canonical_id: string;
+    }
+  | {
+      rule_type: 'location_mapping';
+      canonical_ingredient_id: string;
+      source_location: 'fridge' | 'pantry' | 'freezer';
+    };
 
 interface PantryState {
   items: PantryItem[];
@@ -20,7 +76,26 @@ interface PantryState {
   isScanning: boolean;
   isLoading: boolean;
 
+  // Phase 21-05 extensions
+  rules: RulesState;
+  suggestions: SuggestedRule[];
+  staples: StapleRow[];
+
   loadItems: (profileId: string) => Promise<void>;
+
+  // Phase 21-05 actions
+  loadRules: () => Promise<void>;
+  createRule: (input: CreateRuleInput) => Promise<void>;
+  deleteRule: (id: string) => Promise<void>;
+  reorderRules: (newIdOrder: string[]) => Promise<void>;
+  loadSuggestions: () => Promise<void>;
+  acceptSuggestion: (id: string) => Promise<void>;
+  dismissSuggestion: (id: string) => Promise<void>;
+
+  loadStaples: () => Promise<void>;
+  markStaple: (canonicalId: string, canonicalName?: string) => Promise<void>;
+  unmarkStaple: (canonicalId: string) => Promise<void>;
+  isStaple: (canonicalId: string | null | undefined) => boolean;
   /** Phase 18-03: AI infers per-item source_location; no session-level lock. */
   startScan: (base64Image: string) => Promise<void>;
   startBatchScan: (base64Images: string[]) => Promise<void>;
@@ -174,6 +249,28 @@ function mapScanResultsToReview(
   });
 }
 
+/**
+ * Phase 21-05 authedFetch helper — thin wrapper that attaches the bearer token
+ * and resolves the /api/v1 prefix. Mirrors mealPlanStore / shoppingStore
+ * conventions (STATE.md notes this is the canonical pattern for all stores).
+ */
+async function authedFetch(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+    ...((init.headers as Record<string, string>) ?? {}),
+  };
+  return fetch(`${getApiBaseUrl()}/api/v1${path}`, {
+    ...init,
+    method: init.method ?? 'GET',
+    headers,
+  });
+}
+
 export const usePantryStore = create<PantryState>()(
   persist(
     (set, get) => ({
@@ -181,6 +278,11 @@ export const usePantryStore = create<PantryState>()(
   scanResults: [],
   isScanning: false,
   isLoading: false,
+
+  // Phase 21-05 extensions — rules/suggestions/staples state
+  rules: { name_mapping: [], location_mapping: [] },
+  suggestions: [],
+  staples: [],
 
   loadItems: async (profileId: string) => {
     set({ isLoading: true });
@@ -478,6 +580,201 @@ export const usePantryStore = create<PantryState>()(
       set({ items: previousItems });
       throw err;
     }
+  },
+
+  // ── Phase 21-05: rules + suggestions actions ────────────────────────────
+
+  loadRules: async () => {
+    const response = await authedFetch('/pantry/rules', { method: 'GET' });
+    if (!response.ok) {
+      throw new Error('Failed to load rules');
+    }
+    const data = (await response.json()) as RulesState;
+    set({
+      rules: {
+        name_mapping: data.name_mapping ?? [],
+        location_mapping: (data.location_mapping ?? []).map((r) => ({
+          ...r,
+          canonical_name:
+            (r as LocationRule & {
+              canonical_ingredients?: { canonical_name: string };
+            }).canonical_ingredients?.canonical_name ?? r.canonical_name,
+        })),
+      },
+    });
+  },
+
+  createRule: async (input: CreateRuleInput) => {
+    const response = await authedFetch('/pantry/rules', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Create rule failed' }));
+      throw new Error((err as { error?: string }).error ?? 'Create rule failed');
+    }
+    // Reload so the new rule (with server-assigned id + precedence) appears.
+    await get().loadRules();
+  },
+
+  deleteRule: async (id: string) => {
+    // Optimistic remove from both tables (we don't know which owns the id).
+    const prev = get().rules;
+    set({
+      rules: {
+        name_mapping: prev.name_mapping.filter((r) => r.id !== id),
+        location_mapping: prev.location_mapping.filter((r) => r.id !== id),
+      },
+    });
+    try {
+      const response = await authedFetch(`/pantry/rules/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Delete rule failed');
+      }
+    } catch (err) {
+      // Rollback
+      set({ rules: prev });
+      throw err;
+    }
+  },
+
+  reorderRules: async (newIdOrder: string[]) => {
+    const prev = get().rules;
+    const reordered = reorderByIds(prev.location_mapping, newIdOrder);
+    // Optimistic local reorder
+    set({
+      rules: { ...prev, location_mapping: reordered },
+    });
+    try {
+      const response = await authedFetch('/pantry/rules/reorder', {
+        method: 'PATCH',
+        body: JSON.stringify({ rule_ids: newIdOrder }),
+      });
+      if (!response.ok) {
+        throw new Error('Reorder rules failed');
+      }
+    } catch (err) {
+      set({ rules: prev });
+      throw err;
+    }
+  },
+
+  loadSuggestions: async () => {
+    const response = await authedFetch('/pantry/suggestions', { method: 'GET' });
+    if (!response.ok) {
+      throw new Error('Failed to load suggestions');
+    }
+    const body = (await response.json()) as { data?: SuggestedRule[] };
+    set({ suggestions: body.data ?? [] });
+  },
+
+  acceptSuggestion: async (id: string) => {
+    const prev = get().suggestions;
+    // Optimistic remove
+    set({ suggestions: prev.filter((s) => s.id !== id) });
+    try {
+      const response = await authedFetch(`/pantry/suggestions/${id}/accept`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Accept suggestion failed');
+      }
+      // Successful accept writes a new rule — reload rules to surface it.
+      await get().loadRules();
+    } catch (err) {
+      set({ suggestions: prev });
+      throw err;
+    }
+  },
+
+  dismissSuggestion: async (id: string) => {
+    const prev = get().suggestions;
+    set({ suggestions: prev.filter((s) => s.id !== id) });
+    try {
+      const response = await authedFetch(`/pantry/suggestions/${id}/dismiss`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        throw new Error('Dismiss suggestion failed');
+      }
+    } catch (err) {
+      set({ suggestions: prev });
+      throw err;
+    }
+  },
+
+  // ── Phase 21-05: staples actions (min surface to support staples screen +
+  // PantryItemCard ellipsis). 21-04 will own the primary staples data path
+  // (Set<canonicalId> + auto-accept threshold in startBatchScan). This shape
+  // stays forward-compatible: isStaple(id) is the stable read API. ────────
+
+  loadStaples: async () => {
+    const response = await authedFetch('/pantry/staples', { method: 'GET' });
+    if (!response.ok) {
+      throw new Error('Failed to load staples');
+    }
+    const body = (await response.json()) as {
+      data?: Array<{
+        canonical_ingredient_id: string;
+        canonical_ingredients?: { canonical_name?: string };
+      }>;
+    };
+    const rows: StapleRow[] = (body.data ?? []).map((row) => ({
+      canonical_ingredient_id: row.canonical_ingredient_id,
+      canonical_name: row.canonical_ingredients?.canonical_name ?? '',
+    }));
+    set({ staples: rows });
+  },
+
+  markStaple: async (canonicalId: string, canonicalName?: string) => {
+    const prev = get().staples;
+    // Optimistic append (dedup on canonical_ingredient_id).
+    if (!prev.some((s) => s.canonical_ingredient_id === canonicalId)) {
+      set({
+        staples: [
+          ...prev,
+          { canonical_ingredient_id: canonicalId, canonical_name: canonicalName ?? '' },
+        ],
+      });
+    }
+    try {
+      const response = await authedFetch('/pantry/staples', {
+        method: 'POST',
+        body: JSON.stringify({ canonical_ingredient_id: canonicalId }),
+      });
+      if (!response.ok) {
+        throw new Error('Mark staple failed');
+      }
+    } catch (err) {
+      set({ staples: prev });
+      throw err;
+    }
+  },
+
+  unmarkStaple: async (canonicalId: string) => {
+    const prev = get().staples;
+    set({
+      staples: prev.filter((s) => s.canonical_ingredient_id !== canonicalId),
+    });
+    try {
+      const response = await authedFetch(
+        `/pantry/staples/${canonicalId}`,
+        { method: 'DELETE' },
+      );
+      if (!response.ok) {
+        throw new Error('Unmark staple failed');
+      }
+    } catch (err) {
+      set({ staples: prev });
+      throw err;
+    }
+  },
+
+  isStaple: (canonicalId: string | null | undefined) => {
+    if (!canonicalId) return false;
+    return get().staples.some((s) => s.canonical_ingredient_id === canonicalId);
   },
     }),
     {
