@@ -42,4 +42,4 @@ CREATE POLICY scan_events_insert
 -- No DELETE policy (events are immutable).
 
 COMMENT ON TABLE scan_events IS
-  'Phase 24a. Append-only log of every scan across all 4 variants. field_confidence JSONB shape: [{item_index, name, quantity, unit, category}]. Survives pantry-item deletion for future ML training. No pass_number (criterion #3 descoped).';
+  'Phase 24a. Append-only log of every scan across all 4 variants. field_confidence JSONB shape: [{item_index, name, quantity, unit, category}]. Survives pantry-item deletion for future ML training. Multi-pass reasoning (criterion #3) deliberately descoped.';
