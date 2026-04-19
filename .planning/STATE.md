@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 24-01 (Wave 1 canonical substrate migrations + seed) — complete
-status: Phase 24 Wave 1 complete — migrations 00011-00015 + 366 canonicals + 1587 aliases + units.ts + canonicalResolver all landed. Ready for Wave 2 (24-04 vision schema, 24-05 reconcileItems rewrite).
-stopped_at: "Completed 24-01-PLAN.md (Phase 24a substrate: 5 migrations + 366 canonicals + 1587 aliases + 36 contract tests)"
-last_updated: "2026-04-19T17:46:19.341Z"
-last_activity: "2026-04-19 -- Completed 24-03 (canonicalResolver.ts 4-stage identity resolver: exact canonical → exact alias → Levenshtein ≤ 2 → auto-create candidate, strict REQ-14 ordering, 60s TTL cache with live-append invalidation on candidate INSERT, two-row DP Levenshtein with row-min early-exit, resolveCanonicalBatch dedups input + single canonical fetch across batch, 14/14 vitest green, zero new dependencies)"
+current_plan: 24-04 (Wave 2 vision tool schema — nested Quantity + per-field confidence) — complete
+status: Phase 24 Wave 2 in progress — 24-04 vision schema landed; next 24-05 reconcileItems rewrite + scan_events write, then 24-06 mobile inline confidence hints.
+stopped_at: "Completed 24-04-PLAN.md (vision tool schema: nested quantity + per-field confidence, 40 vision tests green)"
+last_updated: "2026-04-19T17:57:00.892Z"
+last_activity: "2026-04-19 -- Completed 24-04 (vision.ts ScanResult extended with Quantity + FieldConfidence; foodItemsSchema nests quantity {value,unit,system} + confidence {name,quantity,unit,category}; normalizeScanItems sanitizes via units.sanitize + clamp01; legacy flat shapes still accepted for backward-compat; overall confidence = min(fieldConfidence.*) preserves Phase 14 0.7 threshold gate; prompts edited in place — 24b prompt-versioning deferred; 40/40 vision tests green, 517/518 server suite green, 0 new tsc errors)"
 progress:
   total_phases: 25
   completed_phases: 17
   total_plans: 76
-  completed_plans: 73
+  completed_plans: 74
   percent: 93
 ---
 
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 24 of 25 (AI Vision & Pantry Data-Model Deep Refactor) — IN PROGRESS
-Current Plan: 24-01 (Wave 1 canonical substrate migrations + seed) — complete
-Status: Phase 24 Wave 1 complete — migrations 00011-00015 + 366 canonicals + 1587 aliases + units.ts + canonicalResolver all landed. Ready for Wave 2 (24-04 vision schema, 24-05 reconcileItems rewrite).
-Last activity: 2026-04-19 -- Completed 24-01 (Phase 24a substrate: 5 forward-only migrations 00011-00015, 366 canonical ingredient seed + 1587 alias seed spliced via DO blocks, pantry_items.canonical_ingredient_id nullable FK, non-unique dedup index, canonical_category_override per-user table, scan_events append-only log with no pass_number, quantity JSONB with {value,unit,system} default, 36 new migrations.test.ts contract assertions all green)
+Current Plan: 24-04 (Wave 2 vision tool schema — nested Quantity + per-field confidence) — complete
+Status: Phase 24 Wave 2 in progress — 24-04 vision schema landed; ready for 24-05 reconcileItems rewrite + scan_events write, then 24-06 mobile inline confidence hints.
+Last activity: 2026-04-19 -- Completed 24-04 (vision.ts ScanResult extended with Quantity + FieldConfidence; foodItemsSchema nests quantity {value,unit,system} + confidence {name,quantity,unit,category}; normalizeScanItems sanitizes via units.sanitize + clamp01; legacy flat shapes still accepted for backward-compat; overall confidence = min(fieldConfidence.*) preserves Phase 14 0.7 threshold gate; prompts edited in place — 24b prompt-versioning deferred; 40/40 vision tests green, 517/518 server suite green, 0 new tsc errors)
 
 Progress: [█████████░] 93%
 
@@ -126,6 +126,7 @@ Progress: [█████████░] 93%
 | Phase 24 P02 | 3min | 2 tasks | 2 files |
 | Phase 24 P03 | 3.5min | 2 tasks | 2 files |
 | Phase 24 P01 | 13min | 3 tasks | 9 files |
+| Phase 24 P04 | 6min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -389,6 +390,10 @@ Recent decisions affecting current work:
 - [Phase 24-01]: Seed JSON + migration DO block pattern: author JSON in packages/server/src/data/, splice via helper script, preserve JSON-as-source-of-truth for diff readability
 - [Phase 24-01]: scan_events append-only via RLS construction — only SELECT + INSERT policies; UPDATE/DELETE omitted. No pass_number column (criterion #3 descoped).
 - [Phase 24-01]: pantry_items.canonical_ingredient_id as nullable FK ON DELETE SET NULL; dedup index (profile_id, canonical_ingredient_id, source_location) NOT UNIQUE so incompatible-unit rescans can produce multiple rows
+- [Phase 24-04]: Task 2 collapsed into Task 1 — identifyReceiptItems has always lived inside vision.ts sharing foodItemsSchema + normalizeScanItems; plan's file-path assumption was wrong; Task 1's schema change propagates to all four scan flows via the single source of truth (Rule 3 scope adjustment)
+- [Phase 24-04]: Overall legacy ScanResult.confidence = Math.min(fieldConfidence.*) so Phase 14's 0.7 threshold gate continues filtering low-confidence items without a consumer rewrite; surfaces worst-case attribute
+- [Phase 24-04]: Missing per-field confidence defaults to 0.5 (not 1.0) — surface uncertainty instead of hiding it; matches < 0.7 dashed-underline UI gate (24-06)
+- [Phase 24-04]: Backward-compat via raw-shape sniffing ('value' in q → new nested shape; typeof q === 'number' → legacy flat); same ScanResult output either way; clean rollout without dual code path
 
 ### Pending Todos
 
@@ -432,6 +437,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T17:46:19.338Z
-Stopped at: Completed 24-01-PLAN.md (Phase 24a substrate: 5 migrations + 366 canonicals + 1587 aliases + 36 contract tests)
+Last session: 2026-04-19T17:56:47.014Z
+Stopped at: Completed 24-04-PLAN.md (vision tool schema: nested quantity + per-field confidence, 40 vision tests green)
 Resume file: None

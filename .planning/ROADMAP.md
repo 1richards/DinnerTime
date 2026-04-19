@@ -565,10 +565,10 @@ Plans: (not yet planned)
 
 **Plans**: 6 plans (Phase 24a — data-model + dedup, criteria 6-23)
 Plans:
-- [ ] 24-01-PLAN.md — Migrations 00011-00015 + canonical (~300) + alias (~2000-3000) seed JSONs + migrations.test.ts extension
+- [x] 24-01-PLAN.md — Migrations 00011-00015 + canonical (~300) + alias (~2000-3000) seed JSONs + migrations.test.ts extension
 - [x] 24-02-PLAN.md — units.ts unit conversion library (TDD) — REQ-16/17
 - [x] 24-03-PLAN.md — canonicalResolver.ts: exact canonical → alias → fuzzy → candidate auto-create (TDD) — REQ-07/09/14
-- [ ] 24-04-PLAN.md — vision.ts + identifyReceiptItems.ts tool schema extensions (nested Quantity + nested FieldConfidence) — REQ-16/19 at AI boundary
+- [x] 24-04-PLAN.md — vision.ts + identifyReceiptItems.ts tool schema extensions (nested Quantity + nested FieldConfidence) — REQ-16/19 at AI boundary
 - [ ] 24-05-PLAN.md — Rewritten reconcileItems (canonical-identity dedup + quantity aggregation) + scan_events write-path on 4 scan flows — REQ-13/15/18/19/23
 - [ ] 24-06-PLAN.md — Mobile ScanResult mirror + inline low-confidence UI on ReviewItemRow + Maestro smoke UAT checkpoint
 
