@@ -1,0 +1,85 @@
+appId: com.dinnertime.app
+name: "26 — settings: pantry rules create + delete"
+tags:
+  - phase-21
+# Proves the Phase 21-05 Settings -> Pantry Rules surface end-to-end:
+#   - Settings tab has a "Pantry Rules" row routing to /settings/pantry-rules.
+#   - Add Rule FAB (testID="add-rule-fab") opens the inline RuleEditorModal.
+#   - Canonical search via supabase direct populates a pickable row.
+#   - 30-day preview panel renders after canonical is selected.
+#   - Save persists the new rule; delete (testID="rule-delete-{alias|name}")
+#     removes it, leaving the user in a clean state.
+#
+# testID contract from 21-05 Task 2:
+#   - add-rule-fab
+#   - rule-delete-{canonical_name}  (location mappings)
+#   - rule-delete-{alias_name}      (name mappings)
+---
+- launchApp:
+    clearState: false
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: ".*Open.*"
+    optional: true
+- tapOn:
+    text: ".*Continue.*"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+
+- runFlow: _ensure-logged-in.yaml
+
+# 1. Navigate: Settings tab -> Pantry Rules row.
+- tapOn:
+    text: ".*Settings.*"
+- tapOn:
+    text: "Pantry Rules"
+- extendedWaitUntil:
+    visible:
+      text: "Pantry Rules"
+    timeout: 10000
+- takeScreenshot: 26-01-pantry-rules-screen
+
+# 2. Open the Add Rule editor via the FAB testID (small target — id is more
+#    reliable than coordinates here).
+- tapOn:
+    id: "add-rule-fab"
+- takeScreenshot: 26-02-rule-editor-open
+
+# 3. Choose Name Mapping rule type.
+- tapOn:
+    text: "Name mapping"
+- takeScreenshot: 26-03-name-mapping-selected
+
+# 4. Enter an alias and search for a canonical.
+- inputText: "skim milk"
+- tapOn:
+    text: "Select canonical"
+    optional: true
+- inputText: "milk"
+- takeScreenshot: 26-04-canonical-search-results
+
+# 5. Pick the canonical result labeled "milk". The 30-day preview should render.
+- tapOn:
+    text: "milk"
+- extendedWaitUntil:
+    visible:
+      text: "last 30 days"
+    timeout: 10000
+- takeScreenshot: 26-05-preview-rendered
+
+# 6. Save the rule. It surfaces in the Name Mappings list.
+- tapOn:
+    text: "Save"
+- extendedWaitUntil:
+    visible:
+      text: "skim milk"
+    timeout: 10000
+- takeScreenshot: 26-06-rule-saved
+
+# 7. Delete the rule via its stable testID (contract from 21-05). This keeps
+#    the test re-runnable by returning the user to the pre-test state.
+- tapOn:
+    id: "rule-delete-skim milk"
+- takeScreenshot: 26-07-rule-deleted

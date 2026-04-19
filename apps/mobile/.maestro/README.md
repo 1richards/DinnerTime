@@ -68,6 +68,9 @@ Screenshots land in `~/.maestro/tests/<run-id>/` and are also embedded in the ru
 | `21-modal-dismiss.yaml` | Scan modal presents from pantry FAB and dismisses via swipe-down (Phase 15). | — |
 | `22-dirty-form-guard.yaml` | Edit recipe + attempt back swipe triggers Unsaved changes Alert (Phase 15). **Manual-only if flaky** (see below). | ≥1 recipe |
 | `23-design-buttons-visual.yaml` | Phase 19 visual regression — tours every FAB + primary CTA + destructive button surface capturing screenshots for Gate A. | — |
+| `24-pantry-staples.yaml` | PantryItemCard ellipsis → "Mark as staple" → Staples filter chip (Phase 21-04/05). | ≥1 pantry item |
+| `25-pantry-search-pill.yaml` | Pantry tab sticky search pill → /search modal → query → dismiss (Phase 21-04). | — |
+| `26-pantry-rules.yaml` | Settings → Pantry Rules → Add Rule FAB → canonical pick → 30-day preview → save → delete (Phase 21-05). | network + canonical_ingredients seeded |
 
 ## Phase 15 note — manual-only flows
 

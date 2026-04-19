@@ -1,0 +1,68 @@
+appId: com.dinnertime.app
+name: "24 — pantry: mark as staple + staples filter chip"
+tags:
+  - phase-21
+# Proves the Phase 21-05 PantryItemCard ellipsis -> ActionSheetIOS ->
+# "Mark as staple" flow, plus the Phase 21-04 Staples filter chip surface.
+#
+# Contract points locked by source tests (21-05 Task 3):
+#   - testID="pantry-item-ellipsis-{index}" on PantryItemCard
+#   - "Mark as staple" / "Remove from staples" action labels from ActionSheetIOS
+#   - Staples filter chip rendered when groupingMode === 'staples' (21-04)
+#
+# UAT prerequisite: pantry has at least one item from seed or a prior scan.
+# If pantry is empty, this flow exits early after the first screenshot — the
+# ellipsis testID won't resolve and the run will fail fast with a clear error.
+---
+- launchApp:
+    clearState: false
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: ".*Open.*"
+    optional: true
+- tapOn:
+    text: ".*Continue.*"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+
+- runFlow: _ensure-logged-in.yaml
+
+# 1. Land on Pantry tab.
+- tapOn:
+    text: ".*Pantry.*"
+- extendedWaitUntil:
+    visible:
+      text: ".*Pantry.*"
+    timeout: 10000
+- takeScreenshot: 24-01-pantry-before-staple
+
+# 2. Open ellipsis on the first pantry row. testID contract from 21-05.
+- tapOn:
+    id: "pantry-item-ellipsis-0"
+- takeScreenshot: 24-02-ellipsis-actionsheet-open
+
+# 3. Mark as staple.
+- tapOn:
+    text: "Mark as staple"
+- takeScreenshot: 24-03-marked-staple
+
+# 4. Switch to the Staples filter chip (21-04 grouping mode).
+- tapOn:
+    text: "Staples"
+- takeScreenshot: 24-04-staples-filter-active
+
+# 5. A pantry item row should still be visible under the Staples filter.
+#    We use the stable ellipsis testID (pantry-item-ellipsis-0 is re-rendered
+#    for the first staples row) rather than the item name, which is AI-generated.
+- assertVisible:
+    id: "pantry-item-ellipsis-0"
+- takeScreenshot: 24-05-staples-row-present
+
+# 6. Unmark to leave clean state for re-runs.
+- tapOn:
+    id: "pantry-item-ellipsis-0"
+- tapOn:
+    text: "Remove from staples"
+- takeScreenshot: 24-06-staple-removed

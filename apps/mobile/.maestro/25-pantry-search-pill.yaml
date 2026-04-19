@@ -1,0 +1,56 @@
+appId: com.dinnertime.app
+name: "25 — pantry: sticky search pill -> /search modal"
+tags:
+  - phase-21
+# Proves the Phase 21-04 StickySearchPill on the Pantry tab:
+#   - Pill is rendered above the pantry list with placeholder "Search pantry".
+#   - Tapping routes to the /search modal (shared search route, pantry context).
+#   - Typing a query shows results without z-order flash on dismiss.
+#
+# Mirrors the Phase 19-05 pattern used by 20-kitchen-segment-toggle.yaml —
+# same pill primitive, different context.
+---
+- launchApp:
+    clearState: false
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: ".*Open.*"
+    optional: true
+- tapOn:
+    text: ".*Continue.*"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+
+- runFlow: _ensure-logged-in.yaml
+
+# 1. Land on Pantry.
+- tapOn:
+    text: ".*Pantry.*"
+- assertVisible:
+    text: "Search pantry"
+- takeScreenshot: 25-01-pantry-pill-visible
+
+# 2. Tap the pill -> /search modal opens.
+- tapOn:
+    text: "Search pantry"
+- extendedWaitUntil:
+    visible:
+      text: "Search"
+    timeout: 10000
+- takeScreenshot: 25-02-search-modal-open
+
+# 3. Type a common ingredient — results list populates without hitting AI.
+- inputText: "milk"
+- takeScreenshot: 25-03-search-query-entered
+
+# 4. Dismiss via swipe-down (expo-router 55 modal presentation).
+- swipe:
+    start: "50%,10%"
+    end: "50%,90%"
+- extendedWaitUntil:
+    visible:
+      text: "Search pantry"
+    timeout: 10000
+- takeScreenshot: 25-04-pill-visible-after-dismiss
