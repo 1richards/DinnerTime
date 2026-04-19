@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 21-04 (Wave 3 mobile — ItemRow compact + PantryItemCard stale treatment + usePantryItemsGrouped 4-way + pantryStore staples Set + STAPLE_THRESHOLD 0.3 + persist v2 migration + Pantry tab GroupingMode segmented control + StickySearchPill + Staples filter chip) — complete
 status: Phase 21 Wave 3 pantry-tab presentation landed — ItemRow size='compact' py-2 variant, PantryItemCard dashed-border stale treatment (<0.5), usePantryItemsGrouped 4-way hook, pantryStore staples Set<string> + STAPLE_THRESHOLD 0.3 + persist v2 migration, Pantry tab segmented control + StickySearchPill + Staples chip. 37/37 new tests GREEN; tsc clean; 21-05 Settings screens unblocked.
-stopped_at: Completed 21-04-PLAN.md
-last_updated: "2026-04-19T19:48:42.349Z"
+stopped_at: Completed 21-06-PLAN.md
+last_updated: "2026-04-19T19:53:09.301Z"
 last_activity: 2026-04-19 -- Completed 21-04 (mobile pantry-tab presentation + staples data path; 37/37 new GREEN; tsc clean; ready for 21-05 Settings screens)
 progress:
   total_phases: 25
-  completed_phases: 18
+  completed_phases: 19
   total_plans: 82
-  completed_plans: 81
+  completed_plans: 82
   percent: 98
 ---
 
@@ -135,6 +135,7 @@ Progress: [██████████] 98%
 | Phase 21 P03 | 10min | 2 tasks | 4 files |
 | Phase 21 P04 | 12min | 3 tasks | 12 files |
 | Phase 21 P05 | 13min | 4 tasks | 12 files |
+| Phase 21 P06 | 1min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -434,6 +435,8 @@ Recent decisions affecting current work:
 - [Phase 21]: Phase 21-05: pantryStore authedFetch helper — 10 new actions (7 rules/suggestions + 3 staples*) all route through authedFetch that adds /api/v1 prefix + Bearer token; optimistic + rollback on every mutation; acceptSuggestion reloads rules on success
 - [Phase 21]: Phase 21-05: Source-level contract test pattern for hook-heavy screens — component-as-function fails on useState under vitest node env; instead readFileSync(source) + substring assertions lock testIDs + store selectors + imports; mirrors Phase 21-04 PantryItemCard pattern
 - [Phase 21]: Phase 21-05: testID contract for Maestro 21-06 complete — add-rule-fab, rule-delete-{name|alias}, add-staple-fab, staple-remove-{name}, pantry-item-ellipsis-{index}; DraggableFlatList height-capped at min(rules×56, 320) to avoid nested pan responder with outer ScrollView
+- [Phase 21]: Auto-approved Phase 21-06 human-verify UAT checkpoint under auto-chain — testID contract tests 21/21 GREEN + typecheck clean + flows structurally sound; live sim UAT deferred to user (dev-client rebuild session)
+- [Phase 21]: Maestro flows 24/25/26 authored with testID-first selectors (add-rule-fab, rule-delete-{alias}, pantry-item-ellipsis-{index}) per CLAUDE.md UAT regex-avoidance guidance
 
 ### Pending Todos
 
@@ -477,6 +480,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T19:47:56.245Z
-Stopped at: Completed 21-04-PLAN.md
+Last session: 2026-04-19T19:53:04.590Z
+Stopped at: Completed 21-06-PLAN.md
 Resume file: None
