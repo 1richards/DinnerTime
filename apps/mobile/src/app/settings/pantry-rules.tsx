@@ -11,12 +11,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList from 'react-native-draggable-flatlist';
-import { usePantryStore, type SuggestedRule } from '../../stores/pantryStore';
+import { usePantryStore } from '../../stores/pantryStore';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { supabase } from '../../lib/supabase';
 import { colors } from '../../design/tokens';
+import { renderSuggestionSummary } from './pantryRulesHelpers';
 
 /**
  * Phase 21-05 Settings → Pantry Rules screen.
@@ -34,17 +35,6 @@ type RuleType = 'name_mapping' | 'location_mapping';
 interface CanonicalRow {
   id: string;
   canonical_name: string;
-}
-
-function renderSuggestionSummary(s: SuggestedRule): string {
-  const payload = s.payload ?? {};
-  if (s.rule_type === 'location_mapping') {
-    const name = (payload as { item_name?: string }).item_name ?? 'item';
-    const loc = (payload as { user_location?: string }).user_location ?? '?';
-    return `Always put "${name}" in ${loc}`;
-  }
-  const alias = (payload as { alias_name?: string }).alias_name ?? 'alias';
-  return `Treat "${alias}" as a known ingredient`;
 }
 
 export default function PantryRulesScreen() {
