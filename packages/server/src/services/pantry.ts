@@ -22,6 +22,37 @@ export interface ConfirmedItem {
   source_location: SourceLocation;
 }
 
+/**
+ * Database row shape for pantry_items. Consumed by downstream services
+ * (shoppingList, ingredientMatching, mealPlanner).
+ *
+ * NOTE on `quantity`: DB migration 00015 (24-01) changed this column to JSONB
+ * `{value, unit, system}`. Legacy pre-24a services still read it as a flat
+ * number. The type signature stays `number` for consumer compatibility; a
+ * future plan (Phase 21 or beyond) migrates those consumers to use units.ts
+ * sanitize() at the JSONB boundary. Phase 24-05 (this plan) only rewrote the
+ * pantry-write path (reconcileItems); read-side refactors are deferred.
+ */
+export interface PantryItem {
+  id: string;
+  profile_id: string;
+  name: string;
+  normalized_name: string;
+  quantity: number;
+  unit: string;
+  category: string;
+  source_location: string;
+  /** Phase 18: forward-compatible JSONB metadata. */
+  item_attributes?: Record<string, unknown> | null;
+  /** Phase 24-01 nullable FK. Legacy pre-24a rows have NULL (REQ-23). */
+  canonical_ingredient_id?: string | null;
+  confidence: number;
+  status: string;
+  last_seen_at: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 const VALID_SOURCE_LOCATIONS = new Set<string>(SOURCE_LOCATIONS);
 
 export interface ReconcileResult {

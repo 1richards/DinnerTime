@@ -1,7 +1,12 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth.js';
-import { identifyFoodItems, identifyFoodItemsBatch, identifyReceiptItems } from '../services/vision.js';
-import { reconcileItems, type ConfirmedItem } from '../services/pantry.js';
+import {
+  identifyFoodItems,
+  identifyFoodItemsBatch,
+  identifyReceiptItems,
+  type ScanResult,
+} from '../services/vision.js';
+import { reconcileItems } from '../services/pantry.js';
 import { SOURCE_LOCATIONS, type SourceLocation } from '../services/sourceLocation.js';
 
 const pantry = new Hono();
@@ -11,10 +16,60 @@ pantry.use('*', authMiddleware);
 const VALID_LOCATIONS = new Set<string>(SOURCE_LOCATIONS);
 
 /**
+ * Phase 24-05 scan_events writer.
+ *
+ * Called after each of the 4 scan flows returns a ScanResult[]. Writes a
+ * single immutable row to `scan_events` capturing:
+ *   - scan_variant: which flow produced this scan
+ *   - raw_ai_output: the items as returned from vision.ts (vision doesn't
+ *     expose pre-normalize raw tool output; final_items serves as both the
+ *     audit artifact and the pre-reconcile snapshot. Documented in plan.)
+ *   - final_items: the post-normalize, PRE-canonical ScanResult[] (no
+ *     canonical_ingredient_id resolved yet — that happens at /confirm).
+ *   - field_confidence: flattened per-item confidence scores for quick JSONB
+ *     indexing and future ML training signal.
+ *
+ * Fire-and-forget: a scan_events write failure MUST NOT break the scan.
+ * Auth/vision errors are still surfaced to the user; telemetry is best-effort.
+ */
+type ScanVariant = 'camera' | 'batch' | 'receipt' | 'instacart';
+
+async function writeScanEvent(
+  supabase: any,
+  userId: string,
+  variant: ScanVariant,
+  items: ScanResult[],
+): Promise<void> {
+  const fieldConfidence = items.map((it, idx) => ({
+    item_index: idx,
+    name: it.fieldConfidence?.name ?? 0,
+    quantity: it.fieldConfidence?.quantity ?? 0,
+    unit: it.fieldConfidence?.unit ?? 0,
+    category: it.fieldConfidence?.category ?? 0,
+  }));
+
+  try {
+    await supabase.from('scan_events').insert({
+      user_id: userId,
+      scan_variant: variant,
+      raw_ai_output: items, // vision.ts does not expose pre-normalize raw; items IS the audit snapshot
+      final_items: items,
+      field_confidence: fieldConfidence,
+    });
+  } catch (err) {
+    console.warn('[scan_events] write failed — continuing', err);
+  }
+}
+
+/**
  * GET / - List pantry items for authenticated user.
  * Query params:
  *   ?location=fridge|pantry|freezer  - filter by source location
  *   ?include_used=true               - include used/depleted items (default: available only)
+ *
+ * Phase 24-05 (REQ-23): returns rows regardless of canonical_ingredient_id
+ * NULL-ness. Legacy (pre-Phase-24) rows with canonical_ingredient_id=NULL
+ * stay readable alongside new canonical FK rows. Forward-only — no backfill.
  */
 pantry.get('/', async (c) => {
   const supabase = c.get('supabase');
@@ -51,8 +106,11 @@ pantry.get('/', async (c) => {
  *
  * Phase 18: source_location no longer in body — AI infers per item and
  * STATIC_MAP post-corrects known entries.
+ * Phase 24-05: writes one scan_events row with scan_variant='camera'.
  */
 pantry.post('/scan', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
   const body = await c.req.json<{ image?: string }>();
 
   if (!body.image) {
@@ -61,6 +119,7 @@ pantry.post('/scan', async (c) => {
 
   try {
     const items = await identifyFoodItems(body.image);
+    await writeScanEvent(supabase, user.id, 'camera', items);
     return c.json({ data: items });
   } catch (error) {
     console.error('[pantry/scan] Vision error:', error);
@@ -76,6 +135,7 @@ pantry.post('/scan', async (c) => {
  * Phase 18: source_location no longer in body. AI fans items out across
  * fridge/pantry/freezer per item. Existing-item dedup fetches across ALL
  * locations (single-user namespace is name-based per Phase 18 data model).
+ * Phase 24-05: writes one scan_events row with scan_variant='batch'.
  */
 pantry.post('/scan-batch', async (c) => {
   const supabase = c.get('supabase');
@@ -102,6 +162,7 @@ pantry.post('/scan-batch', async (c) => {
     const existingNames = (existingItems ?? []).map((row: { name: string }) => row.name);
 
     const items = await identifyFoodItemsBatch(body.images, existingNames);
+    await writeScanEvent(supabase, user.id, 'batch', items);
     return c.json({ data: items });
   } catch (error) {
     console.error('[pantry/scan-batch] Vision error:', error);
@@ -116,6 +177,7 @@ pantry.post('/scan-batch', async (c) => {
  *
  * Phase 18: receipts fan out per-item (dairy→fridge, frozen→freezer,
  * shelf-stable→pantry). No more hardcoded source_location='pantry'.
+ * Phase 24-05: writes one scan_events row with scan_variant='receipt'.
  */
 pantry.post('/scan-receipt', async (c) => {
   const supabase = c.get('supabase');
@@ -135,6 +197,7 @@ pantry.post('/scan-receipt', async (c) => {
     const existingNames = (existingItems ?? []).map((row: { name: string }) => row.name);
 
     const items = await identifyReceiptItems(body.image, existingNames, 'receipt');
+    await writeScanEvent(supabase, user.id, 'receipt', items);
     return c.json({ data: items });
   } catch (error) {
     console.error('[pantry/scan-receipt] Vision error:', error);
@@ -149,6 +212,7 @@ pantry.post('/scan-receipt', async (c) => {
  *
  * Phase 18: no longer hardcodes source_location='pantry'. AI fans out per item
  * based on ingredient context.
+ * Phase 24-05: writes one scan_events row with scan_variant='instacart'.
  */
 pantry.post('/import-instacart', async (c) => {
   const supabase = c.get('supabase');
@@ -168,6 +232,7 @@ pantry.post('/import-instacart', async (c) => {
     const existingNames = (existingItems ?? []).map((row: { name: string }) => row.name);
 
     const items = await identifyReceiptItems(body.image, existingNames, 'instacart_screenshot');
+    await writeScanEvent(supabase, user.id, 'instacart', items);
     return c.json({ data: items });
   } catch (error) {
     console.error('[pantry/import-instacart] Vision error:', error);
@@ -178,16 +243,20 @@ pantry.post('/import-instacart', async (c) => {
 
 /**
  * POST /confirm - Confirm scan results and reconcile with pantry inventory.
- * Body: { items: ConfirmedItem[], profile_id: string }
+ * Body: { items: ScanResult[], profile_id?: string }
  *
  * Phase 18: each item carries its own source_location enum. Route validates
  * every item has a valid enum value before invoking reconcileItems.
+ * Phase 24-05: reconcileItems is the rewritten canonical-identity dedup +
+ * quantity-aggregation service. It accepts ScanResult[] (nested Quantity +
+ * fieldConfidence per 24-04) and returns { inserted, updated, incompatibleUnits }.
+ * The response exposes that shape directly so mobile can surface it.
  */
 pantry.post('/confirm', async (c) => {
   const supabase = c.get('supabase');
   const user = c.get('user');
   const body = await c.req.json<{
-    items?: ConfirmedItem[];
+    items?: ScanResult[];
     profile_id?: string;
   }>();
 
@@ -205,7 +274,7 @@ pantry.post('/confirm', async (c) => {
   }
 
   try {
-    const data = await reconcileItems(supabase, user.id, body.items as ConfirmedItem[]);
+    const data = await reconcileItems(supabase, user.id, body.items as ScanResult[]);
     return c.json({ data });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Reconciliation failed';
