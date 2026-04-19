@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 19-06 (Maestro flow rebase + visual regression flow + Gate A auto-approved) — complete (6/6 plans — Phase 19 DONE)
-status: completed
-stopped_at: Phase 18 context gathered
-last_updated: "2026-04-19T03:33:44.730Z"
-last_activity: 2026-04-18 -- Completed 19-06 (Maestro flows 18/20 rebased for sticky pill + Recipe Box rename, 23-design-buttons-visual.yaml new flow, Phase 19 design visually verified via 9 live-sim screenshots, Gate A auto-approved)
+current_plan: 18-01 (Wave 1 foundation — migrations + hybrid classifier) — complete (1/4 plans in Phase 18)
+status: Phase 18 Wave 1 landed. Wave 2 (Plan 18-02) unblocked — SourceLocation type + classifyItems ready for vision tool-schema extension + reconcileItems dual-write
+stopped_at: "Completed 18-01-PLAN.md (Wave 1 foundation: migrations + hybrid classifier)"
+last_updated: "2026-04-19T04:05:30.211Z"
+last_activity: "2026-04-18 -- Completed 18-01 (Wave 1 foundation: item_attributes + item_override_events migrations, hybrid STATIC_MAP+AI classifier in itemLocation.ts, SourceLocation type exported from vision.ts, 31 tests green)"
 progress:
   total_phases: 25
   completed_phases: 16
-  total_plans: 66
-  completed_plans: 66
-  percent: 100
+  total_plans: 70
+  completed_plans: 67
+  percent: 96
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 19 of 25 (Design Professionalization — Icons, Buttons, Navigation, Search Bars) — COMPLETE
-Current Plan: 19-06 (Maestro flow rebase + visual regression flow + Gate A auto-approved) — complete (6/6 plans — Phase 19 DONE)
-Status: Phase 19 complete — Block A closed (Phase 15 structural + Phase 19 aesthetic). Ready for Block B (Phase 18 AI auto-location)
-Last activity: 2026-04-18 -- Completed 19-06 (Maestro flows 18/20 rebased for sticky pill + Recipe Box rename, 23-design-buttons-visual.yaml new flow, Phase 19 design visually verified via 9 live-sim screenshots, Gate A auto-approved)
+Phase: 18 of 25 (AI Auto-Location for Pantry Imports) — IN PROGRESS
+Current Plan: 18-01 (Wave 1 foundation — migrations + hybrid classifier) — complete (1/4 plans in Phase 18)
+Status: Phase 18 Wave 1 landed. Wave 2 (Plan 18-02) unblocked — SourceLocation type + classifyItems ready for vision tool-schema extension + reconcileItems dual-write
+Last activity: 2026-04-18 -- Completed 18-01 (Wave 1 foundation: item_attributes + item_override_events migrations, hybrid STATIC_MAP+AI classifier in itemLocation.ts, SourceLocation type exported from vision.ts, 31 tests green)
 
-Progress: [██████████] 100%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
@@ -119,6 +119,7 @@ Progress: [██████████] 100%
 | Phase 19 P04 | 5min | 2 tasks | 7 files |
 | Phase 19 P05 | 17min | 5 tasks | 53 files |
 | Phase 19 P06 | 24min | 2 tasks | 10 files |
+| Phase 18 P01 | 5min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -353,6 +354,10 @@ Recent decisions affecting current work:
 - [Phase 19]: [Phase 19-06]: Maestro flow 23-design-buttons-visual.yaml authored (not 21 per plan) — slots 21/22 taken by Phase 15 flows; renaming would destroy history
 - [Phase 19]: [Phase 19-06]: launchApp clearState prelude pattern added to flows 18/20/23 — root-cause fix for upstream modal bleed (flow 19 Import-from-Instacart modal poisoned downstream flows)
 - [Phase 19]: [Phase 19-06]: Gate A auto-approved under auto-chain mode — 9 named screenshots from live iPhone 17 Pro sim confirmed terracotta palette + sticky pill + dense DayRow + destructive Sign Out all render correctly, no orange leaks
+- [Phase 18-01]: STATIC_MAP-always-wins is implemented as a short-circuit (not post-call correction) — when classifyLocationStatic returns non-null, AI is never invoked; model drift on well-known items like 'olive oil' cannot slip through
+- [Phase 18-01]: classifyItems degrades to 'pantry' default + console.warn on Gemini MalformedFunctionCallError (Pitfall 5) — best-effort classification beats a broken scan
+- [Phase 18-01]: item_override_events has no FK to pantry_items — item_name is Phase 21's rollup key and must survive pantry-item deletion
+- [Phase 18-01]: migrations.test.ts uses two-layer design: always-on static SQL regex for contract + optional live-DB probe that auto-skips on PGRST205 so CI stays green pre- and post-migration-push
 
 ### Pending Todos
 
@@ -396,6 +401,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T03:33:44.726Z
-Stopped at: Phase 18 context gathered
-Resume file: .planning/phases/18-ai-auto-location-for-pantry-imports-remove-forced-fridge-pantry-freezer-choice/18-CONTEXT.md
+Last session: 2026-04-19T04:04:48.167Z
+Stopped at: Completed 18-01-PLAN.md (Wave 1 foundation: migrations + hybrid classifier)
+Resume file: None

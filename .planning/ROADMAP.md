@@ -372,7 +372,7 @@ Plans: (not yet planned)
   5. Receipt/Instacart imports correctly distribute items across all three locations in one session
 **Plans**: 4 plans
 Plans:
-- [ ] 18-01-PLAN.md — Foundation: migrations (item_attributes JSONB + item_override_events table) + hybrid STATIC_MAP/AI classifier service + SourceLocation type
+- [x] 18-01-PLAN.md — Foundation: migrations (item_attributes JSONB + item_override_events table) + hybrid STATIC_MAP/AI classifier service + SourceLocation type
 - [ ] 18-02-PLAN.md — Backend wiring: extend vision tool schemas with source_location, reconcileItems dual-write, strip sourceLocation from scan routes, new /override-events route
 - [ ] 18-03-PLAN.md — Mobile primitives: LocationChip + LocationChoiceSheet + ReviewItemRow integration + pantryStore signature changes + override-event logging
 - [ ] 18-04-PLAN.md — LocationPicker removal across all scan entries + Maestro flow rebase + iOS Simulator UAT checkpoint
