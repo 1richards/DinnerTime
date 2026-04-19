@@ -57,6 +57,14 @@ function mapScanResultsToReview(
     const probableDupe = existingNames.has(normalized);
     // Dupes default OFF; otherwise use confidence threshold.
     const accepted = probableDupe ? false : item.confidence >= confidenceThreshold;
+    // Server (Phase 18-02) returns per-item source_location. Default to
+    // 'pantry' defensively if a legacy/malformed response omits it.
+    const source_location: SourceLocation =
+      item.source_location === 'fridge' ||
+      item.source_location === 'freezer' ||
+      item.source_location === 'pantry'
+        ? item.source_location
+        : 'pantry';
     return {
       id: `scan-${Date.now()}-${index}`,
       name: item.name,
@@ -64,6 +72,10 @@ function mapScanResultsToReview(
       unit: item.unit,
       confidence: item.confidence,
       category: item.category,
+      source_location,
+      // Preserve the original AI prediction so later user edits can be
+      // detected as overrides (deriveOverrideEvents in Task 2 + 3).
+      aiLocation: source_location,
       accepted,
       userEdited: false,
       probableDupe,

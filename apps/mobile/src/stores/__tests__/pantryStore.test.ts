@@ -79,6 +79,7 @@ const mockReviewItem: ReviewItem = {
   unit: 'stick',
   confidence: 0.85,
   category: 'dairy',
+  source_location: 'fridge',
   accepted: true,
   userEdited: false,
 };
@@ -149,6 +150,7 @@ describe('pantryStore', () => {
         unit: 'cup',
         confidence: 1.0,
         category: 'dairy',
+        source_location: 'fridge',
         accepted: true,
         userEdited: true,
       };

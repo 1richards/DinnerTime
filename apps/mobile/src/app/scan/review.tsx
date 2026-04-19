@@ -68,6 +68,9 @@ export default function ReviewScreen() {
       unit: newUnit.trim() || 'item',
       confidence: 1.0,
       category: newCategory,
+      // Manually-added items default to 'pantry'; user can tap the chip to
+      // change. No aiLocation because the AI never classified them.
+      source_location: 'pantry',
       accepted: true,
       userEdited: true,
     };
