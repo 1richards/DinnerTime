@@ -5,7 +5,7 @@ milestone_name: milestone
 current_plan: 18-04 (Wave 4 LocationPicker removal + UAT closeout) — complete (4/4 plans in Phase 18, Phase COMPLETE)
 status: completed
 stopped_at: Completed 18-04-PLAN.md (LocationPicker retired; Phase 18 UX vision shipped — per-item AI classification across all 4 scan flows; purity gate script live; Maestro 07/16/19/smoke green on iPhone 17 Pro sim; 40/40 scope tests)
-last_updated: "2026-04-19T04:46:48.965Z"
+last_updated: "2026-04-19T04:52:59.122Z"
 last_activity: "2026-04-19 -- Completed 18-04 (Wave 4 LocationPicker retirement + UAT closeout: LocationPicker.tsx deleted, import + state + JSX stripped from scan/index.tsx + scan/receipt.tsx, hardcoded sourceLocation nav param dropped from scan/instacart.tsx, EmptyState copy on scan/index.tsx now location-agnostic, verify-no-location-picker-scan.sh purity gate shipped, Maestro flows 07/16/19/smoke rebased comment-only + verified green on iPhone 17 Pro sim; 40/40 scope tests green, tsc clean — Phase 18 COMPLETE)"
 progress:
   total_phases: 25
