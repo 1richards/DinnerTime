@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 18-04 (Wave 4 LocationPicker removal + UAT closeout) — complete (4/4 plans in Phase 18, Phase COMPLETE)
 status: completed
-stopped_at: Phase 24 context gathered (split into 24a + 24b)
-last_updated: "2026-04-19T12:57:49.304Z"
+stopped_at: Phase 21 context gathered (re-scoped post-Phase-24a)
+last_updated: "2026-04-19T13:13:43.887Z"
 last_activity: "2026-04-19 -- Completed 18-04 (Wave 4 LocationPicker retirement + UAT closeout: LocationPicker.tsx deleted, import + state + JSX stripped from scan/index.tsx + scan/receipt.tsx, hardcoded sourceLocation nav param dropped from scan/instacart.tsx, EmptyState copy on scan/index.tsx now location-agnostic, verify-no-location-picker-scan.sh purity gate shipped, Maestro flows 07/16/19/smoke rebased comment-only + verified green on iPhone 17 Pro sim; 40/40 scope tests green, tsc clean — Phase 18 COMPLETE)"
 progress:
   total_phases: 25
@@ -418,6 +418,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T12:57:49.295Z
-Stopped at: Phase 24 context gathered (split into 24a + 24b)
-Resume file: .planning/phases/24-ai-vision-and-pantry-data-model-deep-refactor-scan-quality-item-creation-categorization-deduplication-quantity-extraction-canonical-storage/24-CONTEXT.md
+Last session: 2026-04-19T13:13:43.883Z
+Stopped at: Phase 21 context gathered (re-scoped post-Phase-24a)
+Resume file: .planning/phases/21-pantry-intelligence-smarter-dedup-presentation-categorization-user-defined-scan-rules/21-CONTEXT.md
