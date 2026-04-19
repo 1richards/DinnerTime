@@ -428,11 +428,11 @@ Plans: (not yet planned)
   6. Rules are manageable — Settings → Pantry Rules with edit/delete/drag-reorder + 30-day preview of affected items
 **Plans**: 6 plans
 Plans:
-- [ ] 21-01-PLAN.md — Migrations 00016-00019 (user_staples + user_location_rules + suggested_rules + canonical_scan_counts + promote RPC) + migrations.test.ts contract
-- [ ] 21-02-PLAN.md — TDD services: ruleEvaluator + suggestionAggregator + canonicalPromoter
-- [ ] 21-03-PLAN.md — reconcileItems rule-evaluator integration + 5 new route groups (staples/rules/suggestions/preview/category-override) + fire-and-forget aggregator+promoter on /confirm
-- [ ] 21-04-PLAN.md — Mobile Pantry tab: ItemRow compact variant + PantryItemCard stale treatment + 4-way grouping hook + StickySearchPill + Staples filter chip + pantryStore staples auto-accept + persist migration
-- [ ] 21-05-PLAN.md — Mobile Settings/Rules UI: draggable-flatlist install + pantryStore rules/suggestions actions + settings/pantry-rules.tsx + settings/staples.tsx + PantryItemCard ellipsis Mark-as-staple
+- [x] 21-01-PLAN.md — Migrations 00016-00019 (user_staples + user_location_rules + suggested_rules + canonical_scan_counts + promote RPC) + migrations.test.ts contract
+- [x] 21-02-PLAN.md — TDD services: ruleEvaluator + suggestionAggregator + canonicalPromoter
+- [x] 21-03-PLAN.md — reconcileItems rule-evaluator integration + 5 new route groups (staples/rules/suggestions/preview/category-override) + fire-and-forget aggregator+promoter on /confirm
+- [x] 21-04-PLAN.md — Mobile Pantry tab: ItemRow compact variant + PantryItemCard stale treatment + 4-way grouping hook + StickySearchPill + Staples filter chip + pantryStore staples auto-accept + persist migration
+- [x] 21-05-PLAN.md — Mobile Settings/Rules UI: draggable-flatlist install + pantryStore rules/suggestions actions + settings/pantry-rules.tsx + settings/staples.tsx + PantryItemCard ellipsis Mark-as-staple
 - [ ] 21-06-PLAN.md — Maestro flows 24/25/26 + full suite regression + human UAT checkpoint
 **UI hint**: yes
 

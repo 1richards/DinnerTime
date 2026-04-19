@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 21-03 (Wave 2 routes — /staples, /rules, /suggestions, /preview, /category-override + reconcileItems rule-evaluator integration + /confirm fire-and-forget learning pipeline) — complete
-status: verifying
-stopped_at: Completed 21-03-PLAN.md
-last_updated: "2026-04-19T19:30:34.478Z"
-last_activity: 2026-04-19 -- Completed 21-03 (5 new route groups + reconcileItems rule integration + fire-and-forget /confirm; 75/75 GREEN; ready for 21-04 mobile)
+current_plan: 21-04 (Wave 3 mobile — ItemRow compact + PantryItemCard stale treatment + usePantryItemsGrouped 4-way + pantryStore staples Set + STAPLE_THRESHOLD 0.3 + persist v2 migration + Pantry tab GroupingMode segmented control + StickySearchPill + Staples filter chip) — complete
+status: Phase 21 Wave 3 pantry-tab presentation landed — ItemRow size='compact' py-2 variant, PantryItemCard dashed-border stale treatment (<0.5), usePantryItemsGrouped 4-way hook, pantryStore staples Set<string> + STAPLE_THRESHOLD 0.3 + persist v2 migration, Pantry tab segmented control + StickySearchPill + Staples chip. 37/37 new tests GREEN; tsc clean; 21-05 Settings screens unblocked.
+stopped_at: Completed 21-04-PLAN.md
+last_updated: "2026-04-19T19:48:42.349Z"
+last_activity: 2026-04-19 -- Completed 21-04 (mobile pantry-tab presentation + staples data path; 37/37 new GREEN; tsc clean; ready for 21-05 Settings screens)
 progress:
   total_phases: 25
   completed_phases: 18
   total_plans: 82
-  completed_plans: 79
-  percent: 96
+  completed_plans: 81
+  percent: 98
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 21 of 25 (Pantry Intelligence — Smarter dedup, presentation, categorization, user-defined scan rules)
-Current Plan: 21-03 (Wave 2 routes — /staples, /rules, /suggestions, /preview, /category-override + reconcileItems rule-evaluator integration + /confirm fire-and-forget learning pipeline) — complete
-Status: Phase 21 Wave 2 landed — 12 new endpoints across 5 route groups + reconcileItems now honors user_location_rules + /confirm fires aggregator/promoter/counter as void. 75/75 routes+services vitest GREEN; W2 canonicalIds dedup + W3 suggestion-accept canonical guard + W4 singular table name all verified. Mobile Wave 3 (21-04/21-05) unblocked.
-Last activity: 2026-04-19 -- Completed 21-03 (5 new route groups + reconcileItems rule integration + fire-and-forget /confirm; 75/75 GREEN; ready for 21-04 mobile)
+Current Plan: 21-04 (Wave 3 mobile — ItemRow compact + PantryItemCard stale treatment + usePantryItemsGrouped 4-way + pantryStore staples Set + STAPLE_THRESHOLD 0.3 + persist v2 migration + Pantry tab GroupingMode segmented control + StickySearchPill + Staples filter chip) — complete
+Status: Phase 21 Wave 3 pantry-tab presentation landed — ItemRow size='compact' py-2 variant, PantryItemCard dashed-border stale treatment (<0.5), usePantryItemsGrouped 4-way hook, pantryStore staples Set<string> + STAPLE_THRESHOLD 0.3 + persist v2 migration, Pantry tab segmented control + StickySearchPill + Staples chip. 37/37 new tests GREEN; tsc clean; 21-05 Settings screens unblocked.
+Last activity: 2026-04-19 -- Completed 21-04 (mobile pantry-tab presentation + staples data path; 37/37 new GREEN; tsc clean; ready for 21-05 Settings screens)
 
-Progress: [██████████] 96%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -133,6 +133,8 @@ Progress: [██████████] 96%
 | Phase 21 P01 | 3min | 2 tasks | 5 files |
 | Phase 21-pantry-intelligence P02 | 7min | 3 tasks tasks | 6 files files |
 | Phase 21 P03 | 10min | 2 tasks | 4 files |
+| Phase 21 P04 | 12min | 3 tasks | 12 files |
+| Phase 21 P05 | 13min | 4 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -425,6 +427,13 @@ Recent decisions affecting current work:
 - [Phase 21]: Phase 21-03: reconcileItems integrates ruleEvaluator + returns deduped canonicalIds; /confirm fires aggregator/promoter/counter as void Promise.resolve().catch() (fire-and-forget guarantees .catch tolerant)
 - [Phase 21]: Phase 21-03: 5 new route groups on pantry.ts (staples, rules, suggestions, preview, category-override) registered BEFORE PATCH /:id to avoid catch-all collision; 12 endpoints total. W4 singular canonical_category_override verified (grep returns 0 hits of plural)
 - [Phase 21]: Phase 21-03: suggestions/accept W3 guard — location_mapping reads canonical_ingredient_id from payload (pre-resolved by aggregator at aggregation time) and returns 400 CANONICAL_NOT_ACTIVE without dismissing when canonical is candidate (user can retry post-promotion)
+- [Phase 21]: Phase 21-04: staples as Set<string> + parallel stapleRows for dual-projection (O(1) scan-accept + display list); Zustand persist v1->v2 migrates via migratePantryPersistState + onRehydrateStorage Set/Array
+- [Phase 21]: Phase 21-04: GroupingMode rendered as 4-tab segmented control (not chips) per RESEARCH Pitfall 7; StickySearchPill absolute-positioned outside PantryItemList with contentContainerStyle.paddingTop:56 to prevent first-section underlap
+- [Phase 21]: Phase 21-04: resolveScanAcceptance pure helper + STAPLE_THRESHOLD=0.3 / DEFAULT_THRESHOLD=0.7 unifies every scan-flow accept decision; mapScanResultsToReview threads staples Set from get().staples through start{Scan,BatchScan,ReceiptScan,InstacartImport}
+- [Phase 21]: Phase 21-05: react-native-draggable-flatlist@4.0.3 is JS-only (no podspec) — depends on bundled Reanimated + Gesture Handler; no pod install needed; dev-client rebuild deferred to 21-06 UAT
+- [Phase 21]: Phase 21-05: pantryStore authedFetch helper — 10 new actions (7 rules/suggestions + 3 staples*) all route through authedFetch that adds /api/v1 prefix + Bearer token; optimistic + rollback on every mutation; acceptSuggestion reloads rules on success
+- [Phase 21]: Phase 21-05: Source-level contract test pattern for hook-heavy screens — component-as-function fails on useState under vitest node env; instead readFileSync(source) + substring assertions lock testIDs + store selectors + imports; mirrors Phase 21-04 PantryItemCard pattern
+- [Phase 21]: Phase 21-05: testID contract for Maestro 21-06 complete — add-rule-fab, rule-delete-{name|alias}, add-staple-fab, staple-remove-{name}, pantry-item-ellipsis-{index}; DraggableFlatList height-capped at min(rules×56, 320) to avoid nested pan responder with outer ScrollView
 
 ### Pending Todos
 
@@ -468,6 +477,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T19:30:34.475Z
-Stopped at: Completed 21-03-PLAN.md
+Last session: 2026-04-19T19:47:56.245Z
+Stopped at: Completed 21-04-PLAN.md
 Resume file: None
