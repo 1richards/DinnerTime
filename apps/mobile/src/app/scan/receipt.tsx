@@ -52,7 +52,8 @@ export default function ReceiptScanScreen() {
     }
 
     try {
-      await startReceiptScan(result.assets[0].base64!, sourceLocation);
+      // Phase 18-03: AI classifies per item; Plan 18-04 removes LocationPicker.
+      await startReceiptScan(result.assets[0].base64!);
       // Pitfall 2 mitigation: inspect result length after resolution.
       const results = usePantryStore.getState().scanResults;
       if (results.length === 0) {

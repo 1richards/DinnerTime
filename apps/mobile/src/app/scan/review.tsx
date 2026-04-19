@@ -96,7 +96,7 @@ export default function ReviewScreen() {
 
     setIsConfirming(true);
     try {
-      await confirmScan(profile.id, sourceLocation);
+      await confirmScan(profile.id);
 
       Alert.alert(
         'Pantry Updated!',

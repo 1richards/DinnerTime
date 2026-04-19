@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { offlineQueue, registerExecutor } from '../lib/offlineQueue';
 import { useNetworkStore } from './networkStore';
+import { logOverrideEvents } from '../lib/logOverrideEvent';
+import { deriveOverrideEvents } from '../app/scan/reviewHelpers';
 import type { PantryItem, ReviewItem, SourceLocation } from '../types/pantry';
 
 interface PantryState {
@@ -13,14 +15,16 @@ interface PantryState {
   isLoading: boolean;
 
   loadItems: (profileId: string) => Promise<void>;
-  startScan: (base64Image: string, sourceLocation: SourceLocation) => Promise<void>;
-  startBatchScan: (base64Images: string[], sourceLocation: SourceLocation) => Promise<void>;
-  startReceiptScan: (base64Image: string, sourceLocation: SourceLocation) => Promise<void>;
+  /** Phase 18-03: AI infers per-item source_location; no session-level lock. */
+  startScan: (base64Image: string) => Promise<void>;
+  startBatchScan: (base64Images: string[]) => Promise<void>;
+  startReceiptScan: (base64Image: string) => Promise<void>;
   startInstacartImport: (base64Image: string) => Promise<void>;
   updateReviewItem: (id: string, updates: Partial<ReviewItem>) => void;
   addReviewItem: (item: ReviewItem) => void;
   removeReviewItem: (id: string) => void;
-  confirmScan: (profileId: string, sourceLocation: SourceLocation) => Promise<void>;
+  /** Each scanResult carries its own source_location; /confirm fans out per-item. */
+  confirmScan: (profileId: string) => Promise<void>;
   markItemUsed: (itemId: string) => Promise<void>;
   markItemDepleted: (itemId: string) => Promise<void>;
 }
@@ -35,6 +39,19 @@ const getAuthToken = async (): Promise<string> => {
     throw new Error('Not authenticated');
   }
   return data.session.access_token;
+};
+
+/**
+ * Nullable variant used by logOverrideEvents (fire-and-forget). Returns null
+ * on any auth failure rather than throwing, so telemetry never surfaces
+ * mid-session sign-outs as an error.
+ */
+const getAuthTokenOrNull = async (): Promise<string | null> => {
+  try {
+    return await getAuthToken();
+  } catch {
+    return null;
+  }
 };
 
 /**
@@ -109,7 +126,7 @@ export const usePantryStore = create<PantryState>()(
     }
   },
 
-  startScan: async (base64Image: string, sourceLocation: SourceLocation) => {
+  startScan: async (base64Image: string) => {
     set({ isScanning: true });
     try {
       const token = await getAuthToken();
@@ -119,7 +136,7 @@ export const usePantryStore = create<PantryState>()(
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ image: base64Image, source_location: sourceLocation }),
+        body: JSON.stringify({ image: base64Image }),
       });
 
       if (!response.ok) {
@@ -137,7 +154,7 @@ export const usePantryStore = create<PantryState>()(
     }
   },
 
-  startBatchScan: async (base64Images: string[], sourceLocation: SourceLocation) => {
+  startBatchScan: async (base64Images: string[]) => {
     set({ isScanning: true });
     try {
       const token = await getAuthToken();
@@ -147,7 +164,7 @@ export const usePantryStore = create<PantryState>()(
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ images: base64Images, source_location: sourceLocation }),
+        body: JSON.stringify({ images: base64Images }),
       });
 
       if (!response.ok) {
@@ -165,7 +182,7 @@ export const usePantryStore = create<PantryState>()(
     }
   },
 
-  startReceiptScan: async (base64Image: string, sourceLocation: SourceLocation) => {
+  startReceiptScan: async (base64Image: string) => {
     set({ isScanning: true });
     try {
       const token = await getAuthToken();
@@ -175,7 +192,7 @@ export const usePantryStore = create<PantryState>()(
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ image: base64Image, source_location: sourceLocation }),
+        body: JSON.stringify({ image: base64Image }),
       });
 
       if (!response.ok) {
@@ -241,7 +258,7 @@ export const usePantryStore = create<PantryState>()(
     }));
   },
 
-  confirmScan: async (profileId: string, sourceLocation: SourceLocation) => {
+  confirmScan: async (profileId: string) => {
     const { scanResults } = get();
     const acceptedItems = scanResults.filter((item) => item.accepted);
 
@@ -257,10 +274,21 @@ export const usePantryStore = create<PantryState>()(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
+      // Phase 18-03: no top-level source_location; each item carries its own.
+      // Strip review-only fields (id, accepted, userEdited, aiLocation,
+      // probableDupe) — they're local-only bookkeeping.
       body: JSON.stringify({
         profile_id: profileId,
-        source_location: sourceLocation,
-        items: acceptedItems.map(({ id: _id, accepted: _accepted, userEdited: _userEdited, ...rest }) => rest),
+        items: acceptedItems.map(
+          ({
+            id: _id,
+            accepted: _accepted,
+            userEdited: _userEdited,
+            aiLocation: _aiLocation,
+            probableDupe: _probableDupe,
+            ...rest
+          }) => rest,
+        ),
       }),
     });
 
@@ -271,6 +299,18 @@ export const usePantryStore = create<PantryState>()(
 
     const data = await response.json();
     const confirmedItems = (data.data ?? []) as PantryItem[];
+
+    // Fire-and-forget override telemetry for edited items (user moved
+    // something away from the AI's prediction). Only items that were
+    // accepted AND edited AND have an aiLocation mismatch are logged.
+    // Never await — the user sees the "Pantry Updated" confirmation
+    // without waiting on a telemetry POST.
+    const overrideEvents = deriveOverrideEvents(acceptedItems);
+    void logOverrideEvents(
+      overrideEvents,
+      getAuthTokenOrNull,
+      getApiBaseUrl,
+    );
 
     set((state) => ({
       items: [...state.items, ...confirmedItems],

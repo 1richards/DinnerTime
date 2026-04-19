@@ -93,10 +93,9 @@ export default function ScanScreen() {
 
   const handleSubmitBatch = async () => {
     try {
-      await startBatchScan(
-        capturedPhotos.map((p) => p.base64),
-        selectedLocation
-      );
+      // Phase 18-03: no more session-level location lock. AI classifies
+      // each item independently. Plan 18-04 removes LocationPicker.
+      await startBatchScan(capturedPhotos.map((p) => p.base64));
     } catch {
       Alert.alert('Scan Failed', 'Could not analyze the images. Please try again.');
     }
