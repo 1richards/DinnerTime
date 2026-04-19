@@ -274,6 +274,140 @@ describe('00015_pantry_items_quantity_jsonb.sql (static)', () => {
   });
 });
 
+// -----------------------------------------------------------------------------
+// Phase 21 migrations — STATIC contract assertions
+// -----------------------------------------------------------------------------
+
+describe('00016_user_staples.sql (static)', () => {
+  const sql = readMigration('00016_user_staples.sql');
+
+  it('creates the user_staples table', () => {
+    expect(sql).toMatch(/create\s+table\s+user_staples/i);
+  });
+
+  it('declares composite primary key (user_id, canonical_ingredient_id)', () => {
+    expect(sql).toMatch(/primary\s+key\s*\(\s*user_id\s*,\s*canonical_ingredient_id\s*\)/i);
+  });
+
+  it('FKs user_id → auth.users(id) and canonical_ingredient_id → canonical_ingredients(id) ON DELETE CASCADE', () => {
+    expect(sql).toMatch(/user_id\s+uuid\s+not\s+null\s+references\s+auth\.users\(id\)\s+on\s+delete\s+cascade/i);
+    expect(sql).toMatch(/canonical_ingredient_id\s+uuid\s+not\s+null\s+references\s+canonical_ingredients\(id\)\s+on\s+delete\s+cascade/i);
+  });
+
+  it('enables Row Level Security with auth.uid() select/insert/delete policies', () => {
+    expect(sql).toMatch(/alter\s+table\s+user_staples\s+enable\s+row\s+level\s+security/i);
+    expect(sql).toMatch(/for\s+select\s+using\s*\(\s*user_id\s*=\s*auth\.uid\(\)\s*\)/i);
+    expect(sql).toMatch(/for\s+insert[\s\S]*with\s+check\s*\(\s*user_id\s*=\s*auth\.uid\(\)\s*\)/i);
+    expect(sql).toMatch(/for\s+delete\s+using\s*\(\s*user_id\s*=\s*auth\.uid\(\)\s*\)/i);
+  });
+
+  it('creates the user_id index', () => {
+    expect(sql).toMatch(/create\s+index\s+idx_user_staples_user\s+on\s+user_staples\(user_id\)/i);
+  });
+});
+
+describe('00017_user_location_rules.sql (static)', () => {
+  const sql = readMigration('00017_user_location_rules.sql');
+
+  it('creates the user_location_rules table', () => {
+    expect(sql).toMatch(/create\s+table\s+user_location_rules/i);
+  });
+
+  it('declares precedence int8 not null for first-match-wins ordering', () => {
+    expect(sql).toMatch(/precedence\s+int8\s+not\s+null/i);
+  });
+
+  it('declares source_location CHECK constraint for fridge|pantry|freezer', () => {
+    expect(sql).toMatch(/check\s*\(\s*source_location\s+in\s*\(\s*'fridge'\s*,\s*'pantry'\s*,\s*'freezer'\s*\)\s*\)/i);
+  });
+
+  it('FKs user_id → auth.users and canonical_ingredient_id → canonical_ingredients ON DELETE CASCADE', () => {
+    expect(sql).toMatch(/user_id\s+uuid\s+not\s+null\s+references\s+auth\.users\(id\)\s+on\s+delete\s+cascade/i);
+    expect(sql).toMatch(/canonical_ingredient_id\s+uuid\s+not\s+null\s+references\s+canonical_ingredients\(id\)\s+on\s+delete\s+cascade/i);
+  });
+
+  it('enables Row Level Security with all four CRUD policies keyed on auth.uid()', () => {
+    expect(sql).toMatch(/alter\s+table\s+user_location_rules\s+enable\s+row\s+level\s+security/i);
+    expect(sql).toMatch(/for\s+select\s+using\s*\(\s*user_id\s*=\s*auth\.uid\(\)\s*\)/i);
+    expect(sql).toMatch(/for\s+insert[\s\S]*with\s+check\s*\(\s*user_id\s*=\s*auth\.uid\(\)\s*\)/i);
+    expect(sql).toMatch(/for\s+update[\s\S]*using\s*\(\s*user_id\s*=\s*auth\.uid\(\)\s*\)[\s\S]*with\s+check\s*\(\s*user_id\s*=\s*auth\.uid\(\)\s*\)/i);
+    expect(sql).toMatch(/for\s+delete\s+using\s*\(\s*user_id\s*=\s*auth\.uid\(\)\s*\)/i);
+  });
+
+  it('creates the (user_id, precedence asc) index for first-match-wins lookup', () => {
+    expect(sql).toMatch(/create\s+index\s+idx_user_location_rules_user_precedence\s+on\s+user_location_rules\(user_id,\s*precedence\s+asc\)/i);
+  });
+});
+
+describe('00018_suggested_rules.sql (static)', () => {
+  const sql = readMigration('00018_suggested_rules.sql');
+
+  it('creates the suggested_rules table', () => {
+    expect(sql).toMatch(/create\s+table\s+suggested_rules/i);
+  });
+
+  it('declares rule_type CHECK enum (name_mapping | location_mapping)', () => {
+    expect(sql).toMatch(/rule_type\s+text\s+not\s+null\s+check\s*\(\s*rule_type\s+in\s*\(\s*'name_mapping'\s*,\s*'location_mapping'\s*\)\s*\)/i);
+  });
+
+  it('declares composite unique (user_id, rule_type, payload) for upsert-on-conflict', () => {
+    expect(sql).toMatch(/unique\s*\(\s*user_id\s*,\s*rule_type\s*,\s*payload\s*\)/i);
+  });
+
+  it('declares payload JSONB + occurrence_count + first_seen/last_seen + dismissed_at nullable', () => {
+    expect(sql).toMatch(/payload\s+jsonb\s+not\s+null/i);
+    expect(sql).toMatch(/occurrence_count\s+int\s+not\s+null\s+default\s+0/i);
+    expect(sql).toMatch(/first_seen\s+timestamptz\s+not\s+null\s+default\s+now\(\)/i);
+    expect(sql).toMatch(/last_seen\s+timestamptz\s+not\s+null\s+default\s+now\(\)/i);
+    expect(sql).toMatch(/dismissed_at\s+timestamptz\s+null/i);
+  });
+
+  it('enables Row Level Security with all four CRUD policies keyed on auth.uid()', () => {
+    expect(sql).toMatch(/alter\s+table\s+suggested_rules\s+enable\s+row\s+level\s+security/i);
+    expect(sql).toMatch(/for\s+select\s+using\s*\(\s*user_id\s*=\s*auth\.uid\(\)\s*\)/i);
+    expect(sql).toMatch(/for\s+insert[\s\S]*with\s+check\s*\(\s*user_id\s*=\s*auth\.uid\(\)\s*\)/i);
+    expect(sql).toMatch(/for\s+update[\s\S]*using\s*\(\s*user_id\s*=\s*auth\.uid\(\)\s*\)/i);
+    expect(sql).toMatch(/for\s+delete\s+using\s*\(\s*user_id\s*=\s*auth\.uid\(\)\s*\)/i);
+  });
+
+  it('creates the partial index on (user_id, dismissed_at) WHERE dismissed_at is null', () => {
+    expect(sql).toMatch(/create\s+index\s+idx_suggested_rules_user_active\s+on\s+suggested_rules\(user_id,\s*dismissed_at\)\s+where\s+dismissed_at\s+is\s+null/i);
+  });
+});
+
+describe('00019_canonical_scan_counts_and_promote_rpc.sql (static)', () => {
+  const sql = readMigration('00019_canonical_scan_counts_and_promote_rpc.sql');
+
+  it('creates the canonical_scan_counts table with PK → canonical_ingredients(id) ON DELETE CASCADE', () => {
+    expect(sql).toMatch(/create\s+table\s+canonical_scan_counts/i);
+    expect(sql).toMatch(/canonical_ingredient_id\s+uuid\s+primary\s+key\s+references\s+canonical_ingredients\(id\)\s+on\s+delete\s+cascade/i);
+  });
+
+  it('declares scan_count bigint not null default 0', () => {
+    expect(sql).toMatch(/scan_count\s+bigint\s+not\s+null\s+default\s+0/i);
+  });
+
+  it('enables Row Level Security with read-all + service-role-write policies', () => {
+    expect(sql).toMatch(/alter\s+table\s+canonical_scan_counts\s+enable\s+row\s+level\s+security/i);
+    expect(sql).toMatch(/for\s+select\s+using\s*\(\s*true\s*\)/i);
+    expect(sql).toMatch(/for\s+all[\s\S]*to\s+service_role/i);
+  });
+
+  it('creates or replaces the promote_candidate_canonicals RPC with SECURITY DEFINER + search_path pin', () => {
+    expect(sql).toMatch(/create\s+or\s+replace\s+function\s+promote_candidate_canonicals/i);
+    expect(sql).toMatch(/security\s+definer/i);
+    expect(sql).toMatch(/set\s+search_path\s*=\s*public/i);
+  });
+
+  it('RPC updates canonical_ingredients.status from candidate to active when scan_count >= threshold', () => {
+    expect(sql).toMatch(/update\s+canonical_ingredients[\s\S]*set\s+status\s*=\s*'active'[\s\S]*from\s+canonical_scan_counts[\s\S]*ci\.status\s*=\s*'candidate'[\s\S]*csc\.scan_count\s*>=\s*threshold/i);
+  });
+
+  it('grants execute on promote_candidate_canonicals to authenticated + service_role', () => {
+    expect(sql).toMatch(/grant\s+execute\s+on\s+function\s+promote_candidate_canonicals\(int\)\s+to\s+authenticated\s*,\s*service_role/i);
+  });
+});
+
 describe('24a seed JSON files', () => {
   const dataDir = resolve(__dirname, '../data');
 
