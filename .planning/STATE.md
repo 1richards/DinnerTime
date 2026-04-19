@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 18-02 (Wave 2 backend end-to-end) — complete (2/4 plans in Phase 18)
-status: Phase 18 Wave 2 landed. Wave 3 (Plan 18-03) unblocked — mobile can consume ScanResult.source_location, drop LocationPicker, wire LocationChip + /override-events telemetry
-stopped_at: "Completed 18-02-PLAN.md (Wave 2 backend end-to-end: vision schema + reconcile dual-write + override-events route)"
-last_updated: "2026-04-19T04:21:35.282Z"
-last_activity: "2026-04-19 -- Completed 18-02 (Wave 2 backend end-to-end: vision tool schemas extended with source_location + STATIC_MAP post-correction, reconcileItems dual-writes item_attributes, scan routes strip source_location body, POST /override-events route added; 63/63 touched tests green)"
+current_plan: 18-03 (Wave 3 mobile review-chip + override telemetry) — complete (3/4 plans in Phase 18)
+status: Phase 18 Wave 3 landed. Wave 4 (Plan 18-04) unblocked — atomically remove LocationPicker + dead route params + rebase Maestro flows (07/16/19)
+stopped_at: "Completed 18-03-PLAN.md (Wave 3 mobile review-chip + override telemetry: LocationChip+Sheet primitives, fire-and-forget override-events POST, pantryStore signatures drop sourceLocation; 40/40 scope tests green)"
+last_updated: "2026-04-19T04:36:18.076Z"
+last_activity: "2026-04-19 -- Completed 18-03 (Wave 3 mobile review-chip + override telemetry: LocationChip + LocationChoiceSheet primitives (12 tests), logOverrideEvents fire-and-forget helper (5 tests), deriveOverrideEvents (6 tests), pantryStore signatures drop sourceLocation + aiLocation seeding + override dispatch, ReviewItemRow + review.tsx integration; 40/40 scope tests green, tsc clean)"
 progress:
   total_phases: 25
   completed_phases: 16
   total_plans: 70
-  completed_plans: 68
+  completed_plans: 69
   percent: 96
 ---
 
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 18 of 25 (AI Auto-Location for Pantry Imports) — IN PROGRESS
-Current Plan: 18-02 (Wave 2 backend end-to-end) — complete (2/4 plans in Phase 18)
-Status: Phase 18 Wave 2 landed. Wave 3 (Plan 18-03) unblocked — mobile can consume ScanResult.source_location, drop LocationPicker, wire LocationChip + /override-events telemetry
-Last activity: 2026-04-19 -- Completed 18-02 (Wave 2 backend end-to-end: vision tool schemas extended with source_location + STATIC_MAP post-correction, reconcileItems dual-writes item_attributes, scan routes strip source_location body, POST /override-events route added; 63/63 touched tests green)
+Current Plan: 18-03 (Wave 3 mobile review-chip + override telemetry) — complete (3/4 plans in Phase 18)
+Status: Phase 18 Wave 3 landed. Wave 4 (Plan 18-04) unblocked — atomically remove LocationPicker + dead route params + rebase Maestro flows (07/16/19)
+Last activity: 2026-04-19 -- Completed 18-03 (Wave 3 mobile review-chip + override telemetry: LocationChip + LocationChoiceSheet primitives (12 tests), logOverrideEvents fire-and-forget helper (5 tests), deriveOverrideEvents (6 tests), pantryStore signatures drop sourceLocation + aiLocation seeding + override dispatch, ReviewItemRow + review.tsx integration; 40/40 scope tests green, tsc clean)
 
 Progress: [██████████] 96%
 
@@ -121,6 +121,7 @@ Progress: [██████████] 96%
 | Phase 19 P06 | 24min | 2 tasks | 10 files |
 | Phase 18 P01 | 5min | 2 tasks | 6 files |
 | Phase 18 P02 | 12min | 3 tasks | 9 files |
+| Phase Phase 18 PP03 | 9min | 3 tasks tasks | 18 files files |
 
 ## Accumulated Context
 
@@ -364,6 +365,11 @@ Recent decisions affecting current work:
 - [Phase 18-02]: Extracted SOURCE_LOCATIONS + SourceLocation to sourceLocation.ts leaf module to break vision<->itemLocation circular import; vision.ts re-exports for backward compat
 - [Phase 18-02]: POST /override-events silently filters invalid + no-op (ai===user) events, returns inserted:0 with 200; only empty array returns 400 — mobile fires telemetry optimistically
 - [Phase 18-02]: UPDATE merges item_attributes via {...prior, source_location} spread so Phase 24 forward-compat keys survive re-scans; test pins invariant with some_future_key fixture
+- [Phase 18-03]: Extracted LOCATION_SYMBOLS/LABELS/FALLBACK to locationSymbols.ts shared module (single owner); PantryItemCard + LocationChip both import
+- [Phase 18-03]: mapScanResultsToReview seeds aiLocation = source_location on every scan response; override detection is pure-pass on ReviewItem[] with zero per-flow wiring
+- [Phase 18-03]: confirmScan fires logOverrideEvents via void (not awaited) so 'Pantry Updated!' Alert never waits on telemetry POST; getAuthTokenOrNull wrapper swallows mid-session sign-outs
+- [Phase 18-03]: Review-only fields (id, accepted, userEdited, aiLocation, probableDupe) stripped from /confirm payload via destructure-and-spread; aiLocation stays mobile-only provenance
+- [Phase 18-03]: LocationPicker intentionally stays mounted through 18-03; Plan 18-04 atomically deletes component + dead route params + rebases Maestro flows
 
 ### Pending Todos
 
@@ -407,6 +413,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T04:21:00.924Z
-Stopped at: Completed 18-02-PLAN.md (Wave 2 backend end-to-end: vision schema + reconcile dual-write + override-events route)
+Last session: 2026-04-19T04:36:18.071Z
+Stopped at: Completed 18-03-PLAN.md (Wave 3 mobile review-chip + override telemetry: LocationChip+Sheet primitives, fire-and-forget override-events POST, pantryStore signatures drop sourceLocation; 40/40 scope tests green)
 Resume file: None
