@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 21-01 (Wave 0 schema foundation — user_staples + user_location_rules + suggested_rules + canonical_scan_counts + promote_candidate_canonicals RPC) — complete
 status: Phase 21 opens with 21-01 — 4 new migrations (00016-00019) + migrations.test.ts extended with 23 new static SQL contract assertions (68/68 GREEN). Schema substrate ready for 21-02 (Wave 1 services) and 21-03 (Wave 2 routes).
-stopped_at: Completed 21-01-PLAN.md (4 new migrations 00016-00019 + migrations.test.ts extended with 23 static SQL assertions; 68/68 GREEN)
-last_updated: "2026-04-19T19:10:00.123Z"
+stopped_at: Completed 21-02-PLAN.md (TDD ruleEvaluator + suggestionAggregator + canonicalPromoter; 23/23 vitest GREEN; W3 canonical pre-resolved payload landed)
+last_updated: "2026-04-19T19:15:12.399Z"
 last_activity: 2026-04-19 -- Completed 21-01 (4 new Phase 21 migrations + migrations.test.ts extended; 68/68 GREEN; ready for 21-02 Wave 1 services)
 progress:
   total_phases: 25
   completed_phases: 18
   total_plans: 82
-  completed_plans: 77
+  completed_plans: 78
   percent: 94
 ---
 
@@ -131,6 +131,7 @@ Progress: [█████████░] 94%
 | Phase 24 P05 | 10.5min | 2 tasks | 4 files |
 | Phase 24-ai-vision-and-pantry-data-model-deep-refactor P06 | 9min | 3 tasks | 10 files |
 | Phase 21 P01 | 3min | 2 tasks | 5 files |
+| Phase 21-pantry-intelligence P02 | 7min | 3 tasks tasks | 6 files files |
 
 ## Accumulated Context
 
@@ -414,6 +415,12 @@ Recent decisions affecting current work:
 - [Phase 21]: [Phase 21-01]: Composite unique (user_id, rule_type, payload) on suggested_rules enables aggregator upsert-on-conflict without duplication; partial index idx_suggested_rules_user_active scoped to WHERE dismissed_at IS NULL (majority query shape)
 - [Phase 21]: [Phase 21-01]: user_staples RLS has only SELECT+INSERT+DELETE policies (no UPDATE) — staples are on/off markers with no in-place edits; user_location_rules + suggested_rules get full CRUD RLS for drag-reorder + dismissed_at writes
 - [Phase 21]: [Phase 21-01]: Rule 2 auto-fix — added canonical_scan_counts_write_service_role policy missing from plan snippet; without it canonicalPromoter could not increment counter under RLS even with service_role client
+- [Phase 21-02]: applyLocationRules preserves referential identity on pass-through — callers can '===' compare to detect no-op
+- [Phase 21-02]: suggestionAggregator pre-resolves canonical_ingredient_id into payload JSONB at aggregation time (W3) so 21-03 accept path never re-resolves and never drifts on candidate canonicals
+- [Phase 21-02]: Aggregator filters qualifying groups BEFORE resolveCanonicalBatch — saves one lookup per below-threshold group
+- [Phase 21-02]: Un-resolvable item_names skipped in aggregator (no orphan suggestions) — belt-and-braces since canonicalResolver auto-creates candidates
+- [Phase 21-02]: incrementScanCounts uses sequential read+upsert (not atomic RPC) — private-beta-acceptable; atomic-RPC follow-up documented for post-launch concurrency races
+- [Phase 21-02]: Name-mapping rules NOT in ruleEvaluator — they live in ingredient_aliases(source='user_rule') applied by canonicalResolver Stage 2
 
 ### Pending Todos
 
@@ -457,6 +464,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T19:10:00.120Z
-Stopped at: Completed 21-01-PLAN.md (4 new migrations 00016-00019 + migrations.test.ts extended with 23 static SQL assertions; 68/68 GREEN)
+Last session: 2026-04-19T19:15:12.395Z
+Stopped at: Completed 21-02-PLAN.md (TDD ruleEvaluator + suggestionAggregator + canonicalPromoter; 23/23 vitest GREEN; W3 canonical pre-resolved payload landed)
 Resume file: None
