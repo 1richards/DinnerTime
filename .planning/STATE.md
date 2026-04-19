@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 24-03 (Wave 1 canonicalResolver 4-stage lookup) — complete
-status: Phase 24 Wave 1 progress — units.ts + canonicalResolver landed. 24-01 (migrations + seed) in-flight on same wave. 24-04 (vision schema) + 24-05 (reconcileItems) in Wave 2 depend on both Quantity contract + canonicalResolver API.
-stopped_at: Completed 24-03 (canonicalResolver 4-stage lookup — GREEN 14/14)
-last_updated: "2026-04-19T17:38:06.556Z"
+current_plan: 24-01 (Wave 1 canonical substrate migrations + seed) — complete
+status: Phase 24 Wave 1 complete — migrations 00011-00015 + 366 canonicals + 1587 aliases + units.ts + canonicalResolver all landed. Ready for Wave 2 (24-04 vision schema, 24-05 reconcileItems rewrite).
+stopped_at: "Completed 24-01-PLAN.md (Phase 24a substrate: 5 migrations + 366 canonicals + 1587 aliases + 36 contract tests)"
+last_updated: "2026-04-19T17:46:19.341Z"
 last_activity: "2026-04-19 -- Completed 24-03 (canonicalResolver.ts 4-stage identity resolver: exact canonical → exact alias → Levenshtein ≤ 2 → auto-create candidate, strict REQ-14 ordering, 60s TTL cache with live-append invalidation on candidate INSERT, two-row DP Levenshtein with row-min early-exit, resolveCanonicalBatch dedups input + single canonical fetch across batch, 14/14 vitest green, zero new dependencies)"
 progress:
   total_phases: 25
   completed_phases: 17
   total_plans: 76
-  completed_plans: 72
+  completed_plans: 73
   percent: 93
 ---
 
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 24 of 25 (AI Vision & Pantry Data-Model Deep Refactor) — IN PROGRESS
-Current Plan: 24-03 (Wave 1 canonicalResolver 4-stage lookup) — complete
-Status: Phase 24 Wave 1 progress — units.ts + canonicalResolver landed. 24-01 (migrations + seed) in-flight on same wave. 24-04 (vision schema) + 24-05 (reconcileItems) in Wave 2 depend on both Quantity contract + canonicalResolver API.
-Last activity: 2026-04-19 -- Completed 24-03 (canonicalResolver.ts 4-stage identity resolver: exact canonical → exact alias → Levenshtein ≤ 2 → auto-create candidate, strict REQ-14 ordering, 60s TTL cache with live-append invalidation on candidate INSERT, two-row DP Levenshtein with row-min early-exit, resolveCanonicalBatch dedups input + single canonical fetch across batch, 14/14 vitest green, zero new dependencies)
+Current Plan: 24-01 (Wave 1 canonical substrate migrations + seed) — complete
+Status: Phase 24 Wave 1 complete — migrations 00011-00015 + 366 canonicals + 1587 aliases + units.ts + canonicalResolver all landed. Ready for Wave 2 (24-04 vision schema, 24-05 reconcileItems rewrite).
+Last activity: 2026-04-19 -- Completed 24-01 (Phase 24a substrate: 5 forward-only migrations 00011-00015, 366 canonical ingredient seed + 1587 alias seed spliced via DO blocks, pantry_items.canonical_ingredient_id nullable FK, non-unique dedup index, canonical_category_override per-user table, scan_events append-only log with no pass_number, quantity JSONB with {value,unit,system} default, 36 new migrations.test.ts contract assertions all green)
 
 Progress: [█████████░] 93%
 
@@ -125,6 +125,7 @@ Progress: [█████████░] 93%
 | Phase 18 P04 | 6min | 3 tasks | 9 files |
 | Phase 24 P02 | 3min | 2 tasks | 2 files |
 | Phase 24 P03 | 3.5min | 2 tasks | 2 files |
+| Phase 24 P01 | 13min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -385,6 +386,9 @@ Recent decisions affecting current work:
 - [Phase 24]: [Phase 24-03]: 60s TTL cache with live-append invalidation — cache.rows.push(newRow) on candidate INSERT is equivalent to invalidate+refetch because cache is status-filtered at load time and the only mutations the resolver emits are candidate inserts
 - [Phase 24]: [Phase 24-03]: FUZZY_MIN_LEN=4 gate — 2 edits against a 3-char canonical matches nearly anything; 4-char minimum eliminates that false-positive class while preserving real typo recovery (chikn → chicken)
 - [Phase 24]: [Phase 24-03]: resolveCanonicalBatch preserves raw-input-string keys (not normalized) so callers like reconcileItems can zip back to ScanResult[] using the exact AI-produced string
+- [Phase 24-01]: Seed JSON + migration DO block pattern: author JSON in packages/server/src/data/, splice via helper script, preserve JSON-as-source-of-truth for diff readability
+- [Phase 24-01]: scan_events append-only via RLS construction — only SELECT + INSERT policies; UPDATE/DELETE omitted. No pass_number column (criterion #3 descoped).
+- [Phase 24-01]: pantry_items.canonical_ingredient_id as nullable FK ON DELETE SET NULL; dedup index (profile_id, canonical_ingredient_id, source_location) NOT UNIQUE so incompatible-unit rescans can produce multiple rows
 
 ### Pending Todos
 
@@ -428,6 +432,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T17:36:36.535Z
-Stopped at: Completed 24-03 (canonicalResolver 4-stage lookup — GREEN 14/14)
+Last session: 2026-04-19T17:46:19.338Z
+Stopped at: Completed 24-01-PLAN.md (Phase 24a substrate: 5 migrations + 366 canonicals + 1587 aliases + 36 contract tests)
 Resume file: None
