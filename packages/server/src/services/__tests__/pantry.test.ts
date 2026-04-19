@@ -1,5 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mock canonicalResolver BEFORE importing pantry.ts — reconcileItems imports
+// resolveCanonicalBatch at module load. Resolver is covered independently in 24-03.
+vi.mock('../canonicalResolver.js', () => ({
+  resolveCanonicalBatch: vi.fn(async (_supabase: unknown, names: string[]) => {
+    // Deterministic canonical-id per normalized name so tests can reason about
+    // identity tuples (canonical_id, source_location).
+    const map = new Map();
+    for (const name of names) {
+      const norm = name.trim().toLowerCase();
+      map.set(name, {
+        canonicalId: `canon-${norm.replace(/\s+/g, '-')}`,
+        matchType: 'exact_canonical',
+        confidence: 1.0,
+      });
+    }
+    return map;
+  }),
+}));
+
 import { reconcileItems, normalizeName } from '../pantry.js';
+import type { ScanResult } from '../vision.js';
+import type { Quantity } from '../units.js';
 
 describe('normalizeName', () => {
   it('handles various inputs correctly', () => {
@@ -10,440 +32,367 @@ describe('normalizeName', () => {
   });
 });
 
-describe('reconcileItems', () => {
-  let mockSupabase: any;
-  let mockFrom: any;
-  let mockSelect: any;
-  let mockInsert: any;
-  let mockUpdate: any;
+/**
+ * Thenable supabase chain mock (Phase 13 pattern). Each `from(table)` returns a
+ * chain exposing select/insert/update/eq, all returning the chain so promises
+ * can be awaited at any point. Internal state tracks per-table seeded rows +
+ * captured insert/update payloads for assertions.
+ */
+interface TableFixtures {
+  // rows already in the table, keyed by synthetic match predicate
+  pantry_items: Array<Record<string, unknown>>;
+  canonical_ingredients: Array<{ id: string; category: string }>;
+  canonical_category_override: Array<{ canonical_ingredient_id: string; category: string }>;
+}
 
+interface Captured {
+  inserts: Array<{ table: string; payload: Record<string, unknown> }>;
+  updates: Array<{ table: string; payload: Record<string, unknown>; id: string }>;
+}
+
+function makeSupabase(fx: Partial<TableFixtures> = {}) {
+  const state: TableFixtures = {
+    pantry_items: fx.pantry_items ?? [],
+    canonical_ingredients: fx.canonical_ingredients ?? [],
+    canonical_category_override: fx.canonical_category_override ?? [],
+  };
+  const captured: Captured = { inserts: [], updates: [] };
+
+  function fromBuilder(table: string) {
+    // Per-select state: tracks pending filters (eq values) + IN filter.
+    const filters: Record<string, unknown> = {};
+    const inFilters: Record<string, unknown[]> = {};
+    let mode: 'select' | 'insert' | 'update' = 'select';
+    let updatePayload: Record<string, unknown> = {};
+
+    const chain: any = {
+      select: vi.fn(() => chain),
+      eq: vi.fn((col: string, val: unknown) => {
+        filters[col] = val;
+        return chain;
+      }),
+      in: vi.fn((col: string, vals: unknown[]) => {
+        inFilters[col] = vals;
+        return chain;
+      }),
+      insert: vi.fn((payload: Record<string, unknown>) => {
+        mode = 'insert';
+        captured.inserts.push({ table, payload });
+        // pantry_items insert in reconcile does NOT call .select().single() in new
+        // impl — just awaited. Still expose thenable + select chain.
+        return chain;
+      }),
+      update: vi.fn((payload: Record<string, unknown>) => {
+        mode = 'update';
+        updatePayload = payload;
+        return chain;
+      }),
+      then: (resolve: (v: any) => void) => {
+        if (mode === 'insert') {
+          return resolve({ data: null, error: null });
+        }
+        if (mode === 'update') {
+          // updates are finalized by a .eq('id', ...) before awaiting
+          captured.updates.push({
+            table,
+            payload: updatePayload,
+            id: filters.id as string,
+          });
+          return resolve({ data: null, error: null });
+        }
+        // SELECT: filter state → rows
+        if (table === 'pantry_items') {
+          const matches = state.pantry_items.filter((row) => {
+            for (const [col, val] of Object.entries(filters)) {
+              if (row[col] !== val) return false;
+            }
+            return true;
+          });
+          return resolve({ data: matches, error: null });
+        }
+        if (table === 'canonical_ingredients') {
+          const ids = inFilters.id ?? [];
+          const matches = state.canonical_ingredients.filter((r) =>
+            ids.includes(r.id),
+          );
+          return resolve({ data: matches, error: null });
+        }
+        if (table === 'canonical_category_override') {
+          const matches = state.canonical_category_override.filter((r) => {
+            for (const [col, val] of Object.entries(filters)) {
+              if ((r as Record<string, unknown>)[col] !== val) return false;
+            }
+            return true;
+          });
+          return resolve({ data: matches, error: null });
+        }
+        return resolve({ data: [], error: null });
+      },
+    };
+    return chain;
+  }
+
+  const supabase = {
+    from: vi.fn((table: string) => fromBuilder(table)),
+  };
+  return { supabase, state, captured };
+}
+
+function scan(
+  name: string,
+  quantity: Quantity,
+  source_location: 'fridge' | 'pantry' | 'freezer',
+  overrides: Partial<ScanResult> = {},
+): ScanResult {
+  return {
+    name,
+    quantity,
+    confidence: overrides.confidence ?? 0.9,
+    fieldConfidence: overrides.fieldConfidence ?? {
+      name: 0.9,
+      quantity: 0.9,
+      unit: 0.9,
+      category: 0.9,
+    },
+    category: overrides.category ?? 'other',
+    source_location,
+    ...overrides,
+  } as ScanResult;
+}
+
+describe('reconcileItems — canonical-identity dedup (24-05)', () => {
   beforeEach(() => {
-    mockSelect = vi.fn();
-    mockInsert = vi.fn();
-    mockUpdate = vi.fn();
-
-    mockFrom = vi.fn(() => ({
-      select: mockSelect,
-      insert: mockInsert,
-      update: mockUpdate,
-    }));
-
-    mockSupabase = { from: mockFrom };
+    vi.clearAllMocks();
   });
 
-  /**
-   * Wire a select chain that ends in `.eq().eq()` returning `data` (Phase 18:
-   * fetch cross-location — no third `.eq('source_location', ...)` filter).
-   */
-  function wireSelect(data: any[]) {
-    const selectEq2 = vi.fn().mockResolvedValue({ data, error: null });
-    const selectEq1 = vi.fn().mockReturnValue({ eq: selectEq2 });
-    mockSelect.mockReturnValue({ eq: selectEq1 });
-    return { selectEq1, selectEq2 };
-  }
-
-  function wireInsert(returnedRow: any) {
-    const singleFn = vi.fn().mockResolvedValue({ data: returnedRow, error: null });
-    const selectFn = vi.fn().mockReturnValue({ single: singleFn });
-    mockInsert.mockReturnValue({ select: selectFn });
-    return { singleFn, selectFn };
-  }
-
-  function wireUpdate(returnedRow: any) {
-    const singleFn = vi.fn().mockResolvedValue({ data: returnedRow, error: null });
-    const selectFn = vi.fn().mockReturnValue({ single: singleFn });
-    const updateEq = vi.fn().mockReturnValue({ select: selectFn });
-    mockUpdate.mockReturnValue({ eq: updateEq });
-    return { updateEq, singleFn };
-  }
-
-  it('inserts new items with normalized name (lowercase, trimmed)', async () => {
-    const { selectEq1, selectEq2 } = wireSelect([]);
-
-    wireInsert({
-      id: 'new-id-1',
-      profile_id: 'user-1',
-      name: 'Cheddar Cheese',
-      normalized_name: 'cheddar cheese',
-      quantity: 1,
-      unit: 'block',
-      category: 'dairy',
-      source_location: 'fridge',
-      item_attributes: { source_location: 'fridge' },
-      confidence: 0.9,
-      status: 'available',
-      last_seen_at: '2026-04-12T00:00:00Z',
+  it('inserts a new pantry row with canonical FK + quantity JSONB + category from canonical', async () => {
+    const { supabase, captured } = makeSupabase({
+      canonical_ingredients: [{ id: 'canon-olive-oil', category: 'condiment' }],
     });
 
-    const result = await reconcileItems(mockSupabase, 'user-1', [
-      {
-        name: 'Cheddar Cheese ',
-        quantity: 1,
-        unit: 'block',
-        category: 'dairy',
-        confidence: 0.9,
-        source_location: 'fridge',
-      },
+    const result = await reconcileItems(supabase as any, 'user-1', [
+      scan('olive oil', { value: 1, unit: 'cup', system: 'imperial-volume' }, 'pantry', {
+        category: 'other',
+      }),
     ]);
 
-    expect(selectEq1).toHaveBeenCalledWith('profile_id', 'user-1');
-    expect(selectEq2).toHaveBeenCalledWith('normalized_name', 'cheddar cheese');
+    expect(result.inserted).toBe(1);
+    expect(result.updated).toBe(0);
+    expect(result.incompatibleUnits).toBe(0);
 
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        normalized_name: 'cheddar cheese',
-        name: 'Cheddar Cheese',
-        profile_id: 'user-1',
-        source_location: 'fridge',
-        item_attributes: { source_location: 'fridge' },
-      })
-    );
-
-    expect(result).toHaveLength(1);
-    expect(result[0].normalized_name).toBe('cheddar cheese');
+    const insert = captured.inserts.find((i) => i.table === 'pantry_items');
+    expect(insert).toBeTruthy();
+    const payload = insert!.payload;
+    expect(payload.profile_id).toBe('user-1');
+    expect(payload.canonical_ingredient_id).toBe('canon-olive-oil');
+    expect(payload.source_location).toBe('pantry');
+    // REQ-10: uses canonical.category (condiment) even though scan said 'other'.
+    expect(payload.category).toBe('condiment');
+    // REQ-16: quantity is JSONB shape.
+    expect(payload.quantity).toEqual({ value: 1, unit: 'cup', system: 'imperial-volume' });
+    // Dual-write item_attributes.canonical_ingredient_id for legacy readers.
+    const attrs = payload.item_attributes as Record<string, unknown>;
+    expect(attrs.canonical_ingredient_id).toBe('canon-olive-oil');
+    expect(attrs.source_location).toBe('pantry');
   });
 
-  it('updates existing items (quantity, confidence, last_seen_at) without deleting missing ones', async () => {
-    wireSelect([
-      {
-        id: 'existing-id',
-        profile_id: 'user-1',
-        name: 'milk',
-        normalized_name: 'milk',
-        quantity: 1,
-        unit: 'gallon',
-        category: 'dairy',
-        source_location: 'fridge',
-        item_attributes: {},
-        confidence: 0.8,
-        status: 'available',
-        last_seen_at: '2026-04-10T00:00:00Z',
-      },
-    ]);
-
-    const { updateEq } = wireUpdate({
-      id: 'existing-id',
-      profile_id: 'user-1',
-      name: 'milk',
-      normalized_name: 'milk',
-      quantity: 2,
-      unit: 'gallon',
-      category: 'dairy',
-      source_location: 'fridge',
-      item_attributes: { source_location: 'fridge' },
-      confidence: 0.95,
-      status: 'available',
-      last_seen_at: '2026-04-12T00:00:00Z',
-    });
-
-    const result = await reconcileItems(mockSupabase, 'user-1', [
-      {
-        name: 'milk',
-        quantity: 2,
-        unit: 'gallon',
-        category: 'dairy',
-        confidence: 0.95,
-        source_location: 'fridge',
-      },
-    ]);
-
-    expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        quantity: 2,
-        confidence: 0.95,
-        status: 'available',
-        item_attributes: { source_location: 'fridge' },
-      })
-    );
-
-    expect(updateEq).toHaveBeenCalledWith('id', 'existing-id');
-
-    expect(result).toHaveLength(1);
-    expect(result[0].quantity).toBe(2);
-  });
-
-  it('does not touch items not present in the confirmed scan', async () => {
-    wireSelect([]);
-    wireInsert({
-      id: 'new-id',
-      profile_id: 'user-1',
-      name: 'apples',
-      normalized_name: 'apples',
-      quantity: 3,
-      unit: 'piece',
-      category: 'produce',
-      source_location: 'fridge',
-      item_attributes: { source_location: 'fridge' },
-      confidence: 0.85,
-      status: 'available',
-    });
-
-    await reconcileItems(mockSupabase, 'user-1', [
-      {
-        name: 'apples',
-        quantity: 3,
-        unit: 'piece',
-        category: 'produce',
-        confidence: 0.85,
-        source_location: 'fridge',
-      },
-    ]);
-
-    const fromCalls = mockFrom.mock.calls;
-    expect(fromCalls.every((call: string[]) => call[0] === 'pantry_items')).toBe(true);
-
-    expect(mockSelect).toHaveBeenCalledTimes(1);
-    expect(mockUpdate).not.toHaveBeenCalled();
-  });
-
-  describe('dual-write invariant (Phase 18)', () => {
-    it('INSERT writes both source_location column AND item_attributes.source_location', async () => {
-      wireSelect([]);
-      wireInsert({
-        id: 'new-id-2',
-        profile_id: 'user-1',
-        name: 'milk',
-        normalized_name: 'milk',
-        quantity: 1,
-        unit: 'gallon',
-        category: 'dairy',
-        source_location: 'fridge',
-        item_attributes: { source_location: 'fridge' },
-        confidence: 0.9,
-        status: 'available',
-        last_seen_at: '2026-04-12T00:00:00Z',
-      });
-
-      const result = await reconcileItems(mockSupabase, 'user-1', [
+  it('REQ-13: rescan same canonical + same location with compatible units SUMS quantity (UPDATE)', async () => {
+    const { supabase, captured } = makeSupabase({
+      pantry_items: [
         {
-          name: 'milk',
-          quantity: 1,
-          unit: 'gallon',
-          category: 'dairy',
-          confidence: 0.9,
-          source_location: 'fridge',
-        },
-      ]);
-
-      const insertArg = mockInsert.mock.calls[0][0];
-      expect(insertArg.source_location).toBe('fridge');
-      expect(insertArg.item_attributes).toEqual({ source_location: 'fridge' });
-      // Invariant: both paths must equal.
-      expect(insertArg.source_location).toBe(insertArg.item_attributes.source_location);
-
-      // Round-trip: returned row preserves equality.
-      expect(result[0].source_location).toBe(result[0].item_attributes.source_location);
-    });
-
-    it('UPDATE merges item_attributes: preserves prior extra keys AND sets source_location', async () => {
-      wireSelect([
-        {
-          id: 'existing-id',
+          id: 'row-1',
           profile_id: 'user-1',
-          name: 'milk',
-          normalized_name: 'milk',
-          quantity: 1,
-          unit: 'gallon',
-          category: 'dairy',
-          source_location: 'fridge',
-          item_attributes: { source_location: 'fridge', some_future_key: 'x' },
-          confidence: 0.8,
-          status: 'available',
-          last_seen_at: '2026-04-10T00:00:00Z',
-        },
-      ]);
-
-      wireUpdate({
-        id: 'existing-id',
-        profile_id: 'user-1',
-        name: 'milk',
-        normalized_name: 'milk',
-        quantity: 2,
-        unit: 'gallon',
-        category: 'dairy',
-        source_location: 'fridge',
-        item_attributes: { source_location: 'fridge', some_future_key: 'x' },
-        confidence: 0.95,
-        status: 'available',
-        last_seen_at: '2026-04-12T00:00:00Z',
-      });
-
-      await reconcileItems(mockSupabase, 'user-1', [
-        {
-          name: 'milk',
-          quantity: 2,
-          unit: 'gallon',
-          category: 'dairy',
-          confidence: 0.95,
-          source_location: 'fridge',
-        },
-      ]);
-
-      const updateArg = mockUpdate.mock.calls[0][0];
-      expect(updateArg.item_attributes).toEqual({ source_location: 'fridge', some_future_key: 'x' });
-    });
-
-    it('UPDATE handles null/missing prior item_attributes gracefully', async () => {
-      wireSelect([
-        {
-          id: 'existing-id',
-          profile_id: 'user-1',
-          name: 'milk',
-          normalized_name: 'milk',
-          quantity: 1,
-          unit: 'gallon',
-          category: 'dairy',
-          source_location: 'fridge',
-          item_attributes: null, // pre-Phase-18 row
-          confidence: 0.8,
-          status: 'available',
-          last_seen_at: '2026-04-10T00:00:00Z',
-        },
-      ]);
-
-      wireUpdate({
-        id: 'existing-id',
-        profile_id: 'user-1',
-        name: 'milk',
-        normalized_name: 'milk',
-        quantity: 2,
-        unit: 'gallon',
-        category: 'dairy',
-        source_location: 'fridge',
-        item_attributes: { source_location: 'fridge' },
-        confidence: 0.95,
-        status: 'available',
-        last_seen_at: '2026-04-12T00:00:00Z',
-      });
-
-      await reconcileItems(mockSupabase, 'user-1', [
-        {
-          name: 'milk',
-          quantity: 2,
-          unit: 'gallon',
-          category: 'dairy',
-          confidence: 0.95,
-          source_location: 'fridge',
-        },
-      ]);
-
-      const updateArg = mockUpdate.mock.calls[0][0];
-      expect(updateArg.item_attributes).toEqual({ source_location: 'fridge' });
-    });
-
-    it('mixed-location reconcile: milk fridge + rice pantry + ice cream freezer all land with distinct locations', async () => {
-      // Each item gets its own select→insert cycle; all three miss (new items).
-      // Supabase mock must respond independently per call. Use mockReturnValue
-      // re-wired per iteration via mockImplementation.
-      let callIdx = 0;
-      const selectResults = [
-        { data: [], error: null }, // milk
-        { data: [], error: null }, // rice
-        { data: [], error: null }, // ice cream
-      ];
-      mockSelect.mockImplementation(() => {
-        const result = selectResults[callIdx++];
-        const selectEq2 = vi.fn().mockResolvedValue(result);
-        const selectEq1 = vi.fn().mockReturnValue({ eq: selectEq2 });
-        return { eq: selectEq1 };
-      });
-
-      const inserted: any[] = [];
-      mockInsert.mockImplementation((row: any) => {
-        inserted.push(row);
-        return {
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: { id: `id-${inserted.length}`, ...row },
-              error: null,
-            }),
-          }),
-        };
-      });
-
-      const result = await reconcileItems(mockSupabase, 'user-1', [
-        {
-          name: 'milk',
-          quantity: 1,
-          unit: 'gallon',
-          category: 'dairy',
-          confidence: 0.9,
-          source_location: 'fridge',
-        },
-        {
-          name: 'rice',
-          quantity: 1,
-          unit: 'bag',
-          category: 'grain',
-          confidence: 0.9,
+          canonical_ingredient_id: 'canon-flour',
           source_location: 'pantry',
+          quantity: { value: 1, unit: 'cup', system: 'imperial-volume' },
+          item_attributes: { source_location: 'pantry', canonical_ingredient_id: 'canon-flour' },
+          last_seen_at: '2026-04-10T00:00:00Z',
         },
-        {
-          name: 'ice cream',
-          quantity: 1,
-          unit: 'pint',
-          category: 'frozen',
-          confidence: 0.9,
-          source_location: 'freezer',
-        },
-      ]);
-
-      expect(result).toHaveLength(3);
-      const locs = new Set(inserted.map((r) => r.source_location));
-      expect(locs).toEqual(new Set(['fridge', 'pantry', 'freezer']));
-
-      for (const row of inserted) {
-        expect(row.source_location).toBe(row.item_attributes.source_location);
-      }
+      ],
+      canonical_ingredients: [{ id: 'canon-flour', category: 'grain' }],
     });
 
-    it('cross-location dedup: existing milk in fridge matched regardless of scan source_location', async () => {
-      // Phase 18: dedup by name only (no source_location filter on select).
-      // A re-scan returning the same name, even with a different inferred
-      // location, hits the existing row.
-      wireSelect([
+    const result = await reconcileItems(supabase as any, 'user-1', [
+      scan('flour', { value: 6, unit: 'tbsp', system: 'imperial-volume' }, 'pantry'),
+    ]);
+
+    expect(result.updated).toBe(1);
+    expect(result.inserted).toBe(0);
+    expect(captured.inserts.filter((i) => i.table === 'pantry_items')).toHaveLength(0);
+
+    const update = captured.updates.find((u) => u.table === 'pantry_items');
+    expect(update).toBeTruthy();
+    expect(update!.id).toBe('row-1');
+    const merged = update!.payload.quantity as Quantity;
+    // 1 cup + 6 tbsp = 1.375 cup (cup=48 tsp, tbsp=3 tsp; 48+18=66 tsp → 66/48 = 1.375 cup)
+    expect(merged.unit).toBe('cup');
+    expect(merged.system).toBe('imperial-volume');
+    expect(merged.value).toBeCloseTo(1.375, 3);
+    expect(update!.payload.last_seen_at).toBeTypeOf('string');
+  });
+
+  it('REQ-13: rescan same canonical + DIFFERENT location inserts a NEW row', async () => {
+    const { supabase, captured } = makeSupabase({
+      pantry_items: [
         {
-          id: 'existing-milk',
+          id: 'row-1',
           profile_id: 'user-1',
-          name: 'milk',
-          normalized_name: 'milk',
-          quantity: 1,
-          unit: 'gallon',
-          category: 'dairy',
-          source_location: 'fridge',
-          item_attributes: { source_location: 'fridge' },
-          confidence: 0.8,
-          status: 'available',
+          canonical_ingredient_id: 'canon-salt',
+          source_location: 'pantry',
+          quantity: { value: 1, unit: 'piece', system: 'count' },
+          item_attributes: {},
         },
-      ]);
-      wireUpdate({
-        id: 'existing-milk',
-        profile_id: 'user-1',
-        name: 'milk',
-        normalized_name: 'milk',
-        quantity: 2,
-        unit: 'gallon',
-        category: 'dairy',
-        source_location: 'fridge',
-        item_attributes: { source_location: 'fridge' },
-        confidence: 0.9,
-        status: 'available',
-      });
-
-      await reconcileItems(mockSupabase, 'user-1', [
-        {
-          name: 'milk',
-          quantity: 2,
-          unit: 'gallon',
-          category: 'dairy',
-          confidence: 0.9,
-          source_location: 'fridge',
-        },
-      ]);
-
-      // Update path hit (existing row matched), not insert.
-      expect(mockUpdate).toHaveBeenCalledTimes(1);
-      expect(mockInsert).not.toHaveBeenCalled();
+      ],
+      canonical_ingredients: [{ id: 'canon-salt', category: 'other' }],
     });
+
+    const result = await reconcileItems(supabase as any, 'user-1', [
+      scan('salt', { value: 1, unit: 'piece', system: 'count' }, 'fridge'),
+    ]);
+
+    expect(result.inserted).toBe(1);
+    expect(result.updated).toBe(0);
+    const insert = captured.inserts.find((i) => i.table === 'pantry_items');
+    expect(insert!.payload.source_location).toBe('fridge');
+    expect(insert!.payload.canonical_ingredient_id).toBe('canon-salt');
+  });
+
+  it('REQ-13: rescan DIFFERENT canonical + same location inserts a NEW row', async () => {
+    const { supabase, captured } = makeSupabase({
+      pantry_items: [
+        {
+          id: 'row-1',
+          profile_id: 'user-1',
+          canonical_ingredient_id: 'canon-flour',
+          source_location: 'pantry',
+          quantity: { value: 1, unit: 'cup', system: 'imperial-volume' },
+          item_attributes: {},
+        },
+      ],
+      canonical_ingredients: [
+        { id: 'canon-flour', category: 'grain' },
+        { id: 'canon-sugar', category: 'other' },
+      ],
+    });
+
+    const result = await reconcileItems(supabase as any, 'user-1', [
+      scan('sugar', { value: 2, unit: 'cup', system: 'imperial-volume' }, 'pantry'),
+    ]);
+
+    expect(result.inserted).toBe(1);
+    expect(result.updated).toBe(0);
+    const insert = captured.inserts.find((i) => i.table === 'pantry_items');
+    expect(insert!.payload.canonical_ingredient_id).toBe('canon-sugar');
+  });
+
+  it('REQ-11: canonical_category_override takes precedence over canonical.category', async () => {
+    const { supabase, captured } = makeSupabase({
+      canonical_ingredients: [{ id: 'canon-olive-oil', category: 'condiment' }],
+      canonical_category_override: [
+        { canonical_ingredient_id: 'canon-olive-oil', category: 'pantry-staple' },
+      ],
+    });
+
+    await reconcileItems(supabase as any, 'user-1', [
+      scan('olive oil', { value: 1, unit: 'bottle', system: 'custom' }, 'pantry'),
+    ]);
+
+    const insert = captured.inserts.find((i) => i.table === 'pantry_items');
+    expect(insert!.payload.category).toBe('pantry-staple');
+  });
+
+  it('REQ-18: compatible-unit aggregation (tbsp + tsp → tbsp unit preserved, summed in base)', async () => {
+    const { supabase, captured } = makeSupabase({
+      pantry_items: [
+        {
+          id: 'row-1',
+          profile_id: 'user-1',
+          canonical_ingredient_id: 'canon-vanilla',
+          source_location: 'pantry',
+          quantity: { value: 2, unit: 'tbsp', system: 'imperial-volume' },
+          item_attributes: {},
+        },
+      ],
+      canonical_ingredients: [{ id: 'canon-vanilla', category: 'condiment' }],
+    });
+
+    await reconcileItems(supabase as any, 'user-1', [
+      scan('vanilla', { value: 3, unit: 'tsp', system: 'imperial-volume' }, 'pantry'),
+    ]);
+
+    const update = captured.updates.find((u) => u.table === 'pantry_items');
+    expect(update).toBeTruthy();
+    const merged = update!.payload.quantity as Quantity;
+    // 2 tbsp = 6 tsp + 3 tsp = 9 tsp → expressed in tbsp (base of a) = 3 tbsp
+    expect(merged.unit).toBe('tbsp');
+    expect(merged.value).toBeCloseTo(3, 3);
+  });
+
+  it('Incompatible units inserts a SECOND row with item_attributes.reconcile_hint', async () => {
+    const { supabase, captured } = makeSupabase({
+      pantry_items: [
+        {
+          id: 'row-1',
+          profile_id: 'user-1',
+          canonical_ingredient_id: 'canon-sugar',
+          source_location: 'pantry',
+          quantity: { value: 1, unit: 'cup', system: 'imperial-volume' },
+          item_attributes: {},
+        },
+      ],
+      canonical_ingredients: [{ id: 'canon-sugar', category: 'other' }],
+    });
+
+    const result = await reconcileItems(supabase as any, 'user-1', [
+      scan('sugar', { value: 1, unit: 'lb', system: 'imperial-weight' }, 'pantry'),
+    ]);
+
+    expect(result.incompatibleUnits).toBe(1);
+    expect(result.inserted).toBe(1);
+    expect(result.updated).toBe(0);
+
+    const insert = captured.inserts.find((i) => i.table === 'pantry_items');
+    expect(insert).toBeTruthy();
+    const attrs = insert!.payload.item_attributes as Record<string, unknown>;
+    expect(attrs.reconcile_hint).toBe('incompatible_units');
+    expect(insert!.payload.canonical_ingredient_id).toBe('canon-sugar');
+    expect(insert!.payload.source_location).toBe('pantry');
+  });
+
+  it('falls back to category="other" when neither override nor canonical row provides a category', async () => {
+    const { supabase, captured } = makeSupabase({
+      // canonical lookup returns nothing (unusual but defensive)
+      canonical_ingredients: [],
+    });
+
+    await reconcileItems(supabase as any, 'user-1', [
+      scan('mystery', { value: 1, unit: 'piece', system: 'count' }, 'pantry'),
+    ]);
+
+    const insert = captured.inserts.find((i) => i.table === 'pantry_items');
+    expect(insert!.payload.category).toBe('other');
+  });
+
+  it('returns counts on an empty input without querying', async () => {
+    const { supabase, captured } = makeSupabase();
+    const result = await reconcileItems(supabase as any, 'user-1', []);
+    expect(result).toEqual({ inserted: 0, updated: 0, incompatibleUnits: 0 });
+    expect(captured.inserts).toHaveLength(0);
+    expect(captured.updates).toHaveLength(0);
+  });
+
+  it('uses normalized item name on INSERT (lowercase + trim)', async () => {
+    const { supabase, captured } = makeSupabase({
+      canonical_ingredients: [{ id: 'canon-cheddar-cheese', category: 'dairy' }],
+    });
+
+    await reconcileItems(supabase as any, 'user-1', [
+      scan('  Cheddar Cheese  ', { value: 1, unit: 'piece', system: 'count' }, 'fridge'),
+    ]);
+
+    const insert = captured.inserts.find((i) => i.table === 'pantry_items');
+    expect(insert!.payload.normalized_name).toBe('cheddar cheese');
+    // Name preserved trimmed (not lowercased) for display.
+    expect(insert!.payload.name).toBe('Cheddar Cheese');
   });
 });
