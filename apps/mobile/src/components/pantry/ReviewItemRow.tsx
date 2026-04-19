@@ -1,10 +1,22 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
-import type { FieldConfidence, ReviewItem } from '../../types/pantry';
+import type { ReviewItem } from '../../types/pantry';
 import { formatQuantity } from '../../types/pantry';
 import { colors } from '../../design/tokens';
 import { LocationChip } from './LocationChip';
+import {
+  resolveFieldClass,
+  resolveFieldAccessibilityHint,
+} from './reviewItemRowHelpers';
+
+// Re-export so callers can reach the helpers through ReviewItemRow if they
+// already depend on the component for related concerns.
+export {
+  resolveFieldClass,
+  resolveFieldAccessibilityHint,
+  LOW_CONFIDENCE_THRESHOLD,
+} from './reviewItemRowHelpers';
 
 interface ReviewItemRowProps {
   item: ReviewItem;
@@ -39,6 +51,21 @@ export function ReviewItemRow({
   const [editName, setEditName] = useState(item.name);
   const confidenceColor = getConfidenceColor(item.confidence);
   const confidenceLabel = getConfidenceLabel(item.confidence);
+
+  // Phase 24-06: inline low-confidence treatment. The quantity display renders
+  // BOTH the numeric value and the unit, so flag it when EITHER quantity OR
+  // unit is below threshold. Merge into a synthetic field that stays < 0.7 if
+  // either underlying field is low-confidence.
+  const fc = item.fieldConfidence;
+  const mergedQuantityUnit = fc
+    ? { ...fc, quantity: Math.min(fc.quantity, fc.unit) }
+    : undefined;
+  const nameLowClass = resolveFieldClass(fc, 'name');
+  const nameHint = resolveFieldAccessibilityHint(fc, 'name');
+  const qtyLowClass = resolveFieldClass(mergedQuantityUnit, 'quantity');
+  const qtyHint = resolveFieldAccessibilityHint(mergedQuantityUnit, 'quantity');
+  const categoryLowClass = resolveFieldClass(fc, 'category');
+  const categoryHint = resolveFieldAccessibilityHint(fc, 'category');
 
   const handleToggleAccepted = () => {
     onUpdate(item.id, { accepted: !item.accepted });
@@ -85,19 +112,34 @@ export function ReviewItemRow({
             className="text-base text-warmGray-900 font-medium border-b border-brand pb-0.5"
           />
         ) : (
-          <Pressable onPress={() => setIsEditingName(true)}>
+          <Pressable onPress={() => setIsEditingName(true)} accessibilityHint={nameHint}>
             <Text
-              className={`text-base font-medium ${
+              className={`text-base font-medium self-start ${
                 item.accepted ? 'text-warmGray-900' : 'text-warmGray-400 line-through'
-              }`}
+              } ${nameLowClass}`}
             >
               {item.name}
             </Text>
           </Pressable>
         )}
-        <Text className="text-sm text-warmGray-500 mt-0.5">
-          {formatQuantity(item.quantity)} · {item.category}
-        </Text>
+        {/* Phase 24-06: quantity + category rendered as separate spans so the
+            inline low-confidence dashed underline can hug each field
+            independently. Keeps a bullet separator between them for density. */}
+        <View className="flex-row flex-wrap items-center mt-0.5">
+          <Text
+            className={`text-sm text-warmGray-500 ${qtyLowClass}`}
+            accessibilityHint={qtyHint}
+          >
+            {formatQuantity(item.quantity)}
+          </Text>
+          <Text className="text-sm text-warmGray-500"> · </Text>
+          <Text
+            className={`text-sm text-warmGray-500 ${categoryLowClass}`}
+            accessibilityHint={categoryHint}
+          >
+            {item.category}
+          </Text>
+        </View>
         {/* Phase 18-03: per-item location chip. Tap opens the sheet in the
             parent screen (review.tsx owns the open-item state). */}
         <View className="mt-1 flex-row">
