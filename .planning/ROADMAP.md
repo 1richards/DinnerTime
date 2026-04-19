@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 21: Pantry Intelligence** - Smarter dedup (fuzzy name matching, variant rollup), better pantry-tab presentation (grouping, sections, search), AI categorization learning from history, and user-defined scan rules for commonly purchased items
 - [ ] **Phase 22: Plan Experience Refactor** - Better UX between Plan ↔ Recipes ↔ Suggestions ↔ Shopping; date pickers; multi-scale actions (day / week / month); skill-progression integration so planning uplevels cooking skills over time
 - [ ] **Phase 23: Settings, Auth & Non-Functional** - Account management (password reset, email change, delete account), session lifecycle polish, biometric unlock, security hardening, error handling, observability, performance budgets
-- [ ] **Phase 24: AI Vision & Pantry Data-Model Deep Refactor** - Systematically upgrade scan quality (prompting, multi-pass reasoning, retry logic), item creation logic, category consistency, canonical-name resolution for dedup, quantity/unit extraction, and the underlying data model (canonical ingredient table, item events, quantity semantics)
+- [x] **Phase 24: AI Vision & Pantry Data-Model Deep Refactor** - Systematically upgrade scan quality (prompting, multi-pass reasoning, retry logic), item creation logic, category consistency, canonical-name resolution for dedup, quantity/unit extraction, and the underlying data model (canonical ingredient table, item events, quantity semantics) (completed 2026-04-19)
 - [ ] **Phase 25: Private Beta Launch** - Seed DinnerTime with real kitchen data, invite family and friends as beta users via TestFlight, submit to the App Store for private/unlisted distribution
 
 **Milestone v1.0 shipped 2026-04-14.** Post-v1 polish (UAT harness, visual pass, remix, collapsing headers, filter sheet, sign out, SecureStore fix, Cook tab removal) landed out-of-band on `main` and is logged in `STATE.md` under "Post-v1 Polish" rather than re-planned as a GSD phase. See `.planning/UAT-NIGHT-REPORT.md` for the overnight work summary. Plan tab multi-week navigation is deferred; candidate for a future Phase 12 when formalized.
@@ -569,8 +569,8 @@ Plans:
 - [x] 24-02-PLAN.md — units.ts unit conversion library (TDD) — REQ-16/17
 - [x] 24-03-PLAN.md — canonicalResolver.ts: exact canonical → alias → fuzzy → candidate auto-create (TDD) — REQ-07/09/14
 - [x] 24-04-PLAN.md — vision.ts + identifyReceiptItems.ts tool schema extensions (nested Quantity + nested FieldConfidence) — REQ-16/19 at AI boundary
-- [ ] 24-05-PLAN.md — Rewritten reconcileItems (canonical-identity dedup + quantity aggregation) + scan_events write-path on 4 scan flows — REQ-13/15/18/19/23
-- [ ] 24-06-PLAN.md — Mobile ScanResult mirror + inline low-confidence UI on ReviewItemRow + Maestro smoke UAT checkpoint
+- [x] 24-05-PLAN.md — Rewritten reconcileItems (canonical-identity dedup + quantity aggregation) + scan_events write-path on 4 scan flows — REQ-13/15/18/19/23
+- [x] 24-06-PLAN.md — Mobile ScanResult mirror + inline low-confidence UI on ReviewItemRow + Maestro smoke UAT checkpoint
 
 **Scope note:** Phase 24a covers ROADMAP criteria 6-23. Criteria 1-2, 4-5, 24-26 (versioned prompts, eval harness, accuracy metric, retry/fallback, model routing per variant) are Phase 24b — scheduled for a future `/gsd:plan-phase` invocation. Criterion 3 (multi-pass reasoning) is DESCOPED entirely.
 

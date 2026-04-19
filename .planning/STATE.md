@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 24-05 (Wave 2 reconcileItems rewrite + scan_events writer) — complete
+current_plan: 24-06 (Wave 3 mobile ScanResult mirror + inline low-confidence UI) — complete (closes Phase 24a)
 status: executing
-stopped_at: "Completed 24-05-PLAN.md (canonical-identity dedup + quantity aggregation + scan_events writer on 4 scan flows; 47/47 pantry tests GREEN; 526/528 server suite GREEN)"
-last_updated: "2026-04-19T18:12:00.000Z"
-last_activity: 2026-04-19 -- Completed 24-05 (reconcileItems rewritten to key dedup on (profile_id, canonical_ingredient_id, source_location); quantity aggregation via units.add with incompatible-unit multi-row fallback + item_attributes.reconcile_hint='incompatible_units'; canonical_category_override > canonical.category > 'other' precedence; scan_events writer fire-and-forget on all 4 scan routes with scan_variant + raw_ai_output + final_items + field_confidence [{item_index, name, quantity, unit, category}]; /confirm response surfaces {inserted, updated, incompatibleUnits}; GET /pantry preserves legacy canonical_ingredient_id=NULL readability (REQ-23 forward-only); 47/47 pantry tests green, 526/528 server suite green, services/pantry.ts 0 new tsc errors)
+stopped_at: Completed 24-06-PLAN.md (mobile ScanResult mirror + inline low-confidence dashed-amber UI on ReviewItemRow; Maestro smoke green; Phase 24a closes)
+last_updated: "2026-04-19T18:27:02.186Z"
+last_activity: 2026-04-19 -- Completed 24-06 (mobile ScanResult/ReviewItem mirror 24-04 server shape — nested Quantity + FieldConfidence; formatQuantity migration-safe render for Quantity|number|null; pantryStore mapScanResultsToReview passes fieldConfidence through with defensive coerceQuantity + coerceFieldConfidence; confirmScan consumes 24-05 ReconcileResult and reloads pantry from Supabase; resolveFieldClass pure helper in reviewItemRowHelpers.ts renders dashed amber-400 border-b when fieldConfidence[field] < 0.7; quantity+unit merged via Math.min; quantity+category split into separate Text spans for tight underlines; accessibilityHint='Low confidence — tap to edit' only when flagged; 11 new vitest cases + 349/353 mobile tests GREEN, tsc clean, Maestro smoke green on iPhone 17 Pro; Phase 24a ROADMAP criteria 6-23 closed)
 progress:
   total_phases: 25
-  completed_phases: 17
+  completed_phases: 18
   total_plans: 76
-  completed_plans: 75
-  percent: 93
+  completed_plans: 76
+  percent: 99
 ---
 
 # Project State
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 24 of 25 (AI Vision & Pantry Data-Model Deep Refactor) — IN PROGRESS
-Current Plan: 24-05 (Wave 2 reconcileItems rewrite + scan_events writer) — complete
-Status: Phase 24 Wave 2 in progress — 24-05 reconcileItems + scan_events landed; ready for 24-06 mobile pass-through + inline low-confidence UI hints (final plan in Phase 24a).
-Last activity: 2026-04-19 -- Completed 24-05 (reconcileItems rewritten to key dedup on (profile_id, canonical_ingredient_id, source_location); quantity aggregation via units.add with incompatible-unit multi-row fallback + item_attributes.reconcile_hint='incompatible_units'; canonical_category_override > canonical.category > 'other' precedence; scan_events writer fire-and-forget on all 4 scan routes with scan_variant + raw_ai_output + final_items + field_confidence [{item_index, name, quantity, unit, category}]; /confirm response surfaces {inserted, updated, incompatibleUnits}; GET /pantry preserves legacy canonical_ingredient_id=NULL readability (REQ-23 forward-only); 47/47 pantry tests green, 526/528 server suite green, services/pantry.ts 0 new tsc errors)
+Phase: 24 of 25 (AI Vision & Pantry Data-Model Deep Refactor) — 24a COMPLETE
+Current Plan: 24-06 (Wave 3 mobile ScanResult mirror + inline low-confidence UI) — complete
+Status: Phase 24a closes with 24-06 — ROADMAP criteria 6-23 delivered end-to-end (canonical + aliases + per-user category override + quantity JSONB + unit conversion library + canonicalResolver + reconcileItems canonical-identity dedup + scan_events writer + per-field confidence flowing from AI to mobile UI). 24b (vision quality — prompts, eval harness, model routing) remains explicitly deferred to a future phase.
+Last activity: 2026-04-19 -- Completed 24-06 (mobile ScanResult/ReviewItem mirror 24-04 server shape; nested Quantity + FieldConfidence; formatQuantity migration-safe render; pantryStore passes fieldConfidence through with defensive coercion; confirmScan consumes ReconcileResult and reloads from Supabase; resolveFieldClass pure helper renders dashed amber-400 border-b when confidence < 0.7; quantity+unit merged via Math.min; accessibilityHint only when flagged; 11/11 new vitest cases + 349/353 mobile tests GREEN, tsc clean, Maestro smoke green on iPhone 17 Pro)
 
 Progress: [██████████] 99%
 
@@ -129,6 +129,7 @@ Progress: [██████████] 99%
 | Phase 24 P04 | 6min | 2 tasks | 2 files |
 | Phase 24 P05 | 10.5min | 2 tasks | 4 files |
 | Phase 24 P05 | 10.5min | 2 tasks | 4 files |
+| Phase 24-ai-vision-and-pantry-data-model-deep-refactor P06 | 9min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -403,6 +404,11 @@ Recent decisions affecting current work:
 - [Phase 24-05]: scan_events fire-and-forget — try/catch + console.warn around insert; scan succeeds even on telemetry failure; raw_ai_output==final_items for now (vision.ts does not expose pre-normalize raw; 24b eval can extend vision.ts later if needed, Rule 4 gate respected)
 - [Phase 24-05]: /confirm response shape changed to {inserted, updated, incompatibleUnits} (ReconcileResult) — intentional wire-contract break for mobile 24-06 to consume per-scan counts; acceptable during Wave 2 active dev (no beta users)
 - [Phase 24-05]: PantryItem.quantity kept as number at TS level despite DB JSONB column — refactoring downstream consumers (shoppingList, ingredientMatching, mealPlanner) to sanitize() at boundary is Phase 21 scope; runtime safe because only test data flows through those readers per user directive
+- [Phase 24-06]: Phase 24-06: resolveFieldClass pure helper extracted to reviewItemRowHelpers.ts (mirrors Phase 19-03 itemRowHelpers split) — tests run under vitest node env without pulling expo-symbols / expo-modules-core imports
+- [Phase 24-06]: Phase 24-06: PantryItem.quantity typed as Quantity|number for migration safety — pre-24a legacy rows persisted in AsyncStorage have quantity:number; migration 00015 makes new rows Quantity JSONB; formatQuantity handles both at render boundary
+- [Phase 24-06]: Phase 24-06: Quantity+unit confidence merged via Math.min for the compound quantity display (single visual span covers value+unit) — conservative aggregation flags the underline if EITHER sub-field is low-confidence
+- [Phase 24-06]: Phase 24-06: confirmScan reloads pantry from Supabase after 24-05 /confirm (was: merge PantryItem[] from response body) — ReconcileResult counts response shape means mobile must refetch to pick up canonical aggregations + incompatible-unit multi-row inserts; mirrors offline-queue reload pattern
+- [Phase 24-06]: Phase 24-06: Strict <0.7 threshold for dashed-amber low-confidence treatment — exactly 0.7 is high-confidence (mirrors Phase 14 0.7 acceptance gate); legacy fieldConfidence=undefined renders no underline (backward compat + avoids misleading indicators on manual-adds)
 
 ### Pending Todos
 
@@ -446,6 +452,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T18:12:00.000Z
-Stopped at: Completed 24-05-PLAN.md (canonical-identity dedup + quantity aggregation + scan_events writer on 4 scan flows; 47/47 pantry tests GREEN)
+Last session: 2026-04-19T18:26:44.449Z
+Stopped at: Completed 24-06-PLAN.md (mobile ScanResult mirror + inline low-confidence dashed-amber UI on ReviewItemRow; Maestro smoke green; Phase 24a closes)
 Resume file: None
