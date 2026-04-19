@@ -5,17 +5,28 @@ const { mockIdentifyFoodItems, mockIdentifyFoodItemsBatch, mockIdentifyReceiptIt
   // observe insert() payloads (override-events).
   const supabaseState = {
     existingItems: [] as Array<{ name: string }>,
+    pantryItems: [] as Array<Record<string, unknown>>, // for GET /pantry (REQ-23 legacy NULL rows)
     lastInsertTable: null as string | null,
     lastInsertPayload: null as any,
     insertError: null as null | { message: string },
+    // Per-table insert capture (24-05: scan_events writer on all 4 scan flows)
+    scanEventsInserts: [] as any[],
+    // Simulate a specific table's insert throwing, to verify fire-and-forget
+    insertThrows: new Map<string, Error>(),
   };
   const supabase = {
     from: vi.fn((table: string) => {
       const chain: any = {
         select: vi.fn(() => chain),
         insert: vi.fn((payload: any) => {
+          if (supabaseState.insertThrows.has(table)) {
+            throw supabaseState.insertThrows.get(table);
+          }
           supabaseState.lastInsertTable = table;
           supabaseState.lastInsertPayload = payload;
+          if (table === 'scan_events') {
+            supabaseState.scanEventsInserts.push(payload);
+          }
           const insertChain: any = {
             select: vi.fn(() => insertChain),
             then: (resolve: (v: any) => void) =>
@@ -23,12 +34,23 @@ const { mockIdentifyFoodItems, mockIdentifyFoodItemsBatch, mockIdentifyReceiptIt
           };
           return insertChain;
         }),
-        // The existing-names query fires `.eq(...).eq(...).eq(...)` — the final
-        // call must be awaitable (Promise-like). We make the chain itself thenable
-        // so `await ....eq(...)` resolves with `{ data: existingItems }`.
+        // The existing-names / GET /pantry / scan-batch existing-items chain
+        // fires `.eq(...).eq(...).eq(...)` — the final call must be awaitable.
+        // GET /pantry resolves from pantryItems; everything else from existingItems.
         eq: vi.fn(() => chain),
         order: vi.fn(() => chain),
-        then: (resolve: (v: any) => void) => resolve({ data: supabaseState.existingItems }),
+        then: (resolve: (v: any) => void) => {
+          if (table === 'pantry_items') {
+            // Route layer GET /pantry does .from('pantry_items').select().eq('profile_id',...).order('category').eq('status','available')
+            // — its .eq/.order/.eq all return chain; eventual await resolves here.
+            // Return pantryItems when seeded, otherwise fall back to existingItems shape.
+            if (supabaseState.pantryItems.length > 0) {
+              return resolve({ data: supabaseState.pantryItems, error: null });
+            }
+            return resolve({ data: supabaseState.existingItems, error: null });
+          }
+          return resolve({ data: supabaseState.existingItems, error: null });
+        },
       };
       return chain;
     }),
@@ -523,5 +545,223 @@ describe('POST /override-events', () => {
     });
     expect(supabase.from).toHaveBeenCalledWith('item_override_events');
     expect(supabaseState.lastInsertPayload).not.toBeNull();
+  });
+});
+
+/**
+ * Phase 24-05 — scan_events writer + convergence + legacy NULL readability.
+ *
+ * REQ-15: all four scan flows converge at /confirm → reconcileItems.
+ * REQ-19: each scan route writes one scan_events row with scan_variant +
+ *         raw_ai_output + final_items + field_confidence.
+ * REQ-23: GET /pantry surfaces pantry_items with canonical_ingredient_id=NULL
+ *         (legacy rows) alongside new canonical rows.
+ * scan_events INSERT failure logs warn but does NOT fail the scan.
+ */
+describe('scan_events writer on all 4 scan flows (24-05)', () => {
+  // A single ScanResult shape used across variants — matches 24-04 nested
+  // quantity + per-field confidence.
+  const sampleItem = {
+    name: 'milk',
+    quantity: { value: 1, unit: 'gallon', system: 'custom' },
+    category: 'dairy',
+    source_location: 'fridge',
+    confidence: 0.9,
+    fieldConfidence: { name: 0.92, quantity: 0.8, unit: 0.7, category: 0.95 },
+  };
+
+  beforeEach(() => {
+    supabaseState.scanEventsInserts = [];
+    supabaseState.lastInsertTable = null;
+    supabaseState.lastInsertPayload = null;
+    supabaseState.insertError = null;
+    supabaseState.existingItems = [];
+    supabaseState.pantryItems = [];
+    supabaseState.insertThrows = new Map();
+    mockIdentifyFoodItems.mockReset();
+    mockIdentifyFoodItemsBatch.mockReset();
+    mockIdentifyReceiptItems.mockReset();
+  });
+
+  it('POST /scan writes one scan_events row with scan_variant="camera"', async () => {
+    mockIdentifyFoodItems.mockResolvedValue([sampleItem]);
+    const res = await req('/scan', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: 'IMG' }),
+    });
+    expect(res.status).toBe(200);
+    expect(supabaseState.scanEventsInserts).toHaveLength(1);
+    const row = supabaseState.scanEventsInserts[0];
+    expect(row.user_id).toBe('user-1');
+    expect(row.scan_variant).toBe('camera');
+    expect(row.final_items).toEqual([sampleItem]);
+    // field_confidence is an array of per-item {item_index, name, quantity, unit, category}
+    expect(Array.isArray(row.field_confidence)).toBe(true);
+    expect(row.field_confidence).toHaveLength(1);
+    expect(row.field_confidence[0]).toEqual({
+      item_index: 0,
+      name: 0.92,
+      quantity: 0.8,
+      unit: 0.7,
+      category: 0.95,
+    });
+    // raw_ai_output is present (non-null) — exact value mirrors final_items in
+    // 24-05 since vision.ts does not expose pre-normalize raw (documented).
+    expect(row.raw_ai_output).toBeDefined();
+    // No pass_number (criterion #3 descoped).
+    expect('pass_number' in row).toBe(false);
+  });
+
+  it('POST /scan-batch writes one scan_events row with scan_variant="batch"', async () => {
+    mockIdentifyFoodItemsBatch.mockResolvedValue([sampleItem, { ...sampleItem, name: 'eggs' }]);
+    const res = await req('/scan-batch', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ images: ['A', 'B'] }),
+    });
+    expect(res.status).toBe(200);
+    expect(supabaseState.scanEventsInserts).toHaveLength(1);
+    const row = supabaseState.scanEventsInserts[0];
+    expect(row.scan_variant).toBe('batch');
+    expect(row.final_items).toHaveLength(2);
+    expect(row.field_confidence).toHaveLength(2);
+    expect(row.field_confidence[1].item_index).toBe(1);
+  });
+
+  it('POST /scan-receipt writes one scan_events row with scan_variant="receipt"', async () => {
+    mockIdentifyReceiptItems.mockResolvedValue([sampleItem]);
+    const res = await req('/scan-receipt', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: 'IMG' }),
+    });
+    expect(res.status).toBe(200);
+    expect(supabaseState.scanEventsInserts).toHaveLength(1);
+    expect(supabaseState.scanEventsInserts[0].scan_variant).toBe('receipt');
+  });
+
+  it('POST /import-instacart writes one scan_events row with scan_variant="instacart"', async () => {
+    mockIdentifyReceiptItems.mockResolvedValue([sampleItem]);
+    const res = await req('/import-instacart', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: 'IMG' }),
+    });
+    expect(res.status).toBe(200);
+    expect(supabaseState.scanEventsInserts).toHaveLength(1);
+    expect(supabaseState.scanEventsInserts[0].scan_variant).toBe('instacart');
+  });
+
+  it('scan_events INSERT failure does NOT fail the scan (fire-and-forget)', async () => {
+    supabaseState.insertThrows.set('scan_events', new Error('scan_events boom'));
+    mockIdentifyFoodItems.mockResolvedValue([sampleItem]);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const res = await req('/scan', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: 'IMG' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].name).toBe('milk');
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it('scan_events final_items stores PRE-canonical ScanResult[] (no canonical_ingredient_id)', async () => {
+    // Plan's must_haves.truth: "canonical_ingredient_id is written only to
+    // pantry_items via /confirm (not on scan_events rows)". Verify nothing in
+    // final_items carries canonical_ingredient_id after scan_events INSERT.
+    mockIdentifyFoodItems.mockResolvedValue([sampleItem]);
+    await req('/scan', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: 'IMG' }),
+    });
+    const row = supabaseState.scanEventsInserts[0];
+    for (const item of row.final_items) {
+      expect('canonical_ingredient_id' in item).toBe(false);
+    }
+  });
+});
+
+describe('REQ-23: GET /pantry surfaces legacy NULL canonical rows + new FK rows', () => {
+  beforeEach(() => {
+    supabaseState.pantryItems = [];
+    supabaseState.scanEventsInserts = [];
+  });
+
+  it('returns both rows with canonical_ingredient_id=null and rows with canonical_ingredient_id=uuid', async () => {
+    supabaseState.pantryItems = [
+      {
+        id: 'legacy-row',
+        profile_id: 'user-1',
+        name: 'old milk',
+        normalized_name: 'old milk',
+        canonical_ingredient_id: null,
+        source_location: 'fridge',
+        status: 'available',
+      },
+      {
+        id: 'new-row',
+        profile_id: 'user-1',
+        name: 'flour',
+        normalized_name: 'flour',
+        canonical_ingredient_id: '00000000-0000-0000-0000-000000000001',
+        source_location: 'pantry',
+        status: 'available',
+      },
+    ];
+    const res = await req('', { method: 'GET' });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data).toHaveLength(2);
+    const ids = body.data.map((r: any) => r.id);
+    expect(ids).toContain('legacy-row');
+    expect(ids).toContain('new-row');
+  });
+});
+
+describe('REQ-15 convergence: POST /confirm dispatches to rewritten reconcileItems', () => {
+  beforeEach(() => {
+    mockReconcileItems.mockReset();
+  });
+
+  it('surfaces reconcileItems return shape { inserted, updated, incompatibleUnits } to the response', async () => {
+    mockReconcileItems.mockResolvedValue({
+      inserted: 2,
+      updated: 1,
+      incompatibleUnits: 0,
+    });
+
+    const res = await req('/confirm', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: [
+          {
+            name: 'milk',
+            quantity: { value: 1, unit: 'gallon', system: 'custom' },
+            category: 'dairy',
+            confidence: 0.9,
+            source_location: 'fridge',
+            fieldConfidence: { name: 0.9, quantity: 0.9, unit: 0.9, category: 0.9 },
+          },
+        ],
+        profile_id: 'user-1',
+      }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data).toEqual({ inserted: 2, updated: 1, incompatibleUnits: 0 });
+    // reconcileItems invoked once with (supabase, userId, items[])
+    expect(mockReconcileItems).toHaveBeenCalledTimes(1);
+    const args = mockReconcileItems.mock.calls[0];
+    expect(args[1]).toBe('user-1');
+    expect(Array.isArray(args[2])).toBe(true);
+    expect(args[2][0].source_location).toBe('fridge');
   });
 });
