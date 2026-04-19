@@ -62,12 +62,18 @@ export default function ReviewScreen() {
   const handleAddItem = () => {
     if (!newName.trim()) return;
 
+    // Phase 24a: manual-add wraps value+unit into a Quantity ({value, unit,
+    // system}). System defaults to 'count' for user-entered units the backend
+    // units.ts table doesn't recognise; server sanitize() normalises on confirm.
+    const qtyValue = parseFloat(newQuantity) || 1;
+    const qtyUnit = newUnit.trim() || 'piece';
     const item: ReviewItem = {
       id: `manual-${Date.now()}`,
       name: newName.trim(),
-      quantity: parseFloat(newQuantity) || 1,
-      unit: newUnit.trim() || 'item',
+      quantity: { value: qtyValue, unit: qtyUnit, system: 'count' },
+      // Manual adds are high-confidence across all fields (user-verified).
       confidence: 1.0,
+      fieldConfidence: { name: 1.0, quantity: 1.0, unit: 1.0, category: 1.0 },
       category: newCategory,
       // Manually-added items default to 'pantry'; user can tap the chip to
       // change. No aiLocation because the AI never classified them.

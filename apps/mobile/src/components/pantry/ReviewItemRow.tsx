@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
-import type { ReviewItem } from '../../types/pantry';
+import type { FieldConfidence, ReviewItem } from '../../types/pantry';
+import { formatQuantity } from '../../types/pantry';
 import { colors } from '../../design/tokens';
 import { LocationChip } from './LocationChip';
 
@@ -95,7 +96,7 @@ export function ReviewItemRow({
           </Pressable>
         )}
         <Text className="text-sm text-warmGray-500 mt-0.5">
-          {item.quantity} {item.unit} · {item.category}
+          {formatQuantity(item.quantity)} · {item.category}
         </Text>
         {/* Phase 18-03: per-item location chip. Tap opens the sheet in the
             parent screen (review.tsx owns the open-item state). */}

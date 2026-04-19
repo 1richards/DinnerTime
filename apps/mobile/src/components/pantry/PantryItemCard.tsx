@@ -6,6 +6,7 @@ import type { EnrichedPantryItem } from '../../hooks/usePantryItems';
 import { usePantryStore } from '../../stores/pantryStore';
 import { colors } from '../../design/tokens';
 import { LOCATION_SYMBOLS, FALLBACK_LOCATION_SYMBOL } from './locationSymbols';
+import { formatQuantity } from '../../types/pantry';
 
 interface PantryItemCardProps {
   item: EnrichedPantryItem;
@@ -59,10 +60,11 @@ export function PantryItemCard({ item }: PantryItemCardProps) {
   // pantry intelligence). Using leading=icon preserves existing interactions
   // (mark-used / mark-depleted via expand-to-act) and the visual identity of
   // an ItemRow. Quantity + unit are surfaced in the subtitle.
-  const subtitleParts = [
-    item.quantity ? `${item.quantity}${item.unit ? ` ${item.unit}` : ''}` : null,
-    item.category,
-  ].filter(Boolean);
+  // Phase 24a: quantity is now a Quantity object ({value, unit, system}) on
+  // new rows and may still be a legacy number on pre-migration rows cached in
+  // AsyncStorage. `formatQuantity` tolerates both, plus null/undefined.
+  const formattedQty = formatQuantity(item.quantity, item.unit);
+  const subtitleParts = [formattedQty || null, item.category].filter(Boolean);
 
   return (
     <View className={`mb-2 mx-4 ${item.isUncertain ? 'opacity-60' : ''}`}>

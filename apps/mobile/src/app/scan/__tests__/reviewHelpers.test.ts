@@ -6,9 +6,9 @@ function makeItem(overrides: Partial<ReviewItem>): ReviewItem {
   return {
     id: 'review-x',
     name: 'Sample',
-    quantity: 1,
-    unit: 'ea',
+    quantity: { value: 1, unit: 'piece', system: 'count' },
     confidence: 0.9,
+    fieldConfidence: { name: 0.9, quantity: 0.9, unit: 0.9, category: 0.9 },
     category: 'other',
     source_location: 'pantry',
     aiLocation: 'pantry',

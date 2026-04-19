@@ -6,7 +6,13 @@ import { offlineQueue, registerExecutor } from '../lib/offlineQueue';
 import { useNetworkStore } from './networkStore';
 import { logOverrideEvents } from '../lib/logOverrideEvent';
 import { deriveOverrideEvents } from '../app/scan/reviewHelpers';
-import type { PantryItem, ReviewItem, SourceLocation } from '../types/pantry';
+import type {
+  FieldConfidence,
+  PantryItem,
+  Quantity,
+  ReviewItem,
+  SourceLocation,
+} from '../types/pantry';
 
 interface PantryState {
   items: PantryItem[];
@@ -54,6 +60,58 @@ const getAuthTokenOrNull = async (): Promise<string | null> => {
   }
 };
 
+const DEFAULT_QUANTITY: Quantity = { value: 1, unit: 'piece', system: 'count' };
+
+/**
+ * Phase 24a defensive coercion for raw scan `quantity` payloads. Server emits
+ * a nested Quantity ({value, unit, system}) post-24-04; this wrapper accepts
+ * legacy flat numbers (old shape) and malformed objects without crashing.
+ * Mirrors units.sanitize on the server.
+ */
+function coerceQuantity(raw: unknown): Quantity {
+  if (raw && typeof raw === 'object' && 'value' in raw) {
+    const q = raw as Partial<Quantity>;
+    const value =
+      typeof q.value === 'number' && Number.isFinite(q.value) ? q.value : 1;
+    const unit = typeof q.unit === 'string' && q.unit.trim() ? q.unit : 'piece';
+    const system =
+      q.system === 'count' ||
+      q.system === 'imperial-weight' ||
+      q.system === 'imperial-volume' ||
+      q.system === 'metric-weight' ||
+      q.system === 'metric-volume' ||
+      q.system === 'custom'
+        ? q.system
+        : 'custom';
+    return { value, unit, system };
+  }
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return { value: raw, unit: 'piece', system: 'count' };
+  }
+  return { ...DEFAULT_QUANTITY };
+}
+
+/**
+ * Phase 24a: coerce field confidence. Server default-fills missing per-field
+ * values to 0.5, but older responses may ship without the field entirely. We
+ * return `undefined` for truly missing — ReviewItemRow treats that as
+ * high-confidence (no dashed underline) for legacy backward compat.
+ */
+function coerceFieldConfidence(raw: unknown): FieldConfidence | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const r = raw as Record<string, unknown>;
+  const pick = (k: string): number => {
+    const v = r[k];
+    return typeof v === 'number' && Number.isFinite(v) ? v : 0.5;
+  };
+  return {
+    name: pick('name'),
+    quantity: pick('quantity'),
+    unit: pick('unit'),
+    category: pick('category'),
+  };
+}
+
 /**
  * Build a ReviewItem[] from raw scan results, flagging any item whose
  * normalized name already exists in the user's pantry as a probable duplicate.
@@ -72,8 +130,12 @@ function mapScanResultsToReview(
   return rawItems.map((item, index) => {
     const normalized = String(item.name ?? '').trim().toLowerCase();
     const probableDupe = existingNames.has(normalized);
+    const confidence =
+      typeof item.confidence === 'number' && Number.isFinite(item.confidence)
+        ? item.confidence
+        : 0.5;
     // Dupes default OFF; otherwise use confidence threshold.
-    const accepted = probableDupe ? false : item.confidence >= confidenceThreshold;
+    const accepted = probableDupe ? false : confidence >= confidenceThreshold;
     // Server (Phase 18-02) returns per-item source_location. Default to
     // 'pantry' defensively if a legacy/malformed response omits it.
     const source_location: SourceLocation =
@@ -82,12 +144,24 @@ function mapScanResultsToReview(
       item.source_location === 'pantry'
         ? item.source_location
         : 'pantry';
+    // Phase 24a: quantity is now a nested object; fieldConfidence is per-field.
+    // Pass through unchanged from server (post-24-04) with defensive coercion
+    // for malformed / legacy shapes.
+    const quantity = coerceQuantity(item.quantity);
+    const fieldConfidence = coerceFieldConfidence(item.fieldConfidence);
     return {
       id: `scan-${Date.now()}-${index}`,
       name: item.name,
-      quantity: item.quantity,
-      unit: item.unit,
-      confidence: item.confidence,
+      quantity,
+      confidence,
+      fieldConfidence: fieldConfidence ?? {
+        // Fall back to per-field values derived from overall confidence so the
+        // UI renders deterministically even on pre-24a server responses.
+        name: confidence,
+        quantity: confidence,
+        unit: confidence,
+        category: confidence,
+      },
       category: item.category,
       source_location,
       // Preserve the original AI prediction so later user edits can be
@@ -297,8 +371,12 @@ export const usePantryStore = create<PantryState>()(
       throw new Error(err.error ?? 'Confirm failed');
     }
 
-    const data = await response.json();
-    const confirmedItems = (data.data ?? []) as PantryItem[];
+    // Phase 24-05: /confirm now returns { data: { inserted, updated,
+    // incompatibleUnits } } instead of the legacy PantryItem[] shape.
+    // Consume the response body to surface any error but we don't use the
+    // counts directly here — a fresh pantry reload gives us the canonical
+    // row state including any quantity-aggregated or multi-row merges.
+    await response.json();
 
     // Fire-and-forget override telemetry for edited items (user moved
     // something away from the AI's prediction). Only items that were
@@ -312,10 +390,14 @@ export const usePantryStore = create<PantryState>()(
       getApiBaseUrl,
     );
 
-    set((state) => ({
-      items: [...state.items, ...confirmedItems],
-      scanResults: [],
-    }));
+    // Clear review results immediately for responsive UI; refresh pantry in
+    // background so newly-inserted / updated / multi-row rows materialize.
+    set({ scanResults: [] });
+    try {
+      await get().loadItems(profileId);
+    } catch {
+      // loadItems already swallows errors and resets isLoading. Nothing to do.
+    }
   },
 
   markItemUsed: async (itemId: string) => {

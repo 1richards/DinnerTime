@@ -75,9 +75,9 @@ const mockItem2: PantryItem = {
 const mockReviewItem: ReviewItem = {
   id: 'review-1',
   name: 'Butter',
-  quantity: 1,
-  unit: 'stick',
+  quantity: { value: 1, unit: 'stick', system: 'count' },
   confidence: 0.85,
+  fieldConfidence: { name: 0.85, quantity: 0.85, unit: 0.85, category: 0.85 },
   category: 'dairy',
   source_location: 'fridge',
   accepted: true,
@@ -127,13 +127,18 @@ describe('pantryStore', () => {
         ],
       });
 
-      usePantryStore
-        .getState()
-        .updateReviewItem('review-1', { name: 'Unsalted Butter', quantity: 2 });
+      usePantryStore.getState().updateReviewItem('review-1', {
+        name: 'Unsalted Butter',
+        quantity: { value: 2, unit: 'stick', system: 'count' },
+      });
 
       const state = usePantryStore.getState();
       expect(state.scanResults[0].name).toBe('Unsalted Butter');
-      expect(state.scanResults[0].quantity).toBe(2);
+      expect(state.scanResults[0].quantity).toEqual({
+        value: 2,
+        unit: 'stick',
+        system: 'count',
+      });
       // Other item unchanged
       expect(state.scanResults[1].name).toBe('Cheese');
     });
@@ -146,9 +151,9 @@ describe('pantryStore', () => {
       const newItem: ReviewItem = {
         id: 'review-new',
         name: 'Yogurt',
-        quantity: 2,
-        unit: 'cup',
+        quantity: { value: 2, unit: 'cup', system: 'imperial-volume' },
         confidence: 1.0,
+        fieldConfidence: { name: 1.0, quantity: 1.0, unit: 1.0, category: 1.0 },
         category: 'dairy',
         source_location: 'fridge',
         accepted: true,
@@ -426,8 +431,7 @@ describe('pantryStore', () => {
         profile_id: 'profile-1',
         name: 'Butter',
         normalized_name: 'butter',
-        quantity: 1,
-        unit: 'stick',
+        quantity: { value: 1, unit: 'stick', system: 'count' },
         category: 'dairy',
         source_location: 'fridge',
         confidence: 0.85,
@@ -437,15 +441,30 @@ describe('pantryStore', () => {
         updated_at: '2026-04-10T00:00:00Z',
       };
 
+      // Phase 24-05: /confirm now returns ReconcileResult counts. Mobile
+      // reloads the pantry from Supabase after a successful confirm to pick
+      // up aggregated / multi-row changes.
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ data: [confirmedPantryItem] }),
+        json: () =>
+          Promise.resolve({
+            data: { inserted: 1, updated: 0, incompatibleUnits: 0 },
+          }),
       });
+      // Mock supabase chain for subsequent loadItems() call.
+      const loadChain: Record<string, unknown> = {};
+      loadChain.select = vi.fn(() => loadChain);
+      loadChain.eq = vi.fn(() => loadChain);
+      loadChain.order = vi.fn(() =>
+        Promise.resolve({ data: [mockItem, confirmedPantryItem], error: null }),
+      );
+      mockSupabase.from.mockReturnValue(loadChain);
 
       await usePantryStore.getState().confirmScan('profile-1');
 
       const state = usePantryStore.getState();
-      // Merged: original item + confirmed item
+      // After 24-05: items come from the supabase reload, not from merging
+      // the /confirm response body.
       expect(state.items).toHaveLength(2);
       expect(state.items.find((i) => i.name === 'Butter')).toBeDefined();
       // scanResults cleared
@@ -488,13 +507,22 @@ describe('pantryStore', () => {
         items: [],
       });
 
-      // /confirm happy path.
+      // /confirm happy path (24-05 returns ReconcileResult counts).
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ data: [] }),
+        json: () =>
+          Promise.resolve({
+            data: { inserted: 1, updated: 0, incompatibleUnits: 0 },
+          }),
       });
       // /override-events happy path (fire-and-forget).
       mockFetch.mockResolvedValueOnce({ ok: true });
+      // Supabase reload (loadItems fires after confirm).
+      const loadChain: Record<string, unknown> = {};
+      loadChain.select = vi.fn(() => loadChain);
+      loadChain.eq = vi.fn(() => loadChain);
+      loadChain.order = vi.fn(() => Promise.resolve({ data: [], error: null }));
+      mockSupabase.from.mockReturnValue(loadChain);
 
       await usePantryStore.getState().confirmScan('profile-1');
       // Let the fire-and-forget microtask flush.
@@ -529,8 +557,17 @@ describe('pantryStore', () => {
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ data: [] }),
+        json: () =>
+          Promise.resolve({
+            data: { inserted: 0, updated: 1, incompatibleUnits: 0 },
+          }),
       });
+      // Supabase reload after confirm.
+      const loadChain: Record<string, unknown> = {};
+      loadChain.select = vi.fn(() => loadChain);
+      loadChain.eq = vi.fn(() => loadChain);
+      loadChain.order = vi.fn(() => Promise.resolve({ data: [], error: null }));
+      mockSupabase.from.mockReturnValue(loadChain);
 
       await usePantryStore.getState().confirmScan('profile-1');
       await new Promise((resolve) => setTimeout(resolve, 0));
