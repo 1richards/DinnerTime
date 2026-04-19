@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 24-06 (Wave 3 mobile ScanResult mirror + inline low-confidence UI) — complete (closes Phase 24a)
-status: executing
+current_plan: 24-06 (Wave 3 mobile ScanResult mirror + inline low-confidence UI) — complete
+status: Phase 24a closes with 24-06 — ROADMAP criteria 6-23 delivered end-to-end (canonical + aliases + per-user category override + quantity JSONB + unit conversion library + canonicalResolver + reconcileItems canonical-identity dedup + scan_events writer + per-field confidence flowing from AI to mobile UI). 24b (vision quality — prompts, eval harness, model routing) remains explicitly deferred to a future phase.
 stopped_at: Completed 24-06-PLAN.md (mobile ScanResult mirror + inline low-confidence dashed-amber UI on ReviewItemRow; Maestro smoke green; Phase 24a closes)
-last_updated: "2026-04-19T18:27:02.186Z"
-last_activity: 2026-04-19 -- Completed 24-06 (mobile ScanResult/ReviewItem mirror 24-04 server shape — nested Quantity + FieldConfidence; formatQuantity migration-safe render for Quantity|number|null; pantryStore mapScanResultsToReview passes fieldConfidence through with defensive coerceQuantity + coerceFieldConfidence; confirmScan consumes 24-05 ReconcileResult and reloads pantry from Supabase; resolveFieldClass pure helper in reviewItemRowHelpers.ts renders dashed amber-400 border-b when fieldConfidence[field] < 0.7; quantity+unit merged via Math.min; quantity+category split into separate Text spans for tight underlines; accessibilityHint='Low confidence — tap to edit' only when flagged; 11 new vitest cases + 349/353 mobile tests GREEN, tsc clean, Maestro smoke green on iPhone 17 Pro; Phase 24a ROADMAP criteria 6-23 closed)
+last_updated: "2026-04-19T18:33:08.437Z"
+last_activity: 2026-04-19 -- Completed 24-06 (mobile ScanResult/ReviewItem mirror 24-04 server shape; nested Quantity + FieldConfidence; formatQuantity migration-safe render; pantryStore passes fieldConfidence through with defensive coercion; confirmScan consumes ReconcileResult and reloads from Supabase; resolveFieldClass pure helper renders dashed amber-400 border-b when confidence < 0.7; quantity+unit merged via Math.min; accessibilityHint only when flagged; 11/11 new vitest cases + 349/353 mobile tests GREEN, tsc clean, Maestro smoke green on iPhone 17 Pro)
 progress:
   total_phases: 25
   completed_phases: 18
