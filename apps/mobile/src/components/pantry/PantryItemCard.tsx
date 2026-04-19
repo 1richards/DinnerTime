@@ -1,20 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import type { SymbolViewProps } from 'expo-symbols';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { ItemRow, type ChipTone } from '../ui/ItemRow';
 import type { EnrichedPantryItem } from '../../hooks/usePantryItems';
 import { usePantryStore } from '../../stores/pantryStore';
 import { colors } from '../../design/tokens';
-
-// Location icon map (inherits Phase 15 decision: snowflake for both fridge +
-// freezer; archivebox for pantry). Fallback = shippingbox.
-const LOCATION_SYMBOLS: Record<string, SymbolViewProps['name']> = {
-  fridge: 'snowflake',
-  pantry: 'archivebox',
-  freezer: 'snowflake',
-};
-const FALLBACK_LOCATION_SYMBOL: SymbolViewProps['name'] = 'shippingbox';
+import { LOCATION_SYMBOLS, FALLBACK_LOCATION_SYMBOL } from './locationSymbols';
 
 interface PantryItemCardProps {
   item: EnrichedPantryItem;

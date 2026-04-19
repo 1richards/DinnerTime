@@ -36,6 +36,8 @@ export interface ScanResult {
   unit: string;
   confidence: number;
   category: FoodCategory;
+  /** Per-item location returned by the Phase 18 server vision pipeline. */
+  source_location: SourceLocation;
 }
 
 /** ScanResult with user review state */
@@ -46,4 +48,10 @@ export interface ReviewItem extends ScanResult {
   /** Flagged when item name matches something already in the user's pantry.
    * When true, defaults to accepted=false so the user must opt-in to re-adding. */
   probableDupe?: boolean;
+  /**
+   * Original AI-predicted source_location, preserved even after the user
+   * overrides `source_location`. Used by deriveOverrideEvents to detect
+   * corrections for /override-events telemetry.
+   */
+  aiLocation?: SourceLocation;
 }
