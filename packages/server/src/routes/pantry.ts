@@ -355,6 +355,431 @@ pantry.post('/override-events', async (c) => {
   return c.json({ data: { inserted: rows.length } });
 });
 
+/* ──────────────────────────────────────────────────────────────────────
+ * Phase 21-03 — 5 new route groups: staples, rules, suggestions, preview,
+ * category-override. All user-scoped via RLS on the authed supabase client.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const VALID_CATEGORIES = new Set([
+  'produce',
+  'protein',
+  'dairy',
+  'grain',
+  'condiment',
+  'beverage',
+  'frozen',
+  'spice',
+  'bakery',
+  'other',
+]);
+
+// ── /staples ────────────────────────────────────────────────────────────
+/**
+ * POST /staples — mark a canonical as a user staple.
+ * Body: { canonical_ingredient_id: string }
+ * Guard (Pitfall 4): canonical MUST have status='active'. Marking a candidate
+ * as a staple combined with the aggressive 0.3 auto-accept threshold would
+ * poison the pantry with low-quality data.
+ */
+pantry.post('/staples', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const body = await c.req.json<{ canonical_ingredient_id?: string }>();
+  const canonicalId = body.canonical_ingredient_id;
+  if (typeof canonicalId !== 'string' || !canonicalId.trim()) {
+    return c.json({ error: 'Missing canonical_ingredient_id' }, 400);
+  }
+
+  const { data: canonical } = await supabase
+    .from('canonical_ingredients')
+    .select('status')
+    .eq('id', canonicalId)
+    .maybeSingle();
+
+  if (!canonical || canonical.status !== 'active') {
+    return c.json({ error: 'CANONICAL_NOT_ACTIVE' }, 400);
+  }
+
+  const { error } = await supabase.from('user_staples').insert({
+    user_id: user.id,
+    canonical_ingredient_id: canonicalId,
+  });
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json({ data: { canonical_ingredient_id: canonicalId } }, 201);
+});
+
+/**
+ * GET /staples — list caller's staples joined to canonical_name.
+ */
+pantry.get('/staples', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const { data, error } = await supabase
+    .from('user_staples')
+    .select(
+      'canonical_ingredient_id, created_at, canonical_ingredients(canonical_name)',
+    )
+    .eq('user_id', user.id);
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json({ data: data ?? [] });
+});
+
+/**
+ * DELETE /staples/:canonical_id — remove a staple.
+ */
+pantry.delete('/staples/:canonical_id', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const canonicalId = c.req.param('canonical_id');
+  const { error } = await supabase
+    .from('user_staples')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('canonical_ingredient_id', canonicalId);
+  if (error) return c.json({ error: error.message }, 500);
+  return c.body(null, 204);
+});
+
+// ── /rules ──────────────────────────────────────────────────────────────
+/**
+ * POST /rules — create a user rule (name_mapping or location_mapping).
+ *
+ * name_mapping: { rule_type, alias_name, target_canonical_id } →
+ *   ingredient_aliases(source='user_rule', confidence=1.0).
+ * location_mapping: { rule_type, canonical_ingredient_id, source_location } →
+ *   user_location_rules with precedence = max(existing precedence) + 1.
+ */
+pantry.post('/rules', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const body = await c.req.json<{
+    rule_type?: string;
+    alias_name?: string;
+    target_canonical_id?: string;
+    canonical_ingredient_id?: string;
+    source_location?: string;
+  }>();
+
+  if (body.rule_type === 'name_mapping') {
+    if (!body.alias_name || !body.target_canonical_id) {
+      return c.json({ error: 'name_mapping requires alias_name + target_canonical_id' }, 400);
+    }
+    const { error } = await supabase.from('ingredient_aliases').insert({
+      alias_name: body.alias_name.trim().toLowerCase(),
+      canonical_ingredient_id: body.target_canonical_id,
+      source: 'user_rule',
+      confidence: 1.0,
+    });
+    if (error) return c.json({ error: error.message }, 500);
+    return c.json({ data: { rule_type: 'name_mapping' } }, 201);
+  }
+
+  if (body.rule_type === 'location_mapping') {
+    if (!body.canonical_ingredient_id || !body.source_location) {
+      return c.json(
+        { error: 'location_mapping requires canonical_ingredient_id + source_location' },
+        400,
+      );
+    }
+    if (!VALID_LOCATIONS.has(body.source_location)) {
+      return c.json({ error: 'Invalid source_location' }, 400);
+    }
+    // Compute precedence = max(existing for user) + 1.
+    const { data: existing } = await supabase
+      .from('user_location_rules')
+      .select('precedence')
+      .eq('user_id', user.id);
+    const maxPrec = (existing ?? []).reduce(
+      (acc: number, row: { precedence: number }) =>
+        row.precedence > acc ? row.precedence : acc,
+      -1,
+    );
+    const { error } = await supabase.from('user_location_rules').insert({
+      user_id: user.id,
+      canonical_ingredient_id: body.canonical_ingredient_id,
+      source_location: body.source_location,
+      precedence: maxPrec + 1,
+    });
+    if (error) return c.json({ error: error.message }, 500);
+    return c.json({ data: { rule_type: 'location_mapping' } }, 201);
+  }
+
+  return c.json({ error: 'Invalid rule_type (name_mapping | location_mapping)' }, 400);
+});
+
+/**
+ * GET /rules — combined list of name-mapping aliases + location rules.
+ */
+pantry.get('/rules', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+
+  const { data: aliases } = await supabase
+    .from('ingredient_aliases')
+    .select('id, alias_name, canonical_ingredient_id')
+    .eq('source', 'user_rule');
+
+  const { data: locationRules } = await supabase
+    .from('user_location_rules')
+    .select('id, canonical_ingredient_id, source_location, precedence')
+    .eq('user_id', user.id)
+    .order('precedence', { ascending: true });
+
+  return c.json({
+    name_mapping: aliases ?? [],
+    location_mapping: locationRules ?? [],
+  });
+});
+
+/**
+ * PATCH /rules/reorder — rewrite precedence of location rules.
+ * Body: { rule_ids: string[] } — new precedence = index.
+ */
+pantry.patch('/rules/reorder', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const body = await c.req.json<{ rule_ids?: unknown }>();
+  if (!Array.isArray(body.rule_ids)) {
+    return c.json({ error: 'rule_ids must be an array' }, 400);
+  }
+  const ids = body.rule_ids as string[];
+  await Promise.all(
+    ids.map((id, idx) =>
+      supabase
+        .from('user_location_rules')
+        .update({ precedence: idx })
+        .eq('id', id)
+        .eq('user_id', user.id),
+    ),
+  );
+  return c.json({ data: { reordered: ids.length } });
+});
+
+/**
+ * DELETE /rules/:id — tries ingredient_aliases first, then user_location_rules.
+ * Returns 204 regardless of which table owned the id (RLS guards visibility).
+ */
+pantry.delete('/rules/:id', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const id = c.req.param('id');
+  // Delete from both — only the owning table's row will actually go.
+  // ingredient_aliases has no user_id column (they're global with source='user_rule');
+  // RLS policy on the table restricts who can DELETE to the creator.
+  await supabase.from('ingredient_aliases').delete().eq('id', id);
+  await supabase
+    .from('user_location_rules')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
+  return c.body(null, 204);
+});
+
+// ── /suggestions ────────────────────────────────────────────────────────
+/**
+ * GET /suggestions — returns active (not-yet-dismissed) suggested_rules for
+ * the caller.
+ */
+pantry.get('/suggestions', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const { data } = await supabase
+    .from('suggested_rules')
+    .select('id, rule_type, payload, occurrence_count, first_seen, last_seen')
+    .eq('user_id', user.id)
+    .eq('dismissed_at', null);
+  return c.json({ data: data ?? [] });
+});
+
+/**
+ * POST /suggestions/:id/accept — creates the rule + dismisses the suggestion.
+ *
+ * - name_mapping → ingredient_aliases insert (source='user_rule', confidence=1.0)
+ * - location_mapping → user_location_rules insert. W3: reads
+ *   canonical_ingredient_id from payload directly (pre-resolved by
+ *   suggestionAggregator); guards against candidate canonicals at accept-time
+ *   (returns 400 CANONICAL_NOT_ACTIVE so the user can retry after promotion).
+ */
+pantry.post('/suggestions/:id/accept', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const id = c.req.param('id');
+
+  const { data: suggestion } = await supabase
+    .from('suggested_rules')
+    .select('rule_type, payload')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!suggestion) return c.json({ error: 'NOT_FOUND' }, 404);
+
+  const payload = (suggestion.payload ?? {}) as Record<string, unknown>;
+
+  if (suggestion.rule_type === 'name_mapping') {
+    const alias = String(payload.alias_name ?? '').trim().toLowerCase();
+    const target = payload.target_canonical_id as string | undefined;
+    if (!alias || !target) {
+      return c.json({ error: 'PAYLOAD_MISSING_FIELDS' }, 400);
+    }
+    await supabase.from('ingredient_aliases').insert({
+      alias_name: alias,
+      canonical_ingredient_id: target,
+      source: 'user_rule',
+      confidence: 1.0,
+    });
+  } else if (suggestion.rule_type === 'location_mapping') {
+    const canonicalId = payload.canonical_ingredient_id as string | undefined;
+    const userLocation = payload.user_location as string | undefined;
+    if (!canonicalId || !userLocation) {
+      return c.json({ error: 'PAYLOAD_MISSING_FIELDS' }, 400);
+    }
+    const { data: canonical } = await supabase
+      .from('canonical_ingredients')
+      .select('status')
+      .eq('id', canonicalId)
+      .maybeSingle();
+    if (!canonical || canonical.status !== 'active') {
+      // Don't dismiss — user can retry once promotion catches up.
+      return c.json({ error: 'CANONICAL_NOT_ACTIVE' }, 400);
+    }
+    // Compute precedence = max+1 for consistency with POST /rules behavior.
+    const { data: existing } = await supabase
+      .from('user_location_rules')
+      .select('precedence')
+      .eq('user_id', user.id);
+    const maxPrec = (existing ?? []).reduce(
+      (acc: number, row: { precedence: number }) =>
+        row.precedence > acc ? row.precedence : acc,
+      -1,
+    );
+    await supabase.from('user_location_rules').insert({
+      user_id: user.id,
+      canonical_ingredient_id: canonicalId,
+      source_location: userLocation,
+      precedence: maxPrec + 1,
+    });
+  } else {
+    return c.json({ error: 'UNKNOWN_RULE_TYPE' }, 400);
+  }
+
+  await supabase
+    .from('suggested_rules')
+    .update({ dismissed_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  return c.json({ data: { accepted: true } });
+});
+
+/**
+ * POST /suggestions/:id/dismiss — sets dismissed_at without creating a rule.
+ */
+pantry.post('/suggestions/:id/dismiss', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const id = c.req.param('id');
+  await supabase
+    .from('suggested_rules')
+    .update({ dismissed_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('user_id', user.id);
+  return c.json({ data: { dismissed: true } });
+});
+
+// ── /preview ────────────────────────────────────────────────────────────
+/**
+ * GET /preview?canonical_id=X — returns the 30-day scan_events impact list
+ * (count + first 50 items). Match strategy (per RESEARCH Open Q1): item
+ * matches if item.canonical_ingredient_id === target OR (for pre-canonical
+ * events) normalized-name match against the canonical's canonical_name.
+ */
+pantry.get('/preview', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const canonicalId = c.req.query('canonical_id');
+  if (!canonicalId) {
+    return c.json({ error: 'Missing canonical_id query param' }, 400);
+  }
+
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+
+  const { data: target } = await supabase
+    .from('canonical_ingredients')
+    .select('canonical_name')
+    .eq('id', canonicalId)
+    .maybeSingle();
+  const normalizedTarget = ((target?.canonical_name as string | undefined) ?? '')
+    .toLowerCase()
+    .trim();
+
+  const { data: events } = await supabase
+    .from('scan_events')
+    .select('id, final_items, created_at')
+    .eq('user_id', user.id)
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  const hits: Array<{ name: string; at: string }> = [];
+  for (const ev of (events ?? []) as Array<{
+    final_items?: unknown;
+    created_at: string;
+  }>) {
+    const items = Array.isArray(ev.final_items) ? ev.final_items : [];
+    for (const raw of items) {
+      const item = raw as { name?: string; canonical_ingredient_id?: string };
+      const byId = item.canonical_ingredient_id === canonicalId;
+      const byName =
+        !!normalizedTarget &&
+        typeof item.name === 'string' &&
+        item.name.toLowerCase().trim() === normalizedTarget;
+      if (byId || byName) {
+        hits.push({ name: String(item.name ?? ''), at: ev.created_at });
+      }
+    }
+  }
+
+  return c.json({ count: hits.length, items: hits.slice(0, 50) });
+});
+
+// ── /category-override ──────────────────────────────────────────────────
+/**
+ * POST /category-override — silent write to canonical_category_override
+ * (SINGULAR table name per Phase 24a migration 00013). Upserts on
+ * (user_id, canonical_ingredient_id) PK. Per CONTEXT ROADMAP criterion #3 —
+ * no toast / no confirmation; the next pantry read reflects the override
+ * transparently through reconcileItems' precedence ladder.
+ */
+pantry.post('/category-override', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const body = await c.req.json<{
+    canonical_ingredient_id?: string;
+    category?: string;
+  }>();
+
+  if (!body.canonical_ingredient_id || typeof body.canonical_ingredient_id !== 'string') {
+    return c.json({ error: 'Missing canonical_ingredient_id' }, 400);
+  }
+  if (!body.category || !VALID_CATEGORIES.has(body.category)) {
+    return c.json({ error: 'Invalid category' }, 400);
+  }
+
+  const { error } = await supabase
+    .from('canonical_category_override')
+    .upsert(
+      {
+        user_id: user.id,
+        canonical_ingredient_id: body.canonical_ingredient_id,
+        category: body.category,
+      },
+      { onConflict: 'user_id,canonical_ingredient_id' },
+    );
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json({ data: { ok: true } });
+});
+
 /**
  * PATCH /:id - Update a pantry item (status, quantity, name).
  * Body: { status?, quantity?, name? }
