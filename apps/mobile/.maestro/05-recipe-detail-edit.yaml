@@ -13,15 +13,15 @@ name: "05 — recipe detail + edit: open first recipe, view detail, edit title, 
 
 - takeScreenshot: 02-home
 
-# Kitchen tab → Library segment (Phase 12 consolidation)
+# Kitchen tab → Recipe Box segment (renamed from "Library")
 - tapOn:
     text: ".*Kitchen.*"
 - tapOn:
-    text: ".*Library.*"
+    text: ".*Recipe Box.*"
 
 - extendedWaitUntil:
     visible:
-      text: ".*in your library.*"
+      text: ".*in your recipe box.*"
 
     timeout: 15000
 - takeScreenshot: 03-recipes-list

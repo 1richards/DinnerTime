@@ -60,7 +60,13 @@ name: "13 — settings: update cuisine preference and cooking skill level"
     optional: true
 - takeScreenshot: 09-cuisine-toggled
 
-# Tap "Add Member" to verify Family Members section is interactive
+# Add Member sits near the top of Settings. Scroll up to it before tapping —
+# the previous scroll/scroll/scroll for Cooking Skill left us too far down.
+- scrollUntilVisible:
+    element:
+      text: ".*Add Member.*"
+    direction: UP
+    timeout: 5000
 - tapOn:
     text: ".*Add Member.*"
 

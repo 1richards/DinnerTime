@@ -31,13 +31,20 @@ tags:
 - runFlow: _ensure-logged-in.yaml
 
 # 1. Navigate: Settings tab -> Pantry Rules row.
+#    The Pantry section sits below preference sections. Plain scrolls are
+#    more reliable than scrollUntilVisible for this long settings page.
 - tapOn:
     text: ".*Settings.*"
+- scroll
+- scroll
+- scroll
 - tapOn:
-    text: "Pantry Rules"
+    text: ".*Pantry Rules.*"
+# On first visit there are no rules, so "Name Mappings" section header
+# isn't rendered yet. "ACTIVE RULES" is always visible as the list header.
 - extendedWaitUntil:
     visible:
-      text: "Pantry Rules"
+      text: ".*ACTIVE RULES.*"
     timeout: 10000
 - takeScreenshot: 26-01-pantry-rules-screen
 

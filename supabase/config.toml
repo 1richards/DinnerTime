@@ -1,5 +1,4 @@
-[project]
-id = "dinnertime-local"
+project_id = "dinnertime-local"
 
 [api]
 enabled = true

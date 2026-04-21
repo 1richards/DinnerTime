@@ -9,11 +9,11 @@ name: "04 — recipe import: paste freeform text, parse with AI, save"
 
 - takeScreenshot: 02-home
 
-# Kitchen tab → Library segment (Phase 12 consolidation)
+# Kitchen tab → Recipe Box segment (renamed from "Library")
 - tapOn:
     text: ".*Kitchen.*"
 - tapOn:
-    text: ".*Library.*"
+    text: ".*Recipe Box.*"
 
 - takeScreenshot: 03-recipes-tab
 
@@ -62,7 +62,7 @@ name: "04 — recipe import: paste freeform text, parse with AI, save"
 - takeScreenshot: 09-saving
 - extendedWaitUntil:
     visible:
-      text: ".*in your library.*"
+      text: ".*in your recipe box.*"
 
     timeout: 20000
 - takeScreenshot: 10-saved

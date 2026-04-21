@@ -9,16 +9,16 @@ name: "06 — recipe discover: open Discover tab, get AI suggestions, save one"
 
 - takeScreenshot: 02-home
 
-# Kitchen tab → Library segment (Phase 12 consolidation)
-# The Discover action button now lives in the action row on the Library segment.
+# Kitchen tab → Recipe Box segment (renamed from "Library")
+# The Discover action button now lives in the action row on the Recipe Box segment.
 - tapOn:
     text: ".*Kitchen.*"
 - tapOn:
-    text: ".*Library.*"
+    text: ".*Recipe Box.*"
 
 - extendedWaitUntil:
     visible:
-      text: ".*in your library.*"
+      text: ".*in your recipe box.*"
 
     timeout: 15000
 - takeScreenshot: 03-recipes-tab

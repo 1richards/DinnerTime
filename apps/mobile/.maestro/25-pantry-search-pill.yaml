@@ -25,9 +25,9 @@ tags:
 
 - runFlow: _ensure-logged-in.yaml
 
-# 1. Land on Pantry.
+# 1. Land on Pantry by coordinate tap on tab bar (pos 3/5 on iPhone 17 Pro).
 - tapOn:
-    text: ".*Pantry.*"
+    point: "50%,95%"
 - assertVisible:
     text: "Search pantry"
 - takeScreenshot: 25-01-pantry-pill-visible

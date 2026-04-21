@@ -16,17 +16,17 @@ tags:
 
 - takeScreenshot: 22-01-home
 
-# Kitchen tab → Library segment
+# Kitchen tab → Recipe Box segment (renamed from "Library")
 - tapOn:
     text: ".*Kitchen.*"
 - tapOn:
-    text: ".*Library.*"
+    text: ".*Recipe Box.*"
 
 - extendedWaitUntil:
     visible:
-      text: ".*in your library.*"
+      text: ".*in your recipe box.*"
     timeout: 15000
-- takeScreenshot: 22-02-library
+- takeScreenshot: 22-02-recipe-box
 
 # Tap first recipe card (dynamic content — first item lives ~65% Y on iPhone 17 Pro).
 - tapOn:
@@ -40,13 +40,17 @@ tags:
 # Scroll down to reveal the Edit button (below the fold after Phase 15 header collapse).
 - scroll
 - scroll
+# RN Pressable taps via Maestro sometimes don't dispatch onPress —
+# retryTapIfNoChange retries until the UI changes or timeout.
 - tapOn:
-    text: ".*Edit.*"
-
+    text: "Edit"
+    retryTapIfNoChange: true
+# Save Changes sits in an absolute-positioned footer on the edit screen —
+# it's always visible once the edit screen mounts (no scroll needed).
 - extendedWaitUntil:
     visible:
       text: ".*Save Changes.*"
-    timeout: 10000
+    timeout: 20000
 - takeScreenshot: 22-04-edit-screen
 
 # Dirty the form — append to the title field.

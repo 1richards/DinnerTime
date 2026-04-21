@@ -15,11 +15,18 @@ name: "10 — meal plan: swap a day's recipe via the SwapSheet"
 - tapOn:
     text: ".*Plan.*"
 
+# If flow 09 didn't populate a plan for this session (state drift between
+# flows), generate one inline. "Generate this week" is visible only on empty
+# state, so marking optional keeps this a no-op when a plan already exists.
+- tapOn:
+    text: ".*Generate this week.*"
+    optional: true
+
 - extendedWaitUntil:
     visible:
       text: ".*This Week.*"
 
-    timeout: 90000
+    timeout: 120000
 - takeScreenshot: 03-plan-loaded
 
 # DayRow renders swap and cook icon buttons. Both have testID props:

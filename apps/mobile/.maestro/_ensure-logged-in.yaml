@@ -38,7 +38,22 @@ appId: com.dinnertime.app
           text: "YOUR KITCHEN AWAITS"
       - tapOn:
           text: ".*Sign In.*"
+      # iOS Save Password dialog pops asynchronously (1-5s) after Sign In
+      # submit and overlays the whole app, blocking Maestro's view of the
+      # Home screen. Poll-dismiss: check up to 5 times, each tap-optional
+      # attempt gives iOS a ~5s window to show the dialog. If the dialog
+      # never appears, each iteration is a cheap no-op.
+      - repeat:
+          times: 5
+          commands:
+            - tapOn:
+                text: "Not Now|Never for This Website|Update"
+                optional: true
+      # Wait for the Kitchen home greeting subtitle — plain Text rendered
+      # directly (no accessibilityLabel masking it from Maestro's AX tree,
+      # which is what kept "Suggestions" (inside a Pressable with
+      # accessibilityLabel="Suggestions segment") silently invisible).
       - extendedWaitUntil:
           visible:
-            text: ".*UAT Tester.*"
-          timeout: 30000
+            text: ".*What should we cook tonight.*"
+          timeout: 60000

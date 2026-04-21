@@ -11,9 +11,12 @@ tags:
 
 - takeScreenshot: 21-01-home
 
-# Navigate to Pantry tab
+# Navigate to Pantry tab by coordinate. Kitchen screen's "Using what's in
+# your pantry" subtitle collides with .*Pantry.* text regex, and anchored
+# regex (^Pantry$) fails to match iOS tab bar accessibility labels.
+# Tab bar on iPhone 17 Pro: 5 tabs, Pantry is #3 → center x=50%, y=95%.
 - tapOn:
-    text: ".*Pantry.*"
+    point: "50%,95%"
 
 - takeScreenshot: 21-02-pantry-tab
 
@@ -27,11 +30,11 @@ tags:
     point: "94%,85%"
     optional: true
 
-# Scan modal presents with its native header + either an empty-state
-# "Ready to scan your kitchen" EmptyState OR a has-photos status screen.
+# Pantry FAB now opens a bulk-import bottom sheet (Camera / Receipt /
+# Instacart). The sheet title "Add pantry items" is the stable marker.
 - extendedWaitUntil:
     visible:
-      text: ".*Ready to scan your kitchen.*|.*photo.*ready.*"
+      text: ".*Add pantry items.*|.*Ready to scan your kitchen.*|.*photo.*ready.*"
     timeout: 10000
 - takeScreenshot: 21-03-scan-modal-open
 
@@ -43,9 +46,10 @@ tags:
 
 - takeScreenshot: 21-04-scan-modal-dismissed
 
-# Back on the Pantry tab — the pantry tab markers are re-visible.
+# Back on the Pantry tab — look for the Pantry screen content (search pill
+# "Search pantry" is the Pantry tab's stable marker, rendered as plain Text).
 - extendedWaitUntil:
     visible:
-      text: ".*Pantry.*"
-    timeout: 5000
+      text: "Search pantry"
+    timeout: 10000
 - takeScreenshot: 21-05-back-on-pantry

@@ -29,12 +29,12 @@ tags:
 
 - runFlow: _ensure-logged-in.yaml
 
-# 1. Land on Pantry tab.
+# 1. Land on Pantry tab by coordinate (tab bar pos 3/5 on iPhone 17 Pro).
 - tapOn:
-    text: ".*Pantry.*"
+    point: "50%,95%"
 - extendedWaitUntil:
     visible:
-      text: ".*Pantry.*"
+      text: "Search pantry"
     timeout: 10000
 - takeScreenshot: 24-01-pantry-before-staple
 
