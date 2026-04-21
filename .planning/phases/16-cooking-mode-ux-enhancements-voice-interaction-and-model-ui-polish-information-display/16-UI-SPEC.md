@@ -1,10 +1,11 @@
 ---
 phase: 16
 slug: cooking-mode-ux-enhancements
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-04-20
+reviewed_at: 2026-04-21
 ---
 
 # Phase 16 — UI Design Contract
