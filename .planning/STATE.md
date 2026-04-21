@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 17-00 (Wave 0 Nyquist test scaffolding — 8 test files, 34 red signals across mobile + server) — complete
-status: "Phase 17 Wave 0 red baseline landed — every P17-01..P17-06 requirement maps to ≥1 failing test before production code. Pre-existing baseline failures (4 mobile + 2 server) unchanged — additive-only. Ready for 17-01 (server: POST /recipes/search + buildDiscoveryPrompt pantryManifest extension)."
-stopped_at: Completed 17-00-PLAN.md
-last_updated: "2026-04-21T02:43:53.962Z"
-last_activity: 2026-04-21 -- Completed 17-00 (Wave 0 Nyquist red scaffolding; 8 test files, 28 active + 6 queued red; 0 green regressions)
+current_plan: 17-01 (Server search endpoint + pantry manifest — POST /api/v1/recipes/search + buildDiscoveryPrompt 3rd-arg extension) — complete
+status: "Phase 17-01 shipped. Server side of Phase 17 complete: new POST /recipes/search route + buildDiscoveryPrompt pantryManifest extension. 10 Wave 0 red signals flipped green; /discover byte-exact preserved (D-07 lock). Server test suite: 610 green / 2 pre-existing red. Ready for 17-02 (mobile suggestionsStore persist + searchRecipes + recentQueries + dedupPrepend helper)."
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-04-21T02:56:36.253Z"
+last_activity: 2026-04-21 -- Completed 17-01 (server: POST /recipes/search + buildDiscoveryPrompt pantryManifest; 10 Wave 0 red→green; /discover D-07 preserved)
 progress:
   total_phases: 25
   completed_phases: 19
   total_plans: 87
-  completed_plans: 83
-  percent: 95
+  completed_plans: 84
+  percent: 97
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 17 of 25 (Something New — AI-powered recipe exploration with search and remix)
-Current Plan: 17-00 (Wave 0 Nyquist test scaffolding — 8 test files, 34 red signals across mobile + server) — complete
-Status: Phase 17 Wave 0 red baseline landed — every P17-01..P17-06 requirement maps to ≥1 failing test before production code. Pre-existing baseline failures (4 mobile + 2 server) unchanged — additive-only. Ready for 17-01 (server: POST /recipes/search + buildDiscoveryPrompt pantryManifest extension).
-Last activity: 2026-04-21 -- Completed 17-00 (Wave 0 Nyquist red scaffolding; 8 test files, 28 active + 6 queued red; 0 green regressions)
+Current Plan: 17-01 (Server search endpoint + pantry manifest — POST /api/v1/recipes/search + buildDiscoveryPrompt 3rd-arg extension) — complete
+Status: Phase 17-01 shipped. Server side of Phase 17 complete: new POST /recipes/search route + buildDiscoveryPrompt pantryManifest extension. 10 Wave 0 red signals flipped green; /discover byte-exact preserved (D-07 lock). Server test suite: 610 green / 2 pre-existing red. Ready for 17-02 (mobile suggestionsStore persist + searchRecipes + recentQueries + dedupPrepend helper).
+Last activity: 2026-04-21 -- Completed 17-01 (server: POST /recipes/search + buildDiscoveryPrompt pantryManifest; 10 Wave 0 red→green; /discover D-07 preserved)
 
-Progress: [██████████] 95%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -137,6 +137,7 @@ Progress: [██████████] 95%
 | Phase 21 P05 | 13min | 4 tasks | 12 files |
 | Phase 21 P06 | 1min | 2 tasks | 4 files |
 | Phase 17 P00 | 7 min | 3 tasks | 8 files |
+| Phase 17 P01 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -441,6 +442,9 @@ Recent decisions affecting current work:
 - [Phase 17]: Source-contract tests (fs.readFileSync + substring asserts) preferred over RN-renderer tests for screen files — Avoids .native.test.* suffix complexity, keeps per-file runtime <200ms, matches repo precedent in recipeStore.persist.test.ts. Trade-off: tests don't catch behavior bugs within JSX — Plan 17-04 Maestro flow fills that gap.
 - [Phase 17]: STORAGE_KEY for suggestionsStore persist locked to 'dinnertime-suggestions' in Wave 0 tests — Prevents accidental collision with dinnertime-recipes (existing recipe store) or dinnertime-pantry (existing pantry store). Plan 17-02 must use this exact key.
 - [Phase 17]: dedupPrepend lives in its own module (apps/mobile/src/stores/dedupPrepend.ts), not inline in suggestionsStore — Pure, store-free, cheap to unit test without instantiating Zustand. Prevents the store file from growing untestable lambdas.
+- [Phase 17]: [Phase 17-01]: Used single .eq('profile_id') + in-memory status='available' filter for pantry_items query (Wave 0 test mock does not support chained .eq().eq() — deviation Rule 3)
+- [Phase 17]: [Phase 17-01]: buildDiscoveryPrompt extended with optional 3rd pantryManifest arg — no-op when empty/undefined, preserving /discover byte-exact (D-07)
+- [Phase 17]: [Phase 17-01]: POST /recipes/search as NEW route (not /discover extension) — shares recipeDiscovery service, independent external contract
 
 ### Pending Todos
 
@@ -484,6 +488,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-21T02:43:53.959Z
-Stopped at: Completed 17-00-PLAN.md
+Last session: 2026-04-21T02:56:36.249Z
+Stopped at: Completed 17-01-PLAN.md
 Resume file: None

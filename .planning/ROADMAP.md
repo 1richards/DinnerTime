@@ -280,7 +280,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 
 | 13. Receipt Scan & Instacart Import | 2/2 | Complete    | 2026-04-18 |
 | 14. Multi-Photo Scan & Smarter Filtering | 2/2 | Complete   | 2026-04-18 |
-| 17. Something New (AI recipe exploration) | 1/5 | In Progress|  |
+| 17. Something New (AI recipe exploration) | 2/5 | In Progress|  |
 
 ### Phase 13: Receipt Scan & Instacart Import
 **Goal**: Users can bulk-load pantry items by scanning a grocery receipt or importing an Instacart order screenshot, instead of photographing every item individually
