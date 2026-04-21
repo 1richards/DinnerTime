@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 17-03 (Mobile Something New UI rewire) — complete
-status: completed
-stopped_at: Completed 17-03-PLAN.md
-last_updated: "2026-04-21T03:16:17.657Z"
-last_activity: "2026-04-21 -- Completed 17-03 (mobile UI: Suggestions→Something New, /search modal branch, HeaderEllipsis overflow, PreviewSheet Remix; 11 Wave 0 red→green; D-01+D-06+D-09+D-10 preserved)"
+current_plan: 17-04 (Maestro UAT happy-path + flow 20 rebase) — complete
+status: verifying
+stopped_at: Completed 17-04-PLAN.md
+last_updated: "2026-04-21T03:33:19.161Z"
+last_activity: 2026-04-21 -- Completed 17-04 (Maestro flow 27 green; flow 20 rebased; Phase 17 close-out; milestone 100%)
 progress:
   total_phases: 25
-  completed_phases: 19
+  completed_phases: 20
   total_plans: 87
-  completed_plans: 86
-  percent: 99
+  completed_plans: 87
+  percent: 100
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 17 of 25 (Something New — AI-powered recipe exploration with search and remix)
-Current Plan: 17-03 (Mobile Something New UI rewire) — complete
-Status: Phase 17-03 shipped. Mobile UI layer of Phase 17 complete: Kitchen segment labeled "Something New" (D-01 cosmetic; zustand key 'suggestions' unchanged); /search modal has a context='something-new' branch (TextInput + Switch + Submit; dismiss-first per D-09); RegenerateFab function + JSX deleted, replaced with HeaderEllipsis overflow menu (Regenerate from pantry + Clear search history per D-06); StickySearchPill mounted on Something New segment; RecentQueryChips horizontal strip (D-11); SomethingNewResults grid with PreviewSheet trigger; FirstTimeHint "Get dinner ideas from my pantry" button (D-08); SuggestionList preserved as D-10 fallback for autoFetch/post-scan path; PreviewSheet in discover.tsx gains a Remix button that opens an inline-source RemixSheet (P17-05) and is now exported for reuse. 11 Wave 0 screen source-contract tests red → green (search × 5, kitchen × 6, discover × 4). 3 new components created (SomethingNewResults, RecentQueryChips, PantryOnlyToggle). TypeScript clean. Zero regressions — 4 pre-existing mobile failures + 2 pre-existing server failures unchanged. Ready for 17-04 (Maestro UAT: flow 27-something-new-search + flow 20 rebase).
-Last activity: 2026-04-21 -- Completed 17-03 (mobile UI: Suggestions→Something New, /search modal branch, HeaderEllipsis overflow, PreviewSheet Remix; 11 Wave 0 red→green; D-01+D-06+D-09+D-10 preserved)
+Current Plan: 17-04 (Maestro UAT happy-path + flow 20 rebase) — complete
+Status: Phase 17 closed out. Maestro flow `27-something-new-search.yaml` green end-to-end on iPhone 17 Pro / iOS 26.4 simulator (10 UAT steps: segment → pill → modal → submit → AI cold-start → results → preview → remix → save → back-to-segment; AI returned 8 recipes in ~30s; 10 screenshots captured at `apps/mobile/27-01..27-10-*.png`). Flow 20 rebased: 5 Suggestions→Something New substitutions (comments + tap selector `.*Something New.*` + screenshot names) — 0 `Suggestions` substrings remaining. 3 Rule-1 deviations auto-fixed (regex selector for AX-label-masked segment; pressKey:enter for submit-button/modal-header ambiguity; save-outcome verification because kitchen.tsx auto-dismisses preview). Every P17-01..P17-06 requirement now has ≥1 automated test green across unit + integration + E2E. Milestone v1.0 is 100% complete (87/87 plans). Three deferred follow-ups logged for future phases: kitchen.tsx preview-save auto-dismiss divergence from discover.tsx D-03 pattern, pantry-only happy-path flow coverage, overflow-menu Maestro coverage.
+Last activity: 2026-04-21 -- Completed 17-04 (Maestro flow 27 green; flow 20 rebased; Phase 17 close-out; milestone 100%)
 
-Progress: [██████████] 99%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -140,6 +140,7 @@ Progress: [██████████] 99%
 | Phase 17 P01 | 8min | 2 tasks | 2 files |
 | Phase 17 P02 | 3min | 2 tasks | 5 files |
 | Phase 17 P03 | 7 min | 3 tasks | 6 files |
+| Phase 17 P04 | 11 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -452,6 +453,8 @@ Recent decisions affecting current work:
 - [Phase 17]: 17-03: Deleted RegenerateFab function entirely (not just unmounted). Grep confirmed zero other consumers. Removes dead code instead of leaving an unreachable symbol — consistent with Phase 17 D-06
 - [Phase 17]: 17-03: Segment JSX text formatted as single-line JSX expression >{'Something New'}</Text> to make Wave 0 source-contract substring assertion robust against prettier's JSX text-child wrapping — pattern documented for future source-contract tests + JSX text slots
 - [Phase 17]: 17-03: PantryOnlyToggle component built but not mounted on the Kitchen Something New segment in Plan 03. /search modal owns the submit via native Switch (test contract locked); segment-level pill placement deferred to UAT in Plan 17-04 without rework — toggle state rehydrates from useSuggestionsStore.pantryOnly on each modal open
+- [Phase 17]: Maestro selector pattern: use .*Label.* regex for Pressable segment buttons whose accessibilityLabel masks child Text from AX tree — CLAUDE.md documented this for old Suggestions label; same gotcha applies to Something New. Plain-literal tapOn fails silently; regex matches the AX label substring.
+- [Phase 17]: Maestro submit pattern for /search modal: pressKey:enter with TextInput returnKeyType=search + onSubmitEditing — /search modal title Text 'Search' shadows submit Button title in AX traversal; keyboard Enter fires onSubmitEditing directly, avoiding selector ambiguity. Precedent in flow 11.
 
 ### Pending Todos
 
@@ -495,6 +498,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-21T03:15:38.248Z
-Stopped at: Completed 17-03-PLAN.md
+Last session: 2026-04-21T03:33:19.156Z
+Stopped at: Completed 17-04-PLAN.md
 Resume file: None

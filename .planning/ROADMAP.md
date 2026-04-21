@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 14: Multi-Photo Scan & Smarter Item Filtering** - Multiple photos per scan session, AI only returns identifiable cooking ingredients (completed 2026-04-18)
 - [x] **Phase 15: UI Polish & Navigation Consistency** - Systematic audit + fixes: system icons replace emojis, consistent nav headers/back buttons, unified empty/loading states (completed 2026-04-18)
 - [ ] **Phase 16: Cooking Mode UX Enhancements** - Upgraded voice interaction + model, UI polish, better information display during cooking
-- [ ] **Phase 17: "Something New" — AI Recipe Exploration** - Reimagines the Suggestions segment: keyword search over AI-generated recipes, "from the pantry" filter, persisted results, remix-and-save to Recipe Box
+- [x] **Phase 17: "Something New" — AI Recipe Exploration** - Reimagines the Suggestions segment: keyword search over AI-generated recipes, "from the pantry" filter, persisted results, remix-and-save to Recipe Box (completed 2026-04-21)
 - [x] **Phase 18: AI Auto-Location for Pantry Imports** - Remove forced fridge/pantry/freezer choice; AI infers per-item location across scan, receipt, and Instacart flows (completed 2026-04-19)
 - [x] **Phase 19: Design Professionalization** - Polish icons, buttons, navigation, search bars, and shared design patterns; reference Spotify, Strava, DoorDash aesthetics (completed 2026-04-18)
 - [ ] **Phase 20: Shopping Refactor — Push to Draft Cart** - Replace order placement with pushing items to an Instacart draft cart so users manage payment, delivery window, and substitutions inside Instacart itself
@@ -280,7 +280,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 
 | 13. Receipt Scan & Instacart Import | 2/2 | Complete    | 2026-04-18 |
 | 14. Multi-Photo Scan & Smarter Filtering | 2/2 | Complete   | 2026-04-18 |
-| 17. Something New (AI recipe exploration) | 4/5 | In Progress|  |
+| 17. Something New (AI recipe exploration) | 5/5 | Complete   | 2026-04-21 |
 
 ### Phase 13: Receipt Scan & Instacart Import
 **Goal**: Users can bulk-load pantry items by scanning a grocery receipt or importing an Instacart order screenshot, instead of photographing every item individually
@@ -359,11 +359,11 @@ Plans: (not yet planned)
   6. Sparkles regenerate FAB is either replaced or repositioned so it doesn't feel like the only entry point
 **Plans**: 5 plans
 Plans:
-- [ ] 17-00-PLAN.md — Wave 0 Nyquist test scaffolding: 6 new test files + 2 existing extensions stubbed red before production code
-- [ ] 17-01-PLAN.md — Server: POST /recipes/search route + buildDiscoveryPrompt pantry-manifest extension
-- [ ] 17-02-PLAN.md — Mobile store: suggestionsStore persist + searchRecipes + clearHistory + dedupPrepend helper
-- [ ] 17-03-PLAN.md — Mobile UI: segment rename + /search modal branch + PreviewSheet Remix + FAB→HeaderEllipsis + recent-query chips + pantry toggle
-- [ ] 17-04-PLAN.md — UAT: new Maestro flow 27-something-new-search + flow 20 label rebase + human iOS Simulator checkpoint
+- [x] 17-00-PLAN.md — Wave 0 Nyquist test scaffolding: 6 new test files + 2 existing extensions stubbed red before production code
+- [x] 17-01-PLAN.md — Server: POST /recipes/search route + buildDiscoveryPrompt pantry-manifest extension
+- [x] 17-02-PLAN.md — Mobile store: suggestionsStore persist + searchRecipes + clearHistory + dedupPrepend helper
+- [x] 17-03-PLAN.md — Mobile UI: segment rename + /search modal branch + PreviewSheet Remix + FAB→HeaderEllipsis + recent-query chips + pantry toggle
+- [x] 17-04-PLAN.md — UAT: new Maestro flow 27-something-new-search + flow 20 label rebase + human iOS Simulator checkpoint
 **UI hint**: yes
 
 ### Phase 18: AI Auto-Location for Pantry Imports
