@@ -66,15 +66,19 @@ Component-level spacing contract:
 
 ## Typography
 
-Phase 19 5-step type scale is the authoritative source. Cooking mode uses 4 of
-the 5 steps; `label` is reserved for the TIMER countdown chip label only.
+Phase 19 ships a 5-step type scale (`display`, `title`, `body`, `caption`, `label`).
+**Cooking mode consumes exactly 4 of those 5 steps. `caption` (13pt) is NOT used
+in cooking mode** — every element previously caption-sized has been reassigned
+to either `body` (plain readable text) or `label` (small uppercase meta).
+This keeps the in-cooking-screen type hierarchy bounded to 4 distinct sizes
+(hitting the Dimension 4 typography cap) while still drawing every role from
+the canonical Phase 19 scale.
 
 | Role | Size | Weight | Line Height | Letter Spacing | Token |
 |------|------|--------|-------------|----------------|-------|
 | Display | 34pt | 700 | 41pt | -0.8 | `text-display` |
 | Title | 22pt | 600 | 28pt | -0.3 | `text-title` |
 | Body | 17pt | 400 | 22pt | 0 | `text-body` |
-| Caption | 13pt | 400 | 18pt | 0 | `text-caption` |
 | Label | 11pt | 600 | 16pt | +0.6 | `text-label` (uppercase) |
 
 Role assignments in cooking mode:
@@ -83,18 +87,27 @@ Role assignments in cooking mode:
 |---------|------|-------|
 | Current step text (highlighted) | `display` (34pt/700) | Counter-distance readability is the primary constraint |
 | Non-current step text | `title` (22pt/600) | Visible but subordinate |
-| Step number label ("STEP 3 of 7") | `label` (11pt/600 uppercase) | Muted `text-text-tertiary` |
-| Ingredient name | `body` (17pt/400) | Strikethrough + `text-text-tertiary` when checked |
-| Ingredient quantity/unit prefix | `body` (17pt/600) | Bold-weight override on the qty portion only |
 | Recipe title (sticky header) | `title` (22pt/600) | Single-line, truncate with tail ellipsis |
+| Step number label ("STEP 3 of 7") | `label` (11pt/600 uppercase) | Muted `text-text-tertiary` |
+| Section headers ("INGREDIENTS", "STEPS") | `label` (11pt/600 uppercase) | `text-text-secondary` |
+| Ingredient name | `body` (17pt/400) | Strikethrough + `text-text-tertiary` when checked |
+| Ingredient quantity/unit prefix | `body` (17pt/600) | Semibold override on the qty portion only |
 | Timer chip countdown (e.g. "9m 23s") | `body` (17pt/600) | Semibold for glance-read |
 | Timer chip label (e.g. "RICE") | `label` (11pt/600 uppercase) | Above the countdown |
 | Command-confirmation toast | `body` (17pt/600) | Single line, centered |
-| Contextual tip body | `caption` (13pt/400) | Existing Phase 10 tip surface, retinted to tokens |
+| Contextual tip body | `body` (17pt/400) | Retinted to `text-text-primary` on warning-tinted surface |
 | "TIP" tip-badge label | `label` (11pt/600 uppercase) | `text-warning` tint |
-| AskSheet question (recap) | `caption` (13pt/400) | `text-text-secondary` |
+| AskSheet question (recap of what the user asked) | `body` (17pt/400) | `text-text-secondary` — kept readable at counter distance |
 | AskSheet answer | `body` (17pt/400) | `text-text-primary` |
 | Nav button icons (Back/Repeat/Next) | SF Symbol size 28pt | `iconPropsForText('display')` returns 28; weight 600 |
+
+**Note on reassignments from caption:** The contextual tip body and AskSheet
+question recap were previously caption-role (13pt). Both are long-form plain
+text the user reads hands-free at counter distance, so they promote to `body`
+(17pt) — small, easy, and keeps the role count at 4. Nothing in cooking mode
+should hit `caption` — if a design need surfaces that seems to want 13pt, route
+it to `label` (if it's meta/uppercase) or `body` (if it's prose), or escalate
+as a Phase 19.x amendment.
 
 **Validation hook (per CONTEXT decision):** During UAT on a physical iPhone at
 counter-height distance, confirm the `display` scale for the current step is
@@ -120,7 +133,7 @@ same semantic tokens — only the underlying CSS variable values swap.
 |------|-----|-------|-------|
 | Dominant (60%) | #FAF7F2 | `bg-bg` | Full-screen background, non-current step cards |
 | Secondary (30%) | #FFFFFF | `bg-surface` | Current-step card, ingredient rows, AskSheet |
-| Accent (10%) | #C65D3A | `brand` | Current-step left-edge rail, timer chip background (@15% alpha), waveform mic fill, Stop button fill, checked-ingredient checkmark, nav-button active icon tint |
+| Accent (10%) | #C65D3A | `brand` | Current-step left-edge rail, timer chip background (@15% alpha), waveform mic fill, Stop button fill, nav-button active icon tint |
 | Destructive | #DC2626 | `destructive` | Exit confirm destructive action, "End cooking session" |
 
 ### Dark (optional "Spotify Now Playing" theme — runtime toggle)
@@ -150,13 +163,13 @@ cooking-scoped theme provider.
 - Listening-state waveform mic icon fill
 - Voice-enabled idle pulse dot
 - Stop TTS button icon fill + border
-- Checked-ingredient checkmark icon
 - Nav-button active-state icon tint (pressed)
 - Command-confirmation toast left-edge accent strip
 
 **Accent is NEVER used for:** nav-button backgrounds (tokens stay `bg-surface`
 + `border`), non-current step text, ingredient names, timer bar surrounds, exit
-button, AskSheet chrome, contextual-tip body, sticky-header background.
+button, AskSheet chrome, contextual-tip body, sticky-header background, or the
+ingredient-check icon (that is `success` — see below).
 
 **Destructive tone reserved for:** exit-confirm destructive alert button only.
 No destructive color in the main cooking UI — users exit via a benign X that
@@ -164,7 +177,7 @@ opens a confirm sheet.
 
 **Semantic state tones (success/warning/info) reserved for:**
 - `warning` (#D97706): contextual-tip "TIP" label + left rail + background tint at 10% (retints the existing amber-50/amber-200 hardcoded pair in `cook.tsx` line 245). **Must replace existing hardcoded amber classes** during Phase 16 sweep.
-- `success`: ingredient-checked subtle affordance (optional — checkmark tint can be brand OR success; spec defers to implementation A/B during UAT). If both options are viable, pick `success` to avoid over-saturating brand accent.
+- `success`: ingredient-checked affordance. The check icon that appears when an ingredient is tapped uses `success` tone (not `brand`). Rationale: `brand` is already heavily reserved for the current-step rail, timer chip, mic fill, Stop button, nav-pressed tint, and toast accent — adding another brand surface would over-saturate the accent budget and weaken the current-step signal. `success` also semantically reads as "checked/done" which matches user intent better than the brand terracotta.
 - `info`: not used in cooking mode.
 
 ---
@@ -183,7 +196,8 @@ convention). No em-dashes in UI copy per project-wide voice.
 | Go back one step (voice confirm) | `Previous step` (toast) |
 | Repeat current step (voice confirm) | `Repeating` (toast) |
 | Timer set (voice confirm) | `Timer set · {duration}` (e.g. `Timer set · 10 min`) |
-| Stop TTS (button label on press) | `Stop` (visible text OR aria-label on icon-only button) |
+| Stop TTS (visible text if label shown) | `Stop` |
+| Stop TTS (accessibility label on icon-only button) | `Stop reading` — VoiceOver reads this aloud. "Stop" alone is ambiguous (stop what?); "Stop reading" scopes the action to the TTS narration specifically. |
 | Exit cooking mode (top-left button) | `Exit` (visible text next to X icon — current pattern preserved) |
 | Exit confirm — destructive | `End cooking session` (destructive red) |
 | Exit confirm — cancel | `Keep cooking` |
@@ -287,7 +301,7 @@ step content and timer-done announcements.
 | Step advance (next / voice / intent router) | Current-step highlight shifts one card down; scroll animates previous-current off-screen or to top, new-current centered in viewport | `ScrollView.scrollTo({ y, animated: true })` — 400ms iOS default; use Reanimated if jank observed |
 | Step back | Mirror of advance, scroll direction reversed | Same |
 | Repeat | No scroll; current-step card pulse (brand rail thickens 4pt→8pt→4pt) | 300ms Reanimated pulse |
-| Ingredient tap | Row transitions to strike-through + tertiary text + success/brand check icon | 150ms opacity + text-decoration |
+| Ingredient tap | Row transitions to strike-through + tertiary text + `success`-tinted check icon | 150ms opacity + text-decoration |
 | Voice listening → speaking | Waveform bars animate to amplitude | Reanimated `withRepeat` loop; amplitude from STT partial-result callback |
 | Voice idle → listening | Static dot → waveform (smooth 200ms crossfade) | Reanimated `withTiming` |
 | TTS starts | Stop button slides in from sticky-header right edge | 200ms slide + fade |
@@ -321,7 +335,11 @@ Works when phone is on silent mode (haptics are independent of ringer).
 
 ### Accessibility
 
-- `accessibilityLabel` on icon-only controls: Exit X, voice-toggle waveform, Stop TTS, Back/Repeat/Next nav buttons (even though nav buttons show text — SF Symbol + label both contribute).
+- `accessibilityLabel` on icon-only controls:
+  - Exit X → `Exit cooking`
+  - Voice-toggle waveform → `Voice commands: {on|off}`
+  - Stop TTS → `Stop reading` (scoped verb; "Stop" alone was ambiguous)
+  - Back/Repeat/Next nav buttons (even though nav buttons show text — SF Symbol + label both contribute)
 - `accessibilityRole="button"` on all Pressables.
 - `accessibilityState={{ selected: true }}` on the current step card.
 - `accessibilityLiveRegion="polite"` on the toast surface (announces recognized commands to VoiceOver users).
@@ -343,7 +361,7 @@ Works when phone is on silent mode (haptics are independent of ringer).
 | `StickyCookingHeader` | `apps/mobile/src/components/cooking/StickyCookingHeader.tsx` | Exit X + recipe title + voice waveform + timer chip row + Stop-TTS button |
 | `VoiceWaveform` | `apps/mobile/src/components/cooking/VoiceWaveform.tsx` | Animated mic icon — waveform bars when listening, pulse dot when idle-armed, gray static when voice off |
 | `CommandToast` | `apps/mobile/src/components/cooking/CommandToast.tsx` | Phase-19-token-aware toast; replaces generic `useToast` for cooking-command confirmations (1.5s auto-dismiss, medium haptic companion) |
-| `StopTTSButton` | `apps/mobile/src/components/cooking/StopTTSButton.tsx` | Icon-only button; renders only when `Speech.isSpeakingAsync() === true` |
+| `StopTTSButton` | `apps/mobile/src/components/cooking/StopTTSButton.tsx` | Icon-only button with `accessibilityLabel="Stop reading"`; renders only when `Speech.isSpeakingAsync() === true` |
 | `ExitConfirmSheet` | — | iOS `ActionSheetIOS.showActionSheetWithOptions` — no component file needed; call site in `cook.tsx` |
 
 ### Primitives to rework (existing)
@@ -354,8 +372,8 @@ Works when phone is on silent mode (haptics are independent of ringer).
 | `StepNavButtons` | `apps/mobile/src/components/cooking/StepNavButtons.tsx` | Rework to 72pt tap targets, Phase 19 button tokens (secondary variant color, SF Symbol icons via `iconPropsForText('display')`). Document 72pt deviation inline. |
 | `TimerBar` | `apps/mobile/src/components/cooking/TimerBar.tsx` | Retint hardcoded `#C2410C` to `colors.brandPressed` token; replace hardcoded font sizes with `text-body` and `text-label` roles; add T-10s warning-tone transition. |
 | `VoiceStatusBadge` | `apps/mobile/src/components/cooking/VoiceStatusBadge.tsx` | Replace with `VoiceWaveform`. Delete file. |
-| `AskSheet` | `apps/mobile/src/components/cooking/AskSheet.tsx` | Retoken colors + typography; add streaming-response incremental rendering as answer arrives. |
-| Cooking-mode tip block (inline in `cook.tsx` lines 243-252) | `apps/mobile/src/app/recipes/[id]/cook.tsx` | Replace hardcoded amber classes with `bg-warning/10 border-warning` + `text-warning` label + `text-text-primary` body. |
+| `AskSheet` | `apps/mobile/src/components/cooking/AskSheet.tsx` | Retoken colors + typography (question recap and answer both at `body` role); add streaming-response incremental rendering as answer arrives. |
+| Cooking-mode tip block (inline in `cook.tsx` lines 243-252) | `apps/mobile/src/app/recipes/[id]/cook.tsx` | Replace hardcoded amber classes with `bg-warning/10 border-warning` + `text-warning` label + `text-text-primary` body (body role, not caption). |
 
 ### Settings additions
 
@@ -408,7 +426,7 @@ Every decision in this contract traces to an upstream artifact.
 | Design system = NativeWind + Phase 19 tokens | ROADMAP Phase 19 (shipped 2026-04-18); detected `apps/mobile/src/design/tokens.ts` + `tailwind.config.js` |
 | Icon library = SF Symbols via `expo-symbols` | ROADMAP Phase 15; detected `SymbolIcon` usage across codebase |
 | 8pt spacing grid | Phase 19 `tokens.ts` `spacing` export (verified) |
-| 5-step typography scale | Phase 19 `tokens.ts` `typography` export (verified) |
+| 4-of-5 typography scale (display/title/body/label, caption dropped) | Phase 19 `tokens.ts` `typography` export (verified) — `caption` intentionally excluded from cooking mode to hit Dimension 4 four-size cap |
 | Color palette (light) | Phase 19 `global.css` `--color-*` variables (verified) |
 | Color palette (dark) | Phase 19 `global.css` commented-out dark sketch (lines 46-66) — promoted to live theme in this phase per CONTEXT D-03 |
 | Current-step `display` / non-current `title` typography | CONTEXT "Step text typography" (Claude's discretion → locked here) |
@@ -417,8 +435,10 @@ Every decision in this contract traces to an upstream artifact.
 | Toast-based voice feedback, no TTS echo | CONTEXT "Voice Command Feedback → Confirmation on recognized command" decision |
 | Waveform mic listening indicator | CONTEXT "Listening-state indicator" decision |
 | Stop TTS button in sticky header | CONTEXT "TTS interrupt" decision |
+| Stop TTS accessibility label = "Stop reading" | Checker recommendation (Dimension 1) — scope the verb for VoiceOver clarity |
 | Scrollable full-recipe layout with highlighted current step | CONTEXT "Cooking UI Information Density → Layout pivot" decision |
 | Checkable ingredients at top of recipe | CONTEXT "Ingredients" decision |
+| Ingredient-check icon tone = `success` | Researcher decision, locked per checker recommendation (Dimension 3) — avoids over-saturating `brand` accent; semantically matches "checked/done" |
 | Sticky horizontal timer-chip header | CONTEXT "Timer display" decision |
 | Exit-confirm destructive copy | CONTEXT `code_context` "Full-screen immersive routes" pattern (exit button + explicit confirm) |
 | Toast timing 1.5s auto-dismiss | CONTEXT "Confirmation on recognized command" decision |
@@ -435,10 +455,13 @@ These values were not explicitly specified in CONTEXT and are locked here:
 | Sticky header height: 64pt baseline / 112pt with timers | 64 / 112 | 48pt timer chip band fits one `Chip` at `display` kind + 8pt gap + 8pt padding; matches 8pt grid |
 | Scroll animation timing (step advance) | 400ms iOS default via `scrollTo({ animated: true })` | Native default reads as "brisk but not instant"; upgrade to Reanimated only if jank observed during UAT |
 | Current-step pulse on Repeat | 300ms brand-rail thickness pulse | Subtle reinforcement that "something happened" without being noisy |
-| Ingredient-check icon tone | `success` (tentative, spec-level A/B) | Prevents over-saturating `brand` accent; final call at UAT |
+| Ingredient-check icon tone | `success` | Locked per checker recommendation — `brand` accent budget is already saturated by rail + timer + mic + Stop + nav pressed + toast strip; `success` semantically reads as "checked/done" |
 | T-10s warning-tone timer transition | `warning` @20% alpha background | Consistent with semantic-state token usage elsewhere |
 | Dark-mode toggle copy | `Dark cooking mode` / `Darker background while cooking. Matches Spotify's Now Playing feel.` | Matches CONTEXT reference language |
 | Exit confirm destructive copy | `End cooking session` / `Keep cooking` | Terminology matches "cooking session" naming elsewhere in app |
+| Stop TTS accessibility label | `Stop reading` | "Stop" alone fails VoiceOver clarity — scoped verb disambiguates from Stop-timer, Stop-recording, etc. |
+| Contextual tip body typography | `body` (17pt/400) — was `caption` (13pt) | Reassigned to keep cooking mode at 4 type sizes; tip copy is long-form readable text, `body` is correct |
+| AskSheet question recap typography | `body` (17pt/400) `text-text-secondary` — was `caption` (13pt) | Reassigned to keep cooking mode at 4 type sizes; secondary color preserves visual hierarchy |
 
 These defaults are overridable by the executor during implementation if the
 visual-verification UAT checkpoint surfaces a better choice; any override must
