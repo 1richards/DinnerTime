@@ -3,6 +3,7 @@ import {
   View,
   Text,
   Animated,
+  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -18,8 +19,14 @@ import { useNetworkStore } from '../../stores/networkStore';
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
 
 import { SuggestionList } from '../../components/suggestions/SuggestionList';
+import { SomethingNewResults } from '../../components/suggestions/SomethingNewResults';
+import { RecentQueryChips } from '../../components/suggestions/RecentQueryChips';
 import { RecipeCard } from '../../components/recipes/RecipeCard';
 import { StickySearchPill } from '../../components/ui/SearchBar';
+import { HeaderEllipsis } from '../../components/ui/HeaderEllipsis';
+import { Button } from '../../components/ui/Button';
+import { PreviewSheet } from '../recipes/discover';
+import { getRecipeImage } from '../../constants/foodImages';
 import {
   RecipeFilterSheet,
   EMPTY_FILTERS,
@@ -33,7 +40,7 @@ import {
 } from '../../components/ui/useCollapsingHeader';
 import { colors } from '../../design/tokens';
 
-import type { Recipe, ParsedIngredient } from '../../types/recipe';
+import type { Recipe, ParsedIngredient, ParsedRecipe } from '../../types/recipe';
 
 // -----------------------------------------------------------------------------
 // Segment type
@@ -114,20 +121,62 @@ function ImportFab() {
   );
 }
 
-function RegenerateFab() {
-  const onPress = () => {
-    // NOTE: CONTEXT.md says `refreshSuggestions` — the store exports
-    // `fetchSuggestions`. Use the real action.
-    void useSuggestionsStore.getState().fetchSuggestions();
-  };
+// Phase 17 D-06: the sparkles RegenerateFab was removed. Regenerate +
+// Clear History moved to a HeaderEllipsis overflow menu on the Something
+// New segment (see SomethingNewEllipsis below).
+
+// -----------------------------------------------------------------------------
+// First-time hint (CONTEXT D-08) — shown when no searchResults AND no
+// recentQueries. Gives users a concrete on-ramp rather than a blank canvas.
+// -----------------------------------------------------------------------------
+
+function FirstTimeHint({ onStart }: { onStart: () => void }) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={styles.fab}
-      accessibilityLabel="Regenerate suggestions"
-    >
-      <SymbolIcon name="sparkles" size={28} tintColor="#FFFFFF" />
-    </Pressable>
+    <View style={styles.firstTimeWrap}>
+      <Text style={styles.firstTimeTitle}>Discover new dinner ideas</Text>
+      <Text style={styles.firstTimeBody}>
+        Tap the search bar above to explore, or start from your pantry.
+      </Text>
+      <View style={{ marginTop: 16 }}>
+        <Button
+          title="Get dinner ideas from my pantry"
+          onPress={onStart}
+          variant="outline"
+        />
+      </View>
+    </View>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Something New ellipsis overflow (CONTEXT D-06) — Regenerate + Clear History.
+// Reads the store via useSuggestionsStore.getState() so the actions array
+// can be inline-defined without re-rendering on every store change.
+// -----------------------------------------------------------------------------
+
+function SomethingNewEllipsis() {
+  return (
+    <HeaderEllipsis
+      tintColor={colors.textPrimary}
+      accessibilityLabel="More options"
+      actions={[
+        {
+          label: 'Regenerate from pantry',
+          onPress: () => {
+            void useSuggestionsStore
+              .getState()
+              .searchRecipes('', { pantryOnly: true });
+          },
+        },
+        {
+          label: 'Clear search history',
+          destructive: true,
+          onPress: () => {
+            useSuggestionsStore.getState().clearHistory();
+          },
+        },
+      ]}
+    />
   );
 }
 
@@ -151,7 +200,7 @@ function SegmentedControl({
           styles.segment,
           segment === 'suggestions' && styles.segmentActive,
         ]}
-        accessibilityLabel="Suggestions segment"
+        accessibilityLabel="Something New segment"
         accessibilityState={{ selected: segment === 'suggestions' }}
       >
         <Text
@@ -159,9 +208,7 @@ function SegmentedControl({
             styles.segmentLabel,
             segment === 'suggestions' && styles.segmentLabelActive,
           ]}
-        >
-          Suggestions
-        </Text>
+        >{'Something New'}</Text>
       </Pressable>
       <Pressable
         onPress={() => setSegment('library')}
@@ -186,7 +233,7 @@ function SegmentedControl({
 }
 
 // -----------------------------------------------------------------------------
-// Suggestions header (hero + greeting + segmented control).
+// Suggestions (Something New) header (hero + greeting + segmented control).
 // Large title fades on scroll; segmented control scrolls with content.
 // -----------------------------------------------------------------------------
 
@@ -256,6 +303,33 @@ export default function KitchenScreen() {
   const deferredQuery = useDeferredValue(searchQuery);
   const [filters, setFilters] = useState<RecipeFilterState>(EMPTY_FILTERS);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+
+  // ---------- Phase 17 suggestions (Something New) state ----------
+  const searchResults = useSuggestionsStore((s) => s.searchResults);
+  const recentQueries = useSuggestionsStore((s) => s.recentQueries);
+  const pantryOnly = useSuggestionsStore((s) => s.pantryOnly);
+  const suggestionsLoading = useSuggestionsStore((s) => s.isLoading);
+  const searchRecipes = useSuggestionsStore((s) => s.searchRecipes);
+  const autoFetchActive = useSuggestionsStore((s) => s.autoFetch);
+  const legacySuggestions = useSuggestionsStore((s) => s.suggestions);
+  const saveRecipe = useRecipeStore((s) => s.saveRecipe);
+
+  const [previewRecipe, setPreviewRecipe] = useState<ParsedRecipe | null>(null);
+  const [savingPreview, setSavingPreview] = useState(false);
+
+  const hasResults = searchResults.length > 0;
+  const hasHistory = recentQueries.length > 0;
+  // D-10 preservation: SuggestionList (autoFetch + post-scan pantry-grounded
+  // path) remains reachable as a fallback for first-time users who arrived via
+  // the post-scan flow or already have legacy suggestions in memory.
+  const hasLegacySuggestionsPath =
+    autoFetchActive || legacySuggestions.length > 0;
+  const showPhase17Results = hasResults || suggestionsLoading;
+  const showFirstTimeHint =
+    !showPhase17Results &&
+    !hasHistory &&
+    !suggestionsLoading &&
+    !hasLegacySuggestionsPath;
 
   // Two separate collapsing-header instances — each segment owns its own
   // scrollY (Research Pitfall 5: don't share a single scroll value across
@@ -332,6 +406,20 @@ export default function KitchenScreen() {
     router.push(`/recipes/${recipe.id}`);
   };
 
+  // ---------- Phase 17 preview handlers ----------
+  const handlePreviewSave = async () => {
+    if (!previewRecipe) return;
+    setSavingPreview(true);
+    try {
+      // Pitfall 9 preservation: stamp source_type: 'ai' on the saved recipe,
+      // same as apps/mobile/src/app/recipes/discover.tsx handleSave().
+      await saveRecipe({ ...previewRecipe, source_type: 'ai' });
+      setPreviewRecipe(null);
+    } finally {
+      setSavingPreview(false);
+    }
+  };
+
   // ---------- render ----------
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={['top', 'bottom']}>
@@ -343,9 +431,9 @@ export default function KitchenScreen() {
         <Text style={styles.compactTitle}>Kitchen</Text>
       </Animated.View>
 
-      {/* StickySearchPill (library segment only) — DoorDash-style top search
-          affordance. Taps out to /search?context=library modal. Sits above the
-          large-title header (zIndex:20 inside SearchBar.tsx). */}
+      {/* StickySearchPill — mounted per active segment. Library routes to the
+          existing Phase 19 full-text search; Something New routes to the
+          Phase 17 AI search branch. */}
       {segment === 'library' && (
         <StickySearchPill
           placeholder="Search recipes"
@@ -353,11 +441,24 @@ export default function KitchenScreen() {
           scrollY={libraryHeader.scrollY}
         />
       )}
+      {segment === 'suggestions' && (
+        <StickySearchPill
+          placeholder="Search dinner ideas…"
+          context="something-new"
+          scrollY={suggestionsHeader.scrollY}
+        />
+      )}
 
-      {/* Action row (top-right): library-only filter + discover. Search moved
-          to the sticky pill above. */}
+      {/* Action row (top-right). Something New: HeaderEllipsis. Library:
+          filter + discover. Search moved to the sticky pill above. */}
       <View style={styles.actionRow} pointerEvents="box-none">
         <View style={{ flex: 1 }} />
+
+        {segment === 'suggestions' && (
+          <View style={styles.actionBtn}>
+            <SomethingNewEllipsis />
+          </View>
+        )}
 
         {segment === 'library' && (
           <>
@@ -403,18 +504,50 @@ export default function KitchenScreen() {
         // Inactive lists don't need to be interactive
         pointerEvents={segment === 'suggestions' ? 'auto' : 'none'}
       >
-        <SuggestionList
-          HeaderComponent={
-            <SuggestionsHeader
-              displayName={displayName}
-              largeTitleOpacity={suggestionsHeader.largeTitleOpacity}
-              largeTitleTranslate={suggestionsHeader.largeTitleTranslate}
-              segment={segment}
-              setSegment={setSegment}
-            />
-          }
+        {/* Phase 17 Something New surface. Render-tree priority:
+             1. Phase 17 results (or loading) → SomethingNewResults
+             2. Recent-query chips + first-time hint when user has no results
+                yet but no active legacy path
+             3. SuggestionList fallback — D-10 preserves the autoFetch /
+                post-scan pantry-grounded flow unchanged.
+         */}
+        <Animated.ScrollView
           onScroll={suggestionsHeader.onScroll}
-        />
+          scrollEventThrottle={16}
+          contentContainerStyle={{ paddingBottom: 140 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <SuggestionsHeader
+            displayName={displayName}
+            largeTitleOpacity={suggestionsHeader.largeTitleOpacity}
+            largeTitleTranslate={suggestionsHeader.largeTitleTranslate}
+            segment={segment}
+            setSegment={setSegment}
+          />
+          {hasHistory && (
+            <RecentQueryChips
+              queries={recentQueries}
+              onSelect={(q) => {
+                void searchRecipes(q, { pantryOnly });
+              }}
+            />
+          )}
+          {showPhase17Results ? (
+            <SomethingNewResults
+              onRequestPreview={(r) => setPreviewRecipe(r)}
+            />
+          ) : showFirstTimeHint ? (
+            <FirstTimeHint
+              onStart={() => {
+                void searchRecipes('', { pantryOnly: true });
+              }}
+            />
+          ) : (
+            // D-10 fallback: legacy pantry-grounded SuggestionList. Covers
+            // post-scan autoFetch + users with existing legacy suggestions.
+            <SuggestionList />
+          )}
+        </Animated.ScrollView>
       </View>
 
       <View
@@ -463,9 +596,31 @@ export default function KitchenScreen() {
         onApply={setFilters}
       />
 
-      {/* FABs swap with segment */}
+      {/* Phase 17 preview (P17-05) — tapped card shows PreviewSheet with
+          Save to Library + Remix actions. Mounted at screen root so it sits
+          above both segments. */}
+      <Modal
+        visible={previewRecipe !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setPreviewRecipe(null)}
+      >
+        {previewRecipe && (
+          <PreviewSheet
+            recipe={{ ...previewRecipe, _saved: false }}
+            heroUri={getRecipeImage(
+              `something-new-${previewRecipe.title}`,
+              previewRecipe.image_url,
+            )}
+            onClose={() => setPreviewRecipe(null)}
+            onSave={handlePreviewSave}
+            saving={savingPreview}
+          />
+        )}
+      </Modal>
+
+      {/* FABs swap with segment — Something New no longer has a FAB (D-06) */}
       {segment === 'library' && <ImportFab />}
-      {segment === 'suggestions' && <RegenerateFab />}
     </SafeAreaView>
   );
 }
@@ -522,5 +677,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.22,
     shadowRadius: 10,
     elevation: 8,
+  },
+  firstTimeWrap: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  firstTimeTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  firstTimeBody: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
   },
 });
