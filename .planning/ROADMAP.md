@@ -280,6 +280,7 @@ Note: Phases 2, 3, and 5 can execute in parallel (all depend only on Phase 1).
 
 | 13. Receipt Scan & Instacart Import | 2/2 | Complete    | 2026-04-18 |
 | 14. Multi-Photo Scan & Smarter Filtering | 2/2 | Complete   | 2026-04-18 |
+| 17. Something New (AI recipe exploration) | 0/5 | Not started |            |
 
 ### Phase 13: Receipt Scan & Instacart Import
 **Goal**: Users can bulk-load pantry items by scanning a grocery receipt or importing an Instacart order screenshot, instead of photographing every item individually
@@ -356,8 +357,13 @@ Plans: (not yet planned)
   4. "From the pantry" filter toggle restricts results to recipes feasible with current pantry
   5. Tap-to-remix on any result opens the existing remix/edit flow, with save-to-Recipe Box
   6. Sparkles regenerate FAB is either replaced or repositioned so it doesn't feel like the only entry point
-**Plans**: 0 plans
-Plans: (not yet planned)
+**Plans**: 5 plans
+Plans:
+- [ ] 17-00-PLAN.md — Wave 0 Nyquist test scaffolding: 6 new test files + 2 existing extensions stubbed red before production code
+- [ ] 17-01-PLAN.md — Server: POST /recipes/search route + buildDiscoveryPrompt pantry-manifest extension
+- [ ] 17-02-PLAN.md — Mobile store: suggestionsStore persist + searchRecipes + clearHistory + dedupPrepend helper
+- [ ] 17-03-PLAN.md — Mobile UI: segment rename + /search modal branch + PreviewSheet Remix + FAB→HeaderEllipsis + recent-query chips + pantry toggle
+- [ ] 17-04-PLAN.md — UAT: new Maestro flow 27-something-new-search + flow 20 label rebase + human iOS Simulator checkpoint
 **UI hint**: yes
 
 ### Phase 18: AI Auto-Location for Pantry Imports
