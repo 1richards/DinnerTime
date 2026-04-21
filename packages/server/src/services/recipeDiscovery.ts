@@ -23,6 +23,14 @@ export interface DiscoverRecipesOptions {
   preferences: DiscoveryPreferences;
   existingTitles?: string[];
   prompt?: string;
+  /**
+   * Phase 17 (P17-04): when provided and non-empty, constrains the AI to
+   * only suggest recipes that are 100% feasible from these pantry items
+   * (plus common staples: salt, pepper, water, oil). Empty/undefined =
+   * no constraint. Server route POST /recipes/search populates this
+   * from `pantry_items` (status='available', confidence desc, capped at 50).
+   */
+  pantryManifest?: string[];
 }
 
 // ---------- Tool Definition ----------
@@ -90,7 +98,8 @@ export const suggestRecipesTool: StructuredTool<SuggestRecipesOutput> = {
  */
 export function buildDiscoveryPrompt(
   preferences: DiscoveryPreferences,
-  existingTitles?: string[]
+  existingTitles?: string[],
+  pantryManifest?: string[]
 ): string {
   const allergies = preferences.allergies ?? [];
   const restrictions = preferences.dietary_restrictions ?? [];
@@ -136,6 +145,22 @@ export function buildDiscoveryPrompt(
     }
   }
 
+  // Phase 17 (P17-04): optional pantry constraint. Only render when the
+  // caller supplies a non-empty manifest -- the /discover route passes
+  // nothing here and must stay byte-exact (D-07 lock).
+  if (pantryManifest && pantryManifest.length > 0) {
+    lines.push('');
+    lines.push('PANTRY CONSTRAINT (HARD):');
+    lines.push('- Only suggest recipes that are 100% feasible using ONLY these pantry items:');
+    for (const name of pantryManifest) {
+      lines.push(`  - ${name}`);
+    }
+    lines.push('- Common pantry staples (salt, pepper, water, oil) can be assumed available.');
+    lines.push(
+      '- If you cannot find 4+ recipes that fit this constraint, return fewer recipes rather than violate it.'
+    );
+  }
+
   lines.push('');
   lines.push(
     'Return full recipes with structured ingredients (name, quantity, unit, notes) and ordered steps. Convert fractions to decimals for quantities.'
@@ -155,7 +180,11 @@ export function buildDiscoveryPrompt(
 export async function discoverRecipes(
   opts: DiscoverRecipesOptions
 ): Promise<ParsedRecipe[]> {
-  const system = buildDiscoveryPrompt(opts.preferences, opts.existingTitles);
+  const system = buildDiscoveryPrompt(
+    opts.preferences,
+    opts.existingTitles,
+    opts.pantryManifest
+  );
   const userPrompt = opts.prompt ?? 'Suggest 6 dinner recipes.';
 
   const ai = getClientFor('recipe.discovery');
