@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { Image } from 'expo-image';
 import { Button } from '../../components/ui/Button';
+import { RemixSheet, type RemixSource } from '../../components/recipes/RemixSheet';
 import { useRecipeStore } from '../../stores/recipeStore';
 import { supabase } from '../../lib/supabase';
 import { getRecipeImage } from '../../constants/foodImages';
@@ -32,7 +33,7 @@ const getAuthToken = async (): Promise<string> => {
   return data.session.access_token;
 };
 
-type DiscoveredRecipe = ParsedRecipe & { _saved?: boolean };
+export type DiscoveredRecipe = ParsedRecipe & { _saved?: boolean };
 
 export default function DiscoverScreen() {
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
@@ -255,7 +256,7 @@ export default function DiscoverScreen() {
 
 // ---------- Preview sheet (modal) ----------
 
-function PreviewSheet({
+export function PreviewSheet({
   recipe,
   heroUri,
   onClose,
@@ -271,6 +272,20 @@ function PreviewSheet({
   const totalTime =
     recipe.total_time_minutes ??
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
+
+  const [remixOpen, setRemixOpen] = useState(false);
+
+  // Phase 17 P17-05: inline-source RemixSheet for unsaved discovery results.
+  // `kind: 'inline'` avoids requiring recipe.id (which Discover cards don't have).
+  const remixSource: RemixSource = {
+    kind: 'inline',
+    context: {
+      title: recipe.title,
+      description: recipe.description,
+      ingredients: recipe.ingredients,
+      total_time_minutes: recipe.total_time_minutes,
+    },
+  };
 
   return (
     <View style={styles.sheet}>
@@ -347,7 +362,9 @@ function PreviewSheet({
         </View>
       </ScrollView>
 
-      {/* Fixed bottom save bar */}
+      {/* Fixed bottom save bar (Save + Remix — Phase 17 D-03). Pitfall 9
+          invariant: onSave must remain unchanged so source_type: 'ai' still
+          stamps through the unchanged parent handleSave closure. */}
       <View style={styles.sheetBottomBar}>
         {recipe._saved ? (
           <View style={styles.sheetSavedRow}>
@@ -357,9 +374,36 @@ function PreviewSheet({
             <Button title="Done" variant="outline" onPress={onClose} />
           </View>
         ) : (
-          <Button title="Save to Library" onPress={onSave} loading={saving} />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Button title="Save to Library" onPress={onSave} loading={saving} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button
+                title="Remix"
+                variant="outline"
+                onPress={() => setRemixOpen(true)}
+              />
+            </View>
+          </View>
         )}
       </View>
+
+      {/* Phase 17 P17-05: RemixSheet with inline-source kind. Opens when the
+          user taps Remix on an unsaved discovery preview. */}
+      <RemixSheet
+        visible={remixOpen}
+        recipeTitle={recipe.title}
+        source={remixSource}
+        baseForSave={{
+          title: recipe.title,
+          description: recipe.description,
+          ingredients: recipe.ingredients,
+          steps: recipe.steps,
+          total_time_minutes: recipe.total_time_minutes,
+        }}
+        onClose={() => setRemixOpen(false)}
+      />
     </View>
   );
 }
