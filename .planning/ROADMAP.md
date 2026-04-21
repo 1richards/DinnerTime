@@ -342,8 +342,17 @@ Plans:
   3. Cooking mode UI is polished and consistent with Apple HIG — typography, spacing, state transitions, and icons meet Phase 15's design standards
   4. During cooking, users see at a glance: current step, upcoming steps, active timers, remaining ingredients/quantities without scrolling
   5. Voice commands to navigate (next/previous step, repeat, pause timer, set timer, show ingredients) work reliably with clear visual confirmation
-**Plans**: 0 plans
-Plans: (not yet planned)
+**Plans**: 9 plans
+Plans:
+- [ ] 16-00-PLAN.md — Wave 0 test scaffolding + cookingStore extensions + expo-haptics install + DEVICE-TEST-16 skeleton
+- [ ] 16-01-PLAN.md — Telemetry pipeline: cooking_events migration + POST /telemetry/cooking + mobile batched logger
+- [ ] 16-02-PLAN.md — SSE streaming /cooking/ask-stream server route + mobile streamAsk client
+- [ ] 16-03-PLAN.md — Header primitives: StickyCookingHeader, VoiceWaveform, StopTTSButton, TimerBar retoken + haptics helpers + useVoiceAmplitude
+- [ ] 16-04-PLAN.md — Body primitives: StepCard, IngredientRow, ScrollableRecipe + useCurrentStepScroll hook
+- [ ] 16-05-PLAN.md — CommandToast + StepNavButtons @ 72pt + AskSheet retoken + handleTranscript toast/haptic deps
+- [ ] 16-06-PLAN.md — Integration: rewrite cook.tsx composing every primitive + SSE fallback + dark-mode scoped palette + T-10s haptic + exit confirm + telemetry hooks
+- [ ] 16-07-PLAN.md — Settings Cooking section + dark-mode toggle + Maestro flow 28 + delete StepDisplay/VoiceStatusBadge + human checkpoint
+- [ ] 16-08-PLAN.md — DEVICE-TEST-16 execution on physical iPhone (latency/voice/haptics/dark-mode/real-kitchen telemetry)
 **UI hint**: yes
 
 ### Phase 17: "Something New" — AI Recipe Exploration
