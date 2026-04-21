@@ -41,21 +41,22 @@ a dark-palette override layer behind a runtime flag (see Color section).
 
 ## Spacing Scale
 
-Phase 19 8pt grid is authoritative. Declared tokens (must be multiples of 4):
+Phase 19 8pt grid is authoritative. Declared tokens (all multiples of 4, from
+the standard {4, 8, 16, 24, 32, 48, 64} set):
 
 | Token (Tailwind) | Value | Usage in cooking mode |
 |-------|-------|-------|
 | `p-1` / gap-1 | 4px | Icon-to-text gap inside toasts and chips |
 | `p-2` / gap-2 | 8px | Timer chip internal padding; waveform-bar gaps |
-| `p-3` | 12px | Ingredient-row vertical padding |
-| `p-4` | 16px | Recipe horizontal gutter, step-card padding |
-| `p-6` | 24px | Section break between Ingredients and Steps, step-card vertical padding |
+| `p-4` | 16px | Recipe horizontal gutter, step-card padding, ingredient-row vertical padding |
+| `p-6` | 24px | Section break between Ingredients and Steps, current-step card internal padding |
 | `p-8` | 32px | Top padding above first section below sticky header |
 | `p-12` | 48px | Bottom content inset so last step clears nav bar |
 
 Component-level spacing contract:
 - Sticky header (exit + voice waveform + timer row + stop): **total height 64px when no timers active, 112px when timers active.** Timer chip row adds a fixed 48pt band.
 - Step cards: **vertical gap between cards = 16px**; current-step card uses 24px internal padding, non-current cards use 16px.
+- Ingredient rows: **16px vertical padding** (touch target — kitchen-friendly tap accuracy for wet/greasy fingers).
 - Nav bar (Back / Repeat / Next) bottom-anchored: **72pt height** (deliberate Phase 19 deviation — see Exceptions).
 
 **Exceptions (documented deviations):**
@@ -74,32 +75,47 @@ This keeps the in-cooking-screen type hierarchy bounded to 4 distinct sizes
 (hitting the Dimension 4 typography cap) while still drawing every role from
 the canonical Phase 19 scale.
 
+**Weight contract: exactly 2 numeric weights — 400 (regular) and 700 (bold).**
+The in-between Semibold (600) tier from Phase 19 is intentionally NOT used in
+cooking mode. Visual differentiation between current-step (display 34pt) and
+non-current (title 22pt) comes from size (34 vs 22), surface elevation, and
+color — not weight. All emphasized roles (display, title, label, emphasized
+body) collapse to 700.
+
 | Role | Size | Weight | Line Height | Letter Spacing | Token |
 |------|------|--------|-------------|----------------|-------|
 | Display | 34pt | 700 | 41pt | -0.8 | `text-display` |
-| Title | 22pt | 600 | 28pt | -0.3 | `text-title` |
+| Title | 22pt | 700 | 28pt | -0.3 | `text-title` |
 | Body | 17pt | 400 | 22pt | 0 | `text-body` |
-| Label | 11pt | 600 | 16pt | +0.6 | `text-label` (uppercase) |
+| Label | 11pt | 700 | 16pt | +0.6 | `text-label` (uppercase) |
 
 Role assignments in cooking mode:
 
 | Element | Role | Notes |
 |---------|------|-------|
 | Current step text (highlighted) | `display` (34pt/700) | Counter-distance readability is the primary constraint |
-| Non-current step text | `title` (22pt/600) | Visible but subordinate |
-| Recipe title (sticky header) | `title` (22pt/600) | Single-line, truncate with tail ellipsis |
-| Step number label ("STEP 3 of 7") | `label` (11pt/600 uppercase) | Muted `text-text-tertiary` |
-| Section headers ("INGREDIENTS", "STEPS") | `label` (11pt/600 uppercase) | `text-text-secondary` |
+| Non-current step text | `title` (22pt/700) | Visible but subordinate; differentiation from current via size (22 vs 34), surface, and color — not weight |
+| Recipe title (sticky header) | `title` (22pt/700) | Single-line, truncate with tail ellipsis |
+| Step number label ("STEP 3 of 7") | `label` (11pt/700 uppercase) | Muted `text-text-tertiary` |
+| Section headers ("INGREDIENTS", "STEPS") | `label` (11pt/700 uppercase) | `text-text-secondary` |
 | Ingredient name | `body` (17pt/400) | Strikethrough + `text-text-tertiary` when checked |
-| Ingredient quantity/unit prefix | `body` (17pt/600) | Semibold override on the qty portion only |
-| Timer chip countdown (e.g. "9m 23s") | `body` (17pt/600) | Semibold for glance-read |
-| Timer chip label (e.g. "RICE") | `label` (11pt/600 uppercase) | Above the countdown |
-| Command-confirmation toast | `body` (17pt/600) | Single line, centered |
+| Ingredient quantity/unit prefix | `body` (17pt/700) | Bold override on the qty portion only — emphasis via weight bump to 700 |
+| Timer chip countdown (e.g. "9m 23s") | `body` (17pt/700) | Bold for glance-read |
+| Timer chip label (e.g. "RICE") | `label` (11pt/700 uppercase) | Above the countdown |
+| Command-confirmation toast | `body` (17pt/700) | Single line, centered |
 | Contextual tip body | `body` (17pt/400) | Retinted to `text-text-primary` on warning-tinted surface |
-| "TIP" tip-badge label | `label` (11pt/600 uppercase) | `text-warning` tint |
+| "TIP" tip-badge label | `label` (11pt/700 uppercase) | `text-warning` tint |
 | AskSheet question (recap of what the user asked) | `body` (17pt/400) | `text-text-secondary` — kept readable at counter distance |
 | AskSheet answer | `body` (17pt/400) | `text-text-primary` |
-| Nav button icons (Back/Repeat/Next) | SF Symbol size 28pt | `iconPropsForText('display')` returns 28; weight 600 |
+| Nav button icons (Back/Repeat/Next) | SF Symbol size 28pt | `iconPropsForText('display')` returns 28; weight 700 |
+
+**Note on 2-weight collapse:** Phase 19's base typography tokens include a
+Semibold (600) step. Cooking mode intentionally drops that middle tier to stay
+within the 2-weight Dimension 4 cap. Any element that would otherwise read
+`600` (Title, Label, emphasized Body fragments like qty, Timer countdown, Toast
+text, Nav icons) is bumped to `700` in this phase. Non-cooking screens across
+the app still use the full Phase 19 weight range — the 2-weight collapse is
+scoped to cooking mode components only.
 
 **Note on reassignments from caption:** The contextual tip body and AskSheet
 question recap were previously caption-role (13pt). Both are long-form plain
@@ -115,9 +131,9 @@ readable. If underscale, only the current-step role may upscale — all other
 roles stay locked to the Phase 19 tokens. Document any adjustment in the plan's
 visual-verification checkpoint.
 
-**Never introduce a new font size.** If a value is needed that's not in the
-5-step scale, the request is out of scope for Phase 16 and belongs in a Phase
-19.x amendment.
+**Never introduce a new font size or weight.** If a value is needed that's not
+in the 4-role (+ 2-weight) cooking scale, the request is out of scope for Phase
+16 and belongs in a Phase 19.x amendment.
 
 ---
 
@@ -269,14 +285,14 @@ step content and timer-done announcements.
 +------------------------------------+
 | ScrollView (vertical, full recipe) |
 |                                    |
-|  INGREDIENTS                       | ← label role, 11pt uppercase
-|  ☐ 2 cups rice                     | ← body role, tap to check
+|  INGREDIENTS                       | ← label role, 11pt/700 uppercase
+|  ☐ 2 cups rice                     | ← body role, tap to check, 16px vertical padding
 |  ☐ 1 lb chicken breast             |
 |  ...                               |
 |                                    |
 |  STEPS                             |
 |                                    |
-|  STEP 1 of 7                       | ← non-current, 22pt/600
+|  STEP 1 of 7                       | ← non-current, 22pt/700
 |  Heat olive oil in a large pan...  |
 |                                    |
 |  STEP 2 of 7         (current) ◂▏  | ← highlighted card, 34pt/700
@@ -356,8 +372,8 @@ Works when phone is on silent mode (haptics are independent of ringer).
 | Component | Path | Purpose |
 |-----------|------|---------|
 | `ScrollableRecipe` | `apps/mobile/src/components/cooking/ScrollableRecipe.tsx` | Full-recipe scroll container with ingredient + step sections; owns scroll-to-current logic |
-| `IngredientRow` | `apps/mobile/src/components/cooking/IngredientRow.tsx` | Checkable ingredient line; strike-through on tap; reads `cookingStore.ingredientChecks[id]` |
-| `StepCard` | `apps/mobile/src/components/cooking/StepCard.tsx` | Single step card; accepts `isCurrent` prop; renders brand left-rail + `display` typography when current, `title` typography when not |
+| `IngredientRow` | `apps/mobile/src/components/cooking/IngredientRow.tsx` | Checkable ingredient line; strike-through on tap; reads `cookingStore.ingredientChecks[id]`; 16px vertical padding (touch target) |
+| `StepCard` | `apps/mobile/src/components/cooking/StepCard.tsx` | Single step card; accepts `isCurrent` prop; renders brand left-rail + `display` typography (34pt/700) when current, `title` typography (22pt/700) when not |
 | `StickyCookingHeader` | `apps/mobile/src/components/cooking/StickyCookingHeader.tsx` | Exit X + recipe title + voice waveform + timer chip row + Stop-TTS button |
 | `VoiceWaveform` | `apps/mobile/src/components/cooking/VoiceWaveform.tsx` | Animated mic icon — waveform bars when listening, pulse dot when idle-armed, gray static when voice off |
 | `CommandToast` | `apps/mobile/src/components/cooking/CommandToast.tsx` | Phase-19-token-aware toast; replaces generic `useToast` for cooking-command confirmations (1.5s auto-dismiss, medium haptic companion) |
@@ -370,16 +386,16 @@ Works when phone is on silent mode (haptics are independent of ringer).
 |-----------|------|---------|
 | `StepDisplay` | `apps/mobile/src/components/cooking/StepDisplay.tsx` | **Replace** with `ScrollableRecipe` + `StepCard` composition. Delete file after migration. |
 | `StepNavButtons` | `apps/mobile/src/components/cooking/StepNavButtons.tsx` | Rework to 72pt tap targets, Phase 19 button tokens (secondary variant color, SF Symbol icons via `iconPropsForText('display')`). Document 72pt deviation inline. |
-| `TimerBar` | `apps/mobile/src/components/cooking/TimerBar.tsx` | Retint hardcoded `#C2410C` to `colors.brandPressed` token; replace hardcoded font sizes with `text-body` and `text-label` roles; add T-10s warning-tone transition. |
+| `TimerBar` | `apps/mobile/src/components/cooking/TimerBar.tsx` | Retint hardcoded `#C2410C` to `colors.brandPressed` token; replace hardcoded font sizes with `text-body` (17pt/700 for countdown) and `text-label` (11pt/700 for chip label); add T-10s warning-tone transition. |
 | `VoiceStatusBadge` | `apps/mobile/src/components/cooking/VoiceStatusBadge.tsx` | Replace with `VoiceWaveform`. Delete file. |
-| `AskSheet` | `apps/mobile/src/components/cooking/AskSheet.tsx` | Retoken colors + typography (question recap and answer both at `body` role); add streaming-response incremental rendering as answer arrives. |
-| Cooking-mode tip block (inline in `cook.tsx` lines 243-252) | `apps/mobile/src/app/recipes/[id]/cook.tsx` | Replace hardcoded amber classes with `bg-warning/10 border-warning` + `text-warning` label + `text-text-primary` body (body role, not caption). |
+| `AskSheet` | `apps/mobile/src/components/cooking/AskSheet.tsx` | Retoken colors + typography (question recap and answer both at `body` role, weight 400); add streaming-response incremental rendering as answer arrives. |
+| Cooking-mode tip block (inline in `cook.tsx` lines 243-252) | `apps/mobile/src/app/recipes/[id]/cook.tsx` | Replace hardcoded amber classes with `bg-warning/10 border-warning` + `text-warning` label (11pt/700 uppercase) + `text-text-primary` body (17pt/400). |
 
 ### Settings additions
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| Cooking section | `apps/mobile/src/app/(tabs)/settings.tsx` | New section "Cooking" with `Dark cooking mode` toggle row. Section header uses `label` role. Toggle row uses `body` role + native iOS `Switch`. |
+| Cooking section | `apps/mobile/src/app/(tabs)/settings.tsx` | New section "Cooking" with `Dark cooking mode` toggle row. Section header uses `label` role (11pt/700). Toggle row uses `body` role (17pt/400) + native iOS `Switch`. |
 
 ### Reusable Phase 19 primitives consumed (no changes)
 
@@ -425,12 +441,14 @@ Every decision in this contract traces to an upstream artifact.
 |-------|--------|
 | Design system = NativeWind + Phase 19 tokens | ROADMAP Phase 19 (shipped 2026-04-18); detected `apps/mobile/src/design/tokens.ts` + `tailwind.config.js` |
 | Icon library = SF Symbols via `expo-symbols` | ROADMAP Phase 15; detected `SymbolIcon` usage across codebase |
-| 8pt spacing grid | Phase 19 `tokens.ts` `spacing` export (verified) |
+| 8pt spacing grid (standard {4,8,16,24,32,48,64}; no 12px) | Phase 19 `tokens.ts` `spacing` export (verified); 12px removed per checker Revision 2 to stay on standard set |
 | 4-of-5 typography scale (display/title/body/label, caption dropped) | Phase 19 `tokens.ts` `typography` export (verified) — `caption` intentionally excluded from cooking mode to hit Dimension 4 four-size cap |
+| 2-weight collapse (400 + 700, no 600) | Phase 19 tokens provide 400/600/700; cooking mode drops 600 per checker Revision 2 to hit Dimension 4 two-weight cap. Differentiation handled via size + surface + color. |
 | Color palette (light) | Phase 19 `global.css` `--color-*` variables (verified) |
 | Color palette (dark) | Phase 19 `global.css` commented-out dark sketch (lines 46-66) — promoted to live theme in this phase per CONTEXT D-03 |
 | Current-step `display` / non-current `title` typography | CONTEXT "Step text typography" (Claude's discretion → locked here) |
 | Nav buttons at 72pt deviation | CONTEXT "Nav button sizing" decision; additional_context bullet 7 |
+| Ingredient row 16px vertical padding | Researcher decision per checker Revision 2 — touch target for wet/greasy fingers; stays on standard 8pt set |
 | Cream-surface default + optional dark toggle | CONTEXT "Background surface — user toggle" decision |
 | Toast-based voice feedback, no TTS echo | CONTEXT "Voice Command Feedback → Confirmation on recognized command" decision |
 | Waveform mic listening indicator | CONTEXT "Listening-state indicator" decision |
@@ -456,12 +474,14 @@ These values were not explicitly specified in CONTEXT and are locked here:
 | Scroll animation timing (step advance) | 400ms iOS default via `scrollTo({ animated: true })` | Native default reads as "brisk but not instant"; upgrade to Reanimated only if jank observed during UAT |
 | Current-step pulse on Repeat | 300ms brand-rail thickness pulse | Subtle reinforcement that "something happened" without being noisy |
 | Ingredient-check icon tone | `success` | Locked per checker recommendation — `brand` accent budget is already saturated by rail + timer + mic + Stop + nav pressed + toast strip; `success` semantically reads as "checked/done" |
+| Ingredient row vertical padding | 16px (`p-4`) | Touch target for wet/greasy fingers in kitchen; stays on standard 8pt set (replaces earlier 12px which was not in standard set) |
 | T-10s warning-tone timer transition | `warning` @20% alpha background | Consistent with semantic-state token usage elsewhere |
 | Dark-mode toggle copy | `Dark cooking mode` / `Darker background while cooking. Matches Spotify's Now Playing feel.` | Matches CONTEXT reference language |
 | Exit confirm destructive copy | `End cooking session` / `Keep cooking` | Terminology matches "cooking session" naming elsewhere in app |
 | Stop TTS accessibility label | `Stop reading` | "Stop" alone fails VoiceOver clarity — scoped verb disambiguates from Stop-timer, Stop-recording, etc. |
 | Contextual tip body typography | `body` (17pt/400) — was `caption` (13pt) | Reassigned to keep cooking mode at 4 type sizes; tip copy is long-form readable text, `body` is correct |
 | AskSheet question recap typography | `body` (17pt/400) `text-text-secondary` — was `caption` (13pt) | Reassigned to keep cooking mode at 4 type sizes; secondary color preserves visual hierarchy |
+| 2-weight collapse (no 600) in cooking mode | 400 + 700 only | Phase 19 supports 400/600/700; cooking mode drops 600 to hit Dimension 4 two-weight cap. Title/Label/emphasized Body fragments that would otherwise be 600 are bumped to 700. Differentiation via size, surface elevation, and color — not weight. Scope is cooking-mode components only. |
 
 These defaults are overridable by the executor during implementation if the
 visual-verification UAT checkpoint surfaces a better choice; any override must
