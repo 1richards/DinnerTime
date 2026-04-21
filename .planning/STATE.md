@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 17-02 (Mobile suggestionsStore persist + searchRecipes + clearHistory + dedupPrepend helper) — complete
-status: verifying
-stopped_at: Completed 17-02-PLAN.md
-last_updated: "2026-04-21T03:04:38.350Z"
-last_activity: "2026-04-21 -- Completed 17-02 (mobile store: persist + searchRecipes + clearHistory + dedupPrepend; 15 Wave 0 red→green; D-10 byte-exact preserved)"
+current_plan: 17-03 (Mobile Something New UI rewire) — complete
+status: completed
+stopped_at: Completed 17-03-PLAN.md
+last_updated: "2026-04-21T03:16:17.657Z"
+last_activity: "2026-04-21 -- Completed 17-03 (mobile UI: Suggestions→Something New, /search modal branch, HeaderEllipsis overflow, PreviewSheet Remix; 11 Wave 0 red→green; D-01+D-06+D-09+D-10 preserved)"
 progress:
   total_phases: 25
   completed_phases: 19
   total_plans: 87
-  completed_plans: 85
-  percent: 98
+  completed_plans: 86
+  percent: 99
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 17 of 25 (Something New — AI-powered recipe exploration with search and remix)
-Current Plan: 17-02 (Mobile suggestionsStore persist + searchRecipes + clearHistory + dedupPrepend helper) — complete
-Status: Phase 17-02 shipped. Mobile state layer of Phase 17 complete: useSuggestionsStore wrapped in zustand/middleware persist (key 'dinnertime-suggestions' v1, 4-field partialize) + searchRecipes action + clearHistory action + dedupPrepend pure helper. 15 Wave 0 red signals flipped green (9 active + 6 dedupPrepend suite). D-10 byte-exact preservation verified — fetchSuggestions/clearSuggestions/setAutoFetch/autoFetch unchanged. Pitfall 1 enforced — autoFetch excluded from persist partialize. TypeScript clean. Ready for 17-03 (mobile screens: kitchen segment rename, /search something-new branch, RegenerateFab→HeaderEllipsis, discover.tsx Remix button).
-Last activity: 2026-04-21 -- Completed 17-02 (mobile store: persist + searchRecipes + clearHistory + dedupPrepend; 15 Wave 0 red→green; D-10 byte-exact preserved)
+Current Plan: 17-03 (Mobile Something New UI rewire) — complete
+Status: Phase 17-03 shipped. Mobile UI layer of Phase 17 complete: Kitchen segment labeled "Something New" (D-01 cosmetic; zustand key 'suggestions' unchanged); /search modal has a context='something-new' branch (TextInput + Switch + Submit; dismiss-first per D-09); RegenerateFab function + JSX deleted, replaced with HeaderEllipsis overflow menu (Regenerate from pantry + Clear search history per D-06); StickySearchPill mounted on Something New segment; RecentQueryChips horizontal strip (D-11); SomethingNewResults grid with PreviewSheet trigger; FirstTimeHint "Get dinner ideas from my pantry" button (D-08); SuggestionList preserved as D-10 fallback for autoFetch/post-scan path; PreviewSheet in discover.tsx gains a Remix button that opens an inline-source RemixSheet (P17-05) and is now exported for reuse. 11 Wave 0 screen source-contract tests red → green (search × 5, kitchen × 6, discover × 4). 3 new components created (SomethingNewResults, RecentQueryChips, PantryOnlyToggle). TypeScript clean. Zero regressions — 4 pre-existing mobile failures + 2 pre-existing server failures unchanged. Ready for 17-04 (Maestro UAT: flow 27-something-new-search + flow 20 rebase).
+Last activity: 2026-04-21 -- Completed 17-03 (mobile UI: Suggestions→Something New, /search modal branch, HeaderEllipsis overflow, PreviewSheet Remix; 11 Wave 0 red→green; D-01+D-06+D-09+D-10 preserved)
 
-Progress: [██████████] 98%
+Progress: [██████████] 99%
 
 ## Performance Metrics
 
@@ -139,6 +139,7 @@ Progress: [██████████] 98%
 | Phase 17 P00 | 7 min | 3 tasks | 8 files |
 | Phase 17 P01 | 8min | 2 tasks | 2 files |
 | Phase 17 P02 | 3min | 2 tasks | 5 files |
+| Phase 17 P03 | 7 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -447,6 +448,10 @@ Recent decisions affecting current work:
 - [Phase 17]: [Phase 17-01]: buildDiscoveryPrompt extended with optional 3rd pantryManifest arg — no-op when empty/undefined, preserving /discover byte-exact (D-07)
 - [Phase 17]: [Phase 17-01]: POST /recipes/search as NEW route (not /discover extension) — shares recipeDiscovery service, independent external contract
 - [Phase 17]: Persist key 'dinnertime-suggestions' v1 with 4-field partialize (searchResults, recentQueries, lastQuery, pantryOnly); autoFetch/isLoading/error excluded (Pitfall 1)
+- [Phase 17]: 17-03: Inline-export PreviewSheet from recipes/discover.tsx (+ DiscoveredRecipe type) rather than extracting to components/recipes/PreviewSheet.tsx — planner preferred path, lower blast radius, deferrable refactor since current export shape is already the final API
+- [Phase 17]: 17-03: Deleted RegenerateFab function entirely (not just unmounted). Grep confirmed zero other consumers. Removes dead code instead of leaving an unreachable symbol — consistent with Phase 17 D-06
+- [Phase 17]: 17-03: Segment JSX text formatted as single-line JSX expression >{'Something New'}</Text> to make Wave 0 source-contract substring assertion robust against prettier's JSX text-child wrapping — pattern documented for future source-contract tests + JSX text slots
+- [Phase 17]: 17-03: PantryOnlyToggle component built but not mounted on the Kitchen Something New segment in Plan 03. /search modal owns the submit via native Switch (test contract locked); segment-level pill placement deferred to UAT in Plan 17-04 without rework — toggle state rehydrates from useSuggestionsStore.pantryOnly on each modal open
 
 ### Pending Todos
 
@@ -490,6 +495,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-21T03:04:11.616Z
-Stopped at: Completed 17-02-PLAN.md
+Last session: 2026-04-21T03:15:38.248Z
+Stopped at: Completed 17-03-PLAN.md
 Resume file: None
