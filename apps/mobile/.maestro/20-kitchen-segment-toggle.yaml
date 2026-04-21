@@ -3,11 +3,11 @@ name: "20 — kitchen: segment toggle + sticky search pill"
 tags:
   - phase-19
 # Proves the Phase 12 Kitchen tab + Phase 19 StickySearchPill:
-#   (a) opens on Suggestions by default,
+#   (a) opens on Something New by default,
 #   (b) switches to Library and shows the sticky "Search recipes" pill,
 #   (c) tapping the pill opens the /search modal and back returns to Library
 #       without z-order flash (Phase 19 Pitfall 4 mitigation),
-#   (d) segment swap back to Suggestions preserves Library scroll/filter state
+#   (d) segment swap back to Something New preserves Library scroll/filter state
 #       (display:none dual-mount behavior from Phase 12).
 #
 # Phase 19 Plan 05 rewrote the inline SearchBar into a sticky pill; the
@@ -35,10 +35,10 @@ tags:
 
 - runFlow: _ensure-logged-in.yaml
 
-# 1. Verify default segment is Suggestions (hero + "What should we cook tonight")
+# 1. Verify default segment is Something New (hero + "What should we cook tonight")
 - assertVisible:
     text: ".*What should we cook tonight.*"
-- takeScreenshot: 20-01-suggestions-default
+- takeScreenshot: 20-01-something-new-default
 
 # 2. Switch to Library, verify the library stable marker visible
 - tapOn:
@@ -73,12 +73,12 @@ tags:
     timeout: 10000
 - takeScreenshot: 20-05-back-on-library
 
-# 6. Switch to Suggestions, verify hero/greeting visible (segment swap works).
+# 6. Switch to Something New, verify hero/greeting visible (segment swap works).
 - tapOn:
-    text: ".*Suggestions.*"
+    text: "Something New"
 - assertVisible:
     text: ".*What should we cook tonight.*"
-- takeScreenshot: 20-06-back-to-suggestions
+- takeScreenshot: 20-06-back-to-something-new
 
 # 7. Switch back to Library, verify sticky pill still renders.
 #    display:none dual-mount keeps both segments alive — the pill is a
