@@ -42,22 +42,23 @@ created: 2026-04-21
 
 | Requirement | Test Type | Command / File | Wave | Dependency |
 |-------------|-----------|----------------|------|-----------|
-| COOK-UX-01 (responsive voice latency) | unit — SSE parser | `pnpm test --run src/cooking/streamingAsk.test.ts` | W1 | W0 SSE smoke |
-| COOK-UX-01 (responsive voice latency) | integration — telemetry capture | `pnpm test --run src/lib/telemetry/cookingEvents.test.ts` | W1 | W0 telemetry scaffold |
+| COOK-UX-01 (responsive voice latency) | unit — SSE parser | `pnpm test --run src/cooking/__tests__/streamingAsk.test.ts` | W1 | W0 SSE smoke |
+| COOK-UX-01 (responsive voice latency) | integration — telemetry capture | `pnpm test --run src/cooking/__tests__/telemetry.test.ts` | W1 | W0 telemetry scaffold |
 | COOK-UX-01 (responsive voice latency) | manual — p95 < 1.5s first-word TTS | DEVICE-TEST-16.md §Latency | W5 | telemetry shipping |
-| COOK-UX-02 (STT evaluated / telemetry) | unit — event schema | `pnpm test --run src/lib/telemetry/cookingEvents.test.ts` | W1 | — |
+| COOK-UX-02 (STT evaluated / telemetry) | unit — event schema | `pnpm test --run src/cooking/__tests__/telemetry.test.ts` | W1 | — |
 | COOK-UX-02 (STT evaluated / telemetry) | integration — backend endpoint | `pnpm -C packages/server test --testPathPattern=telemetry` | W1 | — |
 | COOK-UX-02 (STT evaluated / telemetry) | manual — real-kitchen session yields events | DEVICE-TEST-16.md §Telemetry | W5 | W1 pipeline |
-| COOK-UX-03 (Apple-HIG polished UI) | unit — token usage | `pnpm test --run src/components/cooking/StepCard.test.tsx` (asserts no hardcoded colors) | W2 | W0 unit scaffold |
-| COOK-UX-03 (Apple-HIG polished UI) | unit — typography scale | `pnpm test --run src/components/cooking/ScrollableRecipe.test.tsx` | W2 | W0 unit scaffold |
+| COOK-UX-03 (Apple-HIG polished UI) | unit — token usage | `pnpm test --run src/components/cooking/__tests__/StepCard.test.tsx` (asserts no hardcoded colors) | W2 | W0 unit scaffold |
+| COOK-UX-03 (Apple-HIG polished UI) | unit — typography scale | `pnpm test --run src/components/cooking/__tests__/ScrollableRecipe.test.tsx` | W2 | W0 unit scaffold |
 | COOK-UX-03 (Apple-HIG polished UI) | UAT — screenshot regression | `bash apps/mobile/.maestro/scripts/uat.sh` (`.maestro/28-cooking-mode-ui.yaml`) | W4 | W2 primitives |
-| COOK-UX-04 (at-a-glance info) | unit — sticky timer visibility | `pnpm test --run src/components/cooking/StickyCookingHeader.test.tsx` | W2 | W0 |
-| COOK-UX-04 (at-a-glance info) | unit — ingredient row checkable | `pnpm test --run src/components/cooking/IngredientRow.test.tsx` | W2 | W0 |
-| COOK-UX-04 (at-a-glance info) | unit — current-step auto-scroll | `pnpm test --run src/cooking/useCurrentStepScroll.test.ts` | W3 | W2 |
+| COOK-UX-04 (at-a-glance info) | unit — sticky timer visibility | `pnpm test --run src/components/cooking/__tests__/StickyCookingHeader.test.tsx` | W2 | W0 |
+| COOK-UX-04 (at-a-glance info) | unit — ingredient row checkable | `pnpm test --run src/components/cooking/__tests__/IngredientRow.test.tsx` | W2 | W0 |
+| COOK-UX-04 (at-a-glance info) | unit — current-step auto-scroll | `pnpm test --run src/cooking/__tests__/useCurrentStepScroll.test.ts` | W3 | W2 |
 | COOK-UX-04 (at-a-glance info) | UAT — scroll + timer visible | `.maestro/28-cooking-mode-ui.yaml` | W4 | W3 |
-| COOK-UX-05 (voice commands + visual confirm) | unit — command toast dispatch | `pnpm test --run src/cooking/handleTranscript.test.ts` | W3 | W0 |
-| COOK-UX-05 (voice commands + visual confirm) | unit — haptic events | `pnpm test --run src/cooking/haptics.test.ts` | W3 | W0 |
-| COOK-UX-05 (voice commands + visual confirm) | unit — waveform listener amplitude adapter | `pnpm test --run src/cooking/useVoiceAmplitude.test.ts` | W3 | W0 |
+| COOK-UX-05 (voice commands + visual confirm) | unit — command toast dispatch | `pnpm test --run src/cooking/__tests__/handleTranscript.test.ts` | W3 | W0 |
+| COOK-UX-05 (voice commands + visual confirm) | unit — haptic events | `pnpm test --run src/cooking/__tests__/haptics.test.ts` | W3 | W0 |
+| COOK-UX-05 (voice commands + visual confirm) | unit — waveform listener amplitude adapter | `pnpm test --run src/cooking/__tests__/useVoiceAmplitude.test.ts` | W3 | W0 |
+| COOK-UX-05 (voice commands + visual confirm) | unit — show_ingredients intent routing | `pnpm test --run src/cooking/__tests__/intentRouter.test.ts` | W3 | W0 |
 | COOK-UX-05 (voice commands + visual confirm) | manual — physical-iPhone voice tests | DEVICE-TEST-16.md §Voice | W5 | W3 |
 
 *Status codes: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky — tracked per task in plan frontmatter.*
@@ -66,19 +67,26 @@ created: 2026-04-21
 
 ## Wave 0 Requirements
 
-Before any Wave 1 task runs, the following must be in place:
+Before any Wave 1 task runs, the following must be in place. Paths below match exactly what 16-00-PLAN.md creates — single source of truth.
 
 - [ ] `apps/mobile/src/cooking/__fixtures__/sse-response.ts` — mock SSE event stream for streamingAsk tests
-- [ ] `apps/mobile/src/cooking/streamingAsk.test.ts` — stubs for COOK-UX-01 (test red, impl arrives W1)
-- [ ] `apps/mobile/src/lib/telemetry/cookingEvents.test.ts` — stubs for COOK-UX-02 (test red)
-- [ ] `apps/mobile/src/components/cooking/__fixtures__/recipe.ts` — shared test recipe fixture (8-ingredient, 6-step)
-- [ ] `apps/mobile/src/components/cooking/StepCard.test.tsx` through `VoiceWaveform.test.tsx` — stub suites for all 7 new primitives
-- [ ] `apps/mobile/.maestro/28-cooking-mode-ui.yaml` — skeleton flow (launch → cook recipe → screenshot)
+- [ ] `apps/mobile/src/cooking/__tests__/streamingAsk.test.ts` — stubs for COOK-UX-01 (test red, impl arrives W1)
+- [ ] `apps/mobile/src/cooking/__tests__/telemetry.test.ts` — stubs for COOK-UX-02 (test red)
+- [ ] `apps/mobile/src/cooking/__fixtures__/recipe.ts` — shared test recipe fixture (8-ingredient, 6-step)
+- [ ] `apps/mobile/src/components/cooking/__tests__/StepCard.test.tsx` through `VoiceWaveform.test.tsx` — stub suites for all 7 new primitives
+- [ ] `apps/mobile/src/cooking/__tests__/handleTranscript.test.ts` — extended with onCommandToast + onCommandHaptic stub describes (red)
+- [ ] `apps/mobile/src/cooking/__tests__/haptics.test.ts`, `useVoiceAmplitude.test.ts`, `useCurrentStepScroll.test.ts` — red stubs
 - [ ] `.planning/phases/16-.../DEVICE-TEST-16.md` — manual checklist mirroring Phase 9 pattern (voice, latency, telemetry, dark-mode, real-kitchen noise)
-- [ ] `packages/server/src/routes/telemetry.test.ts` — server endpoint stub
+- [ ] `packages/server/src/routes/__tests__/telemetry.test.ts` — server endpoint stub
 - [ ] Verify SSE streaming works on RN 0.83 `fetch` ReadableStream (smoke script `apps/mobile/src/cooking/sse-smoke.ts` — Wave 0 gate)
 - [ ] Verify `expo-haptics` actually fires on iOS Simulator (may be a no-op; if no-op document as DEVICE-TEST-16 manual verification)
 - [ ] Verify `@jamsch/expo-speech-recognition@0.2.15` exposes amplitude events (smoke test; if absent, `VoiceWaveform` runs cosmetic loop per UI-SPEC fallback)
+
+### Wave 4 Additions (not Wave 0)
+
+The following artifact is created in Wave 4 (plan 16-07) — it is intentionally NOT a Wave 0 prerequisite because the Maestro flow asserts against screens composed only after cook.tsx is rewritten in Wave 3 (plan 16-06):
+
+- `apps/mobile/.maestro/28-cooking-mode-ui.yaml` — Maestro UI regression flow (launch → cook recipe → screenshot). Scheduled in 16-07 per its `files_modified` frontmatter. Referenced by the UAT rows in the Per-Task Verification Map above (W4).
 
 ---
 
