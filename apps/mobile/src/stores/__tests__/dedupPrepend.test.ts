@@ -20,7 +20,6 @@
  */
 import { describe, it, expect } from 'vitest';
 
-// @ts-expect-error Phase 17 Wave 0: module created in Plan 02
 import { dedupPrepend } from '../dedupPrepend';
 
 describe('dedupPrepend (Phase 17 Wave 0 — pure helper)', () => {
