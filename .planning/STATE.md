@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 21-04 (Wave 3 mobile — ItemRow compact + PantryItemCard stale treatment + usePantryItemsGrouped 4-way + pantryStore staples Set + STAPLE_THRESHOLD 0.3 + persist v2 migration + Pantry tab GroupingMode segmented control + StickySearchPill + Staples filter chip) — complete
-status: Phase 21 Wave 3 pantry-tab presentation landed — ItemRow size='compact' py-2 variant, PantryItemCard dashed-border stale treatment (<0.5), usePantryItemsGrouped 4-way hook, pantryStore staples Set<string> + STAPLE_THRESHOLD 0.3 + persist v2 migration, Pantry tab segmented control + StickySearchPill + Staples chip. 37/37 new tests GREEN; tsc clean; 21-05 Settings screens unblocked.
-stopped_at: Phase 17 context gathered
-last_updated: "2026-04-21T01:25:22.348Z"
-last_activity: 2026-04-19 -- Completed 21-04 (mobile pantry-tab presentation + staples data path; 37/37 new GREEN; tsc clean; ready for 21-05 Settings screens)
+current_plan: 17-00 (Wave 0 Nyquist test scaffolding — 8 test files, 34 red signals across mobile + server) — complete
+status: "Phase 17 Wave 0 red baseline landed — every P17-01..P17-06 requirement maps to ≥1 failing test before production code. Pre-existing baseline failures (4 mobile + 2 server) unchanged — additive-only. Ready for 17-01 (server: POST /recipes/search + buildDiscoveryPrompt pantryManifest extension)."
+stopped_at: Completed 17-00-PLAN.md
+last_updated: "2026-04-21T02:43:53.962Z"
+last_activity: 2026-04-21 -- Completed 17-00 (Wave 0 Nyquist red scaffolding; 8 test files, 28 active + 6 queued red; 0 green regressions)
 progress:
   total_phases: 25
   completed_phases: 19
-  total_plans: 82
-  completed_plans: 82
-  percent: 98
+  total_plans: 87
+  completed_plans: 83
+  percent: 95
 ---
 
 # Project State
@@ -26,12 +26,12 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 21 of 25 (Pantry Intelligence — Smarter dedup, presentation, categorization, user-defined scan rules)
-Current Plan: 21-04 (Wave 3 mobile — ItemRow compact + PantryItemCard stale treatment + usePantryItemsGrouped 4-way + pantryStore staples Set + STAPLE_THRESHOLD 0.3 + persist v2 migration + Pantry tab GroupingMode segmented control + StickySearchPill + Staples filter chip) — complete
-Status: Phase 21 Wave 3 pantry-tab presentation landed — ItemRow size='compact' py-2 variant, PantryItemCard dashed-border stale treatment (<0.5), usePantryItemsGrouped 4-way hook, pantryStore staples Set<string> + STAPLE_THRESHOLD 0.3 + persist v2 migration, Pantry tab segmented control + StickySearchPill + Staples chip. 37/37 new tests GREEN; tsc clean; 21-05 Settings screens unblocked.
-Last activity: 2026-04-19 -- Completed 21-04 (mobile pantry-tab presentation + staples data path; 37/37 new GREEN; tsc clean; ready for 21-05 Settings screens)
+Phase: 17 of 25 (Something New — AI-powered recipe exploration with search and remix)
+Current Plan: 17-00 (Wave 0 Nyquist test scaffolding — 8 test files, 34 red signals across mobile + server) — complete
+Status: Phase 17 Wave 0 red baseline landed — every P17-01..P17-06 requirement maps to ≥1 failing test before production code. Pre-existing baseline failures (4 mobile + 2 server) unchanged — additive-only. Ready for 17-01 (server: POST /recipes/search + buildDiscoveryPrompt pantryManifest extension).
+Last activity: 2026-04-21 -- Completed 17-00 (Wave 0 Nyquist red scaffolding; 8 test files, 28 active + 6 queued red; 0 green regressions)
 
-Progress: [██████████] 98%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -136,6 +136,7 @@ Progress: [██████████] 98%
 | Phase 21 P04 | 12min | 3 tasks | 12 files |
 | Phase 21 P05 | 13min | 4 tasks | 12 files |
 | Phase 21 P06 | 1min | 2 tasks | 4 files |
+| Phase 17 P00 | 7 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -437,6 +438,9 @@ Recent decisions affecting current work:
 - [Phase 21]: Phase 21-05: testID contract for Maestro 21-06 complete — add-rule-fab, rule-delete-{name|alias}, add-staple-fab, staple-remove-{name}, pantry-item-ellipsis-{index}; DraggableFlatList height-capped at min(rules×56, 320) to avoid nested pan responder with outer ScrollView
 - [Phase 21]: Auto-approved Phase 21-06 human-verify UAT checkpoint under auto-chain — testID contract tests 21/21 GREEN + typecheck clean + flows structurally sound; live sim UAT deferred to user (dev-client rebuild session)
 - [Phase 21]: Maestro flows 24/25/26 authored with testID-first selectors (add-rule-fab, rule-delete-{alias}, pantry-item-ellipsis-{index}) per CLAUDE.md UAT regex-avoidance guidance
+- [Phase 17]: Source-contract tests (fs.readFileSync + substring asserts) preferred over RN-renderer tests for screen files — Avoids .native.test.* suffix complexity, keeps per-file runtime <200ms, matches repo precedent in recipeStore.persist.test.ts. Trade-off: tests don't catch behavior bugs within JSX — Plan 17-04 Maestro flow fills that gap.
+- [Phase 17]: STORAGE_KEY for suggestionsStore persist locked to 'dinnertime-suggestions' in Wave 0 tests — Prevents accidental collision with dinnertime-recipes (existing recipe store) or dinnertime-pantry (existing pantry store). Plan 17-02 must use this exact key.
+- [Phase 17]: dedupPrepend lives in its own module (apps/mobile/src/stores/dedupPrepend.ts), not inline in suggestionsStore — Pure, store-free, cheap to unit test without instantiating Zustand. Prevents the store file from growing untestable lambdas.
 
 ### Pending Todos
 
@@ -480,6 +484,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-21T01:25:22.345Z
-Stopped at: Phase 17 context gathered
-Resume file: .planning/phases/17-something-new-ai-powered-recipe-exploration-with-search-and-remix/17-CONTEXT.md
+Last session: 2026-04-21T02:43:53.959Z
+Stopped at: Completed 17-00-PLAN.md
+Resume file: None
