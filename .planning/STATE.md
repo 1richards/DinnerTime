@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 17-01 (Server search endpoint + pantry manifest — POST /api/v1/recipes/search + buildDiscoveryPrompt 3rd-arg extension) — complete
-status: "Phase 17-01 shipped. Server side of Phase 17 complete: new POST /recipes/search route + buildDiscoveryPrompt pantryManifest extension. 10 Wave 0 red signals flipped green; /discover byte-exact preserved (D-07 lock). Server test suite: 610 green / 2 pre-existing red. Ready for 17-02 (mobile suggestionsStore persist + searchRecipes + recentQueries + dedupPrepend helper)."
-stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-04-21T02:56:36.253Z"
-last_activity: 2026-04-21 -- Completed 17-01 (server: POST /recipes/search + buildDiscoveryPrompt pantryManifest; 10 Wave 0 red→green; /discover D-07 preserved)
+current_plan: 17-02 (Mobile suggestionsStore persist + searchRecipes + clearHistory + dedupPrepend helper) — complete
+status: verifying
+stopped_at: Completed 17-02-PLAN.md
+last_updated: "2026-04-21T03:04:38.350Z"
+last_activity: "2026-04-21 -- Completed 17-02 (mobile store: persist + searchRecipes + clearHistory + dedupPrepend; 15 Wave 0 red→green; D-10 byte-exact preserved)"
 progress:
   total_phases: 25
   completed_phases: 19
   total_plans: 87
-  completed_plans: 84
-  percent: 97
+  completed_plans: 85
+  percent: 98
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 17 of 25 (Something New — AI-powered recipe exploration with search and remix)
-Current Plan: 17-01 (Server search endpoint + pantry manifest — POST /api/v1/recipes/search + buildDiscoveryPrompt 3rd-arg extension) — complete
-Status: Phase 17-01 shipped. Server side of Phase 17 complete: new POST /recipes/search route + buildDiscoveryPrompt pantryManifest extension. 10 Wave 0 red signals flipped green; /discover byte-exact preserved (D-07 lock). Server test suite: 610 green / 2 pre-existing red. Ready for 17-02 (mobile suggestionsStore persist + searchRecipes + recentQueries + dedupPrepend helper).
-Last activity: 2026-04-21 -- Completed 17-01 (server: POST /recipes/search + buildDiscoveryPrompt pantryManifest; 10 Wave 0 red→green; /discover D-07 preserved)
+Current Plan: 17-02 (Mobile suggestionsStore persist + searchRecipes + clearHistory + dedupPrepend helper) — complete
+Status: Phase 17-02 shipped. Mobile state layer of Phase 17 complete: useSuggestionsStore wrapped in zustand/middleware persist (key 'dinnertime-suggestions' v1, 4-field partialize) + searchRecipes action + clearHistory action + dedupPrepend pure helper. 15 Wave 0 red signals flipped green (9 active + 6 dedupPrepend suite). D-10 byte-exact preservation verified — fetchSuggestions/clearSuggestions/setAutoFetch/autoFetch unchanged. Pitfall 1 enforced — autoFetch excluded from persist partialize. TypeScript clean. Ready for 17-03 (mobile screens: kitchen segment rename, /search something-new branch, RegenerateFab→HeaderEllipsis, discover.tsx Remix button).
+Last activity: 2026-04-21 -- Completed 17-02 (mobile store: persist + searchRecipes + clearHistory + dedupPrepend; 15 Wave 0 red→green; D-10 byte-exact preserved)
 
-Progress: [██████████] 97%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -138,6 +138,7 @@ Progress: [██████████] 97%
 | Phase 21 P06 | 1min | 2 tasks | 4 files |
 | Phase 17 P00 | 7 min | 3 tasks | 8 files |
 | Phase 17 P01 | 8min | 2 tasks | 2 files |
+| Phase 17 P02 | 3min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -445,6 +446,7 @@ Recent decisions affecting current work:
 - [Phase 17]: [Phase 17-01]: Used single .eq('profile_id') + in-memory status='available' filter for pantry_items query (Wave 0 test mock does not support chained .eq().eq() — deviation Rule 3)
 - [Phase 17]: [Phase 17-01]: buildDiscoveryPrompt extended with optional 3rd pantryManifest arg — no-op when empty/undefined, preserving /discover byte-exact (D-07)
 - [Phase 17]: [Phase 17-01]: POST /recipes/search as NEW route (not /discover extension) — shares recipeDiscovery service, independent external contract
+- [Phase 17]: Persist key 'dinnertime-suggestions' v1 with 4-field partialize (searchResults, recentQueries, lastQuery, pantryOnly); autoFetch/isLoading/error excluded (Pitfall 1)
 
 ### Pending Todos
 
@@ -488,6 +490,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-21T02:56:36.249Z
-Stopped at: Completed 17-01-PLAN.md
+Last session: 2026-04-21T03:04:11.616Z
+Stopped at: Completed 17-02-PLAN.md
 Resume file: None
