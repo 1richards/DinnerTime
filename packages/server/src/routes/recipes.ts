@@ -111,6 +111,126 @@ recipes.delete('/:id', async (c) => {
 });
 
 /**
+ * POST /search - Phase 17 (P17-04) keyword-driven AI recipe search.
+ *
+ * Body: { query: string; pantryOnly?: boolean }
+ *   - query: the user's typed phrase (e.g., "quick weeknight pasta"). Required.
+ *   - pantryOnly: when true, server loads the user's pantry (confidence-ordered,
+ *     capped at 50 -- Pitfall 3) and passes names as a pantryManifest into the
+ *     discovery prompt. The AI then constrains its output to recipes that are
+ *     100% feasible from those items + common staples.
+ *
+ * Returns: { data: ParsedRecipe[] } on success.
+ *
+ * D-07: NEW route (not an extension of /discover). /discover stays byte-exact
+ * for RECP-10 zero-input library discovery; /search is the keyword-driven
+ * Phase 17 sibling. They share the recipeDiscovery service but have
+ * independent external contracts.
+ */
+recipes.post('/search', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+
+  // Strict body validation -- empty/whitespace query is a 400.
+  let body: { query?: string; pantryOnly?: boolean };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+  if (typeof body.query !== 'string' || body.query.trim().length === 0) {
+    return c.json({ error: 'Query is required' }, 400);
+  }
+
+  try {
+    // NOTE: mirrors /discover preference assembly -- keep in sync.
+    const { data: members, error: membersError } = await supabase
+      .from('household_members')
+      .select()
+      .eq('profile_id', user.id);
+
+    if (membersError) {
+      throw new Error(`Failed to fetch household members: ${membersError.message}`);
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('cuisine_preferences, skill_level')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      throw new Error(`Failed to fetch profile: ${profileError.message}`);
+    }
+
+    const memberRows = (members ?? []) as Array<{
+      dietary_allergies?: string[] | null;
+      dietary_restrictions?: string[] | null;
+      disliked_ingredients?: string[] | null;
+    }>;
+
+    const preferences: DiscoveryPreferences = {
+      allergies: [
+        ...new Set(memberRows.flatMap((m) => m.dietary_allergies ?? [])),
+      ],
+      dietary_restrictions: [
+        ...new Set(memberRows.flatMap((m) => m.dietary_restrictions ?? [])),
+      ],
+      disliked_ingredients: [
+        ...new Set(memberRows.flatMap((m) => m.disliked_ingredients ?? [])),
+      ],
+      cuisine_preferences:
+        (profile as { cuisine_preferences?: string[] | null })?.cuisine_preferences ?? [],
+    };
+
+    // Pantry manifest branch (D-04 + Pitfall 3).
+    // Only fetch when pantryOnly:true -- avoids an unnecessary DB round-trip
+    // on the default path. Ordered by confidence desc, capped at 50.
+    let pantryManifest: string[] | undefined;
+    if (body.pantryOnly === true) {
+      const { data: pantry, error: pantryError } = await supabase
+        .from('pantry_items')
+        .select('name, confidence, status')
+        .eq('profile_id', user.id)
+        .order('confidence', { ascending: false })
+        .limit(50);
+
+      if (pantryError) {
+        throw new Error(`Failed to fetch pantry: ${pantryError.message}`);
+      }
+
+      // Apply status='available' filter in-memory. Rationale:
+      // - Real pantry_items rows carry a `status` column; we only want
+      //   currently-available items (matches services/suggestions.ts convention).
+      // - Filtering after .limit(50) is acceptable because upstream confidence
+      //   ordering already prioritizes high-signal items.
+      // - Rows without a status (e.g., unit tests) pass through unchanged.
+      pantryManifest = (pantry ?? [])
+        .filter((p: { status?: string | null }) =>
+          p.status === undefined || p.status === null || p.status === 'available',
+        )
+        .map((p: { name: string }) => p.name);
+    }
+
+    // Existing library titles feed the AVOID list (same pattern as /discover)
+    const library = await getRecipes(supabase, user.id);
+    const existingTitles = library.map((r) => r.title);
+
+    const data = await discoverRecipes({
+      preferences,
+      existingTitles,
+      prompt: body.query,
+      pantryManifest,
+    });
+
+    return c.json({ data });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to search recipes';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
  * POST /discover - AI-generated recipe suggestions (RECP-10).
  *
  * Loads household preferences + existing library titles, calls Claude Sonnet
