@@ -169,7 +169,6 @@ describe('suggestionsStore', () => {
         json: () => Promise.resolve({ data: [] }),
       });
 
-      // @ts-expect-error Phase 17 Wave 0: action added in Plan 02
       await useSuggestionsStore.getState().searchRecipes('pasta', { pantryOnly: true });
 
       expect(mockFetch).toHaveBeenCalledWith(
@@ -210,21 +209,12 @@ describe('suggestionsStore', () => {
         json: () => Promise.resolve({ data: [mockRecipe] }),
       });
 
-      // @ts-expect-error Phase 17 Wave 0: action added in Plan 02
       await useSuggestionsStore.getState().searchRecipes('pesto', { pantryOnly: false });
 
-      const state = useSuggestionsStore.getState() as typeof useSuggestionsStore extends {
-        getState: () => infer S;
-      }
-        ? S
-        : never;
-      // @ts-expect-error Phase 17 Wave 0: field added in Plan 02
+      const state = useSuggestionsStore.getState();
       expect(state.searchResults).toHaveLength(1);
-      // @ts-expect-error Phase 17 Wave 0: field added in Plan 02
       expect(state.searchResults[0].title).toBe('Pesto Pasta');
-      // @ts-expect-error Phase 17 Wave 0: field added in Plan 02
       expect(state.recentQueries).toContain('pesto');
-      // @ts-expect-error Phase 17 Wave 0: field added in Plan 02
       expect(state.lastQuery).toBe('pesto');
       expect(state.isLoading).toBe(false);
       expect(state.error).toBeNull();
@@ -236,7 +226,6 @@ describe('suggestionsStore', () => {
         json: () => Promise.resolve({ error: 'AI request failed' }),
       });
 
-      // @ts-expect-error Phase 17 Wave 0: action added in Plan 02
       await useSuggestionsStore.getState().searchRecipes('foo', { pantryOnly: false });
 
       const state = useSuggestionsStore.getState();
@@ -247,7 +236,6 @@ describe('suggestionsStore', () => {
     it('P17-03: searchRecipes sets error on network throw', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network down'));
 
-      // @ts-expect-error Phase 17 Wave 0: action added in Plan 02
       await useSuggestionsStore.getState().searchRecipes('foo', { pantryOnly: false });
 
       const state = useSuggestionsStore.getState();
@@ -257,23 +245,30 @@ describe('suggestionsStore', () => {
 
     it('P17-06: clearHistory resets recentQueries, searchResults, and lastQuery', () => {
       useSuggestionsStore.setState({
-        // @ts-expect-error Phase 17 Wave 0: fields added in Plan 02
-        searchResults: [{ title: 'X' }],
-        // @ts-expect-error Phase 17 Wave 0: fields added in Plan 02
+        searchResults: [
+          {
+            title: 'X',
+            description: null,
+            ingredients: [],
+            steps: [],
+            prep_time_minutes: null,
+            cook_time_minutes: null,
+            total_time_minutes: null,
+            servings: null,
+            source_url: null,
+            source_type: 'ai',
+            image_url: null,
+          },
+        ],
         recentQueries: ['a', 'b'],
-        // @ts-expect-error Phase 17 Wave 0: fields added in Plan 02
         lastQuery: 'a',
       });
 
-      // @ts-expect-error Phase 17 Wave 0: action added in Plan 02
       useSuggestionsStore.getState().clearHistory();
 
       const state = useSuggestionsStore.getState();
-      // @ts-expect-error Phase 17 Wave 0: fields added in Plan 02
       expect(state.searchResults).toEqual([]);
-      // @ts-expect-error Phase 17 Wave 0: fields added in Plan 02
       expect(state.recentQueries).toEqual([]);
-      // @ts-expect-error Phase 17 Wave 0: fields added in Plan 02
       expect(state.lastQuery).toBeNull();
     });
   });

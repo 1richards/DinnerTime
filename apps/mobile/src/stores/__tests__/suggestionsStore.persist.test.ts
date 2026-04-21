@@ -20,6 +20,7 @@
  * @see .planning/phases/17-.../17-CONTEXT.md D-02, D-05, D-10
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { ParsedRecipe } from '../../types/recipe';
 
 const asyncStorageMock = vi.hoisted(() => {
   const store = new Map<string, string>();
@@ -67,14 +68,12 @@ describe('suggestionsStore persist (Phase 17 Wave 0)', () => {
 
   it('P17-02: persists searchResults, recentQueries, lastQuery, pantryOnly', async () => {
     const { useSuggestionsStore } = await import('../suggestionsStore');
+    // Wave 0 pinned the exact persist payload shape (minimal recipe stub). Cast
+    // keeps the assertion byte-equal instead of padding to a full ParsedRecipe.
     useSuggestionsStore.setState({
-      // @ts-expect-error Phase 17 Wave 0: fields added in Plan 02
-      searchResults: [{ title: 'Carbonara' }],
-      // @ts-expect-error Phase 17 Wave 0: fields added in Plan 02
+      searchResults: [{ title: 'Carbonara' }] as unknown as ParsedRecipe[],
       recentQueries: ['pasta', 'soup'],
-      // @ts-expect-error Phase 17 Wave 0: fields added in Plan 02
       lastQuery: 'pasta',
-      // @ts-expect-error Phase 17 Wave 0: fields added in Plan 02
       pantryOnly: true,
     });
     // Flush async persist write
@@ -94,7 +93,6 @@ describe('suggestionsStore persist (Phase 17 Wave 0)', () => {
     const { useSuggestionsStore } = await import('../suggestionsStore');
     useSuggestionsStore.setState({
       autoFetch: true,
-      // @ts-expect-error Phase 17 Wave 0: field added in Plan 02
       lastQuery: 'pasta',
     });
     await new Promise((r) => setTimeout(r, 10));
@@ -126,7 +124,6 @@ describe('suggestionsStore persist (Phase 17 Wave 0)', () => {
   it('P17-02: persists with version field === 1', async () => {
     const { useSuggestionsStore } = await import('../suggestionsStore');
     useSuggestionsStore.setState({
-      // @ts-expect-error Phase 17 Wave 0: field added in Plan 02
       lastQuery: 'pasta',
     });
     await new Promise((r) => setTimeout(r, 10));
