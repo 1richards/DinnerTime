@@ -74,8 +74,12 @@ tags:
 - takeScreenshot: 20-05-back-on-library
 
 # 6. Switch to Something New, verify hero/greeting visible (segment swap works).
+#    Plain-literal "Something New" doesn't match because the Text child is
+#    rendered inside a Pressable whose accessibilityLabel is "Something New
+#    segment" (masking the child Text from Maestro's AX tree). Use regex
+#    which matches the accessibilityLabel as a substring.
 - tapOn:
-    text: "Something New"
+    text: ".*Something New.*"
 - assertVisible:
     text: ".*What should we cook tonight.*"
 - takeScreenshot: 20-06-back-to-something-new

@@ -20,8 +20,9 @@ tags:
 #   - StickySearchPill has accessibilityLabel == placeholder ("Search dinner ideas…")
 #     Use regex `.*Search dinner ideas.*` to sidestep the ellipsis char encoding
 #   - SearchModal placeholder "What are you craving?" — match substring without `?`
-#   - Segment Pressable wraps Text — .*Something New.* matches either the
-#     accessibility label or the Text descendant
+#   - Segment Pressable's accessibilityLabel "Something New segment" masks its
+#     Text child from Maestro's AX tree. Plain-literal "Something New" does
+#     NOT match — use `.*Something New.*` (matches accessibilityLabel substring)
 ---
 # Clean app restart — upstream flows may leave state that bleeds in.
 - launchApp:
