@@ -183,3 +183,72 @@ describe('discoverRecipes', () => {
     expect(args.user).toBe('Give me 3 cozy soups');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 17 Wave 0 (plan 17-00) — red scaffolding for Plan 17-01.
+//
+// Plan 17-01 extends buildDiscoveryPrompt with a third parameter:
+//   buildDiscoveryPrompt(prefs, existingTitles?, pantryManifest?)
+//
+// When pantryManifest is a non-empty array, the prompt MUST append a
+// PANTRY CONSTRAINT section that the AI treats as a hard filter (only
+// return recipes 100% feasible from the listed items + common staples).
+//
+// Today, buildDiscoveryPrompt has a 2-arg signature — passing a third arg
+// is a no-op (TypeScript will also complain unless we cast). These cases
+// fail at runtime because the string assertion sees no constraint block.
+//
+// @see .planning/phases/17-.../17-CONTEXT.md D-04
+// ---------------------------------------------------------------------------
+describe('Phase 17: buildDiscoveryPrompt pantry manifest (P17-04)', () => {
+  it('P17-04: embeds a PANTRY CONSTRAINT section when pantryManifest provided', () => {
+    const prompt = (
+      buildDiscoveryPrompt as (
+        prefs: DiscoveryPreferences,
+        titles?: string[],
+        manifest?: string[],
+      ) => string
+    )(basePrefs, [], ['eggs', 'spinach']);
+
+    expect(prompt).toContain('PANTRY CONSTRAINT (HARD):');
+    expect(prompt).toContain('- eggs');
+    expect(prompt).toContain('- spinach');
+    // Staples note — common items users don't need listed explicitly.
+    expect(prompt).toMatch(/salt.*pepper.*water.*oil/is);
+  });
+
+  it('P17-04: omits PANTRY CONSTRAINT section when manifest is undefined', () => {
+    const prompt = buildDiscoveryPrompt(basePrefs, []);
+    expect(prompt).not.toContain('PANTRY CONSTRAINT');
+  });
+
+  it('P17-04: omits PANTRY CONSTRAINT section when manifest is an empty array', () => {
+    const prompt = (
+      buildDiscoveryPrompt as (
+        prefs: DiscoveryPreferences,
+        titles?: string[],
+        manifest?: string[],
+      ) => string
+    )(basePrefs, [], []);
+
+    expect(prompt).not.toContain('PANTRY CONSTRAINT');
+  });
+
+  it('P17-04: lists each manifest item on its own line with a "- " prefix', () => {
+    const prompt = (
+      buildDiscoveryPrompt as (
+        prefs: DiscoveryPreferences,
+        titles?: string[],
+        manifest?: string[],
+      ) => string
+    )(basePrefs, [], ['eggs', 'spinach', 'feta']);
+
+    // Three dash-prefixed lines, each on its own line.
+    expect(prompt).toMatch(/- eggs\n/);
+    expect(prompt).toMatch(/- spinach\n/);
+    // The last item may or may not have a trailing newline depending on
+    // whether the constraint block is followed by more content — just
+    // assert it's present.
+    expect(prompt).toMatch(/- feta/);
+  });
+});
