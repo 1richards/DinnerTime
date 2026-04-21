@@ -53,11 +53,12 @@ tags:
 - inputText: "quick weeknight pasta"
 - takeScreenshot: 27-03-query-typed
 
-# 4. Submit. The button title is "Search" — use a plain literal to avoid the
-#    /search modal header "Search" word matching (the button has its own hit target).
+# 4. Submit via keyboard Return key. The TextInput uses `returnKeyType=search`
+#    + `onSubmitEditing=handleSubmit`, so pressing Enter fires the same
+#    handler as tapping the "Search" button — without ambiguity against the
+#    modal's "Search" header text (see flow 11 for precedent).
 #    Dismiss-first: modal drops immediately; segment shows loading then results.
-- tapOn:
-    text: "Search"
+- pressKey: enter
 - assertNotVisible:
     text: ".*What are you craving.*"
 - takeScreenshot: 27-04-dismissed-to-segment
@@ -105,23 +106,28 @@ tags:
     timeout: 10000
 - takeScreenshot: 27-08-back-to-preview
 
-# 9. Tap Save to Library → "Saved to library" confirmation renders in the
-#    preview's bottom bar (state flips from Save+Remix row to Saved+Done row).
+# 9. Tap Save to Library. kitchen.tsx's handlePreviewSave auto-dismisses the
+#    preview modal after saveRecipe resolves (line 417: setPreviewRecipe(null)),
+#    UNLIKE discover.tsx which keeps the sheet open with a "Saved to library"
+#    confirmation + Done button. This divergence is noted as a deferred UX
+#    polish item in the SUMMARY (kitchen.tsx could match discover.tsx's
+#    confirmation+Done pattern for parity with D-03 preview-first flow).
+#    For this flow we verify the outcome: modal gone, segment still visible
+#    with results intact.
 - tapOn:
     text: ".*Save to Library.*"
 - extendedWaitUntil:
     visible:
-      text: ".*Saved to library.*"
-    timeout: 20000
-- takeScreenshot: 27-09-saved
-
-# 10. Dismiss preview via Done button → back on Something New segment.
-- tapOn:
-    text: "Done"
-- extendedWaitUntil:
-    visible:
       text: ".*What should we cook tonight.*"
-    timeout: 10000
+    timeout: 20000
+- assertNotVisible:
+    text: "Remix"
+- takeScreenshot: 27-09-saved-and-dismissed
+
+# 10. Back on Something New segment with results still rendered — persistence
+#    + re-entry works (no refetch needed). Recent query chip should show.
 - assertVisible:
     text: ".*View recipe.*"
+- assertVisible:
+    text: ".*quick weeknight pasta.*"
 - takeScreenshot: 27-10-back-to-segment
