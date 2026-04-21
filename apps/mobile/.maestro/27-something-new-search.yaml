@@ -1,0 +1,126 @@
+appId: com.dinnertime.app
+name: "27 — something-new: search → results → preview → remix → save"
+tags:
+  - phase-17
+  - kitchen
+  - search
+# Phase 17 happy-path UAT:
+#   (1) Land on Kitchen → Something New segment (default)
+#   (2) Tap StickySearchPill → opens /search?context=something-new modal
+#   (3) Type query → toggle pantry-only OFF (unknown test-account pantry state)
+#   (4) Submit → dismiss-first (D-09) → segment shows loading skeleton → results
+#   (5) Tap first card → PreviewSheet opens with Save to Library + Remix CTAs
+#   (6) Tap Remix → RemixSheet with 4 mode options visible (Make it quicker etc.)
+#   (7) Dismiss Remix → tap Save to Library → "Saved to library" confirmation
+#   (8) Close preview → still on Something New segment
+#
+# Selector notes (CLAUDE.md):
+#   - Maestro text matcher is regex — avoid literal `?`, `=`, `(` in assertions
+#   - Hero greeting "What should we cook tonight" is stable across the rename
+#   - StickySearchPill has accessibilityLabel == placeholder ("Search dinner ideas…")
+#     Use regex `.*Search dinner ideas.*` to sidestep the ellipsis char encoding
+#   - SearchModal placeholder "What are you craving?" — match substring without `?`
+#   - Segment Pressable wraps Text — .*Something New.* matches either the
+#     accessibility label or the Text descendant
+---
+# Clean app restart — upstream flows may leave state that bleeds in.
+- launchApp:
+    clearState: true
+
+- runFlow: _ensure-logged-in.yaml
+
+# 1. Already on Kitchen → Something New by default (from login flow's
+#    "What should we cook tonight" assertion). Capture baseline.
+- assertVisible:
+    text: ".*What should we cook tonight.*"
+- takeScreenshot: 27-01-segment-landing
+
+# 2. Tap the sticky search pill — placeholder is "Search dinner ideas…".
+#    The pill's accessibilityLabel mirrors the placeholder.
+- tapOn:
+    text: ".*Search dinner ideas.*"
+- extendedWaitUntil:
+    visible:
+      text: ".*What are you craving.*"
+    timeout: 10000
+- takeScreenshot: 27-02-search-modal
+
+# 3. Type a query. Avoid pantry-only toggle (test account may have no pantry
+#    items, which would return an empty result set on pantryOnly=true).
+- tapOn:
+    text: ".*What are you craving.*"
+- inputText: "quick weeknight pasta"
+- takeScreenshot: 27-03-query-typed
+
+# 4. Submit. The button title is "Search" — use a plain literal to avoid the
+#    /search modal header "Search" word matching (the button has its own hit target).
+#    Dismiss-first: modal drops immediately; segment shows loading then results.
+- tapOn:
+    text: "Search"
+- assertNotVisible:
+    text: ".*What are you craving.*"
+- takeScreenshot: 27-04-dismissed-to-segment
+
+# 5. Wait for results. AI cold-start can take up to 30s. The card CTA is
+#    "View recipe" (mirrors discover.tsx card styling).
+- extendedWaitUntil:
+    visible:
+      text: ".*View recipe.*"
+    timeout: 45000
+- takeScreenshot: 27-05-results-loaded
+
+# 6. Tap first result card. "View recipe" CTA opens the PreviewSheet modal.
+- tapOn:
+    text: ".*View recipe.*"
+- extendedWaitUntil:
+    visible:
+      text: ".*Save to Library.*"
+    timeout: 10000
+- assertVisible:
+    text: ".*Save to Library.*"
+- assertVisible:
+    text: "Remix"
+- takeScreenshot: 27-06-preview-sheet
+
+# 7. Tap Remix → RemixSheet with 4 mode options. "Make it quicker" is one
+#    of the 4 (Surprise me, Swap protein, Swap veggies, Make it quicker).
+- tapOn:
+    text: "Remix"
+- extendedWaitUntil:
+    visible:
+      text: ".*Make it quicker.*"
+    timeout: 10000
+- assertVisible:
+    text: ".*Surprise me.*"
+- takeScreenshot: 27-07-remix-sheet
+
+# 8. Dismiss Remix with swipe-down. PreviewSheet underneath still visible.
+- swipe:
+    start: "50%,10%"
+    end: "50%,90%"
+- extendedWaitUntil:
+    visible:
+      text: ".*Save to Library.*"
+    timeout: 10000
+- takeScreenshot: 27-08-back-to-preview
+
+# 9. Tap Save to Library → "Saved to library" confirmation renders in the
+#    preview's bottom bar (state flips from Save+Remix row to Saved+Done row).
+- tapOn:
+    text: ".*Save to Library.*"
+- extendedWaitUntil:
+    visible:
+      text: ".*Saved to library.*"
+    timeout: 20000
+- takeScreenshot: 27-09-saved
+
+# 10. Dismiss preview via Done button → back on Something New segment.
+- tapOn:
+    text: "Done"
+- extendedWaitUntil:
+    visible:
+      text: ".*What should we cook tonight.*"
+    timeout: 10000
+- assertVisible:
+    text: ".*View recipe.*"
+- takeScreenshot: 27-10-back-to-segment
