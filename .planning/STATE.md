@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 21-04 (Wave 3 mobile — ItemRow compact + PantryItemCard stale treatment + usePantryItemsGrouped 4-way + pantryStore staples Set + STAPLE_THRESHOLD 0.3 + persist v2 migration + Pantry tab GroupingMode segmented control + StickySearchPill + Staples filter chip) — complete
 status: Phase 21 Wave 3 pantry-tab presentation landed — ItemRow size='compact' py-2 variant, PantryItemCard dashed-border stale treatment (<0.5), usePantryItemsGrouped 4-way hook, pantryStore staples Set<string> + STAPLE_THRESHOLD 0.3 + persist v2 migration, Pantry tab segmented control + StickySearchPill + Staples chip. 37/37 new tests GREEN; tsc clean; 21-05 Settings screens unblocked.
-stopped_at: Completed 21-06-PLAN.md
-last_updated: "2026-04-19T19:55:14.779Z"
+stopped_at: Phase 17 context gathered
+last_updated: "2026-04-21T01:25:22.348Z"
 last_activity: 2026-04-19 -- Completed 21-04 (mobile pantry-tab presentation + staples data path; 37/37 new GREEN; tsc clean; ready for 21-05 Settings screens)
 progress:
   total_phases: 25
@@ -480,6 +480,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-19T19:53:04.590Z
-Stopped at: Completed 21-06-PLAN.md
-Resume file: None
+Last session: 2026-04-21T01:25:22.345Z
+Stopped at: Phase 17 context gathered
+Resume file: .planning/phases/17-something-new-ai-powered-recipe-exploration-with-search-and-remix/17-CONTEXT.md
