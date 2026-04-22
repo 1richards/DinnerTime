@@ -30,10 +30,26 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, Pressable, StyleSheet } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { variantStyles } from '../ui/buttonStyles';
 import { colors } from '../../design/tokens';
+
+// Lazy-load the native picker so the app still navigates on dev clients
+// that haven't been rebuilt since @react-native-community/datetimepicker was
+// added. If the native module is missing, we fall back to a minimal text UI.
+let _DateTimePicker: React.ComponentType<Record<string, unknown>> | null = null;
+let _dtpLoadFailed = false;
+function getDateTimePicker(): React.ComponentType<Record<string, unknown>> | null {
+  if (_DateTimePicker) return _DateTimePicker;
+  if (_dtpLoadFailed) return null;
+  try {
+    _DateTimePicker = require('@react-native-community/datetimepicker').default;
+    return _DateTimePicker;
+  } catch {
+    _dtpLoadFailed = true;
+    return null;
+  }
+}
 
 /**
  * Return today at UTC midnight (a stable "today" that ignores the local
@@ -119,16 +135,28 @@ export function DatePickerSheet({
           </Pressable>
         </View>
         <View style={styles.body}>
-          <DateTimePicker
-            value={selected}
-            mode="date"
-            display="inline"
-            minimumDate={resolvedMin}
-            maximumDate={resolvedMax}
-            onChange={(_, d) => {
-              if (d) setSelected(d);
-            }}
-          />
+          {(() => {
+            const DateTimePicker = getDateTimePicker();
+            if (!DateTimePicker) {
+              return (
+                <Text style={{ color: colors.textSecondary, padding: 16 }}>
+                  Date picker unavailable — rebuild the dev client to enable it.
+                </Text>
+              );
+            }
+            return (
+              <DateTimePicker
+                value={selected}
+                mode="date"
+                display="inline"
+                minimumDate={resolvedMin}
+                maximumDate={resolvedMax}
+                onChange={(_: unknown, d?: Date) => {
+                  if (d) setSelected(d);
+                }}
+              />
+            );
+          })()}
         </View>
         <View style={styles.footer}>
           <Pressable
