@@ -1,9 +1,16 @@
 import type { Context, Next } from 'hono';
-import { createUserClient } from '../config/supabase.js';
+import { createUserClient, supabaseAdmin } from '../config/supabase.js';
 
 /**
  * Auth middleware that verifies Bearer tokens via Supabase.
- * Sets `user` and `supabase` (user-scoped client) on the Hono context.
+ * Sets `user`, `supabase` (user-scoped client) and `supabaseAdmin`
+ * (service-role client — bypasses RLS, used by privileged flows like
+ * /account/delete → supabase.auth.admin.deleteUser) on the Hono context.
+ *
+ * Exposing supabaseAdmin on the context (rather than importing it directly
+ * in routes) keeps the auth-layer mock surface stable: route tests swap the
+ * middleware out entirely and inject mock clients via c.set(...) without
+ * needing to vi.mock each route's config import.
  */
 export async function authMiddleware(c: Context, next: Next) {
   const authHeader = c.req.header('Authorization');
@@ -26,6 +33,7 @@ export async function authMiddleware(c: Context, next: Next) {
 
   c.set('user', user);
   c.set('supabase', supabase);
+  c.set('supabaseAdmin', supabaseAdmin);
 
   await next();
 }

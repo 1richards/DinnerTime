@@ -100,7 +100,9 @@ vi.mock('../../middleware/auth.js', () => ({
   authMiddleware: mockAuthMiddleware,
 }));
 
-// @ts-expect-error — module does not exist yet (Wave 0 red stub; ships in 23-01/23-02)
+// Module shipped in 23-01 (change-password + change-email handlers) and
+// extended in 23-02 (export + delete handlers); the @ts-expect-error the
+// Wave-0 red stub carried is now redundant.
 const { default: account } = await import('../account.js');
 const { Hono } = await import('hono');
 
