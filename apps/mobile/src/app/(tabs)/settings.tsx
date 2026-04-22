@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
-import { View, ScrollView, ActivityIndicator, Alert, Text, Pressable } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Alert, Text, Pressable, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, router } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { usePreferencesStore } from '../../stores/preferencesStore';
+import { useCookingStore } from '../../stores/cookingStore';
 import { useToast } from '../../components/ui/Toast';
 import { Button } from '../../components/ui/Button';
 import { FamilyMembersSection } from '../../components/settings/FamilyMembersSection';
@@ -20,6 +21,10 @@ export default function SettingsScreen() {
   const signOut = useAuthStore((s) => s.signOut);
   const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
   const isLoading = usePreferencesStore((s) => s.isLoading);
+  // Phase 16-07: cooking preferences — dark-mode toggle. Persisted via the
+  // cookingStore's partialize rule so the value survives app restarts.
+  const darkMode = useCookingStore((s) => s.darkMode);
+  const setDarkMode = useCookingStore((s) => s.setDarkMode);
   const { show, ToastComponent } = useToast();
 
   // If the user signs out while on this screen, kick them to login.
@@ -123,6 +128,33 @@ export default function SettingsScreen() {
             <Text className="flex-1 ml-3 text-base text-warmGray-900">Staples</Text>
             <SymbolIcon name="chevron.right" size="body" tintColor={colors.textSecondary} />
           </Pressable>
+        </View>
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Phase 16-07: Cooking preferences — dark-mode toggle per UI-SPEC
+            §Copywriting "Dark mode toggle" + §Component Inventory "Settings
+            additions". Wired to cookingStore.setDarkMode (persisted). */}
+        <View className="mb-2">
+          <Text className="text-label text-text-secondary uppercase mb-3">
+            COOKING
+          </Text>
+          <View
+            className="flex-row items-center justify-between py-4 border-b border-border"
+            accessibilityRole="switch"
+            accessibilityState={{ checked: darkMode }}
+            accessibilityLabel="Dark cooking mode"
+          >
+            <View className="flex-1 pr-4">
+              <Text className="text-body text-text-primary">
+                Dark cooking mode
+              </Text>
+              <Text className="text-body text-text-secondary">
+                Darker background while cooking. Matches Spotify's Now Playing feel.
+              </Text>
+            </View>
+            <Switch value={darkMode} onValueChange={setDarkMode} />
+          </View>
         </View>
 
         <View className="border-b border-warmGray-100 my-4" />

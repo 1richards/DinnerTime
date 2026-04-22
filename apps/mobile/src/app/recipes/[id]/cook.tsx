@@ -45,8 +45,8 @@
  *     once per timer crossing the 10s threshold, fires fireTimerExpireHaptic()
  *     + stepSpeaker.speak("{label} timer done.") at T-0.
  *
- * Phase 9 components StepDisplay + VoiceStatusBadge are NOT imported here —
- * they're the cleanup target for 16-07.
+ * Phase 9 components StepDisplay + VoiceStatusBadge were deleted in 16-07
+ * after being superseded by ScrollableRecipe + StepCard and VoiceWaveform.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ActionSheetIOS } from 'react-native';
