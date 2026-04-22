@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 23-07 (23-01..06 all shipped; 23-07 deep-link allowlist + 23-08 app-store readiness remain)
 status: planning
-stopped_at: Completed 23-01-PLAN.md — Account management (change password, change email, About, Connected Services)
-last_updated: "2026-04-22T09:44:46.310Z"
+stopped_at: Completed 23-06-PLAN.md — observability pipeline (Sentry + request logs + AI telemetry)
+last_updated: "2026-04-22T09:48:04.835Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
   completed_phases: 22
   total_plans: 118
-  completed_plans: 113
+  completed_plans: 114
   percent: 99
 ---
 
@@ -167,6 +167,7 @@ Progress: [██████████] 99%
 | Phase 23 P05 | 7min | 2 tasks | 10 files |
 | Phase 23 P04 | 16min | 2 tasks | 9 files |
 | Phase 23 P01 | 11min | 2 tasks | 11 files |
+| Phase 23 P06 | 13min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -549,6 +550,10 @@ Recent decisions affecting current work:
 - [Phase 23]: 23-04: NFR-11 (returning-user onboarding skip) verified in-place rather than re-implemented — authStore.isOnboarded + (auth)/_layout.tsx Redirect have been the single source of truth since Phase 01. Documentation comment added to authStore rather than new routing logic.
 - [Phase 23]: 23-01: 501 stubs for /account/export + /account/delete so their 401-no-auth tests go green via authMiddleware while 23-02 owns the happy-path GREEN.
 - [Phase 23]: 23-01: Inline Bearer fetch in change-password + change-email screens with TODO-23-04 marker — avoids cross-plan diff coupling since 23-04 is executing in parallel, and 401-on-wrong-password is semantically NOT a session-expiry 401.
+- [Phase 23]: 23-06 clientFactory wrapper opt-in via AiCallContext — backward-compat default returns raw adapter so existing call sites + taskRouting tests stay green
+- [Phase 23]: 23-06 dynamic-import sentry loader in authStore — keeps @sentry/react-native out of cold-start module graph
+- [Phase 23]: 23-06 replace hono/logger() with requestLoggingMiddleware — avoid double-logs; structured JSON subsumes human-friendly
+- [Phase 23]: 23-06 token counts deferred to Phase 24 — current adapters return only parsed output, not SDK response with usage metadata; telemetry records latency + outcome only for now
 
 ### Pending Todos
 
@@ -592,6 +597,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T09:44:46.306Z
-Stopped at: Completed 23-01-PLAN.md — Account management (change password, change email, About, Connected Services)
+Last session: 2026-04-22T09:48:04.830Z
+Stopped at: Completed 23-06-PLAN.md — observability pipeline (Sentry + request logs + AI telemetry)
 Resume file: None
