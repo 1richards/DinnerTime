@@ -13,8 +13,13 @@ import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useShoppingStore } from '../../stores/shoppingStore';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { CategorySection } from '../../components/shopping/CategorySection';
 import { AddItemSheet } from '../../components/shopping/AddItemSheet';
+import {
+  HandoffSheet,
+  type HandoffState,
+} from '../../components/shopping/HandoffSheet';
 import { Button } from '../../components/ui/Button';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -25,6 +30,9 @@ import {
   LARGE_HEADER_HEIGHT,
 } from '../../components/ui/useCollapsingHeader';
 import { colors } from '../../design/tokens';
+import { logShoppingEvent, sanitizePayload } from '../../shopping/telemetry';
+import { openInstacartCart } from '../../shopping/openInstacartCart';
+import { classifyHandoffError } from '../../shopping/classifyHandoffError';
 
 const CATEGORY_ORDER: GroceryCategory[] = [
   'produce', 'protein', 'dairy', 'pantry', 'bakery',
@@ -53,7 +61,8 @@ export default function ShoppingScreen() {
   } = useMealPlanStore();
 
   const [addVisible, setAddVisible] = useState(false);
-  const [ordering, setOrdering] = useState(false);
+  const [handoffState, setHandoffState] = useState<HandoffState>({ kind: 'idle' });
+  const [handoffSessionId, setHandoffSessionId] = useState<string>('');
 
   const { onScroll, largeTitleOpacity, largeTitleTranslate, compactHeaderOpacity } =
     useCollapsingHeader();
@@ -84,21 +93,121 @@ export default function ShoppingScreen() {
   }, [currentPlan, generateList]);
 
   const handleOrder = useCallback(async () => {
-    try {
-      setOrdering(true);
-      const { url } = await createOrder();
-      await WebBrowser.openBrowserAsync(url);
-      await fetchOrders();
-    } catch {
-      // error already captured in store
-    } finally {
-      setOrdering(false);
+    // Read the feature flag at tap time (not module load) — per
+    // 20-RESEARCH.md Pitfall 4, flipping the toggle from Settings should
+    // affect the VERY NEXT tap without requiring a remount.
+    const mode = useSettingsStore.getState().shoppingHandoffMode;
+    const unchecked = items.filter((i) => !i.checked);
+    const itemCount = unchecked.length;
+    const listId = currentList?.id ?? null;
+
+    // LEGACY PATH — Phase 8 inline WebBrowser. Feature-flag gated rollback
+    // (SHOP-DC-05). Preserved verbatim so flipping shoppingHandoffMode to
+    // 'legacy' in Settings produces the exact Phase-8 behavior.
+    if (mode === 'legacy') {
+      try {
+        setHandoffState({ kind: 'sending' });
+        const { url } = await createOrder();
+        await WebBrowser.openBrowserAsync(url);
+        await fetchOrders();
+      } catch {
+        // error already captured in shoppingStore.error
+      } finally {
+        setHandoffState({ kind: 'idle' });
+      }
+      return;
     }
-  }, [createOrder, fetchOrders]);
+
+    // DRAFT-CART PATH — Phase 20 HandoffSheet flow. Emits 3 telemetry events
+    // (started/succeeded/failed). `handoff_opened_{app|web}` is fired inside
+    // openInstacartCart when the user taps the primary CTA on success.
+    const sessionId =
+      typeof globalThis.crypto?.randomUUID === 'function'
+        ? globalThis.crypto.randomUUID()
+        : `sh-${Date.now()}`;
+    setHandoffSessionId(sessionId);
+    setHandoffState({ kind: 'sending' });
+    logShoppingEvent({
+      name: 'shopping.draft_cart_started',
+      session_id: sessionId,
+      shopping_list_id: listId,
+      payload: sanitizePayload({ item_count: itemCount, list_id: listId }),
+    });
+
+    try {
+      const { url, order_id } = await createOrder();
+      setHandoffState({
+        kind: 'success',
+        url,
+        itemCount,
+        appInstalled: false, // per 20-RESEARCH.md Pitfall 2, skip canOpenURL probe
+      });
+      logShoppingEvent({
+        name: 'shopping.draft_cart_succeeded',
+        session_id: sessionId,
+        shopping_list_id: listId,
+        shopping_order_id: order_id,
+        payload: sanitizePayload({
+          item_count: itemCount,
+          list_id: listId,
+          order_id,
+        }),
+      });
+      // Refresh the orders list in the background so /shopping/handoffs
+      // reflects the new row next time the user navigates there.
+      void fetchOrders();
+    } catch (err) {
+      const variant = classifyHandoffError(err);
+      setHandoffState({ kind: 'error', variant });
+      logShoppingEvent({
+        name: 'shopping.draft_cart_failed',
+        session_id: sessionId,
+        shopping_list_id: listId,
+        payload: sanitizePayload({
+          error_code: variant,
+          variant,
+          list_id: listId,
+        }),
+      });
+    }
+  }, [createOrder, fetchOrders, currentList, items]);
+
+  const handleOpenCart = useCallback(async () => {
+    if (handoffState.kind !== 'success') return;
+    const url = handoffState.url;
+    // openInstacartCart fires handoff_opened_{app|web} telemetry internally
+    // (20-01 Task 2). Parent only supplies session context.
+    await openInstacartCart(url, {
+      sessionId: handoffSessionId,
+    });
+    setHandoffState({ kind: 'idle' });
+  }, [handoffState, handoffSessionId]);
+
+  const handleRetry = useCallback(() => {
+    // Simpler than auto-reissuing the Instacart call — user re-taps the
+    // Order button to retry. Per 20-RESEARCH.md anti-pattern
+    // "Calling Instacart twice".
+    setHandoffState({ kind: 'idle' });
+  }, []);
+
+  const handleDismiss = useCallback(() => {
+    if (handoffState.kind === 'success' || handoffState.kind === 'error') {
+      logShoppingEvent({
+        name: 'shopping.handoff_dismissed',
+        session_id: handoffSessionId,
+        shopping_list_id: currentList?.id ?? null,
+        payload: sanitizePayload({
+          variant: handoffState.kind === 'error' ? handoffState.variant : undefined,
+        }),
+      });
+    }
+    setHandoffState({ kind: 'idle' });
+  }, [handoffState, handoffSessionId, currentList]);
 
   const checkedCount = items.filter((i) => i.checked).length;
   const allChecked = items.length > 0 && items.every((i) => i.checked);
-  const orderDisabled = ordering || items.length === 0 || allChecked;
+  const sending = handoffState.kind === 'sending';
+  const orderDisabled = sending || items.length === 0 || allChecked;
 
   if (loading && !currentList && items.length === 0) {
     return (
@@ -167,14 +276,14 @@ export default function ShoppingScreen() {
         <Text style={styles.compactTitle}>Shopping</Text>
       </Animated.View>
 
-      {/* Action row — orders icon */}
+      {/* Action row — handoffs (past carts) icon */}
       <View style={styles.actionRow} pointerEvents="box-none">
         <View style={{ flex: 1 }} />
         <Pressable
-          onPress={() => router.push('/shopping/orders')}
+          onPress={() => router.push('/shopping/handoffs')}
           style={styles.actionBtn}
           hitSlop={8}
-          accessibilityLabel="View orders"
+          accessibilityLabel="View Instacart carts"
         >
           <SymbolIcon name="doc.text" size={20} tintColor="#3E332A" />
         </Pressable>
@@ -231,7 +340,7 @@ export default function ShoppingScreen() {
         <Button
           title="Order on Instacart"
           onPress={handleOrder}
-          loading={ordering}
+          loading={sending}
           disabled={orderDisabled}
         />
       </View>
@@ -242,6 +351,13 @@ export default function ShoppingScreen() {
         onSubmit={async (input) => {
           await addItem(input);
         }}
+      />
+
+      <HandoffSheet
+        state={handoffState}
+        onOpenCart={handleOpenCart}
+        onRetry={handleRetry}
+        onDismiss={handleDismiss}
       />
     </SafeAreaView>
   );
