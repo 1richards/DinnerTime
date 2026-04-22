@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 16-02 (Streaming /cooking/ask via SSE) — complete
 status: completed
-stopped_at: Completed 16-02-PLAN.md (streaming /cooking/ask SSE endpoint + mobile streamAsk client)
-last_updated: "2026-04-22T04:11:28.136Z"
+stopped_at: Completed 16-01-PLAN.md (cooking telemetry pipeline — migration 00020 + POST /telemetry/cooking + mobile batched logger)
+last_updated: "2026-04-22T04:14:21.767Z"
 last_activity: 2026-04-22 -- Completed 16-02 (SSE streaming endpoint + mobile streamAsk client, Wave 1)
 progress:
   total_phases: 25
   completed_phases: 20
   total_plans: 96
-  completed_plans: 89
+  completed_plans: 90
   percent: 100
 ---
 
@@ -143,6 +143,7 @@ Progress: [██████████] 100%
 | Phase 17 P04 | 11 min | 3 tasks | 2 files |
 | Phase 16-cooking-mode-ux-enhancements-voice-interaction-and-model-ui-polish-information-display P00 | 15min | 2 tasks | 24 files |
 | Phase 16 P02 | 5min | 2 tasks | 5 files |
+| Phase 16 P01 | 9min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -465,6 +466,9 @@ Recent decisions affecting current work:
 - [Phase 16]: Anthropic messages.stream event emitter bridged to an async generator via a queue + resolveNext promise — route handlers never see vendor types, just
 - [Phase 16]: Mobile streamAsk signature uses options+callbacks bags (matches Wave 0 test contract) not the plan's positional 6-arg form — caller in 16-06 injects baseUrl + accessToken + telemetry wrapping
 - [Phase 16]: Pitfall 1 (RN 0.83 fetch ReadableStream uncertainty) handled via NO_STREAM_BODY error code, not a react-native-sse polyfill — caller in 16-06 falls back to askAssistant() on that signal; sse-smoke.ts on-device is the gate for whether polyfill is ever needed
+- [Phase 16]: Token getter seam (wireSupabaseAuth) instead of dynamic supabase import — default sync sentinel keeps fake-timer tests clean, production wires real supabase.auth.getSession from cook-screen bootstrap
+- [Phase 16]: Splice-after-await flushing in telemetry — concurrent synchronous flush starts observe the same queue snapshot; only the first resolved await drains. Fixes queue-cap contract and prevents burst thrashing in production
+- [Phase 16]: Schema-light event names — wire  and DB  are plain text (no enum). Adding new telemetry event kinds in Wave 3 requires zero migration and zero server deploy
 
 ### Pending Todos
 
@@ -508,6 +512,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T04:10:38.694Z
-Stopped at: Completed 16-02-PLAN.md (streaming /cooking/ask SSE endpoint + mobile streamAsk client)
+Last session: 2026-04-22T04:14:08.915Z
+Stopped at: Completed 16-01-PLAN.md (cooking telemetry pipeline — migration 00020 + POST /telemetry/cooking + mobile batched logger)
 Resume file: None
