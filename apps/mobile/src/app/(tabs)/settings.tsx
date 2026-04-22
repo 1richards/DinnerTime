@@ -17,6 +17,9 @@ import { DislikesSection } from '../../components/settings/DislikesSection';
 import { SkillLevelSection } from '../../components/settings/SkillLevelSection';
 import { ShoppingHandoffSection } from '../../components/settings/ShoppingHandoffSection';
 import { BiometricUnlockSection } from '../../components/settings/BiometricUnlockSection';
+import { AccountSection } from '../../components/settings/AccountSection';
+import { ConnectedServicesSection } from '../../components/settings/ConnectedServicesSection';
+import { AboutSection } from '../../components/settings/AboutSection';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { colors } from '../../design/tokens';
 
@@ -48,19 +51,26 @@ export default function SettingsScreen() {
   if (!isLoggedIn) return <Redirect href="/(auth)/login" />;
 
   const handleSignOut = () => {
-    Alert.alert('Sign out?', 'You\u2019ll need to sign back in to use DinnerTime.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          await signOut();
-          // Explicit navigation in case the <Redirect> above doesn't fire
-          // fast enough when the modal dismiss animation is still running.
-          router.replace('/(auth)/login');
+    // Phase 23-04 (NFR-10, D-10): polished sign-out copy. Distinguishes
+    // local-only data (cleared on sign-out) from cloud data (preserved
+    // across sessions) so users aren't anxious about losing recipes.
+    Alert.alert(
+      'Sign out?',
+      'Your local data — scanned pantry photos, draft meal plans — will be cleared. Your cloud data (recipes, past plans, history) stays and will come back when you sign in.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await signOut();
+            // Explicit navigation in case the <Redirect> above doesn't fire
+            // fast enough when the modal dismiss animation is still running.
+            router.replace('/(auth)/login');
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   useEffect(() => {
@@ -247,10 +257,31 @@ export default function SettingsScreen() {
 
         <View className="border-b border-warmGray-100 my-4" />
 
-        {/* Account */}
+        {/* Phase 23-01: Account management rows (Change password / Change
+            email / Export data / Delete account). Export + Delete route to
+            stubs that 23-02 wires up. */}
+        <AccountSection />
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Phase 23-01: Connected Services placeholder — v1 Instacart is the
+            only integration, shown as "Not connected" since the current flow
+            uses anonymous link handoff (no OAuth connection to persist). */}
+        <ConnectedServicesSection />
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Phase 23-01: About — version, build, Privacy, Terms, Support. */}
+        <AboutSection />
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Session — existing sign-out block. The new AccountSection above
+            carries the account-management rows; this block stays minimal
+            until 23-04 consolidates the copy/polish pass. */}
         <View className="mt-2 mb-2">
           <Text className="text-xs font-bold text-warmGray-500 uppercase tracking-wider mb-3">
-            Account
+            Session
           </Text>
           {profile?.display_name ? (
             <Text className="text-sm text-warmGray-600 mb-4">

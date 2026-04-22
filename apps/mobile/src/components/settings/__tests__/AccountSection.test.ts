@@ -24,7 +24,6 @@ vi.mock('expo-router', () => ({
   Link: (_props: unknown) => null,
 }));
 
-// @ts-expect-error — module does not exist yet (Wave 0 red stub; ships in 23-01)
 const { AccountSection } = await import('../AccountSection.js');
 
 function walk(el: any, visit: (node: any) => void) {

@@ -6,9 +6,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Pressable,
   StyleSheet,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Button } from '../../components/ui/Button';
@@ -137,6 +138,17 @@ export default function LoginScreen() {
               className="mt-2"
             />
 
+            {/* Phase 23-04 (NFR-09): forgot-password link. Below Sign In,
+                above the Divider — small brand-colored text-button that
+                routes into the /(auth)/forgot-password flow. */}
+            <Pressable
+              onPress={() => router.push('/(auth)/forgot-password')}
+              style={styles.forgotRow}
+              accessibilityRole="link"
+            >
+              <Text style={styles.forgotLink}>Forgot password?</Text>
+            </Pressable>
+
             {/* Divider */}
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
@@ -219,6 +231,15 @@ const styles = StyleSheet.create({
     color: colors.destructive,
     fontSize: 14,
     textAlign: 'center',
+  },
+  forgotRow: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  forgotLink: {
+    color: colors.brand,
+    fontSize: 13,
+    fontWeight: '600',
   },
   divider: {
     flexDirection: 'row',

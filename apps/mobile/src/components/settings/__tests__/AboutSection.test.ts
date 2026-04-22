@@ -31,7 +31,6 @@ vi.mock('expo-web-browser', () => ({
   openBrowserAsync: vi.fn(async () => ({ type: 'cancel' })),
 }));
 
-// @ts-expect-error — module does not exist yet (Wave 0 red stub; ships in 23-01)
 const { AboutSection } = await import('../AboutSection.js');
 
 function walk(el: any, visit: (node: any) => void) {

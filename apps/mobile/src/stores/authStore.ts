@@ -59,6 +59,13 @@ export const useAuthStore = create<AuthState>((set) => ({
             .eq('id', session.user.id)
             .single();
 
+          // Phase 23-04 (NFR-11): returning-user onboarding skip. The
+          // `isOnboarded` flag drives the (auth)/_layout.tsx + (tabs)/_layout
+          // Redirects — sign-in of a user whose profile.onboarding_complete
+          // is true routes straight to /(tabs)/kitchen; a fresh account
+          // (flag false) falls through to /onboarding. This line has been
+          // the single source of truth since Phase 01 and is verified by
+          // /(auth)/_layout.tsx's `isLoggedIn && isOnboarded` redirect.
           set({
             isOnboarded: profile?.onboarding_complete ?? false,
             profile: profile ?? null,
