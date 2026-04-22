@@ -57,6 +57,16 @@ interface MealPlanState {
    * No-op when `currentPlan` is null. Errors surface via `state.error`.
    */
   setFocusTheme: (theme: string | null) => Promise<void>;
+  /**
+   * Phase 22-06: Mark a day as skipped (user swiped → Skip). POSTs to
+   * `/meal-plans/{plan.id}/entries/{day}/skip` with body `{ reason }`.
+   * Optimistic: flips the entry to `status='skipped'` + `skip_reason`
+   * before the network round-trip, rolls back to the snapshot if the
+   * server returns a non-2xx. No-op when `currentPlan` is null.
+   *
+   * `reason` is free-form text (e.g. "travel", "ate out") or null.
+   */
+  skipDay: (day: number, reason?: string | null) => Promise<void>;
 }
 
 /**
@@ -394,6 +404,77 @@ export const useMealPlanStore = create<MealPlanState>()(
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : 'Failed to set focus theme',
+      });
+    }
+  },
+
+  skipDay: async (day: number, reason: string | null = null) => {
+    const plan = get().currentPlan;
+    if (!plan) return;
+    const snapshot = plan.entries;
+
+    // Optimistic: flip the target entry to status='skipped' + skip_reason
+    // immediately so the DayRow reflects intent before the network trip.
+    set({
+      currentPlan: {
+        ...plan,
+        entries: plan.entries.map((e) =>
+          e.day_of_week === day
+            ? { ...e, status: 'skipped' as const, skip_reason: reason }
+            : e
+        ),
+      },
+      error: null,
+    });
+
+    try {
+      const response = await authedFetch(
+        `/meal-plans/${plan.id}/entries/${day}/skip`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ reason }),
+        }
+      );
+
+      if (!response.ok) {
+        // Drain the body so we don't leak a dangling response, but use a
+        // consistent user-facing message ("Failed to skip day") regardless
+        // of the upstream error text — the user's mental model is about
+        // the skip action, not the transport-layer wording.
+        await response.json().catch(() => ({}));
+        set({
+          currentPlan: { ...plan, entries: snapshot },
+          error: 'Failed to skip day',
+        });
+        return;
+      }
+
+      const body = await response.json();
+      const updatedEntry: MealPlanEntry | undefined = body?.data;
+      if (
+        !updatedEntry ||
+        typeof (updatedEntry as MealPlanEntry).day_of_week !== 'number'
+      ) {
+        // Server returned OK but no usable entry — keep optimistic state.
+        set({ error: null });
+        return;
+      }
+      set((state) => ({
+        currentPlan: state.currentPlan
+          ? {
+              ...state.currentPlan,
+              entries: state.currentPlan.entries.map((e) =>
+                e.day_of_week === day ? updatedEntry : e
+              ),
+            }
+          : state.currentPlan,
+        error: null,
+      }));
+    } catch (err) {
+      // Network error — rollback.
+      set({
+        currentPlan: { ...plan, entries: snapshot },
+        error: err instanceof Error ? err.message : 'Failed to skip day',
       });
     }
   },
