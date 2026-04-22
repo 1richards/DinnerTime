@@ -10,12 +10,22 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
+import { useShoppingStore } from '../../stores/shoppingStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { DayRow } from '../../components/plan/DayRow';
 import { EmptyPlanState } from '../../components/plan/EmptyPlanState';
 import { SwapSheet } from '../../components/plan/SwapSheet';
 import { CookConfirm } from '../../components/plan/CookConfirm';
+import {
+  HandoffSheet,
+  type HandoffState,
+} from '../../components/shopping/HandoffSheet';
+import { openInstacartCart } from '../../shopping/openInstacartCart';
+import { classifyHandoffError } from '../../shopping/classifyHandoffError';
+import { logPlanEvent, sanitizePayload } from '../../plan/telemetry';
 import type { MealPlanEntry, MealPlanIngredient } from '../../types/mealPlan';
 import {
   useCollapsingHeader,
@@ -68,6 +78,8 @@ export default function PlanScreen() {
   const [swapTarget, setSwapTarget] = useState<number | null>(null);
   const [cookTarget, setCookTarget] = useState<number | null>(null);
   const [cookDelta, setCookDelta] = useState<MealPlanIngredient[] | null>(null);
+  const [handoffState, setHandoffState] = useState<HandoffState>({ kind: 'idle' });
+  const [handoffSessionId, setHandoffSessionId] = useState<string>('');
 
   const { onScroll, largeTitleOpacity, largeTitleTranslate, compactHeaderOpacity } =
     useCollapsingHeader();
@@ -134,6 +146,103 @@ export default function PlanScreen() {
     setCookDelta(null);
   }, []);
 
+  // Plan → Shopping handoff (22-01 / PLAN-X-03). Mirrors shopping.tsx's
+  // handleOrder (canonical copy, unchanged there). Aggregates this week's
+  // ingredients via generateList(currentPlan.id), then createOrder to obtain
+  // a draft-cart URL, then hands off to HandoffSheet's success state.
+  const handleShoppingHandoff = useCallback(async () => {
+    if (!currentPlan?.id) {
+      Alert.alert(
+        'Generate a plan first',
+        'Head over to Plan and generate this week before building a shopping list.',
+      );
+      return;
+    }
+
+    // Feature-flag parity with shopping.tsx (SHOP-DC-05). When the Settings
+    // toggle reads 'legacy', fall back to the Phase 8 inline WebBrowser path.
+    const mode = useSettingsStore.getState().shoppingHandoffMode;
+    const sessionId =
+      typeof globalThis.crypto?.randomUUID === 'function'
+        ? globalThis.crypto.randomUUID()
+        : `pl-${Date.now()}`;
+    setHandoffSessionId(sessionId);
+
+    if (mode === 'legacy') {
+      try {
+        setHandoffState({ kind: 'sending' });
+        await useShoppingStore.getState().generateList(currentPlan.id);
+        const { url } = await useShoppingStore.getState().createOrder();
+        await WebBrowser.openBrowserAsync(url);
+      } catch {
+        // shoppingStore.error already captured
+      } finally {
+        setHandoffState({ kind: 'idle' });
+      }
+      return;
+    }
+
+    setHandoffState({ kind: 'sending' });
+    try {
+      await useShoppingStore.getState().generateList(currentPlan.id);
+      const items = useShoppingStore.getState().items;
+      const unchecked = items.filter((i) => !i.checked);
+      const { url, order_id } = await useShoppingStore.getState().createOrder();
+
+      setHandoffState({
+        kind: 'success',
+        url,
+        itemCount: unchecked.length,
+        appInstalled: false,
+      });
+      logPlanEvent({
+        name: 'plan.shopping_handoff_opened',
+        session_id: sessionId,
+        meal_plan_id: currentPlan.id,
+        payload: sanitizePayload({
+          meal_plan_id: currentPlan.id,
+          week_start: currentPlan.week_start,
+        }),
+      });
+      // Fire-and-forget orders refresh so the shopping tab reflects the cart.
+      void useShoppingStore.getState().fetchOrders();
+      // Use order_id locally (kept for symmetry with shopping.tsx telemetry
+      // payload — plan-channel whitelist does not include order_id so it
+      // never leaves the client, but we reference it to avoid unused warnings).
+      void order_id;
+    } catch (err) {
+      const variant = classifyHandoffError(err);
+      setHandoffState({ kind: 'error', variant });
+      logPlanEvent({
+        name: 'plan.shopping_handoff_opened',
+        session_id: sessionId,
+        meal_plan_id: currentPlan.id,
+        payload: sanitizePayload({
+          error_code: variant,
+          variant,
+          meal_plan_id: currentPlan.id,
+          week_start: currentPlan.week_start,
+        }),
+      });
+    }
+  }, [currentPlan]);
+
+  const handleOpenCart = useCallback(async () => {
+    if (handoffState.kind !== 'success') return;
+    await openInstacartCart(handoffState.url, { sessionId: handoffSessionId });
+    setHandoffState({ kind: 'idle' });
+  }, [handoffState, handoffSessionId]);
+
+  const handleHandoffRetry = useCallback(() => {
+    // Match shopping.tsx: reset to idle so the user explicitly re-taps the
+    // Shopping-list button to retry (avoids double-Instacart-POST bugs).
+    setHandoffState({ kind: 'idle' });
+  }, []);
+
+  const handleHandoffDismiss = useCallback(() => {
+    setHandoffState({ kind: 'idle' });
+  }, []);
+
   if (loading && !currentPlan) {
     return (
       <SafeAreaView
@@ -185,9 +294,17 @@ export default function PlanScreen() {
         <Text style={styles.compactTitle}>This Week</Text>
       </Animated.View>
 
-      {/* Action row — regenerate icon */}
+      {/* Action row — shopping-list + regenerate icons */}
       <View style={styles.actionRow} pointerEvents="box-none">
         <View style={{ flex: 1 }} />
+        <Pressable
+          onPress={handleShoppingHandoff}
+          style={styles.actionBtn}
+          hitSlop={8}
+          accessibilityLabel="Shopping list for week"
+        >
+          <SymbolIcon name="cart" size={20} tintColor="#3E332A" />
+        </Pressable>
         <Pressable
           onPress={handleRegenerate}
           style={styles.actionBtn}
@@ -265,6 +382,13 @@ export default function PlanScreen() {
         pantryDelta={cookDelta}
         onConfirm={confirmCook}
         onCancel={closeCook}
+      />
+
+      <HandoffSheet
+        state={handoffState}
+        onOpenCart={handleOpenCart}
+        onRetry={handleHandoffRetry}
+        onDismiss={handleHandoffDismiss}
       />
     </SafeAreaView>
   );
