@@ -62,7 +62,8 @@
           "microphonePermission": "DinnerTime uses the microphone for hands-free cooking.",
           "speechRecognitionPermission": "DinnerTime uses speech recognition to understand cooking commands."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

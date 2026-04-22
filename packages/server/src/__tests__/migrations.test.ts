@@ -573,6 +573,149 @@ describe('00024_shopping_events.sql (static)', () => {
 });
 
 // -----------------------------------------------------------------------------
+// Phase 22 migrations — STATIC contract assertions
+// -----------------------------------------------------------------------------
+
+describe('00025_plan_events.sql (static)', () => {
+  const sql = readMigration('00025_plan_events.sql');
+
+  it('creates the plan_events table', () => {
+    expect(sql).toMatch(/CREATE\s+TABLE\s+plan_events/i);
+  });
+
+  it('declares id BIGSERIAL PRIMARY KEY', () => {
+    expect(sql).toMatch(/id\s+BIGSERIAL\s+PRIMARY\s+KEY/i);
+  });
+
+  it('declares profile_id FK to auth.users ON DELETE CASCADE', () => {
+    expect(sql).toMatch(
+      /profile_id\s+UUID\s+NOT\s+NULL\s+REFERENCES\s+auth\.users\(id\)\s+ON\s+DELETE\s+CASCADE/i,
+    );
+  });
+
+  it('declares meal_plan_id FK to meal_plans ON DELETE SET NULL (nullable)', () => {
+    expect(sql).toMatch(
+      /meal_plan_id\s+UUID\s+REFERENCES\s+meal_plans\(id\)\s+ON\s+DELETE\s+SET\s+NULL/i,
+    );
+    // Must NOT be NOT NULL — the FK column is optional so events survive a
+    // deleted plan.
+    const planFk = sql.match(/meal_plan_id\s+UUID[^,]*/i)?.[0] ?? '';
+    expect(planFk).not.toMatch(/NOT\s+NULL/i);
+  });
+
+  it('declares meal_plan_entry_id FK to meal_plan_entries ON DELETE SET NULL (nullable)', () => {
+    expect(sql).toMatch(
+      /meal_plan_entry_id\s+UUID\s+REFERENCES\s+meal_plan_entries\(id\)\s+ON\s+DELETE\s+SET\s+NULL/i,
+    );
+    const entryFk = sql.match(/meal_plan_entry_id\s+UUID[^,]*/i)?.[0] ?? '';
+    expect(entryFk).not.toMatch(/NOT\s+NULL/i);
+  });
+
+  it('declares session_id TEXT NOT NULL and event_type TEXT NOT NULL', () => {
+    expect(sql).toMatch(/session_id\s+TEXT\s+NOT\s+NULL/i);
+    expect(sql).toMatch(/event_type\s+TEXT\s+NOT\s+NULL/i);
+  });
+
+  it("declares payload JSONB NOT NULL DEFAULT '{}'::jsonb", () => {
+    expect(sql).toMatch(
+      /payload\s+JSONB\s+NOT\s+NULL\s+DEFAULT\s+'\{\}'::jsonb/i,
+    );
+  });
+
+  it('declares client_ts NOT NULL and server_ts NOT NULL DEFAULT now()', () => {
+    expect(sql).toMatch(/client_ts\s+TIMESTAMPTZ\s+NOT\s+NULL/i);
+    expect(sql).toMatch(
+      /server_ts\s+TIMESTAMPTZ\s+NOT\s+NULL\s+DEFAULT\s+now\(\)/i,
+    );
+  });
+
+  it('does NOT include a shopping_list_id or shopping_order_id column (shopping-only fields)', () => {
+    // Strip SQL line comments so the header-comment mention of Phase 20
+    // does not false-positive for these column names.
+    const withoutComments = sql
+      .split('\n')
+      .map((line) => line.replace(/--.*$/, ''))
+      .join('\n');
+    expect(withoutComments).not.toMatch(/\bshopping_list_id\b/i);
+    expect(withoutComments).not.toMatch(/\bshopping_order_id\b/i);
+  });
+
+  it('creates two indexes (plan_events_profile_ts_idx + plan_events_session_idx)', () => {
+    expect(sql).toMatch(
+      /CREATE\s+INDEX\s+plan_events_profile_ts_idx\s+ON\s+plan_events\(profile_id,\s*server_ts\s+DESC\)/i,
+    );
+    expect(sql).toMatch(
+      /CREATE\s+INDEX\s+plan_events_session_idx\s+ON\s+plan_events\(session_id\)/i,
+    );
+  });
+
+  it('enables Row Level Security', () => {
+    expect(sql).toMatch(
+      /ALTER\s+TABLE\s+plan_events\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/i,
+    );
+  });
+
+  it('declares exactly SELECT + INSERT policies, both keyed on auth.uid() = profile_id', () => {
+    expect(sql).toMatch(
+      /CREATE\s+POLICY\s+"users read own plan events"[\s\S]*FOR\s+SELECT[\s\S]*USING\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/i,
+    );
+    expect(sql).toMatch(
+      /CREATE\s+POLICY\s+"users insert own plan events"[\s\S]*FOR\s+INSERT[\s\S]*WITH\s+CHECK\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/i,
+    );
+  });
+
+  it('declares no UPDATE or DELETE policy (append-only by construction)', () => {
+    expect(sql).not.toMatch(/CREATE\s+POLICY[^;]*FOR\s+UPDATE/i);
+    expect(sql).not.toMatch(/CREATE\s+POLICY[^;]*FOR\s+DELETE/i);
+  });
+
+  it('documents Phase 22 via COMMENT ON TABLE', () => {
+    expect(sql).toMatch(/COMMENT\s+ON\s+TABLE\s+plan_events/i);
+    expect(sql).toMatch(/Phase\s+22/i);
+  });
+});
+
+describe('00026_meal_plans_focus.sql (static)', () => {
+  const sql = readMigration('00026_meal_plans_focus.sql');
+
+  it('adds focus_theme TEXT column to meal_plans via ALTER TABLE (nullable)', () => {
+    expect(sql).toMatch(
+      /ALTER\s+TABLE\s+meal_plans\s+ADD\s+COLUMN\s+(IF\s+NOT\s+EXISTS\s+)?focus_theme\s+TEXT/i,
+    );
+    // Must NOT be NOT NULL — adding a NOT NULL column to an existing table
+    // without a default would break migrations.
+    const focusAlter = sql.match(
+      /ALTER\s+TABLE\s+meal_plans\s+ADD\s+COLUMN\s+(IF\s+NOT\s+EXISTS\s+)?focus_theme[^;]*/i,
+    )?.[0] ?? '';
+    expect(focusAlter).not.toMatch(/NOT\s+NULL/i);
+  });
+
+  it('adds skip_reason TEXT column to meal_plan_entries via ALTER TABLE (nullable)', () => {
+    expect(sql).toMatch(
+      /ALTER\s+TABLE\s+meal_plan_entries\s+ADD\s+COLUMN\s+(IF\s+NOT\s+EXISTS\s+)?skip_reason\s+TEXT/i,
+    );
+    const skipAlter = sql.match(
+      /ALTER\s+TABLE\s+meal_plan_entries\s+ADD\s+COLUMN\s+(IF\s+NOT\s+EXISTS\s+)?skip_reason[^;]*/i,
+    )?.[0] ?? '';
+    expect(skipAlter).not.toMatch(/NOT\s+NULL/i);
+  });
+
+  it('does NOT declare new indexes or destructive changes', () => {
+    expect(sql).not.toMatch(/CREATE\s+INDEX/i);
+    expect(sql).not.toMatch(/DROP\s+TABLE/i);
+    expect(sql).not.toMatch(/DROP\s+COLUMN/i);
+  });
+
+  it('documents the columns via COMMENT ON COLUMN', () => {
+    expect(sql).toMatch(/COMMENT\s+ON\s+COLUMN\s+meal_plans\.focus_theme/i);
+    expect(sql).toMatch(
+      /COMMENT\s+ON\s+COLUMN\s+meal_plan_entries\.skip_reason/i,
+    );
+    expect(sql).toMatch(/Phase\s+22/i);
+  });
+});
+
+// -----------------------------------------------------------------------------
 // LIVE — runs only when Supabase credentials are present
 // -----------------------------------------------------------------------------
 
