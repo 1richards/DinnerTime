@@ -816,4 +816,129 @@ describe('mealPlanStore', () => {
       expect(useMealPlanStore.getState().monthError).toBeNull();
     });
   });
+
+  describe('skipDay (Phase 22-06)', () => {
+    it('is a no-op when currentPlan is null', async () => {
+      useMealPlanStore.setState({ currentPlan: null });
+      await useMealPlanStore.getState().skipDay(2, 'travel');
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('POSTs /meal-plans/{id}/entries/{day}/skip with { reason } body', async () => {
+      const plan = makePlan();
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            data: makeEntry(2, {
+              status: 'skipped',
+              skip_reason: 'travel',
+            }),
+          }),
+      });
+
+      await useMealPlanStore.getState().skipDay(2, 'travel');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/meal-plans/plan-1/entries/2/skip'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ reason: 'travel' }),
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+          }),
+        })
+      );
+      const state = useMealPlanStore.getState();
+      const entry = state.currentPlan?.entries.find(
+        (e) => e.day_of_week === 2
+      );
+      expect(entry?.status).toBe('skipped');
+      expect(entry?.skip_reason).toBe('travel');
+    });
+
+    it('optimistically flips status=skipped before the fetch resolves', async () => {
+      const plan = makePlan();
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      let resolveFetch!: (v: unknown) => void;
+      mockFetch.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFetch = resolve;
+          })
+      );
+
+      const promise = useMealPlanStore.getState().skipDay(3);
+      // Allow microtasks for auth + set() to flush
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const midState = useMealPlanStore.getState();
+      const midEntry = midState.currentPlan?.entries.find(
+        (e) => e.day_of_week === 3
+      );
+      expect(midEntry?.status).toBe('skipped');
+
+      resolveFetch({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            data: makeEntry(3, { status: 'skipped', skip_reason: null }),
+          }),
+      });
+      await promise;
+
+      const finalEntry = useMealPlanStore.getState().currentPlan?.entries.find(
+        (e) => e.day_of_week === 3
+      );
+      expect(finalEntry?.status).toBe('skipped');
+    });
+
+    it('rolls back the optimistic update on 5xx', async () => {
+      const plan = makePlan();
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: 'boom' }),
+      });
+
+      await useMealPlanStore.getState().skipDay(4, 'ate out');
+
+      const state = useMealPlanStore.getState();
+      const entry = state.currentPlan?.entries.find(
+        (e) => e.day_of_week === 4
+      );
+      // Rolled back to original 'planned' status
+      expect(entry?.status).toBe('planned');
+      expect(state.error).toMatch(/skip/i);
+    });
+
+    it('sends body { reason: null } when reason is omitted', async () => {
+      const plan = makePlan();
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            data: makeEntry(5, { status: 'skipped', skip_reason: null }),
+          }),
+      });
+
+      await useMealPlanStore.getState().skipDay(5);
+
+      const [, init] = mockFetch.mock.calls[0]!;
+      expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+        reason: null,
+      });
+    });
+  });
 });
