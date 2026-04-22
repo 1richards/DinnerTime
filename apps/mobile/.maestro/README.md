@@ -116,3 +116,51 @@ brittle nav state — keep the banner in dev builds. Strip it before TestFlight.
   are best-effort — wrap them in `optional: true` and rely on screenshots.
 - The `MAESTRO_*` env vars must be set in the shell that runs `maestro test` —
   don't commit credentials.
+
+## Phase 25 — Screenshot capture (launch asset flow)
+
+Flow `38-screenshot-capture.yaml` captures the 5 App Store screenshots per
+`.planning/app-store/screenshots-shotlist.md`.
+
+**Run twice — once per device bucket:**
+
+```bash
+# 6.9" bucket (iPhone 17 Pro, 1320x2868)
+xcrun simctl shutdown all
+xcrun simctl boot "iPhone 17 Pro"
+open -a Simulator
+cd apps/mobile
+maestro test .maestro/38-screenshot-capture.yaml
+
+# 6.5" bucket (iPhone 11 Pro Max, 1242x2688)
+xcrun simctl shutdown all
+xcrun simctl boot "iPhone 11 Pro Max"
+open -a Simulator
+maestro test .maestro/38-screenshot-capture.yaml
+```
+
+**Prereqs:**
+
+- The dev client is installed on each simulator before running (`xcrun simctl
+  install booted ios/build/Build/Products/Debug-iphonesimulator/DinnerTime.app`).
+- Metro is running in `--lan` mode (`npx expo start --dev-client --lan`).
+- The test account is seeded: at least 4 pantry items, 1 planned day on the
+  current week, 1 saved recipe. Unseeded accounts produce empty-state shots —
+  acceptable for dev iteration, not acceptable for App Store submission.
+
+**Post-run:**
+
+1. Find captures: `ls ~/.maestro/tests/<latest-run>/screenshots/`.
+2. Rename + copy to `.planning/app-store/screenshots/`:
+   - `6_9_shot_1_kitchen.png` etc. for the 6.9" run
+   - `6_5_shot_1_kitchen.png` etc. for the 6.5" run
+3. Review post-capture checklist in `.planning/app-store/screenshots-shotlist.md`:
+   - [ ] No time/battery/signal artifacts — toggle In-Call Status Bar in Simulator
+   - [ ] No debug banners — strip `src/app/_layout.tsx` AuthStateBanner or run
+         production-like build
+   - [ ] No seed-data emails (patrick+dev@dinnertime.app) visible
+4. Upload to App Store Connect → DinnerTime → 6.9" + 6.5" buckets.
+
+**If any shot is wrong:** re-run `38-screenshot-capture.yaml` with a better-seeded
+account, or fall back to manual capture via
+`xcrun simctl io booted screenshot <path>.png` driving each screen by hand.

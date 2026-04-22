@@ -1,0 +1,107 @@
+appId: com.dinnertime.app
+name: "38 — screenshot capture: 5-shot App Store asset run"
+tags:
+  - phase-25
+  - screenshots
+  - launch
+# Phase 25-03 automated screenshot capture per .planning/app-store/screenshots-shotlist.md.
+#
+# Run with:
+#   xcrun simctl boot "iPhone 17 Pro"          # for 6.9" bucket (1320x2868)
+#   xcrun simctl boot "iPhone 11 Pro Max"      # for 6.5" bucket (1242x2688)
+# Then:
+#   cd apps/mobile
+#   maestro test .maestro/38-screenshot-capture.yaml
+#
+# Output: 5 PNGs written via Maestro's takeScreenshot (default location:
+# ~/.maestro/tests/<run-id>/screenshots/). After the run, move them to
+# .planning/app-store/screenshots/ with the naming convention from the
+# shot-list: <size>_<ordinal>_<screen>.png, e.g. 6_9_shot_1_kitchen.png.
+#
+# Patrick then re-runs with the 6.5" simulator booted.
+#
+# Selector notes (CLAUDE.md § UAT):
+#   - Maestro regex: avoid literal `?`, `=`, `(` in assertions.
+#   - Tab bar labels: "Kitchen", "Pantry", "Plan", "Shopping", "Settings" — stable AX labels.
+#   - Kitchen segment pills: "Something New" masked by accessibilityLabel; use `.*Something New.*`.
+#   - Cook mode entry: Recipe detail → "Start Cooking" button.
+---
+# Clean launch — keep signed-in persisted state so we land on a populated app.
+- launchApp:
+    clearState: false
+
+# --- Shot 1: Kitchen / Something New ---
+- tapOn:
+    text: "Kitchen"
+- tapOn:
+    text: ".*Something New.*"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: shot-1-kitchen-something-new
+
+# --- Shot 2: Pantry (post-scan state) ---
+- tapOn:
+    text: "Pantry"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: shot-2-pantry
+
+# --- Shot 3: Plan / Month view ---
+- tapOn:
+    text: "Plan"
+- waitForAnimationToEnd:
+    timeout: 2000
+# Flip to month view via segmented control. Phase 22-03 added "Week | Month"
+# segmented control at the top of plan.tsx.
+- tapOn:
+    text: "Month"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: shot-3-plan-month
+
+# --- Shot 4: Shopping / Handoff sheet ---
+- tapOn:
+    text: "Shopping"
+- waitForAnimationToEnd:
+    timeout: 2000
+# Trigger handoff sheet. Phase 20-04 rewired "Order on Instacart" to open HandoffSheet.
+# If no items present, this is a no-op; the shot will show empty-state shopping instead.
+- runFlow:
+    when:
+      visible:
+        text: ".*Order on Instacart.*"
+    commands:
+      - tapOn:
+          text: ".*Order on Instacart.*"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- takeScreenshot: shot-4-shopping-handoff
+
+# --- Shot 5: Recipe / Cook mode ---
+# Navigate: Kitchen → Library segment → first recipe → Start Cooking
+- tapOn:
+    text: "Kitchen"
+- tapOn:
+    text: ".*Library.*"
+- waitForAnimationToEnd:
+    timeout: 2000
+# Tap first recipe card — positional-index selector works when text varies per dataset.
+- tapOn:
+    index: 0
+    id: "recipe-card"
+    optional: true
+# Fallback if no recipe-card testID: tap first "View recipe" Pressable in the Library list.
+- runFlow:
+    when:
+      notVisible:
+        text: ".*Start Cooking.*"
+    commands:
+      - tapOn:
+          text: ".*View recipe.*"
+          optional: true
+- tapOn:
+    text: ".*Start Cooking.*"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: shot-5-recipe-cook-mode
