@@ -1,30 +1,15 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Alert,
-} from 'react-native';
-import { SymbolIcon } from '../ui/SymbolIcon';
-import { Button } from '../ui/Button';
+import { Alert } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
 import type { Recipe } from '../../types/recipe';
-import { colors } from '../../design/tokens';
+import { DatePickerSheet } from '../plan/DatePickerSheet';
+import { logPlanEvent, sanitizePayload } from '../../plan/telemetry';
 
 interface Props {
   visible: boolean;
   recipe: Recipe;
   onClose: () => void;
-}
-
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-function todayDayOfWeek(): number {
-  const js = new Date().getDay();
-  return js === 0 ? 6 : js - 1;
 }
 
 const getApiBaseUrl = (): string =>
@@ -36,34 +21,51 @@ async function getAuthToken(): Promise<string> {
   return data.session.access_token;
 }
 
+function formatIsoDate(iso: string): string {
+  // 'YYYY-MM-DD' → 'Mon, May 14'. Keeps the UTC interpretation consistent
+  // with DatePickerSheet (which emits UTC-midnight dates).
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return iso;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const MONTHS = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  return `${DAYS[date.getUTCDay()]}, ${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}`;
+}
+
 /**
- * Day-picker modal for scheduling a saved recipe onto the current week's
- * meal plan. Upserts that day's entry via POST /meal-plans/entries/assign
- * and refreshes the cached plan.
+ * Date-picker sheet for scheduling a saved recipe onto any date in
+ * [today, today+60d]. Delegates UI to the `DatePickerSheet` primitive
+ * (Phase 22 Wave 0) and POSTs to `/meal-plans/entries/assign` with the
+ * new `body.date` param (server 22-00 derives week_start + day_of_week).
+ *
+ * Telemetry (plan 22-01 / PLAN-X-02):
+ *   - `plan.recipe_pin_started`   — fires immediately before the POST.
+ *   - `plan.recipe_pin_succeeded` — fires on 2xx.
+ *   - `plan.recipe_pin_failed`    — fires on non-2xx with error_code.
  */
 export function AddToPlanSheet({ visible, recipe, onClose }: Props) {
   const fetchCurrentPlan = useMealPlanStore((s) => s.fetchCurrent);
-  const [selectedDay, setSelectedDay] = useState<number>(todayDayOfWeek());
-  const [planning, setPlanning] = useState(false);
-  const [plannedOn, setPlannedOn] = useState<number | null>(null);
+  const [sessionId] = useState<string>(() =>
+    typeof globalThis.crypto?.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID()
+      : `ap-${Date.now()}`,
+  );
 
-  React.useEffect(() => {
-    if (visible) {
-      setSelectedDay(todayDayOfWeek());
-      setPlanned(null);
-      setPlanning(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  const handleConfirm = async (isoDate: string) => {
+    // Emit started telemetry with the target date.
+    logPlanEvent({
+      name: 'plan.recipe_pin_started',
+      session_id: sessionId,
+      payload: sanitizePayload({ date: isoDate }),
+    });
 
-  const setPlanned = (day: number | null) => setPlannedOn(day);
-
-  const handleAdd = async () => {
-    setPlanning(true);
     try {
       const token = await getAuthToken();
       const body = {
-        day: selectedDay,
+        date: isoDate, // server 22-00 accepts date and derives week/day
         title: recipe.title,
         description: recipe.description,
         ingredients: recipe.ingredients,
@@ -83,213 +85,61 @@ export function AddToPlanSheet({ visible, recipe, onClose }: Props) {
       );
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        const errorCode =
+          typeof err?.error === 'string' ? err.error : `http_${res.status}`;
+        logPlanEvent({
+          name: 'plan.recipe_pin_failed',
+          session_id: sessionId,
+          meal_plan_id: err?.data?.meal_plan_id ?? null,
+          payload: sanitizePayload({
+            error_code: errorCode,
+            date: isoDate,
+            meal_plan_id: err?.data?.meal_plan_id ?? null,
+          }),
+        });
         Alert.alert('Could not plan meal', err.error ?? 'Please try again.');
-        setPlanning(false);
         return;
       }
-      setPlanned(selectedDay);
-      setPlanning(false);
+      const resBody = await res.json().catch(() => ({}));
+      const mealPlanId: string | null = resBody?.data?.meal_plan_id ?? null;
+      logPlanEvent({
+        name: 'plan.recipe_pin_succeeded',
+        session_id: sessionId,
+        meal_plan_id: mealPlanId,
+        payload: sanitizePayload({
+          date: isoDate,
+          meal_plan_id: mealPlanId,
+        }),
+      });
+
+      // Refresh the plan cache so the Plan tab reflects the new entry.
       fetchCurrentPlan().catch(() => {});
+
+      // Success confirmation: brief Alert then close (DatePickerSheet has
+      // no inline success state of its own — matches the shipped contract).
+      Alert.alert('Added to plan', `Scheduled for ${formatIsoDate(isoDate)}.`);
+      onClose();
     } catch (err) {
-      Alert.alert(
-        'Could not plan meal',
-        err instanceof Error ? err.message : String(err),
-      );
-      setPlanning(false);
+      const message = err instanceof Error ? err.message : String(err);
+      logPlanEvent({
+        name: 'plan.recipe_pin_failed',
+        session_id: sessionId,
+        payload: sanitizePayload({
+          error_code: 'exception',
+          date: isoDate,
+        }),
+      });
+      Alert.alert('Could not plan meal', message);
     }
   };
 
   return (
-    <Modal
+    <DatePickerSheet
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <View style={styles.sheet}>
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>ADD TO PLAN</Text>
-            <Text style={styles.title} numberOfLines={1}>
-              {recipe.title}
-            </Text>
-          </View>
-          <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn} accessibilityLabel="Close">
-            <SymbolIcon name="xmark" size={22} tintColor="#3E332A" />
-          </Pressable>
-        </View>
-
-        <View style={styles.body}>
-          <Text style={styles.helperText}>Pick a day this week:</Text>
-          <View style={styles.dayColumn}>
-            {DAY_LABELS.map((label, i) => {
-              const isToday = i === todayDayOfWeek();
-              const isSelected = i === selectedDay;
-              return (
-                <Pressable
-                  key={i}
-                  onPress={() => setSelectedDay(i)}
-                  style={[
-                    styles.dayRow,
-                    isSelected && styles.dayRowSelected,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.dayRowLabel,
-                      isSelected && styles.dayRowLabelSelected,
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                  {isToday && (
-                    <Text
-                      style={[
-                        styles.todayPill,
-                        isSelected && styles.todayPillSelected,
-                      ]}
-                    >
-                      Today
-                    </Text>
-                  )}
-                  {isSelected && (
-                    <SymbolIcon
-                      name="checkmark"
-                      size={20}
-                      tintColor="#FFFFFF"
-                      style={{ marginLeft: 'auto' }}
-                    />
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={styles.bottomBar}>
-          {plannedOn !== null ? (
-            <View style={styles.plannedRow}>
-              <SymbolIcon name="checkmark.circle.fill" size={22} tintColor="#10B981" />
-              <Text style={styles.plannedText}>
-                Added to {DAY_LABELS[plannedOn]}
-              </Text>
-              <View style={{ flex: 1 }} />
-              <Button title="Done" variant="outline" onPress={onClose} />
-            </View>
-          ) : (
-            <Button
-              title={
-                planning
-                  ? 'Planning...'
-                  : selectedDay === todayDayOfWeek()
-                    ? 'Add to tonight'
-                    : `Add to ${DAY_LABELS[selectedDay]}`
-              }
-              onPress={handleAdd}
-              loading={planning}
-            />
-          )}
-        </View>
-      </View>
-    </Modal>
+      title={`Add to Plan — ${recipe.title}`}
+      confirmLabel="Add"
+      onConfirm={handleConfirm}
+      onDismiss={onClose}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  sheet: { flex: 1, backgroundColor: '#FFFBF5' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1EAE0',
-  },
-  label: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#C05A00',
-    letterSpacing: 2,
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#1A140F',
-    letterSpacing: -0.4,
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F1EAE0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  body: {
-    flex: 1,
-    padding: 20,
-  },
-  helperText: {
-    fontSize: 14,
-    color: '#7A6651',
-    marginBottom: 14,
-  },
-  dayColumn: {
-    gap: 8,
-  },
-  dayRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F1EAE0',
-    gap: 12,
-  },
-  dayRowSelected: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
-  },
-  dayRowLabel: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1A140F',
-  },
-  dayRowLabelSelected: {
-    color: '#FFFFFF',
-  },
-  todayPill: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#C05A00',
-    backgroundColor: '#FFF4E6',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  todayPillSelected: {
-    color: colors.brand,
-    backgroundColor: '#FFFFFF',
-  },
-  bottomBar: {
-    padding: 16,
-    paddingBottom: 28,
-    borderTopWidth: 1,
-    borderTopColor: '#F1EAE0',
-  },
-  plannedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  plannedText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#047857',
-  },
-});
