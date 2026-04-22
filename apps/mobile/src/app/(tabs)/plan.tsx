@@ -20,6 +20,7 @@ import { useProgressionStore } from '../../stores/progressionStore';
 import { pickStretchDay } from '../../plan/stretchPicker';
 import { DayRow } from '../../components/plan/DayRow';
 import { EmptyPlanState } from '../../components/plan/EmptyPlanState';
+import { FocusBanner } from '../../components/plan/FocusBanner';
 import { SwapSheet } from '../../components/plan/SwapSheet';
 import { CookConfirm } from '../../components/plan/CookConfirm';
 import { WeekActionSheet } from '../../components/plan/WeekActionSheet';
@@ -557,6 +558,13 @@ export default function PlanScreen() {
 
   const weekRange = formatRangeFromWeekStart(currentPlan.week_start);
 
+  // Phase 22-05: Settings → Plan → "Weekly Skill Focus banner" toggle.
+  // Default true. Read reactively so flipping the toggle in Settings
+  // immediately hides/shows the banner without a tab re-mount.
+  const planFocusBannerEnabled = useSettingsStore(
+    (s) => s.planFocusBannerEnabled
+  );
+
   const listHeader = (
     <Animated.View
       style={{
@@ -568,6 +576,7 @@ export default function PlanScreen() {
         <Text style={styles.largeTitle}>This Week</Text>
         <Text style={styles.largeSubtitle}>{weekRange}</Text>
       </View>
+      {planFocusBannerEnabled && <FocusBanner />}
     </Animated.View>
   );
 

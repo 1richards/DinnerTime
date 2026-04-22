@@ -26,6 +26,14 @@ export type ShoppingHandoffMode = 'draft_cart' | 'legacy';
 interface SettingsState {
   shoppingHandoffMode: ShoppingHandoffMode;
   setShoppingHandoffMode: (mode: ShoppingHandoffMode) => void;
+  /**
+   * Phase 22-05: controls whether the Plan-tab FocusBanner renders. Default
+   * `true` — users can uncheck the toggle in Settings → Plan to suppress.
+   * Persisted alongside shoppingHandoffMode under the same storage blob so
+   * rehydration is atomic.
+   */
+  planFocusBannerEnabled: boolean;
+  setPlanFocusBannerEnabled: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -33,6 +41,8 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       shoppingHandoffMode: 'draft_cart',
       setShoppingHandoffMode: (mode) => set({ shoppingHandoffMode: mode }),
+      planFocusBannerEnabled: true,
+      setPlanFocusBannerEnabled: (enabled) => set({ planFocusBannerEnabled: enabled }),
     }),
     {
       name: 'dinnertime-settings',

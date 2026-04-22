@@ -93,4 +93,50 @@ describe('settingsStore', () => {
 
     expect(useSettingsStore.getState().shoppingHandoffMode).toBe('legacy');
   });
+
+  // -----------------------------------------------------------------------
+  // Phase 22-05 — planFocusBannerEnabled
+  // -----------------------------------------------------------------------
+
+  it('default planFocusBannerEnabled is true (Phase 22-05)', async () => {
+    const { useSettingsStore } = await import('../settingsStore');
+    await new Promise((r) => setTimeout(r, 10));
+    expect(useSettingsStore.getState().planFocusBannerEnabled).toBe(true);
+  });
+
+  it('setPlanFocusBannerEnabled(false) flips the toggle', async () => {
+    const { useSettingsStore } = await import('../settingsStore');
+    await new Promise((r) => setTimeout(r, 10));
+    expect(useSettingsStore.getState().planFocusBannerEnabled).toBe(true);
+
+    useSettingsStore.getState().setPlanFocusBannerEnabled(false);
+    expect(useSettingsStore.getState().planFocusBannerEnabled).toBe(false);
+
+    useSettingsStore.getState().setPlanFocusBannerEnabled(true);
+    expect(useSettingsStore.getState().planFocusBannerEnabled).toBe(true);
+  });
+
+  it('persists planFocusBannerEnabled changes to AsyncStorage', async () => {
+    const { useSettingsStore } = await import('../settingsStore');
+    useSettingsStore.getState().setPlanFocusBannerEnabled(false);
+    await new Promise((r) => setTimeout(r, 10));
+
+    const raw = asyncStorageMock.store.get(STORAGE_KEY);
+    expect(raw).toBeDefined();
+    const parsed = JSON.parse(raw!);
+    expect(parsed.state.planFocusBannerEnabled).toBe(false);
+  });
+
+  it('rehydrates prior planFocusBannerEnabled from AsyncStorage', async () => {
+    asyncStorageMock.store.set(
+      STORAGE_KEY,
+      JSON.stringify({
+        state: { planFocusBannerEnabled: false },
+        version: 0,
+      }),
+    );
+    const { useSettingsStore } = await import('../settingsStore');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(useSettingsStore.getState().planFocusBannerEnabled).toBe(false);
+  });
 });

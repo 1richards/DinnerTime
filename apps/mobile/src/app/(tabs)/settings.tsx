@@ -5,6 +5,9 @@ import { Redirect, router } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { usePreferencesStore } from '../../stores/preferencesStore';
 import { useCookingStore } from '../../stores/cookingStore';
+import { useProgressionStore } from '../../stores/progressionStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { deriveSkillTier } from '../../plan/skillTier';
 import { useToast } from '../../components/ui/Toast';
 import { Button } from '../../components/ui/Button';
 import { FamilyMembersSection } from '../../components/settings/FamilyMembersSection';
@@ -26,6 +29,16 @@ export default function SettingsScreen() {
   // cookingStore's partialize rule so the value survives app restarts.
   const darkMode = useCookingStore((s) => s.darkMode);
   const setDarkMode = useCookingStore((s) => s.setDarkMode);
+  // Phase 22-05: Plan section inputs — skill tier is derived read-only from
+  // progressionStore.cookStats (same helper the server uses), banner toggle
+  // is a persisted settingsStore boolean defaulting to true.
+  const cookStats = useProgressionStore((s) => s.cookStats);
+  const planFocusBannerEnabled = useSettingsStore(
+    (s) => s.planFocusBannerEnabled
+  );
+  const setPlanFocusBannerEnabled = useSettingsStore(
+    (s) => s.setPlanFocusBannerEnabled
+  );
   const { show, ToastComponent } = useToast();
 
   // If the user signs out while on this screen, kick them to login.
@@ -155,6 +168,63 @@ export default function SettingsScreen() {
               </Text>
             </View>
             <Switch value={darkMode} onValueChange={setDarkMode} />
+          </View>
+        </View>
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Phase 22-05: Plan — Skill Tier (read-only, derived from cook
+            stats) + Weekly Skill Focus banner toggle. The tier display is
+            a one-line signal showing where the user is on the
+            beginner/intermediate/advanced ladder (threshold constants
+            shared with the server via apps/mobile/src/plan/skillTier.ts).
+            The toggle gates whether the FocusBanner renders at the top of
+            the Plan tab. */}
+        <View className="mb-2">
+          <Text className="text-label text-text-secondary uppercase mb-3">
+            PLAN
+          </Text>
+          <View
+            className="flex-row items-center justify-between py-4 border-b border-border"
+            accessibilityLabel="Skill tier"
+          >
+            <View className="flex-1 pr-4">
+              <Text className="text-body text-text-primary">Skill Tier</Text>
+              <Text className="text-body text-text-secondary">
+                Derived from your cooking history. Unlocks advanced recipes as
+                you cook.
+              </Text>
+            </View>
+            {(() => {
+              const tier = deriveSkillTier(cookStats);
+              const label =
+                tier === 1 ? 'Beginner' : tier === 2 ? 'Intermediate' : 'Advanced';
+              return (
+                <Text className="text-body text-text-primary font-semibold">
+                  Tier {tier} · {label}
+                </Text>
+              );
+            })()}
+          </View>
+          <View
+            className="flex-row items-center justify-between py-4 border-b border-border"
+            accessibilityRole="switch"
+            accessibilityState={{ checked: planFocusBannerEnabled }}
+            accessibilityLabel="Weekly Skill Focus banner"
+          >
+            <View className="flex-1 pr-4">
+              <Text className="text-body text-text-primary">
+                Weekly Skill Focus banner
+              </Text>
+              <Text className="text-body text-text-secondary">
+                Show a banner at the top of Plan letting you set a theme to
+                practice this week.
+              </Text>
+            </View>
+            <Switch
+              value={planFocusBannerEnabled}
+              onValueChange={setPlanFocusBannerEnabled}
+            />
           </View>
         </View>
 
