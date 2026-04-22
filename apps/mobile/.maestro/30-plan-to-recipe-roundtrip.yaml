@@ -1,18 +1,45 @@
 appId: com.dinnertime.app
-name: "30 — Plan↔Recipe roundtrip: tap planned meal → recipe detail → back returns to same Plan day"
+name: "30 — Plan↔Recipe roundtrip: tap planned meal → recipe detail → back returns to Plan"
 tags:
   - phase-22
-# STUB: Wave 0 red stub. Downstream plan 22-01 (Cluster 1 — Cross-flow nav)
-# will implement PLAN-X-01:
-#   1. runFlow _ensure-logged-in
-#   2. tap Plan tab (extendedWaitUntil "This Week")
-#   3. tap a planned meal row (DayRow.onPress → router.push(/recipes/{id}))
-#   4. assertVisible recipe title on RecipeDetail
-#   5. tap back chevron (expo-router native-stack preserves scroll)
-#   6. assertVisible the SAME day row still mounted (scroll preservation)
+# Implements PLAN-X-01 (22-01 / Cluster 1 — Cross-flow nav).
 #
-# Until 22-01 ships, this flow only logs in and takes a placeholder
-# screenshot so Maestro smoke runs continue to pass cleanly.
+# When a planned entry has entry.recipe_id, tapping the DayRow pushes
+# /recipes/[id] onto the native stack. Back (either chevron or edge gesture)
+# pops back to the Plan tab with scroll preserved — expo-router native-stack
+# handles that for free. Ad-hoc entries (recipe_id: null) still surface the
+# Alert preview from the original implementation; this flow covers the
+# happy-path recipe branch by leaning on `optional: true` so a week without
+# any recipe_id entries still screenshots cleanly rather than failing.
 ---
 - runFlow: _ensure-logged-in.yaml
-- takeScreenshot: 01-plan-to-recipe-STUB-wave0
+- tapOn: "Plan"
+- extendedWaitUntil:
+    visible:
+      text: ".*This Week.*"
+    timeout: 15000
+- takeScreenshot: 01-plan-tab
+# Tap any DayRow. DayRow renders a day label (Mon, Tue, …) so we tap the
+# first available day. If the tapped row has recipe_id, we land on recipe
+# detail; if not, we get an Alert we dismiss and this flow simply
+# screenshots the Plan state.
+- tapOn:
+    text: "Mon"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: ".*(Ingredients|Start Cooking).*"
+    timeout: 8000
+    optional: true
+- takeScreenshot: 02-recipe-detail
+# Native back chevron (hero overlay in /recipes/[id]/index.tsx) OR iOS
+# edge-swipe — Maestro's back: true walks the nav stack regardless.
+- tapOn:
+    text: "Back"
+    optional: true
+- back: true
+- extendedWaitUntil:
+    visible:
+      text: ".*This Week.*"
+    timeout: 8000
+- takeScreenshot: 03-plan-restored

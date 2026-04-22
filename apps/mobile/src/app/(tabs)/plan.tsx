@@ -9,6 +9,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
 import { DayRow } from '../../components/plan/DayRow';
@@ -217,6 +218,16 @@ export default function PlanScreen() {
             onCook={() => setCookTarget(item.day)}
             onPress={() => {
               if (!item.entry) return;
+              // Plan → Recipe Detail (22-01 / PLAN-X-01). When the entry has a
+              // saved recipe, push onto the native stack so back gesture
+              // restores the Plan tab's scroll position (expo-router
+              // native-stack preserves this for free — see 22-CONTEXT D-28).
+              if (item.entry.recipe_id) {
+                router.push(`/recipes/${item.entry.recipe_id}`);
+                return;
+              }
+              // Ad-hoc entry (AI-generated, no saved recipe) — keep the
+              // existing Alert preview as the detail surface.
               Alert.alert(
                 item.entry.title,
                 [
