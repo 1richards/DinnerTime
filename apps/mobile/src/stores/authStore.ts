@@ -63,6 +63,16 @@ export const useAuthStore = create<AuthState>((set) => ({
             isOnboarded: profile?.onboarding_complete ?? false,
             profile: profile ?? null,
           });
+
+          // Phase 23-06 (NFR-15): Correlate Sentry events with the authed
+          // user id. Dynamic import keeps @sentry/react-native out of the
+          // cold-start module graph — first event pays the init cost.
+          try {
+            const { setSentryUser } = await import('../lib/sentry');
+            setSentryUser(session.user.id);
+          } catch {
+            // Sentry wrapper isn't critical — swallow load errors silently.
+          }
         }, 0);
       } else {
         set({
@@ -73,6 +83,17 @@ export const useAuthStore = create<AuthState>((set) => ({
           isLoading: false,
           profile: null,
         });
+
+        // Phase 23-06 (NFR-15): Clear the Sentry user on sign-out so
+        // subsequent events are not attributed to the previous account.
+        setTimeout(async () => {
+          try {
+            const { setSentryUser } = await import('../lib/sentry');
+            setSentryUser(null);
+          } catch {
+            // non-critical
+          }
+        }, 0);
       }
     });
 
