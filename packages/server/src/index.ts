@@ -14,12 +14,18 @@ import cooking from './routes/cooking.js';
 import progression from './routes/progression.js';
 import telemetry from './routes/telemetry.js';
 import account from './routes/account.js';
+import { rateLimitErrorHandler } from './middleware/rateLimitErrors.js';
 
 const app = new Hono().basePath('/api/v1');
 
 // Global middleware
 app.use('*', logger());
 app.use('*', cors());
+
+// Global error handler — rewrites upstream 429 / 5xx Anthropic errors
+// into a stable user-facing JSON envelope (NFR-14). Must be registered
+// after `app.use(...)` middleware but independent of route mount order.
+app.onError((err, c) => rateLimitErrorHandler(err, c));
 
 // Health check
 app.get('/health', (c) => {

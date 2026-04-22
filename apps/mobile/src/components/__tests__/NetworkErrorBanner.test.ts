@@ -18,7 +18,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 
-// @ts-expect-error — module does not exist yet (Wave 0 red stub; ships in 23-05)
+// Flipped green in 23-05 — component now ships at ../NetworkErrorBanner.tsx.
 const { NetworkErrorBanner, classifyNetworkError } = await import('../NetworkErrorBanner.js');
 
 function walk(el: any, visit: (node: any) => void) {

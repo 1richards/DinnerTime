@@ -30,7 +30,7 @@ vi.mock('../../lib/sentry', () => ({
   setSentryUser: vi.fn(),
 }));
 
-// @ts-expect-error — module does not exist yet (Wave 0 red stub; ships in 23-05)
+// Flipped green in 23-05 — component now ships at ../ErrorBoundary.tsx.
 const { ErrorBoundary } = await import('../ErrorBoundary.js');
 
 describe('ErrorBoundary', () => {

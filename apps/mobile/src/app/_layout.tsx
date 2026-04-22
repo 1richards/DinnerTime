@@ -12,6 +12,7 @@ import { ReAuthModal } from '../auth/ReAuthModal';
 import { setReAuthHandler } from '../auth/sessionRefresh';
 import { colors } from '../design/tokens';
 import { initSentry, setSentryUser } from '../lib/sentry';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 // Importing networkStore here ensures its module-side-effect NetInfo
 // listener is wired at app boot even before any screen mounts.
 import '../stores/networkStore';
@@ -121,10 +122,19 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <View style={{ flex: 1 }}>
-          <AuthStateBanner />
-          <View style={{ flex: 1 }}>
-            <RootNavigator />
-          </View>
+          {/* Phase 23-05 (NFR-12): global ErrorBoundary wraps the whole
+              navigable tree — including the AuthStateBanner and the root
+              Stack — so any render-time throw inside any screen shows a
+              friendly fallback instead of the RN white-screen-of-death.
+              BiometricGate + ReAuthModal live OUTSIDE the boundary so the
+              Face ID overlay and re-auth modal still paint even if the
+              underlying screen's render threw. */}
+          <ErrorBoundary>
+            <AuthStateBanner />
+            <View style={{ flex: 1 }}>
+              <RootNavigator />
+            </View>
+          </ErrorBoundary>
           {/* Phase 23-03 (NFR-07): Face ID unlock overlay. Sibling to the
               RootNavigator container (NOT nested inside it) with absolute
               positioning + zIndex so it paints over every tab and modal when
