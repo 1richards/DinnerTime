@@ -16,6 +16,8 @@ import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
 import { useShoppingStore } from '../../stores/shoppingStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useProgressionStore } from '../../stores/progressionStore';
+import { pickStretchDay } from '../../plan/stretchPicker';
 import { DayRow } from '../../components/plan/DayRow';
 import { EmptyPlanState } from '../../components/plan/EmptyPlanState';
 import { SwapSheet } from '../../components/plan/SwapSheet';
@@ -113,6 +115,15 @@ export default function PlanScreen() {
     fetchCurrent();
   }, [fetchCurrent]);
 
+  // Phase 22-05: fetch cookStats on mount so we can derive median cook
+  // complexity for stretch-day selection. Safe no-op when not authenticated
+  // / offline (progressionStore guards itself).
+  const cookStats = useProgressionStore((s) => s.cookStats);
+  const fetchCookStats = useProgressionStore((s) => s.fetchCookStats);
+  useEffect(() => {
+    void fetchCookStats();
+  }, [fetchCookStats]);
+
   const handleGenerate = useCallback(() => {
     generate(currentMondayIso());
   }, [generate]);
@@ -127,10 +138,54 @@ export default function PlanScreen() {
     return map;
   }, [currentPlan]);
 
+  // Phase 22-05: stretch-day derivation. Pure client-side — avoids the
+  // "swap loses stretch" bug (22-RESEARCH Pitfall 5) by re-evaluating on
+  // every entries change. Median is a coarse proxy from lifetime cook
+  // count: <5 = tier-1 median 3 (easy-ish), <20 = tier-2 median 6 (mid),
+  // else tier-3 median 9 (hard). Tuned so pickStretchDay's `floor =
+  // median + 2` gate selects weekend recipes for novices and harder
+  // medium/hard picks for confident cooks.
+  const medianComplexity = useMemo(() => {
+    if (cookStats.length === 0) return 3;
+    const totalCooks = cookStats.reduce((sum, r) => sum + r.cook_count, 0);
+    return totalCooks < 5 ? 3 : totalCooks < 20 ? 6 : 9;
+  }, [cookStats]);
+
+  const stretchDay = useMemo(() => {
+    if (!currentPlan) return null;
+    return pickStretchDay(currentPlan.entries, medianComplexity);
+  }, [currentPlan, medianComplexity]);
+
   const days = useMemo(
-    () => [0, 1, 2, 3, 4, 5, 6].map((d) => ({ day: d, entry: entriesByDay.get(d) ?? null })),
-    [entriesByDay]
+    () =>
+      [0, 1, 2, 3, 4, 5, 6].map((d) => {
+        const raw = entriesByDay.get(d) ?? null;
+        const entry = raw ? { ...raw, is_stretch: d === stretchDay } : null;
+        return { day: d, entry };
+      }),
+    [entriesByDay, stretchDay]
   );
+
+  // Phase 22-05: telemetry. plan.stretch_displayed fires once per
+  // (plan.id, stretchDay) tuple — re-firing when the stretch target
+  // changes (e.g. after a swap moves complexity around, or after the
+  // user cooks a stretch and the helper picks a different day).
+  useEffect(() => {
+    if (stretchDay == null || !currentPlan) return;
+    const sessionId =
+      typeof globalThis.crypto?.randomUUID === 'function'
+        ? globalThis.crypto.randomUUID()
+        : `str-${Date.now()}`;
+    logPlanEvent({
+      name: 'plan.stretch_displayed',
+      session_id: sessionId,
+      meal_plan_id: currentPlan.id,
+      payload: sanitizePayload({
+        meal_plan_id: currentPlan.id,
+        week_start: currentPlan.week_start,
+      }),
+    });
+  }, [stretchDay, currentPlan?.id, currentPlan?.week_start, currentPlan]);
 
   const confirmSwap = useCallback(async () => {
     if (swapTarget == null) return;

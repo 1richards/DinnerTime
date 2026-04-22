@@ -50,6 +50,13 @@ interface MealPlanState {
    * Bounds cap is server-enforced (|to-from| ≤ 70 days via migration 22-00).
    */
   fetchRange: (fromWeekStart: string, toWeekStart: string) => Promise<void>;
+  /**
+   * Phase 22-05: Set (or clear) the weekly skill-focus theme for the
+   * current plan. Fires PATCH /meal-plans/{currentPlan.id} with body
+   * `{ focus_theme }` and updates `currentPlan.focus_theme` in state.
+   * No-op when `currentPlan` is null. Errors surface via `state.error`.
+   */
+  setFocusTheme: (theme: string | null) => Promise<void>;
 }
 
 /**
@@ -356,6 +363,37 @@ export const useMealPlanStore = create<MealPlanState>()(
       set({
         error: err instanceof Error ? err.message : 'Duplicate failed',
         loading: false,
+      });
+    }
+  },
+
+  setFocusTheme: async (theme: string | null) => {
+    const plan = get().currentPlan;
+    if (!plan) return;
+    try {
+      const res = await authedFetch(`/meal-plans/${plan.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ focus_theme: theme }),
+      });
+      if (!res.ok) {
+        set({ error: 'Failed to set focus theme' });
+        return;
+      }
+      const body = await res.json();
+      // Merge the server-returned row onto the existing plan. The server
+      // only returns the meal_plans row (no nested entries), so we preserve
+      // `entries` from state and layer the update on top.
+      set({
+        currentPlan: {
+          ...plan,
+          ...(body.data as Partial<MealPlan>),
+          entries: plan.entries,
+        },
+        error: null,
+      });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : 'Failed to set focus theme',
       });
     }
   },
