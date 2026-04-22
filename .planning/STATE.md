@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 16-02 (Streaming /cooking/ask via SSE) — complete
+current_plan: 16-04 (Scrollable recipe primitives — StepCard + IngredientRow + ScrollableRecipe + useCurrentStepScroll) — complete
 status: completed
-stopped_at: Completed 16-03-PLAN.md (sticky cooking header cluster — StickyCookingHeader/VoiceWaveform/StopTTSButton + TimerBar retoken + haptics + useVoiceAmplitude)
-last_updated: "2026-04-22T04:27:17.312Z"
-last_activity: 2026-04-22 -- Completed 16-02 (SSE streaming endpoint + mobile streamAsk client, Wave 1)
+stopped_at: Completed 16-04-PLAN.md (scrollable recipe primitives + imperative scrollToIngredients() ref handle)
+last_updated: "2026-04-22T04:28:42Z"
+last_activity: 2026-04-22 -- Completed 16-04 (StepCard + IngredientRow + ScrollableRecipe + useCurrentStepScroll, Wave 2)
 progress:
   total_phases: 25
   completed_phases: 20
   total_plans: 96
-  completed_plans: 91
+  completed_plans: 93
   percent: 100
 ---
 
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 16 of 25 (Cooking Mode UX Enhancements — post-v1 polish, voice latency, dark mode, Phase 19 token alignment)
-Current Plan: 16-03 (Sticky cooking header cluster — StickyCookingHeader + VoiceWaveform + StopTTSButton + TimerBar retoken + haptics + useVoiceAmplitude) — complete
-Status: Wave 2 plan 16-03 green. Shipped the sticky cooking header cluster: `StickyCookingHeader` (64pt base band + 48pt timer band = 112pt with timers), `VoiceWaveform` (3-state Pressable: mic-slash / pulse-dot / 3 animated bars driven by `useVoiceAmplitude`), `StopTTSButton` (icon-only `accessibilityLabel="Stop reading"` with Medium-impact haptic), a retokenized `TimerBar` (0 hex literals, `bg-warning/20` transition when `remainingMs < 10_000`), and the two supporting modules `haptics.ts` (6 typed wrappers covering every UI-SPEC §Haptic contract event) + `useVoiceAmplitude.ts` (Reanimated SharedValue driver with a 600ms cosmetic sine fallback — jamsch 0.2.15 does not expose `volumechange`, hook probes anyway so future versions drive real amplitude). Global vitest mocks promoted for expo-symbols + expo-haptics (both drag expo-modules-core's `__DEV__` guard through Node). 23/23 Wave 2 tests green across 6 test files. Concurrent sessions landed 16-04 (StepCard + IngredientRow) and 16-05 (CommandToast + show_ingredients intent) commits during this run — no conflicts with 16-03 scope. Milestone v1.0 remains 100% complete; Phase 16 is post-v1 polish.
-Last activity: 2026-04-22 -- Completed 16-03 (sticky cooking header cluster + haptics module + useVoiceAmplitude hook, Wave 2)
+Current Plan: 16-05 (Voice command feedback primitives — CommandToast + show_ingredients intent + 72pt StepNavButtons + retokened AskSheet) — complete
+Status: Wave 2 plan 16-05 green. Shipped voice-command feedback primitives: `CommandToast` (1.5s setTimeout auto-dismiss, `accessibilityLiveRegion="polite"`, brand left-edge accent strip, body/700 centered) — purely visual primitive; the dispatcher owns the haptic. `intentRouter` gained a `SHOW_INGREDIENTS` regex (`\b(show|see|list|what)\b(?:\s+\w+){0,3}\s+ingredients\b`) positioned AFTER resume and BEFORE the ask fallthrough — locked CONTEXT contract ("voice 'show ingredients' scrolls to the section"). `CookingIntent` union +`{ type: 'show_ingredients' }`. `handleTranscript` gained three new `TranscriptDeps` (onCommandToast, onCommandHaptic, onShowIngredients); every recognized intent except ask/pause/resume fires haptic + toast. Timer case dropped `deps.speak(...)` per UI-SPEC §Voice feedback principle ("silent confirmation, no TTS echo"). New `show_ingredients` case dispatches stopSpeech → haptic → toast('Ingredients') → onShowIngredients — with NO network call. `StepNavButtons` rewritten as a hand-rolled 72pt Pressable tree (Phase 19 tokens + `iconPropsForText('display')`) — 72pt deviation is explicitly documented inline per UI-SPEC §Spacing §Exceptions (cooking-hands accessibility). Prop interface flipped from `canGoBack/canGoNext` → `disableBack/disableNext`; cook.tsx mapped with `!` until 16-06. `AskSheet` retokened (0 hex literals), added optional `error` prop rendering Phase 19 `ErrorState` banner, and wired incremental-answer rendering (spinner hides on first delta) so 16-06 can forward SSE chunks directly. cook.tsx gained three no-op callbacks as TranscriptDeps stub — real handlers wire in 16-06. 50 targeted tests green (CommandToast ×4, intentRouter ×30, handleTranscript ×16); broader cooking suite 108/114 across 18/19 files (6 failures are pre-existing 16-04 ScrollableRecipe red stubs deferred per SCOPE BOUNDARY). Milestone v1.0 remains 100% complete; Phase 16 is post-v1 polish.
+Last activity: 2026-04-22 -- Completed 16-05 (CommandToast + show_ingredients intent + 72pt StepNavButtons + retokened AskSheet, Wave 2)
 
 Progress: [██████████] 100%
 
@@ -145,6 +145,7 @@ Progress: [██████████] 100%
 | Phase 16 P02 | 5min | 2 tasks | 5 files |
 | Phase 16 P01 | 9min | 2 tasks | 4 files |
 | Phase 16 P03 | 12min | 3 tasks | 7 files |
+| Phase 16 P05 | 11min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -472,6 +473,9 @@ Recent decisions affecting current work:
 - [Phase 16]: Schema-light event names — wire  and DB  are plain text (no enum). Adding new telemetry event kinds in Wave 3 requires zero migration and zero server deploy
 - [Phase 16]: useVoiceAmplitude falls back to a 600ms cosmetic sine loop — @jamsch/expo-speech-recognition 0.2.15 does not ship a volumechange event; hook probes anyway so future versions drive real amplitude automatically
 - [Phase 16]: Promoted expo-symbols + expo-haptics mocks to vitest.setup.ts global (both pull in expo-modules-core which trips __DEV__ under Node) — removes the per-file mock footgun for all current + future cooking tests
+- [Phase 16]: Timer intent dropped speak() per UI-SPEC silent-confirmation rule — toast/haptic replaces TTS echo
+- [Phase 16]: StepNavButtons 72pt hand-rolled Pressable (not Phase 19 Button) — keeps 44pt Button invariant intact; 72pt deviation localized
+- [Phase 16]: show_ingredients regex permits up to 3 intervening tokens; 'what ingredients are substitutes for X' accepted edge-case routed to show_ingredients instead of /ask
 
 ### Pending Todos
 
@@ -515,6 +519,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T04:27:11.845Z
-Stopped at: Completed 16-03-PLAN.md (sticky cooking header cluster — StickyCookingHeader/VoiceWaveform/StopTTSButton + TimerBar retoken + haptics + useVoiceAmplitude)
+Last session: 2026-04-22T04:30:59.860Z
+Stopped at: Completed 16-05-PLAN.md (voice command feedback primitives — CommandToast + show_ingredients + 72pt StepNavButtons + AskSheet retoken)
 Resume file: None
