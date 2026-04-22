@@ -64,6 +64,9 @@ const resetState = () => {
     error: null,
     swappingDay: null,
     cookingDay: null,
+    monthPlans: new Map(),
+    monthLoading: false,
+    monthError: null,
   });
 };
 
@@ -587,6 +590,155 @@ describe('mealPlanStore', () => {
       await useMealPlanStore.getState().duplicateLastWeek();
 
       expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('fetchRange (Phase 22-03 month view)', () => {
+    it("GETs /meal-plans?from=&to=&projection=month with given bounds", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      await useMealPlanStore.getState().fetchRange('2026-05-11', '2026-06-08');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining(
+          '/api/v1/meal-plans?from=2026-05-11&to=2026-06-08&projection=month'
+        ),
+        expect.objectContaining({ method: 'GET' })
+      );
+    });
+
+    it('populates monthPlans keyed by week_start + day_of_week', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            data: [
+              {
+                id: 'plan-a',
+                week_start: '2026-05-11',
+                generated_at: '2026-05-10T00:00:00Z',
+                entries: [
+                  makeEntry(2, { title: 'Wed meal' }), // 2026-05-13
+                  makeEntry(4, { title: 'Fri meal' }), // 2026-05-15
+                ],
+              },
+            ],
+          }),
+      });
+
+      await useMealPlanStore.getState().fetchRange('2026-05-11', '2026-05-11');
+
+      const state = useMealPlanStore.getState();
+      expect(state.monthPlans.size).toBe(2);
+      expect(state.monthPlans.get('2026-05-13')?.title).toBe('Wed meal');
+      expect(state.monthPlans.get('2026-05-15')?.title).toBe('Fri meal');
+    });
+
+    it('merges entries across multiple weeks into a single map', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            data: [
+              {
+                id: 'plan-a',
+                week_start: '2026-05-11',
+                entries: [makeEntry(0, { title: 'Week1 Mon' })],
+              },
+              {
+                id: 'plan-b',
+                week_start: '2026-05-18',
+                entries: [makeEntry(0, { title: 'Week2 Mon' })],
+              },
+            ],
+          }),
+      });
+
+      await useMealPlanStore.getState().fetchRange('2026-05-11', '2026-05-18');
+
+      const state = useMealPlanStore.getState();
+      expect(state.monthPlans.size).toBe(2);
+      expect(state.monthPlans.get('2026-05-11')?.title).toBe('Week1 Mon');
+      expect(state.monthPlans.get('2026-05-18')?.title).toBe('Week2 Mon');
+    });
+
+    it('sets monthError on 5xx, leaves monthPlans unchanged', async () => {
+      // Seed with existing month data
+      const existing = new Map<string, MealPlanEntry>([
+        ['2026-05-11', makeEntry(0, { title: 'Seed' })],
+      ]);
+      useMealPlanStore.setState({ monthPlans: existing });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: 'boom' }),
+      });
+
+      await useMealPlanStore.getState().fetchRange('2026-05-11', '2026-06-08');
+
+      const state = useMealPlanStore.getState();
+      expect(state.monthError).not.toBeNull();
+      expect(state.monthPlans.size).toBe(1);
+      expect(state.monthPlans.get('2026-05-11')?.title).toBe('Seed');
+      expect(state.monthLoading).toBe(false);
+    });
+
+    it('flips monthLoading true during fetch, false after', async () => {
+      let resolveFetch!: (v: unknown) => void;
+      mockFetch.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFetch = resolve;
+          })
+      );
+
+      const promise = useMealPlanStore
+        .getState()
+        .fetchRange('2026-05-11', '2026-06-08');
+      // Allow microtasks for set() to flush
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(useMealPlanStore.getState().monthLoading).toBe(true);
+
+      resolveFetch({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: [] }),
+      });
+      await promise;
+
+      expect(useMealPlanStore.getState().monthLoading).toBe(false);
+    });
+
+    it('deduplicates concurrent calls (second call is a no-op while first pending)', async () => {
+      useMealPlanStore.setState({ monthLoading: true });
+
+      await useMealPlanStore.getState().fetchRange('2026-05-11', '2026-06-08');
+
+      // No fetch should have been made
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('clears prior monthError on successful fetch', async () => {
+      useMealPlanStore.setState({ monthError: 'old error' });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      await useMealPlanStore.getState().fetchRange('2026-05-11', '2026-06-08');
+
+      expect(useMealPlanStore.getState().monthError).toBeNull();
     });
   });
 });
