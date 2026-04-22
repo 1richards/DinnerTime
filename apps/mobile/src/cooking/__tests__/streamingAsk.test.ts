@@ -1,17 +1,14 @@
 /**
- * Red test stub (Phase 16 Wave 0) — production module ships in 16-01.
- *
- * Imports `../streamingAsk` which DOES NOT YET EXIST. Vitest will report
- * "Cannot find module '../streamingAsk'" — that is the red signal.
- *
- * Wave 1 (plan 16-01) creates `streamingAsk.ts` to make these tests green.
+ * Contract tests for the SSE streaming client (Phase 16 Wave 1, plan 16-02).
  *
  * Requirement: COOK-UX-01 (responsive voice latency via SSE streaming).
+ *
+ * The module was introduced as a Wave 0 red stub in 16-00 and filled in by
+ * this plan. If these ever regress, cooking-mode TTS first-word latency
+ * will regress too — keep them green.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { buildSSEStream, buildSSEError } from '../__fixtures__/sse-response';
-
-// @ts-expect-error — module does not exist yet (Wave 0 red stub; shipped 16-01)
 import { streamAsk } from '../streamingAsk';
 
 describe('streamingAsk — SSE parser', () => {
