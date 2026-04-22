@@ -873,6 +873,124 @@ describe('00028_account_deletions.sql (static)', () => {
   });
 });
 
+describe('00029_beta_invites.sql (static)', () => {
+  const sql = readMigration('00029_beta_invites.sql');
+
+  it('creates beta_invites table', () => {
+    expect(sql).toMatch(/CREATE\s+TABLE\s+beta_invites/i);
+  });
+
+  it('defines expected columns with correct types', () => {
+    expect(sql).toMatch(/id\s+UUID\s+PRIMARY\s+KEY\s+DEFAULT\s+gen_random_uuid\(\)/i);
+    expect(sql).toMatch(/email\s+TEXT\s+NOT\s+NULL\s+UNIQUE/i);
+    expect(sql).toMatch(/invited_by\s+UUID\s+REFERENCES\s+auth\.users\(id\)\s+ON\s+DELETE\s+SET\s+NULL/i);
+    expect(sql).toMatch(/invited_at\s+TIMESTAMPTZ\s+NOT\s+NULL\s+DEFAULT\s+now\(\)/i);
+    expect(sql).toMatch(/onboarded_at\s+TIMESTAMPTZ/i);
+    expect(sql).toMatch(/first_scan_at\s+TIMESTAMPTZ/i);
+    expect(sql).toMatch(/first_cook_at\s+TIMESTAMPTZ/i);
+    expect(sql).toMatch(/last_checkin_at\s+TIMESTAMPTZ/i);
+    expect(sql).toMatch(/notes\s+TEXT/i);
+  });
+
+  it('enforces status enum via CHECK with all six lifecycle values', () => {
+    expect(sql).toMatch(/CHECK\s*\(\s*[\s\S]*?status\s+IN\s*\(/i);
+    expect(sql).toMatch(/'invited'/);
+    expect(sql).toMatch(/'onboarded'/);
+    expect(sql).toMatch(/'first_scan'/);
+    expect(sql).toMatch(/'first_cook'/);
+    expect(sql).toMatch(/'week_1_checkin'/);
+    expect(sql).toMatch(/'lapsed'/);
+  });
+
+  it('status column defaults to invited', () => {
+    expect(sql).toMatch(/status\s+TEXT\s+NOT\s+NULL\s+DEFAULT\s+'invited'/i);
+  });
+
+  it('unique email index exists', () => {
+    expect(sql).toMatch(/CREATE\s+UNIQUE\s+INDEX\s+beta_invites_email_idx\s+ON\s+beta_invites\(email\)/i);
+  });
+
+  it('status index exists', () => {
+    expect(sql).toMatch(/CREATE\s+INDEX\s+beta_invites_status_idx\s+ON\s+beta_invites\(status\)/i);
+  });
+
+  it('enables RLS with no policies (service-role only)', () => {
+    expect(sql).toMatch(/ALTER\s+TABLE\s+beta_invites\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/i);
+    expect(sql).not.toMatch(/CREATE\s+POLICY/i);
+  });
+
+  it('documents Phase 25 beta-lifecycle + service-role-only access via COMMENT ON TABLE', () => {
+    expect(sql).toMatch(/COMMENT\s+ON\s+TABLE\s+beta_invites/i);
+    expect(sql).toMatch(/Phase\s+25/i);
+    expect(sql).toMatch(/service_role/i);
+  });
+});
+
+describe('00030_feedback_submissions.sql (static)', () => {
+  const sql = readMigration('00030_feedback_submissions.sql');
+
+  it('creates feedback_submissions table', () => {
+    expect(sql).toMatch(/CREATE\s+TABLE\s+feedback_submissions/i);
+  });
+
+  it('defines expected columns with correct types', () => {
+    expect(sql).toMatch(/id\s+BIGSERIAL\s+PRIMARY\s+KEY/i);
+    expect(sql).toMatch(/profile_id\s+UUID\s+NOT\s+NULL/i);
+    expect(sql).toMatch(/message\s+TEXT\s+NOT\s+NULL/i);
+    expect(sql).toMatch(/email\s+TEXT/i);
+    expect(sql).toMatch(/app_version\s+TEXT/i);
+    expect(sql).toMatch(/build_number\s+TEXT/i);
+    expect(sql).toMatch(/platform\s+TEXT\s+NOT\s+NULL\s+DEFAULT\s+'ios'/i);
+    expect(sql).toMatch(/screenshot_path\s+TEXT/i);
+    expect(sql).toMatch(/created_at\s+TIMESTAMPTZ\s+NOT\s+NULL\s+DEFAULT\s+now\(\)/i);
+  });
+
+  it('message has length CHECK 1-4000', () => {
+    expect(sql).toMatch(
+      /CHECK\s*\(\s*char_length\s*\(\s*message\s*\)\s+BETWEEN\s+1\s+AND\s+4000\s*\)/i,
+    );
+  });
+
+  it('profile_id FK cascades on auth.users delete', () => {
+    expect(sql).toMatch(/REFERENCES\s+auth\.users\(id\)\s+ON\s+DELETE\s+CASCADE/i);
+  });
+
+  it('creates profile_id DESC composite index', () => {
+    expect(sql).toMatch(
+      /CREATE\s+INDEX\s+feedback_submissions_profile_id_idx\s+ON\s+feedback_submissions\(profile_id,\s*created_at\s+DESC\)/i,
+    );
+  });
+
+  it('enables Row Level Security', () => {
+    expect(sql).toMatch(
+      /ALTER\s+TABLE\s+feedback_submissions\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/i,
+    );
+  });
+
+  it('defines own-row SELECT policy via auth.uid() = profile_id', () => {
+    expect(sql).toMatch(
+      /CREATE\s+POLICY\s+feedback_submissions_own_select[\s\S]*?FOR\s+SELECT[\s\S]*?USING\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/i,
+    );
+  });
+
+  it('defines own-row INSERT policy via auth.uid() = profile_id', () => {
+    expect(sql).toMatch(
+      /CREATE\s+POLICY\s+feedback_submissions_own_insert[\s\S]*?FOR\s+INSERT[\s\S]*?WITH\s+CHECK\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/i,
+    );
+  });
+
+  it('declares NO UPDATE or DELETE policies (append-only)', () => {
+    expect(sql).not.toMatch(/FOR\s+UPDATE/i);
+    expect(sql).not.toMatch(/FOR\s+DELETE/i);
+  });
+
+  it('documents Phase 25 feedback capture via COMMENT ON TABLE', () => {
+    expect(sql).toMatch(/COMMENT\s+ON\s+TABLE\s+feedback_submissions/i);
+    expect(sql).toMatch(/Phase\s+25/i);
+    expect(sql).toMatch(/append-only/i);
+  });
+});
+
 // -----------------------------------------------------------------------------
 // LIVE — runs only when Supabase credentials are present
 // -----------------------------------------------------------------------------
