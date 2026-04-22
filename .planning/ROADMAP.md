@@ -663,6 +663,10 @@ Plans:
  25. Distribution posture decided — TestFlight-only (max ~10k testers, 90-day expiry) vs. App Store unlisted vs. App Store public
  26. If App Store: understand family-and-friends is the initial audience but the app is publicly installable
 
-**Plans**: 0 plans
-Plans: (not yet planned)
+**Plans**: 4 plans
+Plans:
+- [ ] 25-00-PLAN.md — Wave 0: migrations 00029 beta_invites + 00030 feedback_submissions, eas.json production profile extension, red test stubs for feedback route + FeedbackSheet
+- [ ] 25-01-PLAN.md — Feedback pipeline: server POST /feedback + GET /admin/beta-invites, mobile FeedbackSheet + Settings entry, ADMIN_EMAILS env
+- [ ] 25-02-PLAN.md — Launch documentation: RELEASE.md + DEPLOYMENT.md + BETA-PLAYBOOK.md (Patrick's runbooks for release, Fly.io deploy, beta ops)
+- [ ] 25-03-PLAN.md — Maestro flow 38 screenshot capture, LAUNCH-HANDOFF.md (canonical human-action checklist), ROADMAP+STATE updates, human handoff checkpoint
 **UI hint**: yes (screenshots, App Store assets, onboarding polish may reveal UI issues)
