@@ -35,3 +35,32 @@ plan that should resolve it.
 - `apps/mobile/src/stores/__tests__/progressionStore.test.ts` +
   `shoppingStore.test.ts` — pre-existing failures documented in earlier
   phases (Phase 20 SUMMARY flagged them as unrelated to handoff work).
+
+## 23-08 deferrals
+
+### recipes/import-photo.tsx uses quality:0.8 (NFR-21 risk, out of scan/ scope)
+
+`apps/mobile/src/app/recipes/import-photo.tsx` lines 33 + 54 use
+`quality: 0.8` when capturing recipe-page photos. This file also sends
+base64 to Claude vision via `useRecipeStore.importFromPhoto`, so the
+same 5MB Anthropic ceiling from CLAUDE.md applies.
+
+Not fixed in 23-08 because: (a) plan scope was explicitly `app/scan/*`,
+(b) recipe OCR may regress at lower quality. Needs its own
+investigation plan to decide between drop-to-0.5 or
+expo-image-manipulator pre-resize.
+
+Impact: iPhone 17 Pro full-frame shots at 0.8 can exceed Anthropic's
+5MB cap, producing a 400 in the field.
+
+Owner: future phase (24/25).
+
+### Scan-latency withBudget instrumentation not yet wired (NFR-20)
+
+`withBudget` ships in 23-08 but no scan call site wraps
+`sendScan` / `scanReceipt` / `scanInstacart` yet. SCAN_FEEDBACK_MS /
+SCAN_COMPLETE_MS / RECEIPT_COMPLETE_MS budgets are documented but not
+actively enforced.
+
+Owner: future phase (24/25).
+

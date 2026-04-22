@@ -1,41 +1,121 @@
 appId: com.dinnertime.app
-name: "37 — settings + auth (Phase 23 UAT stub)"
+name: "37 — settings + auth (Phase 23 UAT happy-path)"
 tags:
   - phase-23
+  - settings
   - uat
-# RED STUB — Phase 23 Wave 0.
+# Phase 23 UAT closeout (plan 23-08). Expanded from the 23-00 red stub into a
+# full walk-through of the Settings tab, exercising each section added across
+# 23-01..23-07 and collecting screenshots for visual regression.
 #
-# This flow is a placeholder that downstream plans (23-01..23-07) will expand
-# into a full Settings + auth UAT walk-through covering:
-#   - Account section (change password / change email / export / delete)
-#   - Biometric unlock prompt (foreground transition)
-#   - Re-auth modal on 401
-#   - Forgot-password flow
-#   - Deep-link allowlist rejection
-#   - Error boundary fallback + retry
+# Covers:
+#   (1) Log in via _ensure-logged-in helper.
+#   (2) Open Settings tab.
+#   (3) Scroll through section headers: PANTRY / COOKING / PLAN / SHOPPING /
+#       SECURITY / ACCOUNT / CONNECTED SERVICES / ABOUT — screenshot each as
+#       it scrolls into view.
+#   (4) Drill into Change password + Change email + Export data rows.
+#   (5) About section: tap App version (no-op proving the row renders).
 #
-# Today it just launches, takes one placeholder screenshot, and exits clean.
-# That's enough to prove the flow LOADS in Maestro (no YAML syntax errors)
-# while signaling "not implemented" to reviewers.
+# Does NOT cover:
+#   - Biometric unlock (Face ID) — requires physical iPhone (DEVICE-TEST-23
+#     BIOMETRIC-01).
+#   - Deep-link password reset — requires real email inbox (DEVICE-TEST-23
+#     DEEPLINK-01).
+#   - Sentry test error — requires real DSN + dashboard (DEVICE-TEST-23
+#     SENTRY-01).
+#
+# Selector notes (CLAUDE.md):
+#   - Maestro text matcher is regex — avoid literal `?`, `=`, `(`, `|` unless
+#     you mean alternation.
+#   - AccountSection rows use accessibilityLabel=="Change password" etc, but
+#     the visible <Text> child carries the same literal — plain-label match
+#     works from the AX tree OR from the rendered text.
+#   - Section headers are ALL CAPS (`SECURITY`, `ACCOUNT`, `ABOUT`) — match
+#     exact uppercase literal to avoid matching body copy that mentions
+#     "Security settings" etc.
 ---
+# Clean boot — downstream flows may leave sheets open.
 - launchApp:
     clearState: true
-- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
-- tapOn:
-    text: ".*Open.*"
-    optional: true
-- tapOn:
-    text: ".*Continue.*"
-    optional: true
-- tapOn:
-    point: "90%,32%"
-    optional: true
 
 - runFlow: _ensure-logged-in.yaml
 
-# Navigate to Settings tab (label may render as "Settings" or inside an AX label).
-- tapOn:
-    text: ".*Settings.*"
-    optional: true
+# 1. Open Settings tab (bottom tab bar). Label is "Settings".
+- tapOn: "Settings"
+- extendedWaitUntil:
+    visible:
+      text: ".*ACCOUNT.*"
+    timeout: 15000
+- takeScreenshot: 37-01-settings-landing
 
-- takeScreenshot: 37-01-settings-stub-placeholder
+# 2. Scroll through section headers — each header is uppercase+tracked so
+#    distinct from body copy. ScrollView auto-scrolls as we tap down with
+#    swipe gestures.
+#
+# Snapshot the initial region first (Pantry / Cooking / Plan / Shopping
+# settings from prior phases already visible near top).
+- takeScreenshot: 37-02-top-sections
+
+# 3. Scroll down to reveal SECURITY (Face ID toggle) + ACCOUNT (4 rows).
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+- extendedWaitUntil:
+    visible:
+      text: ".*SECURITY.*"
+    timeout: 6000
+- takeScreenshot: 37-03-security-account
+
+# 4. Drill into Change password (routes to change-password screen).
+- tapOn: "Change password"
+- extendedWaitUntil:
+    visible:
+      text: ".*password.*"
+    timeout: 8000
+- takeScreenshot: 37-04-change-password
+- back
+
+# 5. Drill into Change email.
+- tapOn: "Change email"
+- extendedWaitUntil:
+    visible:
+      text: ".*email.*"
+    timeout: 8000
+- takeScreenshot: 37-05-change-email
+- back
+
+# 6. Drill into Export data.
+- tapOn: "Export data"
+- extendedWaitUntil:
+    visible:
+      text: ".*[Ee]xport.*"
+    timeout: 8000
+- takeScreenshot: 37-06-export-data
+- back
+
+# 7. Scroll down further to CONNECTED SERVICES + ABOUT.
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+- extendedWaitUntil:
+    visible:
+      text: ".*CONNECTED SERVICES.*"
+    timeout: 6000
+- takeScreenshot: 37-07-connected-services
+
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+- extendedWaitUntil:
+    visible:
+      text: ".*ABOUT.*"
+    timeout: 6000
+- takeScreenshot: 37-08-about-section
+
+# 8. Tap the App version row (no-op — proves the pressable renders +
+#    doesn't crash). The row's accessibilityLabel is "App version".
+- tapOn:
+    id: "App version"
+    optional: true
+- takeScreenshot: 37-09-about-version-noop
