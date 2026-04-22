@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 17-04 (Maestro UAT happy-path + flow 20 rebase) — complete
-status: verifying
-stopped_at: Completed 16-00-PLAN.md (Phase 16 Wave 0 scaffolding — 17 red test stubs + cookingStore extended + expo-haptics installed + DEVICE-TEST-16.md)
-last_updated: "2026-04-22T04:00:08.749Z"
-last_activity: 2026-04-21 -- Completed 17-04 (Maestro flow 27 green; flow 20 rebased; Phase 17 close-out; milestone 100%)
+current_plan: 16-02 (Streaming /cooking/ask via SSE) — complete
+status: completed
+stopped_at: Completed 16-02-PLAN.md (streaming /cooking/ask SSE endpoint + mobile streamAsk client)
+last_updated: "2026-04-22T04:11:28.136Z"
+last_activity: 2026-04-22 -- Completed 16-02 (SSE streaming endpoint + mobile streamAsk client, Wave 1)
 progress:
   total_phases: 25
   completed_phases: 20
   total_plans: 96
-  completed_plans: 88
+  completed_plans: 89
   percent: 100
 ---
 
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 17 of 25 (Something New — AI-powered recipe exploration with search and remix)
-Current Plan: 17-04 (Maestro UAT happy-path + flow 20 rebase) — complete
-Status: Phase 17 closed out. Maestro flow `27-something-new-search.yaml` green end-to-end on iPhone 17 Pro / iOS 26.4 simulator (10 UAT steps: segment → pill → modal → submit → AI cold-start → results → preview → remix → save → back-to-segment; AI returned 8 recipes in ~30s; 10 screenshots captured at `apps/mobile/27-01..27-10-*.png`). Flow 20 rebased: 5 Suggestions→Something New substitutions (comments + tap selector `.*Something New.*` + screenshot names) — 0 `Suggestions` substrings remaining. 3 Rule-1 deviations auto-fixed (regex selector for AX-label-masked segment; pressKey:enter for submit-button/modal-header ambiguity; save-outcome verification because kitchen.tsx auto-dismisses preview). Every P17-01..P17-06 requirement now has ≥1 automated test green across unit + integration + E2E. Milestone v1.0 is 100% complete (87/87 plans). Three deferred follow-ups logged for future phases: kitchen.tsx preview-save auto-dismiss divergence from discover.tsx D-03 pattern, pantry-only happy-path flow coverage, overflow-menu Maestro coverage.
-Last activity: 2026-04-21 -- Completed 17-04 (Maestro flow 27 green; flow 20 rebased; Phase 17 close-out; milestone 100%)
+Phase: 16 of 25 (Cooking Mode UX Enhancements — post-v1 polish, voice latency, dark mode, Phase 19 token alignment)
+Current Plan: 16-02 (Streaming /cooking/ask via SSE) — complete
+Status: Wave 1 plan 16-02 green. Server POST `/api/v1/cooking/ask-stream` shipped with Hono `streamSSE` emitting `event: delta` per Claude text chunk → `event: done` with the truncated full answer → `event: error` with `CLAUDE_ERROR` on adapter failure. AIClient gained optional `generateStream` AsyncIterable; AnthropicAdapter implements it via an event-emitter-to-async-generator bridge (queue + resolveNext promise). Mobile `streamAsk` ships as `apps/mobile/src/cooking/streamingAsk.ts` with an options+callbacks signature matching the Wave 0 test contract; documented error taxonomy (NO_AUTH / HTTP_<status> / NO_STREAM_BODY / STREAM_ERROR / <server code>) with NO_STREAM_BODY as the RN 0.83 Pitfall-1 fallback signal. Wave 0 red stubs flipped green: server cooking.test.ts 18/18, mobile streamingAsk.test.ts 3/3. Existing `/cooking/ask` preserved as fallback, askAssistant.ts untouched. `sse-smoke.ts` still needs to run on a physical iPhone before 16-06 wires the happy path. Milestone v1.0 remains 100% complete (87/87 plans); Phase 16 is post-v1 polish.
+Last activity: 2026-04-22 -- Completed 16-02 (SSE streaming endpoint + mobile streamAsk client, Wave 1)
 
 Progress: [██████████] 100%
 
@@ -142,6 +142,7 @@ Progress: [██████████] 100%
 | Phase 17 P03 | 7 min | 3 tasks | 6 files |
 | Phase 17 P04 | 11 min | 3 tasks | 2 files |
 | Phase 16-cooking-mode-ux-enhancements-voice-interaction-and-model-ui-polish-information-display P00 | 15min | 2 tasks | 24 files |
+| Phase 16 P02 | 5min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -460,6 +461,10 @@ Recent decisions affecting current work:
 - [Phase 16]: Session id regenerates on every enter() (not on explicit startSession()); clears on exit()
 - [Phase 16]: Component tests use the Phase 19 static-inspection pattern (flatten + className assertion) rather than @testing-library/react-native
 - [Phase 16]: Red-stub tests use @ts-expect-error + Cannot-find-module imports — provides clear Wave 0 signal for later plans
+- [Phase 16]: Streaming /cooking/ask goes through the AIClient abstraction (generateStream as an optional AsyncIterable) rather than escaping to the raw Anthropic SDK — single Claude-calling pathway preserved; Gemini streaming is feature-detected and returns CLAUDE_ERROR if ever routed
+- [Phase 16]: Anthropic messages.stream event emitter bridged to an async generator via a queue + resolveNext promise — route handlers never see vendor types, just
+- [Phase 16]: Mobile streamAsk signature uses options+callbacks bags (matches Wave 0 test contract) not the plan's positional 6-arg form — caller in 16-06 injects baseUrl + accessToken + telemetry wrapping
+- [Phase 16]: Pitfall 1 (RN 0.83 fetch ReadableStream uncertainty) handled via NO_STREAM_BODY error code, not a react-native-sse polyfill — caller in 16-06 falls back to askAssistant() on that signal; sse-smoke.ts on-device is the gate for whether polyfill is ever needed
 
 ### Pending Todos
 
@@ -503,6 +508,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T04:00:08.743Z
-Stopped at: Completed 16-00-PLAN.md (Phase 16 Wave 0 scaffolding — 17 red test stubs + cookingStore extended + expo-haptics installed + DEVICE-TEST-16.md)
+Last session: 2026-04-22T04:10:38.694Z
+Stopped at: Completed 16-02-PLAN.md (streaming /cooking/ask SSE endpoint + mobile streamAsk client)
 Resume file: None

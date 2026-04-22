@@ -346,7 +346,7 @@ Plans:
 Plans:
 - [x] 16-00-PLAN.md — Wave 0 test scaffolding + cookingStore extensions + expo-haptics install + DEVICE-TEST-16 skeleton
 - [ ] 16-01-PLAN.md — Telemetry pipeline: cooking_events migration + POST /telemetry/cooking + mobile batched logger
-- [ ] 16-02-PLAN.md — SSE streaming /cooking/ask-stream server route + mobile streamAsk client
+- [x] 16-02-PLAN.md — SSE streaming /cooking/ask-stream server route + mobile streamAsk client (completed 2026-04-22)
 - [ ] 16-03-PLAN.md — Header primitives: StickyCookingHeader, VoiceWaveform, StopTTSButton, TimerBar retoken + haptics helpers + useVoiceAmplitude
 - [ ] 16-04-PLAN.md — Body primitives: StepCard, IngredientRow, ScrollableRecipe + useCurrentStepScroll hook
 - [ ] 16-05-PLAN.md — CommandToast + StepNavButtons @ 72pt + AskSheet retoken + handleTranscript toast/haptic deps
