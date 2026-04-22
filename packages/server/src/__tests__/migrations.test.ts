@@ -469,6 +469,110 @@ describe('24a seed JSON files', () => {
 });
 
 // -----------------------------------------------------------------------------
+// Phase 20 migrations — STATIC contract assertions
+// -----------------------------------------------------------------------------
+
+describe('00024_shopping_events.sql (static)', () => {
+  const sql = readMigration('00024_shopping_events.sql');
+
+  it('creates the shopping_events table', () => {
+    expect(sql).toMatch(/CREATE\s+TABLE\s+shopping_events/i);
+  });
+
+  it('declares profile_id FK to auth.users ON DELETE CASCADE', () => {
+    expect(sql).toMatch(
+      /profile_id\s+UUID\s+NOT\s+NULL\s+REFERENCES\s+auth\.users\(id\)\s+ON\s+DELETE\s+CASCADE/i,
+    );
+  });
+
+  it('declares shopping_list_id FK to shopping_lists ON DELETE SET NULL (nullable)', () => {
+    expect(sql).toMatch(
+      /shopping_list_id\s+UUID\s+REFERENCES\s+shopping_lists\(id\)\s+ON\s+DELETE\s+SET\s+NULL/i,
+    );
+    // Must NOT be NOT NULL — the FK column is optional so events tolerate a
+    // missing list at ingest time (e.g., a user_added-only cart).
+    const listFk = sql.match(
+      /shopping_list_id\s+UUID[^,]*/i,
+    )?.[0] ?? '';
+    expect(listFk).not.toMatch(/NOT\s+NULL/i);
+  });
+
+  it('declares shopping_order_id FK to shopping_orders ON DELETE SET NULL (nullable)', () => {
+    expect(sql).toMatch(
+      /shopping_order_id\s+UUID\s+REFERENCES\s+shopping_orders\(id\)\s+ON\s+DELETE\s+SET\s+NULL/i,
+    );
+    const orderFk = sql.match(
+      /shopping_order_id\s+UUID[^,]*/i,
+    )?.[0] ?? '';
+    expect(orderFk).not.toMatch(/NOT\s+NULL/i);
+  });
+
+  it('declares session_id TEXT NOT NULL and event_type TEXT NOT NULL', () => {
+    expect(sql).toMatch(/session_id\s+TEXT\s+NOT\s+NULL/i);
+    expect(sql).toMatch(/event_type\s+TEXT\s+NOT\s+NULL/i);
+  });
+
+  it("declares payload JSONB NOT NULL DEFAULT '{}'::jsonb", () => {
+    expect(sql).toMatch(
+      /payload\s+JSONB\s+NOT\s+NULL\s+DEFAULT\s+'\{\}'::jsonb/i,
+    );
+  });
+
+  it('declares client_ts NOT NULL and server_ts NOT NULL DEFAULT now()', () => {
+    expect(sql).toMatch(/client_ts\s+TIMESTAMPTZ\s+NOT\s+NULL/i);
+    expect(sql).toMatch(
+      /server_ts\s+TIMESTAMPTZ\s+NOT\s+NULL\s+DEFAULT\s+now\(\)/i,
+    );
+  });
+
+  it('does NOT include a recipe_id or step_index column (cooking-only fields)', () => {
+    // Strip SQL line comments so the header-comment mention of Phase 16
+    // does not false-positive for these column names.
+    const withoutComments = sql
+      .split('\n')
+      .map((line) => line.replace(/--.*$/, ''))
+      .join('\n');
+    expect(withoutComments).not.toMatch(/\brecipe_id\b/i);
+    expect(withoutComments).not.toMatch(/\bstep_index\b/i);
+  });
+
+  it('creates two indexes (profile+server_ts DESC; session_id)', () => {
+    expect(sql).toMatch(
+      /CREATE\s+INDEX\s+shopping_events_profile_ts_idx\s+ON\s+shopping_events\(profile_id,\s*server_ts\s+DESC\)/i,
+    );
+    expect(sql).toMatch(
+      /CREATE\s+INDEX\s+shopping_events_session_idx\s+ON\s+shopping_events\(session_id\)/i,
+    );
+  });
+
+  it('enables Row Level Security', () => {
+    expect(sql).toMatch(
+      /ALTER\s+TABLE\s+shopping_events\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/i,
+    );
+  });
+
+  it('declares exactly SELECT + INSERT policies, both keyed on auth.uid() = profile_id', () => {
+    expect(sql).toMatch(
+      /CREATE\s+POLICY\s+"users read own shopping events"[\s\S]*FOR\s+SELECT[\s\S]*USING\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/i,
+    );
+    expect(sql).toMatch(
+      /CREATE\s+POLICY\s+"users insert own shopping events"[\s\S]*FOR\s+INSERT[\s\S]*WITH\s+CHECK\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/i,
+    );
+  });
+
+  it('declares no UPDATE or DELETE policy (append-only by construction)', () => {
+    expect(sql).not.toMatch(/CREATE\s+POLICY[^;]*FOR\s+UPDATE/i);
+    expect(sql).not.toMatch(/CREATE\s+POLICY[^;]*FOR\s+DELETE/i);
+  });
+
+  it('documents Phase 20 + 20-RESEARCH.md Pattern 2 via COMMENT ON TABLE', () => {
+    expect(sql).toMatch(/COMMENT\s+ON\s+TABLE\s+shopping_events/i);
+    expect(sql).toMatch(/Phase\s+20/i);
+    expect(sql).toMatch(/20-RESEARCH\.md[\s\S]*Pattern\s+2/i);
+  });
+});
+
+// -----------------------------------------------------------------------------
 // LIVE — runs only when Supabase credentials are present
 // -----------------------------------------------------------------------------
 
