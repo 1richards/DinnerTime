@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 16-04 (Scrollable recipe primitives) — complete [executed in parallel with 16-03 and 16-05, all three Wave 2 plans now green]
+current_plan: 16-06 (Cook screen end-to-end integration) — complete [Wave 3 landed; all Phase 16 primitives now composed in cook.tsx]
 status: completed
 stopped_at: Completed 16-04-PLAN.md (scrollable recipe primitives — StepCard/IngredientRow/ScrollableRecipe/useCurrentStepScroll + imperative scrollToIngredients() ref handle)
-last_updated: "2026-04-22T04:32:42.914Z"
-last_activity: 2026-04-22 -- Completed 16-04 (StepCard + IngredientRow + ScrollableRecipe + useCurrentStepScroll with forwardRef + useImperativeHandle, Wave 2)
+last_updated: "2026-04-22T04:46:40.510Z"
+last_activity: 2026-04-22 -- Completed 16-06 (cook.tsx composing every Phase 16 primitive, SSE streaming + fallback, scoped dark mode, T-10s haptics, show_ingredients scroll dispatch)
 progress:
   total_phases: 25
   completed_phases: 20
   total_plans: 96
-  completed_plans: 93
+  completed_plans: 94
   percent: 100
 ---
 
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 16 of 25 (Cooking Mode UX Enhancements — post-v1 polish, voice latency, dark mode, Phase 19 token alignment)
-Current Plan: 16-04 (Scrollable recipe primitives) — complete [executed in parallel with 16-03 and 16-05, all three Wave 2 plans now green]
-Status: Wave 2 plan 16-04 green. Shipped the Claude.ai-artifact recipe primitives — `StepCard` (display 34pt current / title 22pt non-current + 4pt brand left rail on current / reserved invisible rail on non-current), `IngredientRow` (tap-to-check with success-tinted checkmark.circle.fill + line-through + tertiary text + fireIngredientHaptic Light impact), `ScrollableRecipe` (forwardRef-wrapped ScrollView rendering INGREDIENTS + STEPS sections with onLayout y-capture for both step cards and the ingredients wrapper), `useCurrentStepScroll` (sync function that calls scrollRef.current.scrollTo({ y: Math.max(0, stepY-120), animated: true }) on each invocation — Pattern 2 center-offset locked at 120pt). Imperative `ScrollableRecipeHandle` exposes `scrollToIngredients()` via useImperativeHandle; falls back silently to y=0 when onLayout has not yet fired. Internal `scrollableRecipeRender(props, ref)` exported alongside the forwardRef wrapper so vitest node-env tests can invoke it directly without a React renderer. 13 targeted tests green (StepCard ×3, IngredientRow ×3, useCurrentStepScroll ×1, ScrollableRecipe ×6 including 4 new ref-API assertions extended into the Wave 0 stub). 16-04's primitives unblock 16-06 cook.tsx integration; ScrollableRecipeHandle + the dispatcher-side show_ingredients intent from 16-05 are the two halves of the voice "show ingredients" contract. Sibling plans 16-03 (sticky header cluster — haptics/useVoiceAmplitude/VoiceWaveform/StopTTSButton/StickyCookingHeader + TimerBar retoken) and 16-05 (CommandToast + show_ingredients intent + 72pt StepNavButtons + AskSheet retoken) also landed green in parallel. Full mobile cooking suite: 19 files / 114 tests green. Milestone v1.0 remains 100% complete; Phase 16 post-v1 polish Wave 2 now cleared.
-Last activity: 2026-04-22 -- Completed 16-04 (StepCard + IngredientRow + ScrollableRecipe + useCurrentStepScroll with forwardRef + useImperativeHandle, Wave 2)
+Current Plan: 16-06 (Cook screen end-to-end integration) — complete [Wave 3 landed; all Phase 16 primitives now composed in cook.tsx]
+Status: Wave 3 plan 16-06 green. Cook screen rewritten (119 → 658 lines) to compose every Phase 16 Wave 2 primitive: StickyCookingHeader (Exit / title / VoiceWaveform / StopTTSButton / conditional timer band) + ScrollableRecipe attached via forwardRef + CommandToast overlay + 72pt StepNavButtons + retokened AskSheet. SSE streaming Ask flow primary (streamAsk from 16-02); askAssistant fallback fires on NO_STREAM_BODY / NO_AUTH per Pitfall 1. Scoped dark-mode palette via inline rootStyle on SafeAreaView + scrollOverrideStyle on ScrollableRecipe wrapper (CONTEXT D-03 — not app-wide). ActionSheetIOS exit confirm with UI-SPEC copy verbatim ("End cooking session?" / "Your place in the recipe won't be saved." / destructive "End cooking session" / cancel "Keep cooking") + fireExitConfirmHaptic + flushTelemetry on destructive tap. Per-timer T-10s warning haptic fires exactly once per crossing via prevRemainingRef Map<timerId, prev>; T-0 fires fireTimerExpireHaptic + stepSpeaker.speak("X timer done."). Voice "show ingredients" end-to-end: ExpoSpeechRecognition → useVoiceListener (stt_final telemetry with length + confidence, NEVER raw transcript) → handleTranscript → intentRouter SHOW_INGREDIENTS regex → onShowIngredients dep → recipeRef.current.scrollToIngredients() → ScrollView scrollTo animated. Telemetry instrumentation: stt_final, stt_error, tts_echo_swallowed (soft isSpeakingAsync gate owner in useVoiceListener), intent_routed, ask_start, ask_first_chunk, ask_complete — all payloads routed through sanitizePayload's 9-key whitelist. useStepSpeaker now returns StepSpeakerHandle { speak, stop } via useMemo(empty deps) for stable identity; consumed by StopTTSButton onStopTTS + timer-done announcements + Ask fallback TTS. 153/153 plan-scoped tests green. Two commits: c3d4eed (Task 1 telemetry + stop handle), 1b529d9 (Task 2 cook.tsx rewrite). Milestone v1.0 remains 100% complete; Phase 16 Wave 3 now cleared — 16-07 cleanup sweep (delete StepDisplay + VoiceStatusBadge no longer imported) + 16-08 DEVICE-TEST-16 unblock.
+Last activity: 2026-04-22 -- Completed 16-06 (cook.tsx composing every Phase 16 primitive, SSE streaming + fallback, scoped dark mode, T-10s haptics, show_ingredients scroll dispatch)
 
 Progress: [██████████] 100%
 
@@ -147,6 +147,7 @@ Progress: [██████████] 100%
 | Phase 16 P03 | 12min | 3 tasks | 7 files |
 | Phase 16 P05 | 11min | 2 tasks | 10 files |
 | Phase 16 P04 | 11 | 2 tasks | 4 files |
+| Phase 16 P06 | 12min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -480,6 +481,8 @@ Recent decisions affecting current work:
 - [Phase 16]: 16-04: Two-layer ScrollableRecipe export (forwardRef wrapper + raw scrollableRecipeRender fn) — forwardRef return value is not directly callable, so static-inspection tests need the raw render function alongside the production export
 - [Phase 16]: 16-04: useCurrentStepScroll implemented as sync function (no useEffect) — Wave 0 test invokes it from vitest node env without a React renderer; hooks would throw Invalid hook call. React's render-diffing still caps firing cadence to prop changes.
 - [Phase 16]: 16-04: Ingredient-check icon tone = success (not brand) — UI-SPEC §Color accent budget reserved for rail/timer/mic/Stop/nav-pressed/toast; success semantically reads as checked/done
+- [Phase 16]: Phase 16-06: Dark cooking mode applied via scoped inline style override on SafeAreaView + ScrollableRecipe wrapper (NOT app-wide NativeWind theme) per CONTEXT D-03. Scoped to cook screen only; light palette tokens remain single source of truth for className lookups.
+- [Phase 16]: Phase 16-06: SSE Ask flow primary + askAssistant fallback on NO_STREAM_BODY / NO_AUTH (Pitfall 1 — RN 0.83 ReadableStream guard). Other error codes (CLAUDE_ERROR, HTTP_4xx/5xx, STREAM_ERROR) surface as askError and render ErrorState in AskSheet.
 
 ### Pending Todos
 
