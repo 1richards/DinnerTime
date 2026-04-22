@@ -7,6 +7,7 @@ export type CookingIntent =
   | { type: 'timer'; ms: number }
   | { type: 'pause' }
   | { type: 'resume' }
+  | { type: 'show_ingredients' }
   | { type: 'ask'; question: string };
 
 export interface Timer {

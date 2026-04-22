@@ -23,6 +23,11 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
     addTimer: vi.fn(),
     speak: vi.fn(),
     onAsk: vi.fn(async () => {}),
+    // Phase 16 COOK-UX-05 deps (wired here so every test satisfies the
+    // extended TranscriptDeps interface without boilerplate):
+    onCommandToast: vi.fn(),
+    onCommandHaptic: vi.fn(),
+    onShowIngredients: vi.fn(),
     ...overrides,
   };
 }
@@ -50,7 +55,7 @@ describe('handleTranscript — existing dispatch behavior', () => {
     expect(deps.repeat).toHaveBeenCalledTimes(1);
   });
 
-  it('routes a timer phrase to deps.addTimer(ms) and speaks confirmation', async () => {
+  it('routes a timer phrase to deps.addTimer(ms) (Phase 16: no TTS echo — see Voice feedback principle)', async () => {
     const deps = makeDeps();
     const intent = await handleTranscript(
       'set a timer for 10 minutes',
@@ -58,7 +63,9 @@ describe('handleTranscript — existing dispatch behavior', () => {
     );
     expect(intent.type).toBe('timer');
     expect(deps.addTimer).toHaveBeenCalledTimes(1);
-    expect(deps.speak).toHaveBeenCalledTimes(1);
+    // UI-SPEC §Voice feedback principle: silent confirmation. Toast + haptic
+    // only. The new toast/haptic assertions live in the Phase 16 describe block.
+    expect(deps.speak).not.toHaveBeenCalled();
   });
 
   it('routes unrecognized input to deps.onAsk(question)', async () => {
@@ -117,5 +124,45 @@ describe('handleTranscript — onCommandToast + onCommandHaptic (Phase 16 red)',
     await handleTranscript('is the chicken done yet', deps as never);
     expect(onCommandToast).not.toHaveBeenCalled();
     expect(onCommandHaptic).not.toHaveBeenCalled();
+  });
+});
+
+describe('handleTranscript — show_ingredients intent dispatch (Phase 16 COOK-UX-05)', () => {
+  it('dispatches stopSpeech → haptic → toast("Ingredients") → onShowIngredients on "show ingredients"', async () => {
+    const deps = makeDeps();
+    const intent = await handleTranscript('show ingredients', deps as never);
+
+    expect(intent).toEqual({ type: 'show_ingredients' });
+    expect(deps.stopSpeech).toHaveBeenCalledTimes(1);
+    expect(deps.onCommandHaptic).toHaveBeenCalledTimes(1);
+    expect(deps.onCommandToast).toHaveBeenCalledWith('Ingredients');
+    expect(deps.onShowIngredients).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT fire deps.onAsk on show_ingredients intent (no network)', async () => {
+    const deps = makeDeps();
+    await handleTranscript('show ingredients', deps as never);
+    expect(deps.onAsk).not.toHaveBeenCalled();
+  });
+
+  it('does NOT fire nav/timer deps on show_ingredients', async () => {
+    const deps = makeDeps();
+    await handleTranscript('list ingredients', deps as never);
+    expect(deps.next).not.toHaveBeenCalled();
+    expect(deps.back).not.toHaveBeenCalled();
+    expect(deps.repeat).not.toHaveBeenCalled();
+    expect(deps.addTimer).not.toHaveBeenCalled();
+    expect(deps.speak).not.toHaveBeenCalled();
+  });
+
+  it('end-to-end integration: intentRouter + handleTranscript route "what are the ingredients" correctly', async () => {
+    const deps = makeDeps();
+    const intent = await handleTranscript(
+      'what are the ingredients',
+      deps as never
+    );
+    expect(intent).toEqual({ type: 'show_ingredients' });
+    expect(deps.onShowIngredients).toHaveBeenCalledTimes(1);
+    expect(deps.onAsk).not.toHaveBeenCalled();
   });
 });
