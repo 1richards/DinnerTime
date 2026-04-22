@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_plan: 25-00 complete; next 25-01
-status: in-progress
-stopped_at: Completed 25-00-PLAN.md
-last_updated: "2026-04-22T13:52:24.881Z"
+status: planning
+stopped_at: Completed 25-02-PLAN.md
+last_updated: "2026-04-22T14:08:46.706Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
   completed_phases: 23
   total_plans: 122
-  completed_plans: 118
+  completed_plans: 119
   percent: 97
 ---
 
@@ -172,6 +172,7 @@ Progress: [██████████] 97%
 | Phase 23 P02 | 8min | 2 tasks | 10 files |
 | Phase 23 P08 | 6min | 2 tasks | 5 files |
 | Phase 25 P00 | 4min | 3 tasks | 6 files |
+| Phase 25 P02 | 6min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -570,6 +571,9 @@ Recent decisions affecting current work:
 - [Phase 25]: beta_invites uses TEXT CHECK enum (not Postgres enum) so adding lifecycle stages later needs no migration, matching ai_events.event_type / task_name precedent
 - [Phase 25]: EAS ascAppId + appleTeamId use literal TODO-PATRICK-FILLS-* strings (not null) so EAS Submit produces a readable validation error instead of silently breaking
 - [Phase 25]: Red-stub tests do NOT import the target module — module-resolution failure would trip vitest loader before .skip registers; 25-01 adds imports as the single diff signal
+- [Phase 25]: Fly.io recommended over Railway for backend — comparison table in DEPLOYMENT.md; env-var list applies to both
+- [Phase 25]: Custom domain api.dinnertime.app is a hard dep before first production TestFlight (EAS bundle-inlines EXPO_PUBLIC_API_URL)
+- [Phase 25]: Internal TestFlight cap 15 for Phase 25 — avoids App Review, instant build push
 
 ### Pending Todos
 
@@ -613,6 +617,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T13:52:24.875Z
-Stopped at: Completed 25-00-PLAN.md
+Last session: 2026-04-22T14:08:19.564Z
+Stopped at: Completed 25-02-PLAN.md
 Resume file: None
