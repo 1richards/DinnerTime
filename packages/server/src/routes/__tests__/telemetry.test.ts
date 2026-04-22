@@ -240,3 +240,115 @@ describe('POST /telemetry/shopping', () => {
     expect(res.status).toBe(500);
   });
 });
+
+/**
+ * Phase 22 Wave 0: POST /telemetry/plan — sibling of /cooking and /shopping.
+ * Mirrors the shopping pattern with meal_plan_id + meal_plan_entry_id FKs
+ * instead of list/order IDs. Target table: plan_events (migration 00025).
+ *
+ * Requirement: PLAN-X-10 foundation (telemetry pipeline backing
+ * stretch_displayed, week_regenerated, day_drill_opened, swipe_action,
+ * focus_theme_set, etc.).
+ */
+describe('POST /telemetry/plan', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetTables();
+  });
+
+  it('401 without Authorization', async () => {
+    const app = makeApp();
+    const res = await app.request('/telemetry/plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: [] }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('204 when events: [] (no-op)', async () => {
+    const app = makeApp();
+    const res = await app.request('/telemetry/plan', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: [] }),
+    });
+    expect(res.status).toBe(204);
+  });
+
+  it('200 and inserts 3 rows into plan_events with profile_id + event_type + meal_plan ids', async () => {
+    const app = makeApp();
+    const validEvent = (name: string) => ({
+      name,
+      session_id: 'sess-plan-abc',
+      timestamp: new Date().toISOString(),
+      meal_plan_id: 'plan-fixture-22',
+      meal_plan_entry_id: 'entry-fixture-22',
+      payload: { ms: 1200, variant: 'swap' },
+    });
+
+    const res = await app.request('/telemetry/plan', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        events: [
+          validEvent('plan.recipe_pin_succeeded'),
+          validEvent('plan.shopping_handoff_opened'),
+          validEvent('plan.swipe_action'),
+        ],
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(supabase.from).toHaveBeenCalled();
+    const inserted = tableState['plan_events']?.insertedRows as
+      | Array<Record<string, unknown>>
+      | undefined;
+    expect(inserted).toHaveLength(3);
+    expect(inserted?.[0]?.profile_id).toBe('user-1');
+    expect(inserted?.[0]?.event_type).toBe('plan.recipe_pin_succeeded');
+    expect(inserted?.[0]?.meal_plan_id).toBe('plan-fixture-22');
+    expect(inserted?.[0]?.meal_plan_entry_id).toBe('entry-fixture-22');
+  });
+
+  it('400 when schema invalid (missing events array)', async () => {
+    const app = makeApp();
+    const res = await app.request('/telemetry/plan', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ foo: 'bar' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('400 schema_error on invalid JSON', async () => {
+    const app = makeApp();
+    const res = await app.request('/telemetry/plan', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: 'not-json',
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('500 when supabase insert returns an error', async () => {
+    tableState['plan_events'] = {
+      insertResult: { data: null, error: { message: 'insert boom' } },
+    };
+    const app = makeApp();
+    const res = await app.request('/telemetry/plan', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        events: [
+          {
+            name: 'plan.recipe_pin_succeeded',
+            session_id: 'sess-plan-abc',
+            timestamp: new Date().toISOString(),
+            payload: { ms: 1 },
+          },
+        ],
+      }),
+    });
+    expect(res.status).toBe(500);
+  });
+});

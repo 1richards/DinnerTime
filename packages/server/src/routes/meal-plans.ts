@@ -23,6 +23,100 @@ export function mondayOf(date: Date): string {
 }
 
 /**
+ * GET / — Range query for meal plans across multiple weeks.
+ *
+ * Query params:
+ *   from=YYYY-MM-DD (required): lower-bound week_start (inclusive).
+ *   to=YYYY-MM-DD (required):   upper-bound week_start (inclusive).
+ *   projection=month (optional): returns a lightweight entry shape for
+ *     month-view performance (omits ingredients/ingredients_needed arrays).
+ *
+ * Returns { data: Array<{ id, week_start, generated_at, entries }> }.
+ *
+ * Bounds: |to - from| <= 70 days; 400 otherwise. Phase 22 plan 22-03
+ * (month view) uses up to ~35 days; 70-day ceiling leaves headroom for a
+ * two-month projection without requiring pagination.
+ *
+ * NOTE on route ordering: Hono matches static segments (/current) before
+ * this root GET, so /current is preserved. Verified at boot.
+ */
+mealPlans.get('/', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const from = c.req.query('from');
+  const to = c.req.query('to');
+  const projection = c.req.query('projection');
+
+  if (!from || !to || from.length !== 10 || to.length !== 10) {
+    return c.json({ error: 'from and to required (YYYY-MM-DD)' }, 400);
+  }
+
+  const fromDate = new Date(`${from}T00:00:00Z`);
+  const toDate = new Date(`${to}T00:00:00Z`);
+  if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+    return c.json({ error: 'from and to must be valid YYYY-MM-DD dates' }, 400);
+  }
+  const diffDays = Math.abs(
+    (toDate.getTime() - fromDate.getTime()) / 86_400_000,
+  );
+  if (diffDays > 70) {
+    return c.json({ error: 'range too large (max 70 days)' }, 400);
+  }
+
+  try {
+    const { data: plans, error: plansErr } = await supabase
+      .from('meal_plans')
+      .select('id, week_start, generated_at')
+      .eq('profile_id', user.id)
+      .gte('week_start', from)
+      .lte('week_start', to)
+      .order('week_start', { ascending: true });
+
+    if (plansErr) {
+      return c.json({ error: plansErr.message }, 500);
+    }
+
+    const planIds = (plans ?? []).map((p: { id: string }) => p.id);
+    let entries: Array<{ meal_plan_id: string }> = [];
+    if (planIds.length > 0) {
+      const entryCols =
+        projection === 'month'
+          ? 'id, meal_plan_id, day_of_week, status, title, recipe_id, estimated_time_minutes, difficulty'
+          : '*';
+      const { data: es, error: esErr } = await supabase
+        .from('meal_plan_entries')
+        .select(entryCols)
+        .in('meal_plan_id', planIds)
+        .order('day_of_week', { ascending: true });
+      if (esErr) {
+        return c.json({ error: esErr.message }, 500);
+      }
+      entries = (es ?? []) as Array<{ meal_plan_id: string }>;
+    }
+
+    const entriesByPlan = new Map<string, unknown[]>();
+    for (const e of entries) {
+      const bucket = entriesByPlan.get(e.meal_plan_id);
+      if (bucket) {
+        bucket.push(e);
+      } else {
+        entriesByPlan.set(e.meal_plan_id, [e]);
+      }
+    }
+    const data = (plans ?? []).map((p: { id: string }) => ({
+      ...p,
+      entries: entriesByPlan.get(p.id) ?? [],
+    }));
+
+    return c.json({ data });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to fetch meal plans';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
  * GET /current — Active meal plan for the current Monday week_start.
  */
 mealPlans.get('/current', async (c) => {
@@ -121,12 +215,14 @@ mealPlans.post('/:id/entries/:day/regenerate', async (c) => {
 
 /**
  * POST /entries/assign — Assign a specific meal (from a Home suggestion,
- * a Discover preview, a saved recipe, etc.) to a specific day of the current
- * week. Creates the meal plan for the week if none exists. Upserts the entry
+ * a Discover preview, a saved recipe, etc.) to a specific day of a week.
+ * Creates the meal plan for the week if none exists. Upserts the entry
  * for the given day.
  *
  * Body: {
- *   day: 0..6 (0 = Monday),
+ *   date?: 'YYYY-MM-DD', // Phase 22: if provided, derives week_start (Monday)
+ *                        // and day_of_week from the date. Overrides `day`.
+ *   day?: 0..6 (0 = Monday), // back-compat: current week when no `date`
  *   title: string,
  *   description?: string,
  *   ingredients?: Array<{name, quantity?, unit?}>,
@@ -136,12 +232,16 @@ mealPlans.post('/:id/entries/:day/regenerate', async (c) => {
  *   why_suggested?: string,
  *   recipe_id?: string  // optional link to a saved recipe
  * }
+ *
+ * Precedence: `date` wins over `day` (deterministic — avoids silent bugs
+ * when both are accidentally sent).
  */
 mealPlans.post('/entries/assign', async (c) => {
   const supabase = c.get('supabase');
   const user = c.get('user');
 
   let body: {
+    date?: string | null;
     day?: number;
     title?: string;
     description?: string | null;
@@ -158,15 +258,34 @@ mealPlans.post('/entries/assign', async (c) => {
     return c.json({ error: 'Invalid JSON body' }, 400);
   }
 
-  const day = Number(body.day);
-  if (!Number.isInteger(day) || day < 0 || day > 6) {
-    return c.json({ error: 'day must be an integer 0..6' }, 400);
+  // Phase 22: prefer explicit `date` (YYYY-MM-DD), fall back to legacy `day`.
+  const rawDate =
+    typeof body.date === 'string' && body.date.length === 10 ? body.date : null;
+  let resolvedDay: number;
+  let weekStart: string;
+  if (rawDate) {
+    const parsed = new Date(`${rawDate}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime())) {
+      return c.json({ error: 'date must be a valid YYYY-MM-DD' }, 400);
+    }
+    weekStart = mondayOf(parsed);
+    // getUTCDay(): Sun=0..Sat=6 → shift so Mon=0..Sun=6
+    resolvedDay = (parsed.getUTCDay() + 6) % 7;
+  } else {
+    const dayNum = Number(body.day);
+    if (!Number.isInteger(dayNum) || dayNum < 0 || dayNum > 6) {
+      return c.json(
+        { error: 'day must be an integer 0..6 (or provide date)' },
+        400,
+      );
+    }
+    resolvedDay = dayNum;
+    weekStart = mondayOf(new Date());
   }
+
   if (!body.title || typeof body.title !== 'string') {
     return c.json({ error: 'title is required' }, 400);
   }
-
-  const weekStart = mondayOf(new Date());
 
   try {
     // 1. Ensure a meal_plan row exists for this week.
@@ -196,7 +315,7 @@ mealPlans.post('/entries/assign', async (c) => {
     //    constraint on (meal_plan_id, day_of_week).
     const entryPayload = {
       meal_plan_id: planId,
-      day_of_week: day,
+      day_of_week: resolvedDay,
       recipe_id: body.recipe_id ?? null,
       title: body.title,
       description: body.description ?? null,

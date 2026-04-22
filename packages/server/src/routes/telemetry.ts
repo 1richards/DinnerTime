@@ -3,19 +3,22 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth.js';
 
 /**
- * Telemetry ingest — two channels on one router:
+ * Telemetry ingest — three channels on one router:
  *   POST /cooking  — Phase 16 Wave 1 (cooking_events table)
  *   POST /shopping — Phase 20 Wave 1 (shopping_events table)
+ *   POST /plan     — Phase 22 Wave 0 (plan_events table)
  *
- * Both mounts share the same auth middleware and the same payload-is-opaque
+ * All mounts share the same auth middleware and the same payload-is-opaque
  * contract: clients scrub PII via their own sanitizePayload helpers before
- * sending (see apps/mobile/src/cooking/telemetry.ts and
- * apps/mobile/src/shopping/telemetry.ts; and 16-RESEARCH.md Pattern 1 +
- * 20-RESEARCH.md Pattern 2 Pitfall 6).
+ * sending (see apps/mobile/src/cooking/telemetry.ts,
+ * apps/mobile/src/shopping/telemetry.ts, and apps/mobile/src/plan/telemetry.ts;
+ * plus 16-RESEARCH.md Pattern 1 + 20-RESEARCH.md Pattern 2 Pitfall 6 +
+ * 22-RESEARCH.md Pattern 2).
  *
- * Per 20-RESEARCH.md Open Question 3: add /shopping as a second handler on
- * the existing router rather than spawning a sibling file. Keeps
- * `app.route('/telemetry', telemetry)` in index.ts unchanged.
+ * Per 20-RESEARCH.md Open Question 3 + 22-RESEARCH.md Pattern 2: add each new
+ * channel as a second handler on the existing router rather than spawning a
+ * sibling file. Keeps `app.route('/telemetry', telemetry)` in index.ts
+ * unchanged.
  */
 
 const telemetry = new Hono();
@@ -168,6 +171,83 @@ telemetry.post('/shopping', async (c) => {
   }));
 
   const { error } = await supabase.from('shopping_events').insert(rows);
+
+  if (error) {
+    return c.json({ error: 'insert_failed' }, 500);
+  }
+
+  return c.json({ inserted: rows.length }, 200);
+});
+
+// ---------------------------------------------------------------------------
+// /plan — Phase 22
+// ---------------------------------------------------------------------------
+
+// Mirrors ShoppingEventSchema with shopping_list_id/shopping_order_id swapped
+// for meal_plan_id/meal_plan_entry_id. Schema-light: `name` is an open string
+// so new event kinds don't require deploys.
+const PlanEventSchema = z.object({
+  name: z.string().min(1),
+  session_id: z.string().min(1),
+  timestamp: z.string().min(1),
+  meal_plan_id: z.string().nullable().optional(),
+  meal_plan_entry_id: z.string().nullable().optional(),
+  payload: z.record(z.any()).optional(),
+});
+
+const PlanBatchSchema = z.object({
+  events: z.array(PlanEventSchema),
+});
+
+telemetry.post('/plan', async (c) => {
+  const user = c.get('user') as { id: string } | undefined;
+  const supabase = c.get('supabase') as
+    | {
+        from: (table: string) => {
+          insert: (rows: unknown[]) => Promise<{ data: unknown; error: unknown }>;
+        };
+      }
+    | undefined;
+
+  if (!user || !supabase) {
+    return c.json({ error: 'unauthorized' }, 401);
+  }
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'schema_error', details: 'invalid JSON' }, 400);
+  }
+
+  const parsed = PlanBatchSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json(
+      { error: 'schema_error', details: parsed.error.flatten() },
+      400,
+    );
+  }
+
+  const events = parsed.data.events;
+  if (events.length === 0) {
+    // 204 No Content — no-op.
+    return c.body(null, 204);
+  }
+
+  // Build rows. profile_id ALWAYS server-injected from the authed user —
+  // NEVER trusted from the body. payload is opaque — client sanitizes via
+  // the 14-key whitelist in apps/mobile/src/plan/telemetry.ts.
+  const rows = events.map((e) => ({
+    profile_id: user.id,
+    session_id: e.session_id,
+    event_type: e.name,
+    meal_plan_id: e.meal_plan_id ?? null,
+    meal_plan_entry_id: e.meal_plan_entry_id ?? null,
+    payload: e.payload ?? {},
+    client_ts: e.timestamp,
+  }));
+
+  const { error } = await supabase.from('plan_events').insert(rows);
 
   if (error) {
     return c.json({ error: 'insert_failed' }, 500);
