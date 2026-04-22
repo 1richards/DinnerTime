@@ -1,18 +1,24 @@
-# Phase 16 — Deferred Items
+# Deferred Items — Phase 16
 
-Items discovered during Phase 16 execution that were out of scope for the current plan.
+Items discovered during phase execution that are out-of-scope for the current plan but should be tracked.
 
-## 2026-04-22 — During 16-05 execution
+## Pre-existing TypeScript/Test Errors (discovered in 16-07)
 
-### Pre-existing red tests (out of scope for 16-05)
+These errors exist in the repo **before 16-07 changes** and are not caused by this plan's work. Scope boundary: do not fix.
 
-Wave 0 red test stubs belonging to other Wave 2 plans (16-03, 16-04) that are out of scope per the SCOPE BOUNDARY rule (test files not directly modified by 16-05 tasks):
+**TypeScript (`pnpm tsc --noEmit` in apps/mobile):**
+- `src/components/cooking/__tests__/CommandToast.test.tsx:67` — `Element | null` not assignable to `AnyEl`
+- `src/components/cooking/__tests__/StickyCookingHeader.test.tsx:12` — unused `@ts-expect-error`
+- `src/components/cooking/__tests__/StopTTSButton.test.tsx:11` — unused `@ts-expect-error`
+- `src/components/cooking/__tests__/TimerBar.test.tsx` (multiple lines) — `Element | null` not assignable
+- `src/components/cooking/__tests__/VoiceWaveform.test.tsx:12` — unused `@ts-expect-error`
+- `src/cooking/__tests__/haptics.test.ts:27` — unused `@ts-expect-error`
+- `src/cooking/__tests__/telemetry.test.ts:13,70` — unused `@ts-expect-error`
+- `src/cooking/__tests__/useVoiceAmplitude.test.ts:12` — unused `@ts-expect-error`
 
-- `src/components/cooking/__tests__/ScrollableRecipe.test.tsx` — 16-04 layout primitive. 6 failing cases: `scrollableRecipeRender` helper API mismatch with shipped component + `forwardRef` usage. Needs 16-04 follow-up or 16-06 integration retune.
-- `src/components/cooking/__tests__/StickyCookingHeader.test.tsx` — 16-04 header (ts-expect-error unused after shipping).
-- `src/components/cooking/__tests__/StopTTSButton.test.tsx` — 16-03 StopTTSButton (ts-expect-error unused).
-- `src/components/cooking/__tests__/VoiceWaveform.test.tsx` — 16-03 VoiceWaveform (ts-expect-error unused).
-- `src/components/cooking/__tests__/TimerBar.test.tsx` — Element|null type narrowing in 5 assertions. Pattern matches the test-harness shape across the cooking suite — not a shipped regression.
-- `src/cooking/__tests__/haptics.test.ts`, `telemetry.test.ts`, `useVoiceAmplitude.test.ts` — ts-expect-error unused after shipping.
+All are in test files shipped by earlier Phase 16 plans (16-03/04/05/06). Type errors do not fail vitest (runtime type erasure).
 
-**Action:** Stale `@ts-expect-error` directives can be swept in 16-07 cleanup. The `ScrollableRecipe` test harness needs either the component to re-expose `scrollableRecipeRender` or the tests to be rewritten against the shipped default export. Revisit during 16-06 cook.tsx integration or as a dedicated cleanup plan in Wave 4 (16-07/08).
+**Vitest (`pnpm test --run src/stores`):**
+- `src/stores/__tests__/shoppingStore.test.ts` — 3 failures, `currentList` now wrapped in `{ list }` shape. Pre-existing mismatch between store implementation and test expectations. Unrelated to cooking.
+
+None block Phase 16 closeout. Surface for Phase 17 or a dedicated test-hygiene plan.

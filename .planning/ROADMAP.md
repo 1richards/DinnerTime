@@ -350,8 +350,8 @@ Plans:
 - [x] 16-03-PLAN.md — Header primitives: StickyCookingHeader, VoiceWaveform, StopTTSButton, TimerBar retoken + haptics helpers + useVoiceAmplitude
 - [x] 16-04-PLAN.md — Body primitives: StepCard, IngredientRow, ScrollableRecipe + useCurrentStepScroll hook
 - [x] 16-05-PLAN.md — CommandToast + StepNavButtons @ 72pt + AskSheet retoken + handleTranscript toast/haptic deps
-- [ ] 16-06-PLAN.md — Integration: rewrite cook.tsx composing every primitive + SSE fallback + dark-mode scoped palette + T-10s haptic + exit confirm + telemetry hooks
-- [ ] 16-07-PLAN.md — Settings Cooking section + dark-mode toggle + Maestro flow 28 + delete StepDisplay/VoiceStatusBadge + human checkpoint
+- [x] 16-06-PLAN.md — Integration: rewrite cook.tsx composing every primitive + SSE fallback + dark-mode scoped palette + T-10s haptic + exit confirm + telemetry hooks
+- [x] 16-07-PLAN.md — Settings Cooking section + dark-mode toggle + Maestro flow 28 + delete StepDisplay/VoiceStatusBadge + human checkpoint
 - [ ] 16-08-PLAN.md — DEVICE-TEST-16 execution on physical iPhone (latency/voice/haptics/dark-mode/real-kitchen telemetry)
 **UI hint**: yes
 

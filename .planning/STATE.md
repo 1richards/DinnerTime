@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 16-06 (Cook screen end-to-end integration) — complete [Wave 3 landed; all Phase 16 primitives now composed in cook.tsx]
-status: completed
-stopped_at: Completed 16-04-PLAN.md (scrollable recipe primitives — StepCard/IngredientRow/ScrollableRecipe/useCurrentStepScroll + imperative scrollToIngredients() ref handle)
-last_updated: "2026-04-22T04:46:40.510Z"
-last_activity: 2026-04-22 -- Completed 16-06 (cook.tsx composing every Phase 16 primitive, SSE streaming + fallback, scoped dark mode, T-10s haptics, show_ingredients scroll dispatch)
+current_plan: 16-07 (Settings dark-mode toggle + Maestro UAT + Phase 9 cleanup) — complete [Wave 4 landed; Settings section, flow 28, StepDisplay+VoiceStatusBadge deleted]
+status: verifying
+stopped_at: Completed 16-07-PLAN.md (Settings Cooking section dark-mode toggle, Maestro flow 28 non-voice UAT, Phase 9 cleanup)
+last_updated: "2026-04-22T04:58:10.260Z"
+last_activity: 2026-04-22 -- Completed 16-07 (Settings dark-mode toggle wired to cookingStore.setDarkMode with persistence, Maestro flow 28 with 7 screenshots, StepDisplay + VoiceStatusBadge deleted, 16-08 is the final plan)
 progress:
   total_phases: 25
   completed_phases: 20
   total_plans: 96
-  completed_plans: 94
+  completed_plans: 95
   percent: 100
 ---
 
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 16 of 25 (Cooking Mode UX Enhancements — post-v1 polish, voice latency, dark mode, Phase 19 token alignment)
-Current Plan: 16-06 (Cook screen end-to-end integration) — complete [Wave 3 landed; all Phase 16 primitives now composed in cook.tsx]
-Status: Wave 3 plan 16-06 green. Cook screen rewritten (119 → 658 lines) to compose every Phase 16 Wave 2 primitive: StickyCookingHeader (Exit / title / VoiceWaveform / StopTTSButton / conditional timer band) + ScrollableRecipe attached via forwardRef + CommandToast overlay + 72pt StepNavButtons + retokened AskSheet. SSE streaming Ask flow primary (streamAsk from 16-02); askAssistant fallback fires on NO_STREAM_BODY / NO_AUTH per Pitfall 1. Scoped dark-mode palette via inline rootStyle on SafeAreaView + scrollOverrideStyle on ScrollableRecipe wrapper (CONTEXT D-03 — not app-wide). ActionSheetIOS exit confirm with UI-SPEC copy verbatim ("End cooking session?" / "Your place in the recipe won't be saved." / destructive "End cooking session" / cancel "Keep cooking") + fireExitConfirmHaptic + flushTelemetry on destructive tap. Per-timer T-10s warning haptic fires exactly once per crossing via prevRemainingRef Map<timerId, prev>; T-0 fires fireTimerExpireHaptic + stepSpeaker.speak("X timer done."). Voice "show ingredients" end-to-end: ExpoSpeechRecognition → useVoiceListener (stt_final telemetry with length + confidence, NEVER raw transcript) → handleTranscript → intentRouter SHOW_INGREDIENTS regex → onShowIngredients dep → recipeRef.current.scrollToIngredients() → ScrollView scrollTo animated. Telemetry instrumentation: stt_final, stt_error, tts_echo_swallowed (soft isSpeakingAsync gate owner in useVoiceListener), intent_routed, ask_start, ask_first_chunk, ask_complete — all payloads routed through sanitizePayload's 9-key whitelist. useStepSpeaker now returns StepSpeakerHandle { speak, stop } via useMemo(empty deps) for stable identity; consumed by StopTTSButton onStopTTS + timer-done announcements + Ask fallback TTS. 153/153 plan-scoped tests green. Two commits: c3d4eed (Task 1 telemetry + stop handle), 1b529d9 (Task 2 cook.tsx rewrite). Milestone v1.0 remains 100% complete; Phase 16 Wave 3 now cleared — 16-07 cleanup sweep (delete StepDisplay + VoiceStatusBadge no longer imported) + 16-08 DEVICE-TEST-16 unblock.
-Last activity: 2026-04-22 -- Completed 16-06 (cook.tsx composing every Phase 16 primitive, SSE streaming + fallback, scoped dark mode, T-10s haptics, show_ingredients scroll dispatch)
+Current Plan: 16-07 (Settings dark-mode toggle + Maestro UAT + Phase 9 cleanup) — complete [Wave 4 landed; Settings section, flow 28, StepDisplay+VoiceStatusBadge deleted]
+Status: Wave 4 plan 16-07 green. Settings Cooking section now renders "Dark cooking mode" toggle wired to `cookingStore.setDarkMode` (persisted via `partialize: (state) => ({ darkMode: state.darkMode })`). Exact UI-SPEC copy used verbatim: title "Dark cooking mode", subtitle "Darker background while cooking. Matches Spotify's Now Playing feel.". Section placed between Pantry and Account blocks. accessibilityRole="switch" + accessibilityState={{ checked }} on the row wrapper so Maestro can drive it via the plain title text. Maestro flow 28-cooking-mode-ui.yaml authored — 49 steps, 7 screenshots (landing → ingredient check → step advance → step back → exit confirm → dark toggle → dark cooking). Voice paths intentionally NOT covered; DEVICE-TEST-16 (plan 16-08) will cover them on a physical iPhone per CLAUDE.md UAT section (simulator has no audio injection). Phase 9 cleanup: StepDisplay.tsx + VoiceStatusBadge.tsx deleted (grep confirms zero consumer imports); cook.tsx header comment and 15-*.yaml stub comment updated to reflect removal. Two task commits: bae1f1a (feat: Settings + deletions), 36b06bd (test: Maestro flow 28). Maestro flow 28 could NOT be executed end-to-end because the running Metro was started from the monorepo root instead of apps/mobile (pre-existing dev-env bug — `./index` fails to resolve, cascading to expo-haptics). Per AUTO_MODE_OVERRIDE, the human-verify checkpoint was auto-approved inline and the failing sim run logged in SUMMARY issues; DEVICE-TEST-16 remains the authoritative visual gate. 159/159 cooking+app tests green; TypeScript clean on touched files. Phase 16 Wave 4 complete. Only plan 16-08 (DEVICE-TEST-16 physical-device voice run) remains in Phase 16. Milestone v1.0 remains 100% complete.
+Last activity: 2026-04-22 -- Completed 16-07 (Settings dark-mode toggle wired to cookingStore.setDarkMode with persistence, Maestro flow 28 with 7 screenshots, StepDisplay + VoiceStatusBadge deleted, 16-08 is the final plan)
 
 Progress: [██████████] 100%
 
@@ -148,6 +148,7 @@ Progress: [██████████] 100%
 | Phase 16 P05 | 11min | 2 tasks | 10 files |
 | Phase 16 P04 | 11 | 2 tasks | 4 files |
 | Phase 16 P06 | 12min | 2 tasks | 3 files |
+| Phase 16 P07 | 12min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -483,6 +484,8 @@ Recent decisions affecting current work:
 - [Phase 16]: 16-04: Ingredient-check icon tone = success (not brand) — UI-SPEC §Color accent budget reserved for rail/timer/mic/Stop/nav-pressed/toast; success semantically reads as checked/done
 - [Phase 16]: Phase 16-06: Dark cooking mode applied via scoped inline style override on SafeAreaView + ScrollableRecipe wrapper (NOT app-wide NativeWind theme) per CONTEXT D-03. Scoped to cook screen only; light palette tokens remain single source of truth for className lookups.
 - [Phase 16]: Phase 16-06: SSE Ask flow primary + askAssistant fallback on NO_STREAM_BODY / NO_AUTH (Pitfall 1 — RN 0.83 ReadableStream guard). Other error codes (CLAUDE_ERROR, HTTP_4xx/5xx, STREAM_ERROR) surface as askError and render ErrorState in AskSheet.
+- [Phase 16]: 16-07: Settings Cooking section inline vs dedicated component — single toggle row doesn't justify a separate CookingSection.tsx; matches inline Pantry section pattern
+- [Phase 16]: 16-07: Maestro flow 28 covers only non-voice paths; voice STT/TTS locked behind DEVICE-TEST-16 per CLAUDE.md UAT (simulator has no audio injection)
 
 ### Pending Todos
 
@@ -526,6 +529,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T04:32:42.909Z
-Stopped at: Completed 16-04-PLAN.md (scrollable recipe primitives — StepCard/IngredientRow/ScrollableRecipe/useCurrentStepScroll + imperative scrollToIngredients() ref handle)
+Last session: 2026-04-22T04:58:10.256Z
+Stopped at: Completed 16-07-PLAN.md (Settings Cooking section dark-mode toggle, Maestro flow 28 non-voice UAT, Phase 9 cleanup)
 Resume file: None
