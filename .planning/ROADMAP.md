@@ -487,8 +487,15 @@ Plans:
  15. Visual distinction between cooked / scheduled / skipped / unplanned
  16. Quick edit inline (swap day, mark cooked, skip) without leaving Plan tab
 
-**Plans**: 0 plans
-Plans: (not yet planned)
+**Plans**: 7 plans
+Plans:
+- [ ] 22-00-PLAN.md — Wave 0: datetimepicker install + prebuild, migrations 00025/00026, /entries/assign date extension + GET range + POST /telemetry/plan, pure helpers (skillTier/stretchPicker/plan telemetry), DatePickerSheet, 7 Maestro red stubs
+- [ ] 22-01-PLAN.md — Cluster 1 cross-flow nav: Plan→Recipe tap, Recipe→Plan date picker, Plan→Shopping HandoffSheet, Suggestions→Plan pin-to-day
+- [ ] 22-02-PLAN.md — Cluster 2a week actions: WeekActionSheet (regenerate/shift/duplicate/shopping) + mealPlanStore shiftWeek/duplicateLastWeek
+- [ ] 22-03-PLAN.md — Cluster 2b month view: segmented control inside plan.tsx, MonthGrid 5×7, MonthPatterns aggregates, fetchRange store
+- [ ] 22-04-PLAN.md — Cluster 2c day drill-down: /plan/[date] route with IngredientChecklist + TimerShortcuts + Start Cooking
+- [ ] 22-05-PLAN.md — Cluster 3 skill integration: stretch-pick client-side, FocusBanner + settings toggle, tier-gated mealPlanner prompt, PATCH focus_theme endpoint
+- [ ] 22-06-PLAN.md — Cluster 4 info density + swipe: pantryReady helper + DayRow flag bind, SwipeableDayRow with ReanimatedSwipeable, POST /skip endpoint, skipDay store action
 **UI hint**: yes
 
 ### Phase 23: Settings, Auth & Non-Functional Requirements

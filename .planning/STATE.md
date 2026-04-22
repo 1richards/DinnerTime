@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: Not started
-status: verifying
-stopped_at: Completed 20-05-PLAN.md — Phase 20 closed at automated-UAT level
-last_updated: "2026-04-22T06:29:30.213Z"
+current_plan: 22-00 (complete)
+status: in_progress
+stopped_at: Completed 22-00-PLAN.md — Wave 0 foundation shipped; datetimepicker+migrations+server extensions+helpers+DatePickerSheet+7 maestro stubs; dev-client rebuild deferred to plan 22-01
+last_updated: "2026-04-22T07:19:36.961Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
   completed_phases: 21
-  total_plans: 102
-  completed_plans: 101
+  total_plans: 109
+  completed_plans: 102
   percent: 99
 ---
 
@@ -155,6 +155,7 @@ Progress: [██████████] 99%
 | Phase 20 P03 | 10min | 1 tasks | 1 files |
 | Phase 20 P04 | 5min | 2 tasks | 6 files |
 | Phase 20 P05 | 5min | 3 tasks tasks | 3 files files |
+| Phase 22 P00 | 16min | 4 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -504,6 +505,12 @@ Recent decisions affecting current work:
 - [Phase 20]: 20-04: Maestro flow filename kept at 12-shopping-orders.yaml per CLAUDE.md — renaming flow files invalidates Maestro Cloud history
 - [Phase 20]: Flow 29 tolerates racy sending state (<300ms) — matches alternation before asserting success; post-Open-in-Instacart asserts only no-error, not URL routing (DEVICE-TEST-20 territory)
 - [Phase 20]: DEVICE-TEST-20 rows use 4 categories (✓ sim, pending sim UAT, pending physical device, pending Supabase access) instead of pass/fail — makes automated-vs-out-of-band split legible
+- [Phase 22]: native iOS date picker: @react-native-community/datetimepicker@8.6.0 with display=inline, default bounds today..today+60d
+- [Phase 22]: plan telemetry clones Phase 20 shopping 1:1 with 14-key whitelist (9 parity + meal_plan_id + meal_plan_entry_id + variant + date + week_start)
+- [Phase 22]: /entries/assign: body.date (YYYY-MM-DD) takes precedence over body.day for deterministic contract
+- [Phase 22]: GET /meal-plans range: bounded |to-from| <= 70d with optional projection=month lightweight entry shape
+- [Phase 22]: skill tier thresholds: <5=tier1, <20=tier2, else tier3, monotone via lifetime cook_count sum
+- [Phase 22]: iOS dev-client rebuild deferred: plan 22-01 must run expo prebuild + pod install + xcodebuild before Maestro flow 31 (per Phase 10 netinfo pattern)
 
 ### Pending Todos
 
@@ -547,6 +554,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T06:18:41.746Z
-Stopped at: Completed 20-05-PLAN.md — Phase 20 closed at automated-UAT level
+Last session: 2026-04-22T07:19:26.865Z
+Stopped at: Completed 22-00-PLAN.md — Wave 0 foundation shipped; datetimepicker+migrations+server extensions+helpers+DatePickerSheet+7 maestro stubs; dev-client rebuild deferred to plan 22-01
 Resume file: None
