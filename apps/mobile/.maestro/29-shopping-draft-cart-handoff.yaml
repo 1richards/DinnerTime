@@ -1,0 +1,153 @@
+appId: com.dinnertime.app
+name: "29 — shopping: draft-cart handoff happy-path + dismiss"
+tags:
+  - phase-20
+  - shopping
+# Phase 20 Plan 05 — Maestro UAT for the HandoffSheet flow on iOS Simulator.
+#
+# Pre-condition: a meal plan must exist and produce a shopping list. If the
+# Shopping tab loads empty, this flow generates via "Generate from Meal Plan"
+# the same way flow 11 does.
+#
+# What this flow DOES verify (sim-runnable):
+#   - Tap "Order on Instacart" on the Shopping tab
+#   - HandoffSheet appears with "Sending to Instacart cart…" copy (racy — may
+#     be <300ms, so we tolerate arriving in success directly)
+#   - Sheet transitions to success state with ".*items ready.*" copy +
+#     "Open in Instacart" primary + "View shopping list" secondary CTAs
+#   - Tap "View shopping list" (secondary) → sheet dismisses, back on shopping list
+#   - Tap "Order on Instacart" again → success state re-appears
+#   - Tap "Open in Instacart" (primary) → sheet dismisses (simulator opens
+#     Safari to products_link_url — acceptable; real app routing is
+#     DEVICE-TEST-20 territory)
+#
+# What this flow does NOT verify (deferred to DEVICE-TEST-20 on a physical iPhone):
+#   - Universal link opens the actual Instacart app (UNIVLINK-01)
+#   - Safari fallback when Instacart app not installed (UNIVLINK-02)
+#   - Items appear as drafts in the real Instacart cart
+#   - Network-error variant (requires airplane mode — HANDOFF-02)
+#   - Auth-error variant (requires expired token)
+#
+# Screenshots produced (5):
+#   29-01-shopping-list-ready   — shopping list with items before tap
+#   29-02-handoff-sending       — HandoffSheet in sending state (if race allows)
+#   29-03-handoff-success       — HandoffSheet in success state with CTAs
+#   29-04-sheet-dismissed       — back on shopping list after dismiss
+#   29-05-reopen-success        — sheet reopened with success
+#
+# Selector caveats (CLAUDE.md UAT section):
+#   - Maestro matches text as regex. Avoid '=', '(', '?', '·' in assertions.
+#   - "Sending to Instacart cart…" contains an ellipsis (…) — use regex
+#     .*Sending to Instacart cart.* which ignores the trailing character.
+#   - "{N} items ready" — use .*items ready.* (regex, count varies).
+#   - "Open in Instacart" is a button label — exact text is regex-safe here
+#     because it contains no regex special chars.
+#   - "View shopping list" — exact text, regex-safe.
+#   - "Order on Instacart" — exact text, regex-safe.
+#   - HandoffSheet close button accessibilityLabel="Dismiss" (not used here;
+#     secondary CTA / primary CTA drive dismissal in the happy path).
+---
+# Clean app restart — upstream flows may leave modal/sheet state mounted.
+- launchApp:
+    clearState: true
+
+- runFlow: _ensure-logged-in.yaml
+
+- takeScreenshot: 29-00-home
+
+# 1. Visit Plan tab first so fetchCurrentPlan() has time to load the meal
+#    plan into Zustand. Without this, Shopping tab renders the empty state
+#    with "Generate from Meal Plan" disabled (no plan in store yet).
+- tapOn:
+    text: ".*Plan.*"
+- extendedWaitUntil:
+    visible:
+      text: ".*This Week.*"
+    timeout: 30000
+
+# 2. Navigate to Shopping tab.
+- tapOn:
+    text: ".*Shopping.*"
+
+# Wait for the tab to settle — either the empty-plan hint disappears (plan
+# loaded) or a pre-existing list is already visible.
+- extendedWaitUntil:
+    notVisible:
+      text: ".*Create a meal plan in the Plan tab first.*"
+    timeout: 15000
+
+# 3. Ensure we have a shopping list. If the "Order on Instacart" CTA isn't
+#    visible, the list is empty — generate from meal plan (same as flow 11).
+- tapOn:
+    text: ".*Generate from Meal Plan.*"
+    optional: true
+
+- extendedWaitUntil:
+    visible:
+      text: "Order on Instacart"
+    timeout: 90000
+
+- takeScreenshot: 29-01-shopping-list-ready
+
+# 4. Tap "Order on Instacart" — triggers handleOrder → HandoffSheet sending.
+- tapOn:
+    text: "Order on Instacart"
+
+# 5. HandoffSheet sending state — may be quick if stub Instacart returns fast.
+#    Tolerate either "Sending" or "items ready" as the first observable copy.
+- extendedWaitUntil:
+    visible:
+      text: ".*Sending to Instacart cart.*|.*items ready.*"
+    timeout: 5000
+
+- takeScreenshot: 29-02-handoff-sending
+
+# 6. Catch success state — regardless of whether we observed "Sending" above.
+- extendedWaitUntil:
+    visible:
+      text: ".*items ready.*"
+    timeout: 15000
+
+- takeScreenshot: 29-03-handoff-success
+
+- assertVisible:
+    text: "Open in Instacart"
+- assertVisible:
+    text: "View shopping list"
+
+# 7. Tap secondary "View shopping list" → dismiss sheet without opening Instacart.
+- tapOn:
+    text: "View shopping list"
+
+# 8. Sheet dismissed, we're back on the Shopping tab list (CTA visible again).
+- extendedWaitUntil:
+    visible:
+      text: "Order on Instacart"
+    timeout: 5000
+
+- takeScreenshot: 29-04-sheet-dismissed
+
+# 9. Re-tap Order → success again → primary CTA path.
+- tapOn:
+    text: "Order on Instacart"
+- extendedWaitUntil:
+    visible:
+      text: ".*items ready.*"
+    timeout: 15000
+
+- takeScreenshot: 29-05-reopen-success
+
+# 10. Tap "Open in Instacart" — simulator attempts to open the products_link
+#     URL. On the simulator this either opens Safari (universal-link fallback
+#     because no Instacart app installed) or no-ops. Either way, the sheet
+#     state should resolve back to idle and NOT land on the error state.
+- tapOn:
+    text: "Open in Instacart"
+
+# 11. Verify we didn't end up on an error state. We may or may not still be
+#     inside DinnerTime (Safari View Controller may have covered the app);
+#     what matters is no error copy is visible in any foreground view.
+- assertNotVisible:
+    text: ".*Can't reach Instacart.*"
+- assertNotVisible:
+    text: ".*Try again.*"

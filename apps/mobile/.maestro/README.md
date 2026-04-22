@@ -56,7 +56,7 @@ Screenshots land in `~/.maestro/tests/<run-id>/` and are also embedded in the ru
 | `09-meal-plan-generate.yaml` | Generate (or verify) a 7-day meal plan on the Plan tab. | network + AI |
 | `10-meal-plan-swap.yaml` | Swap one day's meal via the SwapSheet. | existing plan + AI |
 | `11-shopping-list-generate.yaml` | Generate shopping list from plan, add manual item. | existing plan + AI |
-| `12-shopping-orders.yaml` | Navigate to order history screen. | — |
+| `12-shopping-orders.yaml` | Navigate to **Instacart cart** history screen (Phase 20: labels rebased from "Instacart order" → "Instacart cart" per SHOP-DC-01; filename preserved). | — |
 | `13-settings.yaml` | Update skill level, toggle cuisine, add family member modal. | — |
 | `14-cook-tab.yaml` | Cook tab renders, "Open Recipes" navigates, "Start Cooking" visible. | ≥1 recipe |
 | `15-cook-voice-mode-stub.yaml` | **STUB — SKIPPED** Voice cooking mode requires VOICE/STT. | physical device |
@@ -71,6 +71,12 @@ Screenshots land in `~/.maestro/tests/<run-id>/` and are also embedded in the ru
 | `24-pantry-staples.yaml` | PantryItemCard ellipsis → "Mark as staple" → Staples filter chip (Phase 21-04/05). | ≥1 pantry item |
 | `25-pantry-search-pill.yaml` | Pantry tab sticky search pill → /search modal → query → dismiss (Phase 21-04). | — |
 | `26-pantry-rules.yaml` | Settings → Pantry Rules → Add Rule FAB → canonical pick → 30-day preview → save → delete (Phase 21-05). | network + canonical_ingredients seeded |
+| `29-shopping-draft-cart-handoff.yaml` | HandoffSheet sending → success → dismiss + re-open → Open-in-Instacart CTA (Phase 20-05; happy path only, error/universal-link paths deferred to DEVICE-TEST-20). | existing plan + AI |
+
+### Phase 20: Shopping Draft-Cart Handoff
+
+- `12-shopping-orders.yaml` — rebased to assert "Instacart cart" vocabulary (was "Instacart order"); filename preserved per CLAUDE.md UAT rule.
+- `29-shopping-draft-cart-handoff.yaml` — NEW. Covers the full simulator-runnable happy path: Shopping tab → "Order on Instacart" → HandoffSheet sending → success → dismiss via secondary ("View shopping list") and primary ("Open in Instacart") CTAs. Universal-link app routing, network-error retry, and feature-flag rollback are deferred to `DEVICE-TEST-20.md`.
 
 ## Phase 15 note — manual-only flows
 
