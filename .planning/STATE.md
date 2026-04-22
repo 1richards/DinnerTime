@@ -4,15 +4,15 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 23-08 (23-00..07 shipped; only 23-02 + 23-08 remain in phase 23)
 status: planning
-stopped_at: Completed 23-07-PLAN.md — deep-link allowlist + App Store Connect asset drafts
-last_updated: "2026-04-22T09:59:47.857Z"
+stopped_at: Completed 23-02-PLAN.md — account export + delete (NFR-03/NFR-04) shipped
+last_updated: "2026-04-22T10:01:46.094Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
   completed_phases: 22
   total_plans: 118
-  completed_plans: 115
-  percent: 99
+  completed_plans: 116
+  percent: 97
 ---
 
 # Project State
@@ -169,6 +169,7 @@ Progress: [██████████] 97%
 | Phase 23 P01 | 11min | 2 tasks | 11 files |
 | Phase 23 P06 | 13min | 2 tasks | 13 files |
 | Phase 23 P07 | 7min | 2 tasks | 12 files |
+| Phase 23 P02 | 8min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -559,6 +560,10 @@ Recent decisions affecting current work:
 - [Phase 23]: 23-07: captureBreadcrumb imported via lazy require() inside try/catch in deepLinkAllowlist.ts so vitest-node tests pass without per-test Sentry mock. Matches the sentry.ts file-header guidance to lazy-require the native bridge.
 - [Phase 23]: 23-07: LegalSection skipped — AboutSection (shipped 23-01) already renders Privacy + Terms + Support rows. Per plan Task 2's explicit consolidation clause. No duplication needed.
 - [Phase 23]: 23-07: SECURITY.md next to app.json as written invariants doc for NFR-22..NFR-25. Includes grep contract for PII hygiene so future PRs are auditable.
+- [Phase 23]: profiles lookup uses .maybeSingle() in buildExportDump — tolerates users without a profile row and aligns with 23-00 account.test.ts mock shape
+- [Phase 23]: authMiddleware now exposes supabaseAdmin via c.set() so privileged routes read from context; keeps route-test mock surface stable
+- [Phase 23]: DeleteAccountSheet is inline controlled component (not floating modal) so destructive action is user's explicit arrival at the screen, not a misfire
+- [Phase 23]: expo-file-system/legacy subpath used for one-off text file write — v19 Paths+File class API deferred until we need streaming/Blob affordances
 
 ### Pending Todos
 
@@ -602,6 +607,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T09:59:33.644Z
-Stopped at: Completed 23-07-PLAN.md — deep-link allowlist + App Store Connect asset drafts
+Last session: 2026-04-22T10:01:46.088Z
+Stopped at: Completed 23-02-PLAN.md — account export + delete (NFR-03/NFR-04) shipped
 Resume file: None
