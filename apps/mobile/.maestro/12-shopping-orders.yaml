@@ -1,13 +1,19 @@
 appId: com.dinnertime.app
-name: "12 — shopping orders: navigate to order history screen"
-# This flow tests the Orders sub-screen (shopping/orders.tsx).
-# The "Order on Instacart" button opens an in-app browser (WebBrowser) which we
-# cannot automate. We only test that the Orders screen renders correctly.
+name: "12 — shopping carts: navigate to Instacart cart history screen"
+# Phase 20: 'order' UI renamed to 'cart' per SHOP-DC. Route path also rebased:
+# /shopping/orders → /shopping/handoffs via redirect stub. The redirect keeps
+# any hard-coded route references resolving, but the screen's user-visible
+# copy is now "Instacart cart" / "No Instacart carts yet" / "Handoff details".
 #
-# Phase 15 update: empty orders state now uses EmptyState primitive with SF
-# Symbol shippingbox (replaces 📦 decorative emoji). Order row icons
-# (cart, chevron.forward) migrated to SF Symbols. No emoji text assertions
-# to prune — flow was coordinate/text-based and remains stable.
+# This flow tests the cart-history sub-screen (shopping/handoffs.tsx). The
+# "Order on Instacart" button on the shopping tab now opens a HandoffSheet
+# modal (not an inline WebBrowser); the flow below only exercises the
+# navigation path into the history screen — not the handoff sheet itself.
+# (Phase 20-05 adds flow 29 for the full happy-path handoff flow.)
+#
+# Phase 15 update: empty cart state uses EmptyState primitive with SF
+# Symbol shippingbox (replaces 📦 decorative emoji). Cart row icons
+# (cart, chevron.forward) migrated to SF Symbols.
 ---
 - runFlow: _ensure-logged-in.yaml
 
@@ -19,14 +25,20 @@ name: "12 — shopping orders: navigate to order history screen"
 
 - takeScreenshot: 03-shopping-tab
 
-# The Orders button (receipt-outline icon + "Orders" text) is in the header
-# only when a shopping list exists. If no list, orders are not navigable from here.
-# Try tapping "Orders" text if visible.
+# The carts-history button (doc.text icon, accessibilityLabel
+# "View Instacart carts") is in the header only when a shopping list exists.
+# If no list, past carts are not navigable from here. Try tapping the
+# accessibility label; fall back to legacy "Orders" text label for
+# back-compat with older builds running on this simulator.
+- tapOn:
+    id: "View Instacart carts"
+    optional: true
 - tapOn:
     text: ".*Orders.*"
-
     optional: true
-- takeScreenshot: 04-orders-screen
 
-# Orders screen shows either "No orders yet" or a list of Instacart order cards
-- takeScreenshot: 05-orders-state
+- takeScreenshot: 04-handoffs-screen
+
+# Handoffs screen shows either "No Instacart carts yet" or a list of
+# Instacart cart cards (labeled "Instacart cart").
+- takeScreenshot: 05-handoffs-state
