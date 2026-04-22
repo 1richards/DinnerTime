@@ -17,7 +17,31 @@ interface MealPlanState {
   generate: (weekStart: string) => Promise<void>;
   swapDay: (day: number) => Promise<void>;
   markCooked: (day: number) => Promise<void>;
+  /**
+   * Phase 22-02: Shift the current week by ±7 days. Generates a new plan at
+   * the target `week_start` and replaces `currentPlan`. No-op when
+   * `currentPlan` is null. Errors surface via `state.error`.
+   */
+  shiftWeek: (deltaDays: number) => Promise<void>;
+  /**
+   * Phase 22-02: Read last week's entries via GET /meal-plans?from=&to=,
+   * then POST /meal-plans/entries/assign for each non-skipped entry onto
+   * the current week's matching day. Skipped entries are dropped.
+   * No-op when `currentPlan` is null.
+   */
+  duplicateLastWeek: () => Promise<void>;
 }
+
+/**
+ * Add N days (may be negative) to a 'YYYY-MM-DD' date in UTC. Returns the
+ * same 'YYYY-MM-DD' format. Used by shiftWeek / duplicateLastWeek to
+ * compute target week_start dates without timezone drift.
+ */
+const addDaysIso = (iso: string, days: number): string => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
 
 const getApiBaseUrl = (): string => {
   return process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -239,6 +263,76 @@ export const useMealPlanStore = create<MealPlanState>()(
         currentPlan: { ...plan, entries: snapshot },
         cookingDay: null,
         error: err instanceof Error ? err.message : 'Failed to mark cooked',
+      });
+    }
+  },
+
+  shiftWeek: async (deltaDays: number) => {
+    const plan = get().currentPlan;
+    if (!plan) return;
+    await get().generate(addDaysIso(plan.week_start, deltaDays));
+  },
+
+  duplicateLastWeek: async () => {
+    const plan = get().currentPlan;
+    if (!plan) return;
+    const prevStart = addDaysIso(plan.week_start, -7);
+    set({ loading: true, error: null });
+    try {
+      const res = await authedFetch(
+        `/meal-plans?from=${prevStart}&to=${prevStart}`,
+        { method: 'GET' }
+      );
+      if (!res.ok) {
+        set({ error: 'Could not load last week', loading: false });
+        return;
+      }
+      const body = await res.json();
+      const prev = Array.isArray(body?.data) ? body.data[0] : null;
+      if (!prev) {
+        // Soft error: no previous-week plan exists. Not an app error — the
+        // user just hasn't cooked long enough for a previous week to exist.
+        set({ loading: false, error: null });
+        return;
+      }
+      const entries = (prev.entries ?? []) as Array<{
+        day_of_week: number;
+        status: string;
+        title: string;
+        description?: string | null;
+        ingredients?: unknown;
+        estimated_time_minutes?: number | null;
+        difficulty?: string | null;
+        kid_friendly?: boolean;
+        why_suggested?: string | null;
+        recipe_id?: string | null;
+      }>;
+      // Skip 'skipped' entries per 22-RESEARCH Open Q3 — rationale: the user
+      // chose not to cook those, duplicating would restore work they rejected.
+      const toAssign = entries.filter((e) => e.status !== 'skipped');
+      for (const e of toAssign) {
+        const targetIso = addDaysIso(plan.week_start, e.day_of_week);
+        await authedFetch('/meal-plans/entries/assign', {
+          method: 'POST',
+          body: JSON.stringify({
+            date: targetIso,
+            title: e.title,
+            description: e.description ?? null,
+            ingredients: e.ingredients ?? [],
+            estimated_time_minutes: e.estimated_time_minutes ?? null,
+            difficulty: e.difficulty ?? null,
+            kid_friendly: e.kid_friendly ?? false,
+            why_suggested: e.why_suggested ?? null,
+            recipe_id: e.recipe_id ?? null,
+          }),
+        });
+      }
+      await get().fetchCurrent();
+      set({ loading: false, error: null });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : 'Duplicate failed',
+        loading: false,
       });
     }
   },
