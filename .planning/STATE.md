@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 23-01
 status: planning
-stopped_at: Completed 23-00-PLAN.md — Phase 23 Wave 0 foundation
-last_updated: "2026-04-22T09:28:52.043Z"
+stopped_at: Completed 23-03-PLAN.md — Face ID unlock (NFR-07)
+last_updated: "2026-04-22T09:38:37.518Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
   completed_phases: 22
   total_plans: 118
-  completed_plans: 109
+  completed_plans: 110
   percent: 99
 ---
 
@@ -163,6 +163,7 @@ Progress: [██████████] 99%
 | Phase 22-plan-experience-refactor P05 | 14min | 3 tasks | 12 files |
 | Phase 22 P06 | 12min | 4 tasks | 11 files |
 | Phase 23 P00 | 10min | 3 tasks | 17 files |
+| Phase 23 P03 | 7min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -534,6 +535,8 @@ Recent decisions affecting current work:
 - [Phase 23]: Deferred iOS dev-client rebuild (expo prebuild --clean + pod install + xcodebuild) to Wave 1 — --clean regenerates 16 hand-managed native module links; Wave 1 is first plan to import @sentry/react-native at runtime so linking issues surface naturally
 - [Phase 23]: account_deletions.profile_id is NOT a FK to auth.users — the user row is cascaded away on delete, so the FK would either prevent the INSERT or ripple-delete the audit row. Uses plain UUID + deny-by-default RLS for service_role-only access
 - [Phase 23]: authedFetch + sessionRefresh split into two separate test files (Bearer+base-URL vs 401-refresh-retry) for clean concern separation, though Wave 2 may co-locate them into a single module
+- [Phase 23]: 23-03: AppState gate re-locks only on background→active (not inactive→active) to avoid false re-prompts from control center / phone calls — iOS emits inactive for transient system overlays; re-prompting Face ID on those would be hostile
+- [Phase 23]: 23-03: Native-module wrappers return discriminated unions ('success' | 'cancelled' | 'failed' | 'unavailable') instead of raw error strings — Prevents expo-local-authentication internals (authentication_failed, user_cancel, etc.) from leaking into UI copy decisions
 
 ### Pending Todos
 
@@ -577,6 +580,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T09:28:52.039Z
-Stopped at: Completed 23-00-PLAN.md — Phase 23 Wave 0 foundation
+Last session: 2026-04-22T09:38:31.865Z
+Stopped at: Completed 23-03-PLAN.md — Face ID unlock (NFR-07)
 Resume file: None
