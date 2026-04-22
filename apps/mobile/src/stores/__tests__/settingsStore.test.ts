@@ -139,4 +139,50 @@ describe('settingsStore', () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(useSettingsStore.getState().planFocusBannerEnabled).toBe(false);
   });
+
+  // -----------------------------------------------------------------------
+  // Phase 23-03 — biometricUnlockEnabled (NFR-07)
+  // -----------------------------------------------------------------------
+
+  describe('biometricUnlockEnabled', () => {
+    it('default biometricUnlockEnabled is false (opt-in per D-07)', async () => {
+      const { useSettingsStore } = await import('../settingsStore');
+      await new Promise((r) => setTimeout(r, 10));
+      expect(useSettingsStore.getState().biometricUnlockEnabled).toBe(false);
+    });
+
+    it('setBiometricUnlockEnabled(true) flips the toggle', async () => {
+      const { useSettingsStore } = await import('../settingsStore');
+      await new Promise((r) => setTimeout(r, 10));
+      expect(useSettingsStore.getState().biometricUnlockEnabled).toBe(false);
+
+      useSettingsStore.getState().setBiometricUnlockEnabled(true);
+      expect(useSettingsStore.getState().biometricUnlockEnabled).toBe(true);
+
+      useSettingsStore.getState().setBiometricUnlockEnabled(false);
+      expect(useSettingsStore.getState().biometricUnlockEnabled).toBe(false);
+    });
+
+    it('persists biometricUnlockEnabled changes and rehydrates from AsyncStorage', async () => {
+      // Seed storage BEFORE first import so rehydrate reads it.
+      asyncStorageMock.store.set(
+        STORAGE_KEY,
+        JSON.stringify({
+          state: { biometricUnlockEnabled: true },
+          version: 0,
+        }),
+      );
+      const { useSettingsStore } = await import('../settingsStore');
+      await new Promise((r) => setTimeout(r, 20));
+      expect(useSettingsStore.getState().biometricUnlockEnabled).toBe(true);
+
+      // Round-trip: flip off and verify persisted value updates.
+      useSettingsStore.getState().setBiometricUnlockEnabled(false);
+      await new Promise((r) => setTimeout(r, 10));
+      const raw = asyncStorageMock.store.get(STORAGE_KEY);
+      expect(raw).toBeDefined();
+      const parsed = JSON.parse(raw!);
+      expect(parsed.state.biometricUnlockEnabled).toBe(false);
+    });
+  });
 });
