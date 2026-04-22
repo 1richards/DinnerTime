@@ -14,6 +14,16 @@
  *   - Lifecycle: request permissions + start on enabled→true, stop on
  *     enabled→false or unmount.
  *
+ * Phase 16 (16-06) telemetry hooks:
+ *   - Fire `stt_final` on every final transcript (payload: { length,
+ *     confidence? }; NEVER the raw transcript text — PII guard in
+ *     16-RESEARCH.md Pattern 1).
+ *   - Fire `stt_error` on every error event (payload: { error_code }).
+ *   - Fire `tts_echo_swallowed` when the soft isSpeakingAsync gate drops a
+ *     transcript — this is the soft-gate owner per UI-SPEC §Echo-loop.
+ *   - session_id is read lazily from useCookingStore.getState() so the hook
+ *     doesn't re-subscribe on session changes. Null session → skip logging.
+ *
  * No dedicated unit test in this plan — deeply RN/native coupled. The
  * cooking screen test in 09-05 exercises it end-to-end via the global
  * vitest.setup.ts mocks. TODO: manual device-build smoke test for
@@ -25,15 +35,21 @@ import {
 } from '@jamsch/expo-speech-recognition';
 import * as Speech from 'expo-speech';
 import { useEffect, useRef } from 'react';
+import { logCookingEvent, sanitizePayload } from './telemetry';
+import { useCookingStore } from '../stores/cookingStore';
 
 interface SpeechResultEvent {
-  results: Array<{ transcript: string; isFinal?: boolean } | undefined>;
+  results: Array<
+    { transcript: string; isFinal?: boolean; confidence?: number } | undefined
+  >;
   isFinal?: boolean;
 }
 
 interface SpeechErrorEvent {
   error?: string;
   message?: string;
+  code?: string | number;
+  name?: string;
 }
 
 async function startListening(hints: string[]): Promise<void> {
@@ -69,16 +85,62 @@ export function useVoiceListener(
     const isFinal = result.isFinal ?? e.isFinal ?? false;
     if (!isFinal) return; // Pitfall 2 — final results only.
 
+    // Phase 16 telemetry: fire stt_final on EVERY final transcript — before
+    // the TTS-echo soft-gate — so we capture the ground truth rate the model
+    // actually surfaces finals at. payload carries only length + confidence
+    // (NEVER the raw transcript — PII guard).
+    const sessionId = useCookingStore.getState().currentSessionId;
+    const recipeId = useCookingStore.getState().recipe?.id ?? null;
+    const stepIndex = useCookingStore.getState().stepIndex;
+    if (sessionId) {
+      logCookingEvent({
+        name: 'stt_final',
+        session_id: sessionId,
+        recipe_id: recipeId,
+        step_index: stepIndex,
+        payload: sanitizePayload({
+          length: result.transcript.length,
+          confidence: result.confidence ?? null,
+        }),
+      });
+    }
+
     // Pitfall 4 — drop transcripts that arrive while TTS is speaking.
     // isSpeakingAsync is a Promise; we check then forward.
     Speech.isSpeakingAsync().then((speaking) => {
-      if (speaking) return;
+      if (speaking) {
+        // TTS-echo soft-gate swallowed a transcript. Emit telemetry so the
+        // post-beta analysis can quantify false-trigger rate.
+        const sid = useCookingStore.getState().currentSessionId;
+        if (sid) {
+          logCookingEvent({
+            name: 'tts_echo_swallowed',
+            session_id: sid,
+            recipe_id: useCookingStore.getState().recipe?.id ?? null,
+            step_index: useCookingStore.getState().stepIndex,
+            payload: {},
+          });
+        }
+        return;
+      }
       callbackRef.current(result.transcript);
     });
   });
 
   useSpeechRecognitionEvent('error', (e: SpeechErrorEvent) => {
     console.warn('[stt]', e.error, e.message);
+    const sessionId = useCookingStore.getState().currentSessionId;
+    if (sessionId) {
+      logCookingEvent({
+        name: 'stt_error',
+        session_id: sessionId,
+        recipe_id: useCookingStore.getState().recipe?.id ?? null,
+        step_index: useCookingStore.getState().stepIndex,
+        payload: sanitizePayload({
+          error_code: String(e.code ?? e.name ?? e.error ?? 'unknown'),
+        }),
+      });
+    }
   });
 
   useSpeechRecognitionEvent('end', () => {
