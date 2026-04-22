@@ -14,6 +14,7 @@ import cooking from './routes/cooking.js';
 import progression from './routes/progression.js';
 import telemetry from './routes/telemetry.js';
 import account from './routes/account.js';
+import feedback from './routes/feedback.js';
 import { rateLimitErrorHandler } from './middleware/rateLimitErrors.js';
 
 const app = new Hono().basePath('/api/v1');
@@ -48,6 +49,9 @@ app.route('/cooking', cooking);
 app.route('/progression', progression);
 app.route('/telemetry', telemetry);
 app.route('/account', account);
+// Phase 25-01: feedback router declares BOTH /feedback and /admin/beta-invites
+// internally, so mount at root.
+app.route('/', feedback);
 
 // Start server (only when not imported for testing)
 if (process.env.NODE_ENV !== 'test') {
