@@ -346,6 +346,62 @@ mealPlans.post('/entries/assign', async (c) => {
 });
 
 /**
+ * PATCH /:id — Update plan-level properties (Phase 22-05: focus_theme).
+ *
+ * Body: { focus_theme?: string | null }
+ *
+ * Returns { data: MealPlan } on success. 400 when the JSON body is malformed
+ * or when no updatable field is supplied. 404 when the plan does not exist
+ * OR is owned by a different profile (ownership guard keyed on profile_id).
+ *
+ * Current updatable fields: focus_theme only. Extend the schema check here
+ * when new fields are added — keep the "no updatable fields" 400 strict so
+ * typo callers (e.g. `{ focusTheme: ... }`) fail fast.
+ */
+mealPlans.patch('/:id', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const planId = c.req.param('id');
+
+  let body: { focus_theme?: string | null };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  if (!('focus_theme' in body)) {
+    return c.json({ error: 'No updatable fields provided' }, 400);
+  }
+
+  // focus_theme accepted as string or null. Coerce undefined→null (caller
+  // explicitly passed `{ focus_theme: undefined }` — treat as clear).
+  const nextTheme =
+    typeof body.focus_theme === 'string' ? body.focus_theme : null;
+
+  try {
+    const { data, error } = await supabase
+      .from('meal_plans')
+      .update({ focus_theme: nextTheme })
+      .eq('id', planId)
+      .eq('profile_id', user.id)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      return c.json({ error: error.message }, 500);
+    }
+    if (!data) {
+      return c.json({ error: 'Not found' }, 404);
+    }
+    return c.json({ data });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to update meal plan';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
  * POST /:id/entries/:day/cook — Mark entry cooked and deduct pantry.
  */
 mealPlans.post('/:id/entries/:day/cook', async (c) => {
