@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 20-05-PLAN.md (complete — Phase 20 closed at automated-UAT level; physical-iPhone DEVICE-TEST-20 deferred to user)
-status: completed
+current_plan: Not started
+status: verifying
 stopped_at: Completed 20-05-PLAN.md — Phase 20 closed at automated-UAT level
-last_updated: "2026-04-22T06:18:41.749Z"
+last_updated: "2026-04-22T06:29:30.213Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 20 of 25 (shopping refactor — push to Instacart draft cart) **COMPLETE at automated-UAT level**
-Current Plan: 20-05-PLAN.md (complete — Phase 20 closed; physical-iPhone DEVICE-TEST-20 deferred to user)
+Phase: 21 of 25 (pantry intelligence smarter dedup presentation categorization user defined scan rules)
+Current Plan: Not started
 Status: Phase 20 Plan 20-05 shipped in 5 min. Task 1 (commit `5977b95`) created `apps/mobile/.maestro/29-shopping-draft-cart-handoff.yaml` (153 lines, tagged phase-20+shopping) automating the HandoffSheet happy path: Shopping tab → Order on Instacart → sending state → success state with brand-tinted checkmark + 'N items ready' + primary 'Open in Instacart' + secondary 'View shopping list' → tap secondary to dismiss → re-open → tap primary (post-tap assertions: sheet must NOT land on error state). Produces 5 named screenshots for visual regression. Tolerates racy sending state (<300ms) via `.*Sending to Instacart cart.*|.*items ready.*` alternation. README inventory updated: flow 29 row + new "Phase 20: Shopping Draft-Cart Handoff" section noting flow 12's Instacart-cart rebase. Task 2 (commit `b2e5a9a`) filled in `DEVICE-TEST-20.md` simulator rows: HANDOFF-01 ✓ (sim via flow 29); ROLLBACK-01 pending sim UAT (human-verified); TELEMETRY-01 pending — requires Supabase query access; UNIVLINK-01/02 + HANDOFF-02 pending physical device. Added `simulator_signoff: 2026-04-22` to frontmatter; `device_signoff` left blank. Task 3 human-verify auto-approved per AUTO_MODE_OVERRIDE. Known environmental issue (NOT a regression): the running Metro bundler was serving from repo root instead of `apps/mobile/`, producing expo-haptics resolution error during automated flow 29 execution — YAML itself is well-formed, loads cleanly in Maestro, launches app successfully; will run green after Metro restart from correct cwd (per CLAUDE.md). Unit tests: 552/556 mobile + 635/637 server passed; 6 pre-existing failures documented in `deferred-items.md`, zero regressions from this plan. Zero deviations from plan. Requirements completed: SHOP-DC-01, SHOP-DC-02, SHOP-DC-04, SHOP-DC-05 (SHOP-DC-03 already completed in 20-04). Phase 20 is done at the automated-UAT level — only remaining work is the out-of-band physical-iPhone DEVICE-TEST-20 pass (user-initiated).
 Last activity: 2026-04-22
 
