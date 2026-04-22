@@ -27,6 +27,23 @@ const {
     lastPatchPayload: any;
     /** Phase 22-05: captures the (.eq, val) pairs chained after update. */
     patchEqPairs: Array<{ col: string; val: unknown }>;
+    /**
+     * Phase 22-06: POST /:id/entries/:day/skip — row returned from
+     * .update().eq().eq().select().maybeSingle() on meal_plan_entries.
+     * Null → handler returns 404 "Entry not found".
+     */
+    skipUpdatedEntry: any | null;
+    /** Phase 22-06: captures the UPDATE payload sent to meal_plan_entries.skip. */
+    lastSkipPayload: any;
+    /** Phase 22-06: captures the (.eq, val) pairs chained on the skip update. */
+    skipEqPairs: Array<{ col: string; val: unknown }>;
+    /**
+     * Phase 22-06: plan-ownership lookup row used by the skip handler before
+     * the entry update. Null → handler returns 404 "Not found" (no plan owned
+     * by the caller matches the id). `undefined` means "not a skip test — use
+     * the legacy state.assignExistingPlanId / state.currentPlan fallbacks".
+     */
+    skipOwnedPlan: any | null | undefined;
   } = {
     currentPlan: null,
     rangePlans: [],
@@ -39,6 +56,10 @@ const {
     patchUpdatedPlan: null,
     lastPatchPayload: null,
     patchEqPairs: [],
+    skipUpdatedEntry: null,
+    lastSkipPayload: null,
+    skipEqPairs: [],
+    skipOwnedPlan: undefined,
   };
   const supabase = {
     from: vi.fn().mockImplementation((table: string) => {
@@ -51,9 +72,16 @@ const {
               eq: () => ({
                 eq: (_col: string, val: string) => ({
                   maybeSingle: () => ({
-                    data: state.assignExistingPlanId
-                      ? { id: state.assignExistingPlanId }
-                      : state.currentPlan,
+                    // Phase 22-06: when `cols === 'id'` the lookup is a
+                    // narrow ownership check (skip handler), so prefer
+                    // `state.skipOwnedPlan` when set. This keeps the skip
+                    // tests from colliding with GET /current's plan state.
+                    data:
+                      cols === 'id' && state.skipOwnedPlan !== undefined
+                        ? state.skipOwnedPlan
+                        : state.assignExistingPlanId
+                          ? { id: state.assignExistingPlanId }
+                          : state.currentPlan,
                     error: null,
                   }),
                 }),
@@ -138,6 +166,30 @@ const {
                   error: null,
                 }),
               }),
+            };
+          },
+          // Phase 22-06: skip handler —
+          //   .update({status,skip_reason}).eq('meal_plan_id',id).eq('day_of_week',day).select().maybeSingle()
+          update: (payload: unknown) => {
+            state.lastSkipPayload = payload;
+            state.skipEqPairs = [];
+            return {
+              eq: (col: string, val: unknown) => {
+                state.skipEqPairs.push({ col, val });
+                return {
+                  eq: (col2: string, val2: unknown) => {
+                    state.skipEqPairs.push({ col: col2, val: val2 });
+                    return {
+                      select: () => ({
+                        maybeSingle: () => ({
+                          data: state.skipUpdatedEntry,
+                          error: null,
+                        }),
+                      }),
+                    };
+                  },
+                };
+              },
             };
           },
         };
@@ -225,6 +277,10 @@ describe('meal-plans routes', () => {
     state.patchUpdatedPlan = null;
     state.lastPatchPayload = null;
     state.patchEqPairs = [];
+    state.skipUpdatedEntry = null;
+    state.lastSkipPayload = null;
+    state.skipEqPairs = [];
+    state.skipOwnedPlan = undefined;
   });
 
   it('Test 1: GET /current unauthenticated → 401', async () => {
@@ -368,6 +424,10 @@ describe('POST /entries/assign with date param', () => {
     state.patchUpdatedPlan = null;
     state.lastPatchPayload = null;
     state.patchEqPairs = [];
+    state.skipUpdatedEntry = null;
+    state.lastSkipPayload = null;
+    state.skipEqPairs = [];
+    state.skipOwnedPlan = undefined;
   });
 
   it('Test 22-D1: body { date: "2026-05-15", title } → week_start="2026-05-11" (Monday) + day_of_week=3 (Thursday)', async () => {
@@ -481,6 +541,10 @@ describe('GET /meal-plans (range)', () => {
     state.patchUpdatedPlan = null;
     state.lastPatchPayload = null;
     state.patchEqPairs = [];
+    state.skipUpdatedEntry = null;
+    state.lastSkipPayload = null;
+    state.skipEqPairs = [];
+    state.skipOwnedPlan = undefined;
   });
 
   it('Test 22-R1: ?from=2026-05-04&to=2026-05-31 returns plans whose week_start ∈ [from,to]', async () => {
@@ -602,6 +666,10 @@ describe('PATCH /meal-plans/:id (Phase 22-05 focus_theme)', () => {
     state.patchUpdatedPlan = null;
     state.lastPatchPayload = null;
     state.patchEqPairs = [];
+    state.skipUpdatedEntry = null;
+    state.lastSkipPayload = null;
+    state.skipEqPairs = [];
+    state.skipOwnedPlan = undefined;
   });
 
   it('Test 22-P1: PATCH with { focus_theme: "pan sauces" } → 200 and returns updated row', async () => {
@@ -706,6 +774,166 @@ describe('PATCH /meal-plans/:id (Phase 22-05 focus_theme)', () => {
     const res = await app.request('/meal-plans/plan-abc', {
       method: 'PATCH',
       body: JSON.stringify({ focus_theme: 'x' }),
+    });
+    expect(res.status).toBe(401);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 22-06 — POST /meal-plans/:planId/entries/:day/skip
+// ---------------------------------------------------------------------------
+
+describe('POST /meal-plans/:id/entries/:day/skip (Phase 22-06)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    state.currentPlan = null;
+    state.rangePlans = [];
+    state.rangeEntries = [];
+    state.assignExistingPlanId = null;
+    state.assignInsertedPlan = null;
+    state.assignUpsertedEntry = null;
+    state.lastUpsertPayload = null;
+    state.lastRangeQuery = {};
+    state.patchUpdatedPlan = null;
+    state.lastPatchPayload = null;
+    state.patchEqPairs = [];
+    state.skipUpdatedEntry = null;
+    state.lastSkipPayload = null;
+    state.skipEqPairs = [];
+    state.skipOwnedPlan = undefined;
+  });
+
+  it('Test 22-S1: POST with { reason } → 200 and updates entry to status=skipped', async () => {
+    state.skipOwnedPlan = { id: 'plan-1' };
+    state.skipUpdatedEntry = {
+      id: 'entry-2',
+      meal_plan_id: 'plan-1',
+      day_of_week: 2,
+      status: 'skipped',
+      skip_reason: 'travel',
+      title: 'Old title',
+    };
+
+    const app = makeApp();
+    const res = await app.request('/meal-plans/plan-1/entries/2/skip', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ reason: 'travel' }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.status).toBe('skipped');
+    expect(body.data.skip_reason).toBe('travel');
+    expect(state.lastSkipPayload).toEqual({
+      status: 'skipped',
+      skip_reason: 'travel',
+    });
+    // Entry lookup keyed on (meal_plan_id, day_of_week)
+    const cols = state.skipEqPairs.map((p) => p.col);
+    expect(cols).toContain('meal_plan_id');
+    expect(cols).toContain('day_of_week');
+  });
+
+  it('Test 22-S2: POST with empty body → OK, skip_reason set to null', async () => {
+    state.skipOwnedPlan = { id: 'plan-1' };
+    state.skipUpdatedEntry = {
+      id: 'entry-3',
+      meal_plan_id: 'plan-1',
+      day_of_week: 3,
+      status: 'skipped',
+      skip_reason: null,
+    };
+
+    const app = makeApp();
+    const res = await app.request('/meal-plans/plan-1/entries/3/skip', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test' },
+      // intentionally no body
+    });
+
+    expect(res.status).toBe(200);
+    expect(state.lastSkipPayload).toEqual({
+      status: 'skipped',
+      skip_reason: null,
+    });
+  });
+
+  it('Test 22-S3: POST with day > 6 → 400', async () => {
+    state.skipOwnedPlan = { id: 'plan-1' };
+    const app = makeApp();
+    const res = await app.request('/meal-plans/plan-1/entries/7/skip', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ reason: null }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/day/i);
+  });
+
+  it('Test 22-S4: POST with day < 0 → 400', async () => {
+    state.skipOwnedPlan = { id: 'plan-1' };
+    const app = makeApp();
+    const res = await app.request('/meal-plans/plan-1/entries/-1/skip', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ reason: null }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('Test 22-S5: POST for a plan owned by a different profile → 404', async () => {
+    // Ownership check returns null — the caller does not own this plan.
+    state.skipOwnedPlan = null;
+
+    const app = makeApp();
+    const res = await app.request('/meal-plans/plan-not-mine/entries/2/skip', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ reason: 'whatever' }),
+    });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error).toMatch(/Not found/);
+  });
+
+  it('Test 22-S6: POST for a non-existent plan/day → 404 "Entry not found"', async () => {
+    // Plan is owned, but no entry row exists for this (plan, day) combo.
+    state.skipOwnedPlan = { id: 'plan-1' };
+    state.skipUpdatedEntry = null;
+
+    const app = makeApp();
+    const res = await app.request('/meal-plans/plan-1/entries/5/skip', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ reason: 'vacation' }),
+    });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error).toMatch(/entry/i);
+  });
+
+  it('Test 22-S7: POST unauthenticated → 401', async () => {
+    const app = makeApp();
+    const res = await app.request('/meal-plans/plan-1/entries/2/skip', {
+      method: 'POST',
+      body: JSON.stringify({ reason: null }),
     });
     expect(res.status).toBe(401);
   });
