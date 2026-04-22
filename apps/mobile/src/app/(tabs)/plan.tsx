@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Pressable,
   Alert,
+  ScrollView,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +21,9 @@ import { EmptyPlanState } from '../../components/plan/EmptyPlanState';
 import { SwapSheet } from '../../components/plan/SwapSheet';
 import { CookConfirm } from '../../components/plan/CookConfirm';
 import { WeekActionSheet } from '../../components/plan/WeekActionSheet';
+import { MonthGrid } from '../../components/plan/MonthGrid';
+import { MonthPatterns } from '../../components/plan/MonthPatterns';
+import { DatePickerSheet } from '../../components/plan/DatePickerSheet';
 import {
   HandoffSheet,
   type HandoffState,
@@ -50,6 +54,13 @@ function currentMondayIso(): string {
   const dow = (utc.getUTCDay() + 6) % 7;
   utc.setUTCDate(utc.getUTCDate() - dow);
   return utc.toISOString().slice(0, 10);
+}
+
+/** Add N days (may be negative) to a YYYY-MM-DD ISO string in UTC. */
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 function formatRangeFromWeekStart(weekStart: string): string {
@@ -84,6 +95,16 @@ export default function PlanScreen() {
   // Phase 22-02: Week-level action sheet (regenerate / shift ±1 / duplicate
   // last / shopping). Opens on ellipsis tap in the header action row.
   const [weekSheetVisible, setWeekSheetVisible] = useState(false);
+  // Phase 22-03: Week | Month segmented control. Both views remain mounted
+  // (display:none pattern per Phase 12 Kitchen tab) so the Week list's
+  // scroll position + DayRow state survives toggling to Month and back.
+  const [scale, setScale] = useState<'week' | 'month'>('week');
+  // Phase 22-03: DatePickerSheet instance for Month-view empty-cell pin.
+  const [monthPinIso, setMonthPinIso] = useState<string | null>(null);
+  // Phase 22-03: Subscribe to month state reactively so re-renders fire when
+  // fetchRange finishes (reading getState() in useEffect would be stale).
+  const monthPlans = useMealPlanStore((s) => s.monthPlans);
+  const monthLoading = useMealPlanStore((s) => s.monthLoading);
 
   const { onScroll, largeTitleOpacity, largeTitleTranslate, compactHeaderOpacity } =
     useCollapsingHeader();
@@ -300,6 +321,125 @@ export default function PlanScreen() {
     void useMealPlanStore.getState().duplicateLastWeek();
   }, [currentPlan]);
 
+  // Phase 22-03: When the user toggles Month view, fetch a 5-week window
+  // covering the current week forward. The server enforces |to-from| ≤ 70d
+  // (22-00 migration 00025); we request exactly 28d here (4 weeks past the
+  // current start) which combined with the anchor week yields 5 weeks.
+  useEffect(() => {
+    if (scale !== 'month') return;
+    if (!currentPlan) return;
+    const from = currentPlan.week_start;
+    const to = addDaysIso(from, 28);
+    // fetchRange dedupes via monthLoading, so repeated toggle firings are safe.
+    void useMealPlanStore.getState().fetchRange(from, to);
+    // Telemetry — plan.month_opened with the anchor week for analytics.
+    const sessionId =
+      typeof globalThis.crypto?.randomUUID === 'function'
+        ? globalThis.crypto.randomUUID()
+        : `mo-${Date.now()}`;
+    logPlanEvent({
+      name: 'plan.month_opened',
+      session_id: sessionId,
+      meal_plan_id: currentPlan.id,
+      payload: sanitizePayload({
+        meal_plan_id: currentPlan.id,
+        week_start: currentPlan.week_start,
+      }),
+    });
+  }, [scale, currentPlan]);
+
+  // Phase 22-03: Handler for Month empty-cell pin. Opens DatePickerSheet
+  // pre-filled with the cell date. Parent owns the sheet's visibility; the
+  // sheet's onConfirm POSTs /entries/assign with recipe_id:null (ad-hoc).
+  const handleMonthPinCell = useCallback((iso: string) => {
+    setMonthPinIso(iso);
+  }, []);
+
+  const handleMonthPinConfirm = useCallback(
+    async (iso: string) => {
+      setMonthPinIso(null);
+      if (!currentPlan) return;
+      // Empty pin: create a "needs planning" entry marker. The user will
+      // typically navigate from here to /plan/[date] (22-04) to fill it in.
+      // For v1 we POST a stub entry so the cell status flips to planned.
+      try {
+        const token = (await import('../../lib/supabase')).supabase.auth;
+        const { data } = await token.getSession();
+        const accessToken = data.session?.access_token;
+        if (!accessToken) return;
+        const baseUrl =
+          process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+        await fetch(`${baseUrl}/api/v1/meal-plans/entries/assign`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            date: iso,
+            title: 'Needs planning',
+            description: null,
+            ingredients: [],
+            estimated_time_minutes: null,
+            difficulty: null,
+            kid_friendly: false,
+            why_suggested: null,
+            recipe_id: null,
+          }),
+        });
+        // Refresh month window so the cell flips to planned.
+        const from = currentPlan.week_start;
+        const to = addDaysIso(from, 28);
+        await useMealPlanStore.getState().fetchRange(from, to);
+      } catch {
+        // Silent fail — sheet already dismissed, user can retry.
+      }
+    },
+    [currentPlan]
+  );
+
+  // Phase 22-03: Long-press on a Month cell → ActionSheetIOS with 2 mark-
+  // skipped reasons. POSTs /entries/assign with status:'skipped'.
+  const handleMonthMarkSkipped = useCallback(
+    async (iso: string, reason: 'travel' | 'dinner party') => {
+      if (!currentPlan) return;
+      try {
+        const token = (await import('../../lib/supabase')).supabase.auth;
+        const { data } = await token.getSession();
+        const accessToken = data.session?.access_token;
+        if (!accessToken) return;
+        const baseUrl =
+          process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+        await fetch(`${baseUrl}/api/v1/meal-plans/entries/assign`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            date: iso,
+            title: '—',
+            description: null,
+            ingredients: [],
+            estimated_time_minutes: null,
+            difficulty: null,
+            kid_friendly: false,
+            why_suggested: null,
+            recipe_id: null,
+            status: 'skipped',
+            skip_reason: reason,
+          }),
+        });
+        const from = currentPlan.week_start;
+        const to = addDaysIso(from, 28);
+        await useMealPlanStore.getState().fetchRange(from, to);
+      } catch {
+        // Silent fail — user can long-press again.
+      }
+    },
+    [currentPlan]
+  );
+
   // Phase 22-02: Regenerate via sheet re-uses the existing Alert confirm to
   // guard against accidental destructive taps, then fires telemetry + the
   // underlying generate() call. Wrapped so we can fire telemetry
@@ -418,51 +558,121 @@ export default function PlanScreen() {
         </View>
       )}
 
-      <Animated.FlatList
-        data={days}
-        keyExtractor={(item) => `day-${item.day}`}
-        ListHeaderComponent={listHeader}
-        renderItem={({ item }) => (
-          <DayRow
-            entry={item.entry}
-            dayLabel={DAY_LABELS[item.day]!}
-            isSwapping={swappingDay === item.day}
-            isCooking={cookingDay === item.day}
-            onSwap={() => setSwapTarget(item.day)}
-            onCook={() => setCookTarget(item.day)}
-            onPress={() => {
-              if (!item.entry) return;
-              // Plan → Recipe Detail (22-01 / PLAN-X-01). When the entry has a
-              // saved recipe, push onto the native stack so back gesture
-              // restores the Plan tab's scroll position (expo-router
-              // native-stack preserves this for free — see 22-CONTEXT D-28).
-              if (item.entry.recipe_id) {
-                router.push(`/recipes/${item.entry.recipe_id}`);
-                return;
-              }
-              // Ad-hoc entry (AI-generated, no saved recipe) — keep the
-              // existing Alert preview as the detail surface.
-              Alert.alert(
-                item.entry.title,
-                [
-                  item.entry.description,
-                  item.entry.why_suggested
-                    ? `\nWhy: ${item.entry.why_suggested}`
-                    : null,
-                  item.entry.ingredients.length
-                    ? `\nIngredients:\n${item.entry.ingredients.map((i) => `• ${i.name}`).join('\n')}`
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join('\n') || 'No details available'
-              );
-            }}
+      {/* Phase 22-03: Week | Month segmented control. Sits above the content
+          switch so it's always visible + tappable. Both lists remain
+          mounted below via display:none so scroll state survives toggling. */}
+      <View style={styles.segmentWrap}>
+        <Pressable
+          onPress={() => setScale('week')}
+          style={[
+            styles.segment,
+            scale === 'week' && styles.segmentActive,
+          ]}
+          accessibilityLabel="Week view"
+          accessibilityState={{ selected: scale === 'week' }}
+        >
+          <Text
+            style={[
+              styles.segmentLabel,
+              scale === 'week' && styles.segmentLabelActive,
+            ]}
+          >
+            Week
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setScale('month')}
+          style={[
+            styles.segment,
+            scale === 'month' && styles.segmentActive,
+          ]}
+          accessibilityLabel="Month view"
+          accessibilityState={{ selected: scale === 'month' }}
+        >
+          <Text
+            style={[
+              styles.segmentLabel,
+              scale === 'month' && styles.segmentLabelActive,
+            ]}
+          >
+            Month
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Week view — stays mounted when scale='month' via display:none so
+          the DayRow's scroll, swap sheet, cook confirm state all survive
+          toggle-back. */}
+      <View
+        style={[{ flex: 1 }, scale !== 'week' && { display: 'none' }]}
+        pointerEvents={scale === 'week' ? 'auto' : 'none'}
+      >
+        <Animated.FlatList
+          data={days}
+          keyExtractor={(item) => `day-${item.day}`}
+          ListHeaderComponent={listHeader}
+          renderItem={({ item }) => (
+            <DayRow
+              entry={item.entry}
+              dayLabel={DAY_LABELS[item.day]!}
+              isSwapping={swappingDay === item.day}
+              isCooking={cookingDay === item.day}
+              onSwap={() => setSwapTarget(item.day)}
+              onCook={() => setCookTarget(item.day)}
+              onPress={() => {
+                if (!item.entry) return;
+                // Plan → Recipe Detail (22-01 / PLAN-X-01). When the entry
+                // has a saved recipe, push onto the native stack so back
+                // gesture restores the Plan tab's scroll position
+                // (expo-router native-stack preserves this for free — see
+                // 22-CONTEXT D-28).
+                if (item.entry.recipe_id) {
+                  router.push(`/recipes/${item.entry.recipe_id}`);
+                  return;
+                }
+                // Ad-hoc entry (AI-generated, no saved recipe) — keep the
+                // existing Alert preview as the detail surface.
+                Alert.alert(
+                  item.entry.title,
+                  [
+                    item.entry.description,
+                    item.entry.why_suggested
+                      ? `\nWhy: ${item.entry.why_suggested}`
+                      : null,
+                    item.entry.ingredients.length
+                      ? `\nIngredients:\n${item.entry.ingredients.map((i) => `• ${i.name}`).join('\n')}`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join('\n') || 'No details available'
+                );
+              }}
+            />
+          )}
+          contentContainerStyle={{ paddingBottom: 140 }}
+          scrollEventThrottle={16}
+          onScroll={onScroll}
+        />
+      </View>
+
+      {/* Month view — parallel mount. Contains MonthGrid + MonthPatterns
+          stacked in a ScrollView. Loading skeleton via MonthGrid's `loading`
+          prop. Empty map → all-empty cells + MonthPatterns empty states. */}
+      <View
+        style={[{ flex: 1 }, scale !== 'month' && { display: 'none' }]}
+        pointerEvents={scale === 'month' ? 'auto' : 'none'}
+      >
+        <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
+          <MonthGrid
+            fromWeekStart={currentPlan.week_start}
+            entriesByIso={monthPlans}
+            loading={monthLoading && monthPlans.size === 0}
+            onPinCell={handleMonthPinCell}
+            onMarkSkipped={handleMonthMarkSkipped}
           />
-        )}
-        contentContainerStyle={{ paddingBottom: 140 }}
-        scrollEventThrottle={16}
-        onScroll={onScroll}
-      />
+          <MonthPatterns entries={Array.from(monthPlans.values())} />
+        </ScrollView>
+      </View>
 
       <SwapSheet
         visible={swapTarget != null}
@@ -497,10 +707,50 @@ export default function PlanScreen() {
         onDuplicateLastWeek={handleDuplicateLastWeek}
         onShoppingList={handleShoppingHandoff}
       />
+
+      {/* Phase 22-03: Month empty-cell pin sheet. Parent owns visibility —
+          sheet stays mounted, re-renders when monthPinIso flips. */}
+      <DatePickerSheet
+        visible={monthPinIso !== null}
+        initialDate={
+          monthPinIso ? new Date(`${monthPinIso}T00:00:00Z`) : undefined
+        }
+        title="Pin to day"
+        confirmLabel="Pin"
+        onConfirm={handleMonthPinConfirm}
+        onDismiss={() => setMonthPinIso(null)}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   ...collapsingHeaderStyles,
+  // Phase 22-03: Week | Month segmented control (mirrors kitchen.tsx).
+  segmentWrap: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 8,
+    gap: 8,
+  },
+  segment: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentActive: {
+    backgroundColor: colors.brand,
+  },
+  segmentLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  segmentLabelActive: {
+    color: '#FFFFFF',
+  },
 });
