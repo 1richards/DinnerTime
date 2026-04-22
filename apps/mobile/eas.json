@@ -22,13 +22,22 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.dinnertime.app"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      }
     }
   },
   "submit": {
     "production": {
       "ios": {
-        "appleId": "patrickrrichards@gmail.com"
+        "appleId": "patrickrrichards@gmail.com",
+        "ascAppId": "TODO-PATRICK-FILLS-AFTER-ASC-CREATE",
+        "appleTeamId": "TODO-PATRICK-FILLS-FROM-DEVELOPER-ACCOUNT"
       }
     }
   }
