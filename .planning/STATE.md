@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 20-03-PLAN.md (complete — Wave 3 HandoffSheet 3-state modal)
+current_plan: 20-04-PLAN.md (complete — Wave 4 shopping tab integration + orders→handoffs rename)
 status: completed
-stopped_at: Completed 20-03-PLAN.md — HandoffSheet 3-state sheet (9/9 green)
-last_updated: "2026-04-22T06:00:41.524Z"
+stopped_at: Completed 20-04-PLAN.md — shopping tab wired to HandoffSheet + rename
+last_updated: "2026-04-22T06:10:09.521Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
   completed_phases: 20
   total_plans: 102
-  completed_plans: 99
-  percent: 100
+  completed_plans: 100
+  percent: 99
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 20 of 25 (shopping refactor — push to Instacart draft cart)
-Current Plan: 20-03-PLAN.md (complete — Wave 3 HandoffSheet 3-state modal)
-Status: Phase 20 Wave 3 shipped in ~10 min. 20-03 replaced the Wave 0 HandoffSheet stub (46 lines) with the real 304-line three-state discriminated-union sheet rendering idle/sending/success/error via commit `b84c69e`. Wave 0 HandoffSheet.test.tsx flipped green (9/9 red → 9/9 green). Two deviations from plan `action` — both auto-fixed (Rule 1): (a) CTAs rendered as inline Pressable+Text using Phase 19-02 `variantStyles.primary/ghost` class maps instead of the `<Button/>` component because the Wave 0 test does static tree-walk introspection that cannot see through component boundaries; (b) restructured Modal's child from `<Pressable backdrop><Pressable sheet>` to `<View container><Pressable backdrop-overlay/><View sheet>` so the test's first-pressable-match returns the CTA itself, not a surrounding dismiss handler. Phase 19 tokens honored throughout — zero raw hex except one documented `rgba(0,0,0,0.3)` backdrop literal. TS clean; full mobile suite down from 13 failing (pre-change) to 4 failing (pre-existing shoppingStore.test.ts, documented in deferred-items.md). Requirements completed: SHOP-DC-01, SHOP-DC-02, SHOP-DC-06. Next: plan 20-04 (consumer-side wiring — shopping.tsx + handoffs.tsx local useState<HandoffState>, gated on settingsStore.shoppingHandoffMode).
+Current Plan: 20-04-PLAN.md (complete — Wave 4 shopping tab integration + orders→handoffs rename)
+Status: Phase 20 Wave 4 shipped in ~5 min. Plan 20-04 converged every Wave 0/1/2/3 artifact into a working user flow. Task 1 (commit `d5254d4`) rewrote `apps/mobile/src/app/(tabs)/shopping.tsx` — replaced inline `WebBrowser.openBrowserAsync` with HandoffSheet mount, reads `useSettingsStore.getState().shoppingHandoffMode` at tap time (not module load, per 20-RESEARCH.md Pitfall 4), emits 4 draft-cart telemetry events (started/succeeded/failed/dismissed) + fires handoff_opened_{app|web} inside openInstacartCart on primary CTA tap, fresh crypto.randomUUID session-id per tap, legacy branch preserved verbatim for rollback. Task 2 (commit `21f1b24`) created `handoffs.tsx` + `handoff/[id].tsx` with 'Instacart cart' / 'Handoff details' / 'Resend to Instacart' copy; converted `orders.tsx` + `order/[id].tsx` to `<Redirect>` stubs so legacy deep links and Maestro flow 12 continue to resolve; rebased Maestro flow 12 to assert 'Instacart cart' vocabulary with `id: "View Instacart carts"` primary selector and legacy text fallback; filename kept at `12-shopping-orders.yaml` per CLAUDE.md UAT rule. DB table `shopping_orders` + `ShoppingOrder` type UNCHANGED per 20-RESEARCH.md D-07. Zero regressions — 552 passed / 4 failed matches pre-change baseline (4 pre-existing failures in shoppingStore/auth-store/progressionStore tests documented in phase-20 deferred-items.md). TS clean on all 6 modified files; 14 project-wide TS errors all pre-existing in unrelated test files. Zero deviations from plan — executed exactly as written. Requirements completed: SHOP-DC-01, SHOP-DC-02, SHOP-DC-03, SHOP-DC-04, SHOP-DC-05. Next: plan 20-05 (UAT happy-path Maestro flow 29 + post-phase DEVICE-TEST-20).
 Last activity: 2026-04-22
 
-Progress: [██████████] 100%
+Progress: [██████████] 99%
 
 ## Performance Metrics
 
@@ -153,6 +153,7 @@ Progress: [██████████] 100%
 | Phase 20 P02 | 3min | 2 tasks | 2 files |
 | Phase 20 P01 | 4min | 2 tasks | 5 files |
 | Phase 20 P03 | 10min | 1 tasks | 1 files |
+| Phase 20 P04 | 5min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -497,6 +498,9 @@ Recent decisions affecting current work:
 - [Phase 20]: openInstacartCart emits handoff_opened_{app|web} telemetry inline (not at call-site) so HandoffSheet/Maestro callers auto-inherit Pitfall 3 conversion-rate separation
 - [Phase 20]: HandoffSheet CTAs use Pressable+Text primitives reusing variantStyles map (not Button component) — static tree-walk tests can introspect the CTA's onPress and children-text directly; same design tokens, same visual output.
 - [Phase 20]: HandoffSheet sibling-backdrop pattern: outer Modal child is a plain View; dismiss-tap Pressable is an absolute-fill sibling behind the sheet — avoids wrapping CTAs in a dismiss Pressable whose onPress the test's first-match tree-walk would pick instead of the CTA's.
+- [Phase 20]: 20-04: read shoppingHandoffMode at tap time (useSettingsStore.getState inside handleOrder) — Settings flips land on next tap without component remount
+- [Phase 20]: 20-04: Redirect stubs preserve legacy /shopping/orders + /shopping/order/[id] paths — Maestro flow 12 and saved nav state continue to resolve after UI rename to /shopping/handoffs
+- [Phase 20]: 20-04: Maestro flow filename kept at 12-shopping-orders.yaml per CLAUDE.md — renaming flow files invalidates Maestro Cloud history
 
 ### Pending Todos
 
@@ -540,6 +544,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T06:00:41.520Z
-Stopped at: Completed 20-03-PLAN.md — HandoffSheet 3-state sheet (9/9 green)
+Last session: 2026-04-22T06:09:59.835Z
+Stopped at: Completed 20-04-PLAN.md — shopping tab wired to HandoffSheet + rename
 Resume file: None
