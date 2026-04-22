@@ -17,6 +17,16 @@ const {
     assignUpsertedEntry: any | null;
     lastUpsertPayload: any;
     lastRangeQuery: { from?: string; to?: string; selectCols?: string };
+    /**
+     * Phase 22-05: PATCH /:id — row returned from .update().eq().eq().select().maybeSingle().
+     * When null, the handler returns 404. Tests seed a concrete row (or leave null
+     * to exercise the 404 path) via `state.patchUpdatedPlan`.
+     */
+    patchUpdatedPlan: any | null;
+    /** Phase 22-05: captures the patch payload sent to .update() for assertion. */
+    lastPatchPayload: any;
+    /** Phase 22-05: captures the (.eq, val) pairs chained after update. */
+    patchEqPairs: Array<{ col: string; val: unknown }>;
   } = {
     currentPlan: null,
     rangePlans: [],
@@ -26,6 +36,9 @@ const {
     assignUpsertedEntry: null,
     lastUpsertPayload: null,
     lastRangeQuery: {},
+    patchUpdatedPlan: null,
+    lastPatchPayload: null,
+    patchEqPairs: [],
   };
   const supabase = {
     from: vi.fn().mockImplementation((table: string) => {
@@ -75,6 +88,30 @@ const {
               }),
             }),
           }),
+          // Phase 22-05: PATCH /:id — supabase.from('meal_plans')
+          //   .update(payload).eq('id', id).eq('profile_id', uid).select().maybeSingle()
+          update: (payload: unknown) => {
+            state.lastPatchPayload = payload;
+            state.patchEqPairs = [];
+            return {
+              eq: (col: string, val: unknown) => {
+                state.patchEqPairs.push({ col, val });
+                return {
+                  eq: (col2: string, val2: unknown) => {
+                    state.patchEqPairs.push({ col: col2, val: val2 });
+                    return {
+                      select: () => ({
+                        maybeSingle: () => ({
+                          data: state.patchUpdatedPlan,
+                          error: null,
+                        }),
+                      }),
+                    };
+                  },
+                };
+              },
+            };
+          },
         };
       }
       if (table === 'meal_plan_entries') {
@@ -185,6 +222,9 @@ describe('meal-plans routes', () => {
     state.assignUpsertedEntry = null;
     state.lastUpsertPayload = null;
     state.lastRangeQuery = {};
+    state.patchUpdatedPlan = null;
+    state.lastPatchPayload = null;
+    state.patchEqPairs = [];
   });
 
   it('Test 1: GET /current unauthenticated → 401', async () => {
@@ -325,6 +365,9 @@ describe('POST /entries/assign with date param', () => {
     state.assignUpsertedEntry = null;
     state.lastUpsertPayload = null;
     state.lastRangeQuery = {};
+    state.patchUpdatedPlan = null;
+    state.lastPatchPayload = null;
+    state.patchEqPairs = [];
   });
 
   it('Test 22-D1: body { date: "2026-05-15", title } → week_start="2026-05-11" (Monday) + day_of_week=3 (Thursday)', async () => {
@@ -435,6 +478,9 @@ describe('GET /meal-plans (range)', () => {
     state.assignUpsertedEntry = null;
     state.lastUpsertPayload = null;
     state.lastRangeQuery = {};
+    state.patchUpdatedPlan = null;
+    state.lastPatchPayload = null;
+    state.patchEqPairs = [];
   });
 
   it('Test 22-R1: ?from=2026-05-04&to=2026-05-31 returns plans whose week_start ∈ [from,to]', async () => {
@@ -534,6 +580,133 @@ describe('GET /meal-plans (range)', () => {
       '/meal-plans?from=2026-05-04&to=2026-05-31',
       { method: 'GET' },
     );
+    expect(res.status).toBe(401);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 22-05 — PATCH /meal-plans/:id (focus_theme updates)
+// ---------------------------------------------------------------------------
+
+describe('PATCH /meal-plans/:id (Phase 22-05 focus_theme)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    state.currentPlan = null;
+    state.rangePlans = [];
+    state.rangeEntries = [];
+    state.assignExistingPlanId = null;
+    state.assignInsertedPlan = null;
+    state.assignUpsertedEntry = null;
+    state.lastUpsertPayload = null;
+    state.lastRangeQuery = {};
+    state.patchUpdatedPlan = null;
+    state.lastPatchPayload = null;
+    state.patchEqPairs = [];
+  });
+
+  it('Test 22-P1: PATCH with { focus_theme: "pan sauces" } → 200 and returns updated row', async () => {
+    state.patchUpdatedPlan = {
+      id: 'plan-abc',
+      profile_id: 'user-1',
+      week_start: '2026-04-13',
+      focus_theme: 'pan sauces',
+    };
+    const app = makeApp();
+    const res = await app.request('/meal-plans/plan-abc', {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'Bearer test',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ focus_theme: 'pan sauces' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.focus_theme).toBe('pan sauces');
+    expect(state.lastPatchPayload).toEqual({ focus_theme: 'pan sauces' });
+    // Ownership guard: update was keyed on id AND profile_id
+    const cols = state.patchEqPairs.map((p) => p.col);
+    expect(cols).toContain('id');
+    expect(cols).toContain('profile_id');
+  });
+
+  it('Test 22-P2: PATCH with { focus_theme: null } clears the theme', async () => {
+    state.patchUpdatedPlan = {
+      id: 'plan-abc',
+      profile_id: 'user-1',
+      week_start: '2026-04-13',
+      focus_theme: null,
+    };
+    const app = makeApp();
+    const res = await app.request('/meal-plans/plan-abc', {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'Bearer test',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ focus_theme: null }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.focus_theme).toBeNull();
+    expect(state.lastPatchPayload).toEqual({ focus_theme: null });
+  });
+
+  it('Test 22-P3: PATCH with empty body → 400 "No updatable fields"', async () => {
+    const app = makeApp();
+    const res = await app.request('/meal-plans/plan-abc', {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'Bearer test',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/No updatable fields/);
+  });
+
+  it('Test 22-P4: PATCH with malformed JSON → 400 "Invalid JSON"', async () => {
+    const app = makeApp();
+    const res = await app.request('/meal-plans/plan-abc', {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'Bearer test',
+        'Content-Type': 'application/json',
+      },
+      body: '{not json',
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/Invalid JSON/);
+  });
+
+  it('Test 22-P5: PATCH for a plan owned by a different profile → 404', async () => {
+    // Supabase returns null from .select().maybeSingle() because the
+    // RLS/eq('profile_id', user.id) filter excludes rows the caller doesn't
+    // own. The handler distinguishes this from a DB error and returns 404.
+    state.patchUpdatedPlan = null;
+    const app = makeApp();
+    const res = await app.request('/meal-plans/plan-other-user', {
+      method: 'PATCH',
+      headers: {
+        Authorization: 'Bearer test',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ focus_theme: 'trying to hijack' }),
+    });
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error).toMatch(/Not found/);
+  });
+
+  it('Test 22-P6: PATCH unauthenticated → 401', async () => {
+    const app = makeApp();
+    const res = await app.request('/meal-plans/plan-abc', {
+      method: 'PATCH',
+      body: JSON.stringify({ focus_theme: 'x' }),
+    });
     expect(res.status).toBe(401);
   });
 });
