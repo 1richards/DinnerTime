@@ -34,7 +34,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 20: Shopping Refactor — Push to Draft Cart** - Replace order placement with pushing items to an Instacart draft cart so users manage payment, delivery window, and substitutions inside Instacart itself (completed 2026-04-22)
 - [x] **Phase 21: Pantry Intelligence** - Smarter dedup (fuzzy name matching, variant rollup), better pantry-tab presentation (grouping, sections, search), AI categorization learning from history, and user-defined scan rules for commonly purchased items (completed 2026-04-19)
 - [x] **Phase 22: Plan Experience Refactor** - Better UX between Plan ↔ Recipes ↔ Suggestions ↔ Shopping; date pickers; multi-scale actions (day / week / month); skill-progression integration so planning uplevels cooking skills over time (completed 2026-04-22)
-- [ ] **Phase 23: Settings, Auth & Non-Functional** - Account management (password reset, email change, delete account), session lifecycle polish, biometric unlock, security hardening, error handling, observability, performance budgets
+- [x] **Phase 23: Settings, Auth & Non-Functional** - Account management (password reset, email change, delete account), session lifecycle polish, biometric unlock, security hardening, error handling, observability, performance budgets (completed 2026-04-22)
 - [x] **Phase 24: AI Vision & Pantry Data-Model Deep Refactor** - Systematically upgrade scan quality (prompting, multi-pass reasoning, retry logic), item creation logic, category consistency, canonical-name resolution for dedup, quantity/unit extraction, and the underlying data model (canonical ingredient table, item events, quantity semantics) (completed 2026-04-19)
 - [ ] **Phase 25: Private Beta Launch** - Seed DinnerTime with real kitchen data, invite family and friends as beta users via TestFlight, submit to the App Store for private/unlisted distribution
 
@@ -557,7 +557,7 @@ Plans:
 - [x] 23-05-PLAN.md — Error handling: global ErrorBoundary + NetworkErrorBanner + classifyNetworkError classifier + server rateLimitErrors onError middleware
 - [x] 23-06-PLAN.md — Observability: Sentry client init + PII-stripping beforeSend, server requestLogging middleware, AIClient instrumentation + recordAiCall writer, POST /telemetry/ai route, mobile ai/telemetry.ts batcher
 - [x] 23-07-PLAN.md — Security + App Store draft: deepLinkAllowlist, HTTPS-only audit, PII hygiene grep, PRIVACY/TERMS markdown, .planning/app-store/ drafts (privacy-manifest.json, description, keywords, screenshot shotlist), human-action ASC checkpoint
-- [ ] 23-08-PLAN.md — Performance audit + UAT closeout: perfBudgets.ts, image-quality grep, expand Maestro flow 37, write 23-PERF-AUDIT.md, fill DEVICE-TEST-23 simulator rows, human-verify physical-iPhone checkpoint
+- [x] 23-08-PLAN.md — Performance audit + UAT closeout: perfBudgets.ts, image-quality grep, expand Maestro flow 37, write 23-PERF-AUDIT.md, fill DEVICE-TEST-23 simulator rows, human-verify physical-iPhone checkpoint
 **UI hint**: yes
 
 ### Phase 24: AI Vision & Pantry Data-Model Deep Refactor

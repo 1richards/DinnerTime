@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 23-08 (23-00..07 shipped; only 23-02 + 23-08 remain in phase 23)
 status: planning
-stopped_at: Completed 23-02-PLAN.md — account export + delete (NFR-03/NFR-04) shipped
-last_updated: "2026-04-22T10:01:46.094Z"
+stopped_at: Completed 23-08-PLAN.md — perf audit + Maestro 37 + DEVICE-TEST sim signoff. Phase 23 closed at automated level; physical iPhone UAT rows pending user.
+last_updated: "2026-04-22T10:14:04.231Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
-  completed_phases: 22
+  completed_phases: 23
   total_plans: 118
-  completed_plans: 116
+  completed_plans: 117
   percent: 97
 ---
 
@@ -170,6 +170,7 @@ Progress: [██████████] 97%
 | Phase 23 P06 | 13min | 2 tasks | 13 files |
 | Phase 23 P07 | 7min | 2 tasks | 12 files |
 | Phase 23 P02 | 8min | 2 tasks | 10 files |
+| Phase 23 P08 | 6min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -564,6 +565,7 @@ Recent decisions affecting current work:
 - [Phase 23]: authMiddleware now exposes supabaseAdmin via c.set() so privileged routes read from context; keeps route-test mock surface stable
 - [Phase 23]: DeleteAccountSheet is inline controlled component (not floating modal) so destructive action is user's explicit arrival at the screen, not a misfire
 - [Phase 23]: expo-file-system/legacy subpath used for one-off text file write — v19 Paths+File class API deferred until we need streaming/Blob affordances
+- [Phase 23]: 23-08 shipped: perfBudgets.ts (6 NFR-18..21 constants + async withBudget timing helper with lazy-imported Sentry breadcrumb), Maestro flow 37 expanded to 9-screenshot Settings UAT, 23-PERF-AUDIT.md with simulator-measured cold-launch IPC RTT + image-quality PASS + UNMEASURED scan latency rows (pending withBudget instrumentation), DEVICE-TEST-23.md simulator_signoff 2026-04-22 with 3 rows PASS (HTTPS/KEYCHAIN/REAUTH) + 4 pending device. Task 3 physical-iPhone checkpoint deferred per AUTO_MODE_OVERRIDE. 2 Rule 3 Blocking deviations: await import('./sentry') instead of require() for vi.mock compatibility, UNMEASURED recording of simctl RTT (~200ms best-of-3 but measures IPC spawn not TTI). 1 out-of-scope deferral: recipes/import-photo.tsx:33/54 quality:0.8 on Claude vision path — logged to deferred-items.md. 4/4 perfBudgets tests green; 54/54 broader lib tests green. Requirements completed: NFR-18/19/20/21. Phase 23 closed at the automated level — all 30 NFRs shipped; physical-iPhone DEVICE-TEST rows + Phase 25 AASA hosting are the only open handoffs.
 
 ### Pending Todos
 
@@ -607,6 +609,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T10:01:46.088Z
-Stopped at: Completed 23-02-PLAN.md — account export + delete (NFR-03/NFR-04) shipped
+Last session: 2026-04-22T10:14:04.225Z
+Stopped at: Completed 23-08-PLAN.md — perf audit + Maestro 37 + DEVICE-TEST sim signoff. Phase 23 closed at automated level; physical iPhone UAT rows pending user.
 Resume file: None
