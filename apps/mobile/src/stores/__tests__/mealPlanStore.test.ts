@@ -593,6 +593,81 @@ describe('mealPlanStore', () => {
     });
   });
 
+  describe('setFocusTheme (Phase 22-05)', () => {
+    it('PATCHes /meal-plans/{id} with { focus_theme } and updates currentPlan', async () => {
+      const plan = makePlan({ focus_theme: null });
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            data: { ...plan, focus_theme: 'pan sauces' },
+          }),
+      });
+
+      await useMealPlanStore.getState().setFocusTheme('pan sauces');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/meal-plans/plan-1'),
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({ focus_theme: 'pan sauces' }),
+        })
+      );
+      const state = useMealPlanStore.getState();
+      expect(state.currentPlan?.focus_theme).toBe('pan sauces');
+      expect(state.error).toBeNull();
+    });
+
+    it('supports clearing the theme with setFocusTheme(null)', async () => {
+      const plan = makePlan({ focus_theme: 'pan sauces' });
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            data: { ...plan, focus_theme: null },
+          }),
+      });
+
+      await useMealPlanStore.getState().setFocusTheme(null);
+
+      const [, init] = mockFetch.mock.calls[0]!;
+      expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+        focus_theme: null,
+      });
+      const state = useMealPlanStore.getState();
+      expect(state.currentPlan?.focus_theme).toBeNull();
+    });
+
+    it('is a no-op when currentPlan is null', async () => {
+      useMealPlanStore.setState({ currentPlan: null });
+      await useMealPlanStore.getState().setFocusTheme('knife skills');
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('sets error and leaves currentPlan unchanged on non-2xx', async () => {
+      const plan = makePlan({ focus_theme: null });
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: 'boom' }),
+      });
+
+      await useMealPlanStore.getState().setFocusTheme('pan sauces');
+
+      const state = useMealPlanStore.getState();
+      expect(state.currentPlan?.focus_theme).toBeNull();
+      expect(state.error).toMatch(/focus theme/i);
+    });
+  });
+
   describe('fetchRange (Phase 22-03 month view)', () => {
     it("GETs /meal-plans?from=&to=&projection=month with given bounds", async () => {
       mockFetch.mockResolvedValueOnce({
