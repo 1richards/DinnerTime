@@ -402,6 +402,90 @@ mealPlans.patch('/:id', async (c) => {
 });
 
 /**
+ * POST /:id/entries/:day/skip — Mark a day's entry as skipped.
+ *
+ * Body (optional): { reason?: string | null }
+ *   - When the body is missing, malformed, or omits `reason`, skip_reason is
+ *     stored as null. Free-form reasons ("travel", "ate out", etc.) are
+ *     pass-through — no controlled vocabulary.
+ *
+ * Returns { data: <updated meal_plan_entry row> } on success.
+ *
+ * Response codes:
+ *   - 400 when `day` is not an integer in 0..6.
+ *   - 404 when the plan does not exist OR is owned by a different profile
+ *     (ownership guard via `.eq('profile_id', user.id)` → maybeSingle → null).
+ *   - 404 when the entry row doesn't exist for the given (plan, day) pair.
+ *
+ * Phase 22-06 consumes migration 00026 (`meal_plan_entries.skip_reason`
+ * column already shipped in 22-00). Mirrors the PATCH /:id ownership pattern:
+ * a compound .eq on (id, profile_id) returning null is the ownership failure
+ * signal, distinct from a DB-level error which returns 500.
+ */
+mealPlans.post('/:id/entries/:day/skip', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+  const planId = c.req.param('id');
+  const day = Number.parseInt(c.req.param('day') ?? '', 10);
+
+  if (!Number.isInteger(day) || day < 0 || day > 6) {
+    return c.json({ error: 'day must be an integer in 0..6' }, 400);
+  }
+
+  let body: { reason?: string | null } = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    // Empty/malformed body is OK — default reason to null.
+    body = {};
+  }
+
+  try {
+    // 1. Verify plan ownership. Returning null here means either the plan
+    //    doesn't exist or it belongs to a different profile — both should
+    //    surface as 404 to avoid leaking plan existence across accounts.
+    const { data: plan, error: planErr } = await supabase
+      .from('meal_plans')
+      .select('id')
+      .eq('id', planId)
+      .eq('profile_id', user.id)
+      .maybeSingle();
+    if (planErr) {
+      return c.json({ error: planErr.message }, 500);
+    }
+    if (!plan) {
+      return c.json({ error: 'Not found' }, 404);
+    }
+
+    // 2. Update the entry row. `skip_reason` accepts string or null; empty
+    //    string is left as-is (caller's choice) but undefined → null.
+    const nextReason =
+      typeof body.reason === 'string' ? body.reason : null;
+
+    const { data: updated, error: updateErr } = await supabase
+      .from('meal_plan_entries')
+      .update({ status: 'skipped', skip_reason: nextReason })
+      .eq('meal_plan_id', planId)
+      .eq('day_of_week', day)
+      .select()
+      .maybeSingle();
+
+    if (updateErr) {
+      return c.json({ error: updateErr.message }, 500);
+    }
+    if (!updated) {
+      return c.json({ error: 'Entry not found' }, 404);
+    }
+
+    return c.json({ data: updated });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to skip entry';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
  * POST /:id/entries/:day/cook — Mark entry cooked and deduct pantry.
  */
 mealPlans.post('/:id/entries/:day/cook', async (c) => {
