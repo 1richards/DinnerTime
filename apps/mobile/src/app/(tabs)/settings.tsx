@@ -12,6 +12,7 @@ import { DietarySection } from '../../components/settings/DietarySection';
 import { CuisineSection } from '../../components/settings/CuisineSection';
 import { DislikesSection } from '../../components/settings/DislikesSection';
 import { SkillLevelSection } from '../../components/settings/SkillLevelSection';
+import { ShoppingHandoffSection } from '../../components/settings/ShoppingHandoffSection';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { colors } from '../../design/tokens';
 
@@ -156,6 +157,15 @@ export default function SettingsScreen() {
             <Switch value={darkMode} onValueChange={setDarkMode} />
           </View>
         </View>
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Phase 20-02 (SHOP-DC-05): hidden rollback toggle for the draft-cart
+            handoff flow. Header + muted subtitle are the only visible surface
+            for normal users; 5 taps within 1.5s on the "Shopping" header
+            reveals the legacy-mode Switch. Placed above Account per CONTEXT
+            D-03 (discreet, below existing content). */}
+        <ShoppingHandoffSection />
 
         <View className="border-b border-warmGray-100 my-4" />
 
