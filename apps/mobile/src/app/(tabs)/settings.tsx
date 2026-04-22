@@ -16,6 +16,7 @@ import { CuisineSection } from '../../components/settings/CuisineSection';
 import { DislikesSection } from '../../components/settings/DislikesSection';
 import { SkillLevelSection } from '../../components/settings/SkillLevelSection';
 import { ShoppingHandoffSection } from '../../components/settings/ShoppingHandoffSection';
+import { BiometricUnlockSection } from '../../components/settings/BiometricUnlockSection';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { colors } from '../../design/tokens';
 
@@ -236,6 +237,13 @@ export default function SettingsScreen() {
             reveals the legacy-mode Switch. Placed above Account per CONTEXT
             D-03 (discreet, below existing content). */}
         <ShoppingHandoffSection />
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Phase 23-03 (NFR-07): Security — Face ID unlock toggle. Placed
+            above Account so it groups with other auth-adjacent rows. Failure
+            toasts route through the page's existing useToast. */}
+        <BiometricUnlockSection showToast={show} />
 
         <View className="border-b border-warmGray-100 my-4" />
 
