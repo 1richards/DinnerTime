@@ -492,13 +492,13 @@ describe('mealPlanStore', () => {
       );
 
       // Calls 2-4 — POST /entries/assign for Mon, Tue, Wed of target week
-      const assignCalls = mockFetch.mock.calls.filter(([url]: [string]) =>
-        url.includes('/meal-plans/entries/assign')
+      const assignCalls = mockFetch.mock.calls.filter(
+        (call) => typeof call[0] === 'string' && call[0].includes('/meal-plans/entries/assign')
       );
       expect(assignCalls).toHaveLength(3);
 
-      const assignBodies = assignCalls.map(([, init]: [string, RequestInit]) =>
-        JSON.parse(init.body as string)
+      const assignBodies = assignCalls.map(
+        (call) => JSON.parse((call[1] as RequestInit).body as string)
       );
       expect(assignBodies[0]!.date).toBe('2026-05-11'); // day_of_week=0 → Mon
       expect(assignBodies[0]!.title).toBe('Mon meal');
@@ -548,13 +548,13 @@ describe('mealPlanStore', () => {
 
       await useMealPlanStore.getState().duplicateLastWeek();
 
-      const assignCalls = mockFetch.mock.calls.filter(([url]: [string]) =>
-        url.includes('/meal-plans/entries/assign')
+      const assignCalls = mockFetch.mock.calls.filter(
+        (call) => typeof call[0] === 'string' && call[0].includes('/meal-plans/entries/assign')
       );
       // Only 2 POSTs — the skipped entry was dropped
       expect(assignCalls).toHaveLength(2);
-      const titles = assignCalls.map(([, init]: [string, RequestInit]) =>
-        JSON.parse(init.body as string).title
+      const titles = assignCalls.map(
+        (call) => JSON.parse((call[1] as RequestInit).body as string).title
       );
       expect(titles).toEqual(['Mon meal', 'Wed meal']);
     });
@@ -573,8 +573,8 @@ describe('mealPlanStore', () => {
       await useMealPlanStore.getState().duplicateLastWeek();
 
       // Only the GET fetch — no /entries/assign calls
-      const assignCalls = mockFetch.mock.calls.filter(([url]: [string]) =>
-        url.includes('/meal-plans/entries/assign')
+      const assignCalls = mockFetch.mock.calls.filter(
+        (call) => typeof call[0] === 'string' && call[0].includes('/meal-plans/entries/assign')
       );
       expect(assignCalls).toHaveLength(0);
       const state = useMealPlanStore.getState();
