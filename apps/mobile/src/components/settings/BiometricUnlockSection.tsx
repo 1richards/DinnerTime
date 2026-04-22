@@ -39,7 +39,16 @@ interface BiometricUnlockSectionProps {
   showToast?: (message: string, type?: 'success' | 'error') => void;
 }
 
-export function BiometricUnlockSection({ showToast }: BiometricUnlockSectionProps = {}) {
+// Flip to true ONLY after the iOS dev client has been rebuilt with the
+// expo-local-authentication pod linked (see BiometricGate for full rationale).
+const BIOMETRIC_ENABLED = false;
+
+export function BiometricUnlockSection(props: BiometricUnlockSectionProps = {}) {
+  if (!BIOMETRIC_ENABLED) return null;
+  return <BiometricUnlockSectionImpl {...props} />;
+}
+
+function BiometricUnlockSectionImpl({ showToast }: BiometricUnlockSectionProps = {}) {
   const biometricUnlockEnabled = useSettingsStore(
     (s) => s.biometricUnlockEnabled,
   );

@@ -39,7 +39,21 @@ import { colors } from '../design/tokens';
  */
 export const BIOMETRIC_UNLOCK_REASON = 'Unlock DinnerTime';
 
+// BIOMETRIC FEATURE FLAG — flip to true ONLY after the iOS dev client has been
+// rebuilt with the expo-local-authentication native pod linked. On a dev client
+// that does not have the pod, calling `promptBiometricUnlock` or
+// `isBiometricAvailable` throws "Cannot find native module
+// 'ExpoLocalAuthentication'" from inside expo-modules-core in a way that JS
+// try/catch cannot intercept reliably. The flag short-circuits both mount
+// paths so the module is never loaded.
+const BIOMETRIC_ENABLED = false;
+
 export function BiometricGate() {
+  if (!BIOMETRIC_ENABLED) return null;
+  return <BiometricGateImpl />;
+}
+
+function BiometricGateImpl() {
   const biometricUnlockEnabled = useSettingsStore(
     (s) => s.biometricUnlockEnabled,
   );
