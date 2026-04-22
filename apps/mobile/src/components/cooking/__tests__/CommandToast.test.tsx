@@ -8,7 +8,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ReactElement } from 'react';
 
-// @ts-expect-error — component does not exist yet (Wave 0 red stub; shipped 16-05)
 import { CommandToast } from '../CommandToast';
 
 type AnyEl = ReactElement<any>;

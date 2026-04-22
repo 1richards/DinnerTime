@@ -120,6 +120,12 @@ export default function CookScreen() {
         addTimer,
         speak: (text) => Speech.speak(text, { language: 'en-US', rate: 0.95 }),
         onAsk,
+        // Phase 16 COOK-UX-05 deps — real wiring lives in 16-06 (toast UI +
+        // haptics + ingredient scroll). Temporary no-ops keep the compile
+        // green and callers functional without visible command feedback yet.
+        onCommandToast: () => {},
+        onCommandHaptic: () => {},
+        onShowIngredients: () => {},
       });
     },
     [next, back, repeat, addTimer, onAsk],
@@ -269,8 +275,8 @@ export default function CookScreen() {
           Speech.stop();
           next();
         }}
-        canGoBack={canGoBack}
-        canGoNext={canGoNext}
+        disableBack={!canGoBack}
+        disableNext={!canGoNext}
       />
 
       <AskSheet
