@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 16-02 (Streaming /cooking/ask via SSE) — complete
 status: completed
-stopped_at: Completed 16-01-PLAN.md (cooking telemetry pipeline — migration 00020 + POST /telemetry/cooking + mobile batched logger)
-last_updated: "2026-04-22T04:14:21.767Z"
+stopped_at: Completed 16-03-PLAN.md (sticky cooking header cluster — StickyCookingHeader/VoiceWaveform/StopTTSButton + TimerBar retoken + haptics + useVoiceAmplitude)
+last_updated: "2026-04-22T04:27:17.312Z"
 last_activity: 2026-04-22 -- Completed 16-02 (SSE streaming endpoint + mobile streamAsk client, Wave 1)
 progress:
   total_phases: 25
   completed_phases: 20
   total_plans: 96
-  completed_plans: 90
+  completed_plans: 91
   percent: 100
 ---
 
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 16 of 25 (Cooking Mode UX Enhancements — post-v1 polish, voice latency, dark mode, Phase 19 token alignment)
-Current Plan: 16-02 (Streaming /cooking/ask via SSE) — complete
-Status: Wave 1 plan 16-02 green. Server POST `/api/v1/cooking/ask-stream` shipped with Hono `streamSSE` emitting `event: delta` per Claude text chunk → `event: done` with the truncated full answer → `event: error` with `CLAUDE_ERROR` on adapter failure. AIClient gained optional `generateStream` AsyncIterable; AnthropicAdapter implements it via an event-emitter-to-async-generator bridge (queue + resolveNext promise). Mobile `streamAsk` ships as `apps/mobile/src/cooking/streamingAsk.ts` with an options+callbacks signature matching the Wave 0 test contract; documented error taxonomy (NO_AUTH / HTTP_<status> / NO_STREAM_BODY / STREAM_ERROR / <server code>) with NO_STREAM_BODY as the RN 0.83 Pitfall-1 fallback signal. Wave 0 red stubs flipped green: server cooking.test.ts 18/18, mobile streamingAsk.test.ts 3/3. Existing `/cooking/ask` preserved as fallback, askAssistant.ts untouched. `sse-smoke.ts` still needs to run on a physical iPhone before 16-06 wires the happy path. Milestone v1.0 remains 100% complete (87/87 plans); Phase 16 is post-v1 polish.
-Last activity: 2026-04-22 -- Completed 16-02 (SSE streaming endpoint + mobile streamAsk client, Wave 1)
+Current Plan: 16-03 (Sticky cooking header cluster — StickyCookingHeader + VoiceWaveform + StopTTSButton + TimerBar retoken + haptics + useVoiceAmplitude) — complete
+Status: Wave 2 plan 16-03 green. Shipped the sticky cooking header cluster: `StickyCookingHeader` (64pt base band + 48pt timer band = 112pt with timers), `VoiceWaveform` (3-state Pressable: mic-slash / pulse-dot / 3 animated bars driven by `useVoiceAmplitude`), `StopTTSButton` (icon-only `accessibilityLabel="Stop reading"` with Medium-impact haptic), a retokenized `TimerBar` (0 hex literals, `bg-warning/20` transition when `remainingMs < 10_000`), and the two supporting modules `haptics.ts` (6 typed wrappers covering every UI-SPEC §Haptic contract event) + `useVoiceAmplitude.ts` (Reanimated SharedValue driver with a 600ms cosmetic sine fallback — jamsch 0.2.15 does not expose `volumechange`, hook probes anyway so future versions drive real amplitude). Global vitest mocks promoted for expo-symbols + expo-haptics (both drag expo-modules-core's `__DEV__` guard through Node). 23/23 Wave 2 tests green across 6 test files. Concurrent sessions landed 16-04 (StepCard + IngredientRow) and 16-05 (CommandToast + show_ingredients intent) commits during this run — no conflicts with 16-03 scope. Milestone v1.0 remains 100% complete; Phase 16 is post-v1 polish.
+Last activity: 2026-04-22 -- Completed 16-03 (sticky cooking header cluster + haptics module + useVoiceAmplitude hook, Wave 2)
 
 Progress: [██████████] 100%
 
@@ -144,6 +144,7 @@ Progress: [██████████] 100%
 | Phase 16-cooking-mode-ux-enhancements-voice-interaction-and-model-ui-polish-information-display P00 | 15min | 2 tasks | 24 files |
 | Phase 16 P02 | 5min | 2 tasks | 5 files |
 | Phase 16 P01 | 9min | 2 tasks | 4 files |
+| Phase 16 P03 | 12min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -469,6 +470,8 @@ Recent decisions affecting current work:
 - [Phase 16]: Token getter seam (wireSupabaseAuth) instead of dynamic supabase import — default sync sentinel keeps fake-timer tests clean, production wires real supabase.auth.getSession from cook-screen bootstrap
 - [Phase 16]: Splice-after-await flushing in telemetry — concurrent synchronous flush starts observe the same queue snapshot; only the first resolved await drains. Fixes queue-cap contract and prevents burst thrashing in production
 - [Phase 16]: Schema-light event names — wire  and DB  are plain text (no enum). Adding new telemetry event kinds in Wave 3 requires zero migration and zero server deploy
+- [Phase 16]: useVoiceAmplitude falls back to a 600ms cosmetic sine loop — @jamsch/expo-speech-recognition 0.2.15 does not ship a volumechange event; hook probes anyway so future versions drive real amplitude automatically
+- [Phase 16]: Promoted expo-symbols + expo-haptics mocks to vitest.setup.ts global (both pull in expo-modules-core which trips __DEV__ under Node) — removes the per-file mock footgun for all current + future cooking tests
 
 ### Pending Todos
 
@@ -512,6 +515,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T04:14:08.915Z
-Stopped at: Completed 16-01-PLAN.md (cooking telemetry pipeline — migration 00020 + POST /telemetry/cooking + mobile batched logger)
+Last session: 2026-04-22T04:27:11.845Z
+Stopped at: Completed 16-03-PLAN.md (sticky cooking header cluster — StickyCookingHeader/VoiceWaveform/StopTTSButton + TimerBar retoken + haptics + useVoiceAmplitude)
 Resume file: None
