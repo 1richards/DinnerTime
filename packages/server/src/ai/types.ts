@@ -70,6 +70,17 @@ export interface AnalyzeImagesStructuredInput<T> {
 
 export interface AIClient {
   generateText(input: GenerateTextInput): Promise<string>;
+  /**
+   * Stream text deltas as the model generates them. Yields string chunks in
+   * order, with the concatenation equal to the equivalent `generateText`
+   * result. Optional because not every adapter supports streaming yet —
+   * callers must gate on `typeof client.generateStream === 'function'`.
+   *
+   * Used by COOK-UX-01 (cooking.voiceAsk) to start TTS on first sentence
+   * boundary rather than waiting for the full response. No tools allowed on
+   * streaming requests (see Pitfall 2, 16-RESEARCH.md).
+   */
+  generateStream?(input: GenerateTextInput): AsyncIterable<string>;
   generateStructured<T>(input: GenerateStructuredInput<T>): Promise<T>;
   analyzeImageStructured<T>(input: AnalyzeImageStructuredInput<T>): Promise<T>;
   analyzeImagesStructured<T>(input: AnalyzeImagesStructuredInput<T>): Promise<T>;
