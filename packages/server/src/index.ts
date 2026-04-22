@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { logger } from 'hono/logger';
 import { serve } from '@hono/node-server';
 import { env } from './config/env.js';
+import { requestLoggingMiddleware } from './middleware/requestLogging.js';
 import auth from './routes/auth.js';
 import recipes from './routes/recipes.js';
 import pantry from './routes/pantry.js';
@@ -19,7 +19,11 @@ import { rateLimitErrorHandler } from './middleware/rateLimitErrors.js';
 const app = new Hono().basePath('/api/v1');
 
 // Global middleware
-app.use('*', logger());
+// Phase 23-06 (NFR-16): structured JSON request logger. Replaces Hono's
+// built-in `logger()` (human-readable) with a single JSON line per request
+// carrying ts/request_id/profile_id/method/path/status/latency_ms. Mount
+// FIRST so it wraps auth 401s too.
+app.use('*', requestLoggingMiddleware);
 app.use('*', cors());
 
 // Global error handler — rewrites upstream 429 / 5xx Anthropic errors

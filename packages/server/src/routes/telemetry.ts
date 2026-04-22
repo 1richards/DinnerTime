@@ -199,6 +199,84 @@ const PlanBatchSchema = z.object({
   events: z.array(PlanEventSchema),
 });
 
+// ---------------------------------------------------------------------------
+// /ai — Phase 23
+// ---------------------------------------------------------------------------
+
+// Mirrors CookingEventSchema/ShoppingEventSchema/PlanEventSchema with
+// task_name + model (AI-specific) instead of domain FKs. Target table:
+// ai_events (migration 00027). Schema-light: `name` is an open string so
+// new event kinds don't require deploys.
+const AiEventSchema = z.object({
+  name: z.string().min(1),
+  session_id: z.string().min(1),
+  timestamp: z.string().min(1),
+  task_name: z.string().min(1),
+  model: z.string().min(1),
+  payload: z.record(z.any()).optional(),
+});
+
+const AiBatchSchema = z.object({
+  events: z.array(AiEventSchema),
+});
+
+telemetry.post('/ai', async (c) => {
+  const user = c.get('user') as { id: string } | undefined;
+  const supabase = c.get('supabase') as
+    | {
+        from: (table: string) => {
+          insert: (rows: unknown[]) => Promise<{ data: unknown; error: unknown }>;
+        };
+      }
+    | undefined;
+
+  if (!user || !supabase) {
+    return c.json({ error: 'unauthorized' }, 401);
+  }
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'schema_error', details: 'invalid JSON' }, 400);
+  }
+
+  const parsed = AiBatchSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json(
+      { error: 'schema_error', details: parsed.error.flatten() },
+      400,
+    );
+  }
+
+  const events = parsed.data.events;
+  if (events.length === 0) {
+    return c.body(null, 204);
+  }
+
+  // profile_id is ALWAYS server-injected from the authed user — NEVER
+  // trusted from the body (NFR-15/17 PII + ownership guard). payload is
+  // opaque — clients sanitize via the 14-key whitelist in
+  // apps/mobile/src/ai/telemetry.ts.
+  const rows = events.map((e) => ({
+    profile_id: user.id,
+    session_id: e.session_id,
+    event_type: e.name,
+    task_name: e.task_name,
+    model: e.model,
+    payload: e.payload ?? {},
+    client_ts: e.timestamp,
+  }));
+
+  const { error } = await supabase.from('ai_events').insert(rows);
+
+  if (error) {
+    return c.json({ error: 'insert_failed' }, 500);
+  }
+
+  return c.json({ inserted: rows.length }, 200);
+});
+
 telemetry.post('/plan', async (c) => {
   const user = c.get('user') as { id: string } | undefined;
   const supabase = c.get('supabase') as
