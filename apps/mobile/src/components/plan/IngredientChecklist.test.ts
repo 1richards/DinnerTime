@@ -1,24 +1,26 @@
 /**
  * Phase 22-04 — IngredientChecklist tests.
  *
- * Static JSX-tree walk (mirrors MonthGrid.test.ts / HandoffSheet.test.tsx).
- * vitest-node can't mount React hooks, but we can:
- *   - call the component as a function with props to get the JSX tree
- *   - walk children via props.children
- *   - assert row counts, titles, and empty-state rendering
+ * Pattern: mirrors `dayRowHelpers.test.ts` — exercise the PURE HELPERS
+ * (buildRows, formatIngredientSubtitle, toggleIndex) rather than mounting
+ * a hook-bearing component under vitest-node. The React component
+ * (`IngredientChecklist`) is a thin `useState` wrapper around
+ * `buildRows`; its non-empty rendering path can only execute inside a
+ * real renderer, and interactive coverage lives in Maestro flow 34.
  *
- * Per-row checkbox toggling state lives in React useState so we can't
- * exercise the full toggle cycle under vitest-node. We instead assert
- * that the hook seam exposes a toggle callback on each row and that the
- * initial render has `checked=false` for all rows. The interactive
- * coverage lives in Maestro flow 34 (green once plan 22-04 ships).
- *
- * We do NOT test the ItemRow internals here — those have their own tests.
+ * The component's EMPTY-STATE path is stateless (no useState runs when
+ * ingredients.length === 0), so that branch IS asserted via a direct
+ * functional call to the component.
  */
 import { describe, it, expect, vi } from 'vitest';
 import type { ReactElement } from 'react';
 
-import { IngredientChecklist } from './IngredientChecklist';
+import {
+  IngredientChecklist,
+  buildRows,
+  formatIngredientSubtitle,
+  toggleIndex,
+} from './IngredientChecklist';
 import type { MealPlanIngredient } from '../../types/mealPlan';
 
 type AnyEl = ReactElement<any>;
@@ -33,147 +35,174 @@ function flatten(node: unknown): AnyEl[] {
   return [];
 }
 
-describe('IngredientChecklist', () => {
-  it('renders one ItemRow per ingredient (2 rows for 2 ingredients)', () => {
-    const ingredients: MealPlanIngredient[] = [
-      { name: 'flour', quantity: 2, unit: 'cup' },
-      { name: 'salt' },
-    ];
-    const tree = IngredientChecklist({ ingredients }) as AnyEl;
-    const all = flatten(tree);
-    // Find ItemRow elements by displayName/name on the component type.
-    const rows = all.filter(
-      (el) =>
-        typeof el.type === 'function' &&
-        // @ts-expect-error — runtime name inspection
-        (el.type.name === 'ItemRow' || el.type.displayName === 'ItemRow'),
+describe('formatIngredientSubtitle', () => {
+  it('both quantity + unit → "2 cup"', () => {
+    expect(formatIngredientSubtitle({ name: 'flour', quantity: 2, unit: 'cup' })).toBe(
+      '2 cup',
     );
-    expect(rows.length).toBe(2);
   });
 
-  it('each row title matches the ingredient name', () => {
-    const ingredients: MealPlanIngredient[] = [
+  it('neither → undefined', () => {
+    expect(formatIngredientSubtitle({ name: 'salt' })).toBeUndefined();
+  });
+
+  it('quantity only → "4"', () => {
+    expect(formatIngredientSubtitle({ name: 'butter', quantity: 4 })).toBe('4');
+  });
+
+  it('unit only → "ml"', () => {
+    expect(formatIngredientSubtitle({ name: 'water', unit: 'ml' })).toBe('ml');
+  });
+
+  it('empty-string unit counts as missing → undefined/quantity fallback', () => {
+    expect(formatIngredientSubtitle({ name: 'salt', unit: '' })).toBeUndefined();
+    expect(formatIngredientSubtitle({ name: 'eggs', quantity: 2, unit: '' })).toBe('2');
+  });
+
+  it('zero quantity is still "0" (not falsy-suppressed)', () => {
+    expect(formatIngredientSubtitle({ name: 'sugar', quantity: 0, unit: 'g' })).toBe(
+      '0 g',
+    );
+    expect(formatIngredientSubtitle({ name: 'sugar', quantity: 0 })).toBe('0');
+  });
+});
+
+describe('toggleIndex', () => {
+  it('adds index when absent', () => {
+    const r = toggleIndex(new Set<number>(), 2);
+    expect([...r]).toEqual([2]);
+  });
+
+  it('removes index when present', () => {
+    const r = toggleIndex(new Set([1, 2, 3]), 2);
+    expect([...r].sort()).toEqual([1, 3]);
+  });
+
+  it('does not mutate input', () => {
+    const src = new Set([1]);
+    toggleIndex(src, 1);
+    expect([...src]).toEqual([1]);
+  });
+
+  it('returns a fresh Set (referential inequality)', () => {
+    const src = new Set([1]);
+    const r = toggleIndex(src, 2);
+    expect(r).not.toBe(src);
+  });
+});
+
+describe('buildRows', () => {
+  const makeNoopToggle = () => () => {};
+
+  it('returns one RowSpec per ingredient (2 for 2)', () => {
+    const ings: MealPlanIngredient[] = [
       { name: 'flour', quantity: 2, unit: 'cup' },
       { name: 'salt' },
-      { name: 'butter', quantity: 4, unit: 'tbsp' },
     ];
-    const tree = IngredientChecklist({ ingredients }) as AnyEl;
-    const all = flatten(tree);
-    const rows = all.filter(
-      (el) =>
-        typeof el.type === 'function' &&
-        // @ts-expect-error — runtime name inspection
-        (el.type.name === 'ItemRow' || el.type.displayName === 'ItemRow'),
-    );
-    expect(rows.map((r) => r.props.title)).toEqual(['flour', 'salt', 'butter']);
+    const rows = buildRows(ings, new Set(), makeNoopToggle);
+    expect(rows).toHaveLength(2);
+  });
+
+  it('row title mirrors ingredient.name', () => {
+    const ings: MealPlanIngredient[] = [
+      { name: 'flour' },
+      { name: 'salt' },
+      { name: 'butter' },
+    ];
+    const rows = buildRows(ings, new Set(), makeNoopToggle);
+    expect(rows.map((r) => r.title)).toEqual(['flour', 'salt', 'butter']);
   });
 
   it('row subtitle carries quantity + unit when present, omitted when absent', () => {
-    const ingredients: MealPlanIngredient[] = [
+    const ings: MealPlanIngredient[] = [
       { name: 'flour', quantity: 2, unit: 'cup' },
       { name: 'salt' },
       { name: 'butter', quantity: 4 },
       { name: 'water', unit: 'ml' },
     ];
-    const tree = IngredientChecklist({ ingredients }) as AnyEl;
-    const all = flatten(tree);
-    const rows = all.filter(
-      (el) =>
-        typeof el.type === 'function' &&
-        // @ts-expect-error — runtime name inspection
-        (el.type.name === 'ItemRow' || el.type.displayName === 'ItemRow'),
-    );
-    // flour: both → "2 cup"
-    expect(rows[0]?.props.subtitle).toBe('2 cup');
-    // salt: neither → undefined
-    expect(rows[1]?.props.subtitle).toBeUndefined();
-    // butter: quantity only → "4"
-    expect(rows[2]?.props.subtitle).toBe('4');
-    // water: unit only → "ml"
-    expect(rows[3]?.props.subtitle).toBe('ml');
+    const rows = buildRows(ings, new Set(), makeNoopToggle);
+    expect(rows[0]?.subtitle).toBe('2 cup');
+    expect(rows[1]?.subtitle).toBeUndefined();
+    expect(rows[2]?.subtitle).toBe('4');
+    expect(rows[3]?.subtitle).toBe('ml');
   });
 
-  it('each row has a leading="checkbox" affordance with onToggle + checked=false initially', () => {
-    const ingredients: MealPlanIngredient[] = [
-      { name: 'flour' },
-      { name: 'salt' },
-    ];
-    const tree = IngredientChecklist({ ingredients }) as AnyEl;
-    const all = flatten(tree);
-    const rows = all.filter(
-      (el) =>
-        typeof el.type === 'function' &&
-        // @ts-expect-error — runtime name inspection
-        (el.type.name === 'ItemRow' || el.type.displayName === 'ItemRow'),
-    );
+  it('each row has leading.kind === "checkbox" + onToggle fn + checked=false initially', () => {
+    const ings: MealPlanIngredient[] = [{ name: 'flour' }, { name: 'salt' }];
+    const rows = buildRows(ings, new Set(), makeNoopToggle);
     for (const r of rows) {
-      expect(r.props.leading?.kind).toBe('checkbox');
-      expect(r.props.leading?.checked).toBe(false);
-      expect(typeof r.props.leading?.onToggle).toBe('function');
+      expect(r.leading.kind).toBe('checkbox');
+      expect(r.leading.checked).toBe(false);
+      expect(typeof r.leading.onToggle).toBe('function');
     }
   });
 
-  it('onToggle callback does not throw (invocation is safe)', () => {
-    // Component uses useState internally — we can't observe the toggled
-    // state from outside a renderer, but we can assert the callback is a
-    // well-formed function that doesn't crash when called. This guards
-    // against a regression where onToggle might accidentally be `undefined`
-    // or bound to a missing setter.
-    const ingredients: MealPlanIngredient[] = [{ name: 'flour' }];
-    const tree = IngredientChecklist({ ingredients }) as AnyEl;
-    const all = flatten(tree);
-    const rows = all.filter(
-      (el) =>
-        typeof el.type === 'function' &&
-        // @ts-expect-error — runtime name inspection
-        (el.type.name === 'ItemRow' || el.type.displayName === 'ItemRow'),
-    );
-    const toggle = rows[0]?.props.leading?.onToggle;
-    expect(() => toggle?.()).not.toThrow();
+  it('checked indices surface through leading.checked + struck', () => {
+    const ings: MealPlanIngredient[] = [
+      { name: 'flour' },
+      { name: 'salt' },
+      { name: 'butter' },
+    ];
+    const rows = buildRows(ings, new Set([0, 2]), makeNoopToggle);
+    expect(rows[0]?.leading.checked).toBe(true);
+    expect(rows[1]?.leading.checked).toBe(false);
+    expect(rows[2]?.leading.checked).toBe(true);
+    // struck mirrors checked
+    expect(rows[0]?.struck).toBe(true);
+    expect(rows[1]?.struck).toBe(false);
+    expect(rows[2]?.struck).toBe(true);
   });
 
-  it('empty list renders "No ingredients listed" empty state', () => {
+  it('onToggle factory is called per row with the row index', () => {
+    const ings: MealPlanIngredient[] = [{ name: 'flour' }, { name: 'salt' }];
+    const factory = vi.fn(() => () => {});
+    buildRows(ings, new Set(), factory);
+    expect(factory).toHaveBeenCalledTimes(2);
+    expect(factory).toHaveBeenNthCalledWith(1, 0);
+    expect(factory).toHaveBeenNthCalledWith(2, 1);
+  });
+
+  it('row keys are unique — safe against duplicate ingredient names', () => {
+    const ings: MealPlanIngredient[] = [
+      { name: 'salt' },
+      { name: 'salt' }, // same name, different row
+    ];
+    const rows = buildRows(ings, new Set(), makeNoopToggle);
+    expect(rows[0]?.key).not.toBe(rows[1]?.key);
+  });
+
+  it('simulating an onToggle call via toggleIndex flips the observable checked state', () => {
+    // Regression guard: the wiring between makeToggle and checked state
+    // produces a fresh Set on toggle. Simulate the (makeToggle → setter)
+    // round-trip manually.
+    let checked = new Set<number>();
+    const makeToggle = (i: number) => () => {
+      checked = toggleIndex(checked, i);
+    };
+    const ings: MealPlanIngredient[] = [{ name: 'flour' }, { name: 'salt' }];
+    const rows = buildRows(ings, checked, makeToggle);
+    expect(rows[0]?.leading.checked).toBe(false);
+    // Invoke the toggle callback on row 0:
+    rows[0]?.leading.onToggle();
+    // Rebuild rows with the updated set — mirrors what React would do.
+    const rows2 = buildRows(ings, checked, makeToggle);
+    expect(rows2[0]?.leading.checked).toBe(true);
+    expect(rows2[1]?.leading.checked).toBe(false);
+  });
+});
+
+describe('IngredientChecklist (empty state — stateless branch)', () => {
+  it('empty list renders "No ingredients listed" — this branch does not invoke useState', () => {
     const tree = IngredientChecklist({ ingredients: [] }) as AnyEl;
     const all = flatten(tree);
-    // Walk text nodes — empty-state text must appear somewhere in the
-    // rendered tree. We don't assert the exact visual primitive (Text vs
-    // EmptyState) to keep the test resilient to later restyling.
     const texts: string[] = [];
     for (const el of all) {
-      const children = el.props?.children;
-      if (typeof children === 'string') texts.push(children);
-      if (Array.isArray(children)) {
-        for (const c of children) if (typeof c === 'string') texts.push(c);
+      const ch = el.props?.children;
+      if (typeof ch === 'string') texts.push(ch);
+      if (Array.isArray(ch)) {
+        for (const c of ch) if (typeof c === 'string') texts.push(c);
       }
     }
     expect(texts.some((t) => /No ingredients listed/i.test(t))).toBe(true);
-    // And no ItemRow rendered in the empty case.
-    const rows = all.filter(
-      (el) =>
-        typeof el.type === 'function' &&
-        // @ts-expect-error — runtime name inspection
-        (el.type.name === 'ItemRow' || el.type.displayName === 'ItemRow'),
-    );
-    expect(rows.length).toBe(0);
-  });
-
-  it('does not persist to AsyncStorage (no side-effect at render time)', () => {
-    // Spy on AsyncStorage.setItem — if IngredientChecklist accidentally
-    // persists, this assertion catches it. Persistence is explicitly a v2
-    // feature per PLAN 22-04 behavior block.
-    // (Global AsyncStorage mock lives in vitest.setup.ts.)
-    const ingredients: MealPlanIngredient[] = [{ name: 'flour' }];
-    const setItemSpy = vi.fn();
-    // Best-effort: if the module has been imported, tap its setItem.
-    // If not imported, this assertion is vacuously true (no persistence).
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const AS = require('@react-native-async-storage/async-storage').default;
-      AS.setItem = setItemSpy;
-    } catch {
-      // module not present — fine
-    }
-    IngredientChecklist({ ingredients });
-    expect(setItemSpy).not.toHaveBeenCalled();
   });
 });
