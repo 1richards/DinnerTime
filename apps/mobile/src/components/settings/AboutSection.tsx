@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Pressable, Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import Constants from 'expo-constants';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { colors } from '../../design/tokens';
+import { FeedbackSheet } from './FeedbackSheet';
 
 /**
  * Phase 23-01: About / app-store readiness section.
@@ -35,6 +36,18 @@ const PRIVACY_URL = 'https://dinnertime.app/privacy';
 const TERMS_URL = 'https://dinnertime.app/terms';
 const SUPPORT_EMAIL = 'support@dinnertime.app';
 
+// Module-level latch so AboutSection (invoked as a plain function under
+// vitest-node, which can't run useState) can still toggle the FeedbackSheet.
+// Under a real React renderer the FeedbackSheetHost inner component owns a
+// useState-backed mirror; this latch is just the bridge for the outer
+// Pressable's onPress handler.
+let feedbackOpenLatch = false;
+const feedbackOpenListeners = new Set<(open: boolean) => void>();
+function setFeedbackOpenLatch(next: boolean) {
+  feedbackOpenLatch = next;
+  for (const l of feedbackOpenListeners) l(next);
+}
+
 export function AboutSection() {
   const version = Constants.expoConfig?.version ?? 'unknown';
   const buildNumber = Constants.expoConfig?.ios?.buildNumber ?? '—';
@@ -48,6 +61,7 @@ export function AboutSection() {
   const openSupport = () => {
     void Linking.openURL(`mailto:${SUPPORT_EMAIL}`);
   };
+  const openFeedback = () => setFeedbackOpenLatch(true);
 
   return (
     <View className="mb-2">
@@ -129,6 +143,29 @@ export function AboutSection() {
         />
       </Pressable>
       <Pressable
+        onPress={openFeedback}
+        className="flex-row items-center py-3 border-b border-warmGray-100"
+        accessibilityRole="button"
+        accessibilityLabel="Send feedback"
+      >
+        <SymbolIcon
+          name="bubble.left.and.bubble.right"
+          size="body"
+          tintColor={colors.textSecondary}
+        />
+        <Text
+          className="flex-1 ml-3 text-base text-warmGray-900"
+          onPress={openFeedback}
+        >
+          Send feedback
+        </Text>
+        <SymbolIcon
+          name="chevron.right"
+          size="body"
+          tintColor={colors.textSecondary}
+        />
+      </Pressable>
+      <Pressable
         onPress={openSupport}
         className="flex-row items-center py-3"
         accessibilityRole="button"
@@ -147,6 +184,29 @@ export function AboutSection() {
         </Text>
         <Text className="text-sm text-warmGray-600">{SUPPORT_EMAIL}</Text>
       </Pressable>
+      <FeedbackSheetHost />
     </View>
+  );
+}
+
+/**
+ * Subscribes to the feedbackOpenLatch so that under a real renderer the
+ * FeedbackSheet toggles visible in response to the About row Press. Split
+ * out as a useState-owning inner component so AboutSection() itself stays
+ * invokable as a plain function under vitest-node's test walker.
+ */
+function FeedbackSheetHost(): React.ReactElement {
+  const [open, setOpen] = useState(feedbackOpenLatch);
+  React.useEffect(() => {
+    feedbackOpenListeners.add(setOpen);
+    return () => {
+      feedbackOpenListeners.delete(setOpen);
+    };
+  }, []);
+  return (
+    <FeedbackSheet
+      open={open}
+      onClose={() => setFeedbackOpenLatch(false)}
+    />
   );
 }

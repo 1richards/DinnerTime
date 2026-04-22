@@ -31,6 +31,13 @@ vi.mock('expo-web-browser', () => ({
   openBrowserAsync: vi.fn(async () => ({ type: 'cancel' })),
 }));
 
+// Phase 25-01: FeedbackSheet (mounted at the bottom of AboutSection) transitively
+// imports lib/authedFetch → lib/supabase → react-native-get-random-values, which
+// is CommonJS and cannot resolve under vitest-node. Stub the whole chain here.
+vi.mock('../../../lib/authedFetch', () => ({
+  authedFetch: vi.fn(async () => ({ ok: true, status: 201, json: async () => ({ id: 'fb-1' }) })),
+}));
+
 const { AboutSection } = await import('../AboutSection.js');
 
 function walk(el: any, visit: (node: any) => void) {
