@@ -13,6 +13,7 @@ import voice from './routes/voice.js';
 import cooking from './routes/cooking.js';
 import progression from './routes/progression.js';
 import telemetry from './routes/telemetry.js';
+import account from './routes/account.js';
 
 const app = new Hono().basePath('/api/v1');
 
@@ -36,6 +37,7 @@ app.route('/voice', voice);
 app.route('/cooking', cooking);
 app.route('/progression', progression);
 app.route('/telemetry', telemetry);
+app.route('/account', account);
 
 // Start server (only when not imported for testing)
 if (process.env.NODE_ENV !== 'test') {
