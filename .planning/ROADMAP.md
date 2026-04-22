@@ -547,8 +547,17 @@ Plans:
  28. Required legal pages (Privacy Policy, Terms of Service) linked from Settings and reachable without login
  29. Support contact email or in-app report form
 
-**Plans**: 0 plans
-Plans: (not yet planned)
+**Plans**: 9 plans
+Plans:
+- [ ] 23-00-PLAN.md — Wave 0: install Sentry + expo-local-authentication, migrations 00027_ai_events + 00028_account_deletions, 14 red test stubs, Maestro flow 37 stub, DEVICE-TEST-23 skeleton, app.json ATS + applinks
+- [ ] 23-01-PLAN.md — Account management: change password + change email + AboutSection + ConnectedServicesSection (non-destructive half)
+- [ ] 23-02-PLAN.md — Export data + Delete account: buildExportDump service, GET /account/export, POST /account/delete with admin.deleteUser, DeleteAccountSheet with type-DELETE guard
+- [ ] 23-03-PLAN.md — Biometric unlock: expo-local-authentication wrapper, settingsStore toggle, BiometricGate root overlay, Security section in Settings
+- [ ] 23-04-PLAN.md — Session lifecycle: authedFetch + sessionRefresh 401-retry, ReAuthModal, forgot-password + reset-password screens + deep link handler, sign-out copy polish, onboarding-skip verification
+- [ ] 23-05-PLAN.md — Error handling: global ErrorBoundary + NetworkErrorBanner + classifyNetworkError classifier + server rateLimitErrors onError middleware
+- [ ] 23-06-PLAN.md — Observability: Sentry client init + PII-stripping beforeSend, server requestLogging middleware, AIClient instrumentation + recordAiCall writer, POST /telemetry/ai route, mobile ai/telemetry.ts batcher
+- [ ] 23-07-PLAN.md — Security + App Store draft: deepLinkAllowlist, HTTPS-only audit, PII hygiene grep, PRIVACY/TERMS markdown, .planning/app-store/ drafts (privacy-manifest.json, description, keywords, screenshot shotlist), human-action ASC checkpoint
+- [ ] 23-08-PLAN.md — Performance audit + UAT closeout: perfBudgets.ts, image-quality grep, expand Maestro flow 37, write 23-PERF-AUDIT.md, fill DEVICE-TEST-23 simulator rows, human-verify physical-iPhone checkpoint
 **UI hint**: yes
 
 ### Phase 24: AI Vision & Pantry Data-Model Deep Refactor
