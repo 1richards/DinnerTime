@@ -25,7 +25,7 @@ created: 2026-04-20
 | **Quick run (server)** | `cd packages/server && pnpm test -- --run src/routes/__tests__/recipes.search.test.ts` |
 | **Full suite (mobile)** | `cd apps/mobile && pnpm test` |
 | **Full suite (server)** | `cd packages/server && pnpm test` |
-| **UAT runner** | Maestro 2.4.0 (`apps/mobile/.maestro/scripts/uat.sh all`) |
+| **UAT runner** | Maestro 2.4.0 (`apps/mobile/.maestro/scripts/uat.sh all` for full suite; `maestro test .maestro/<flow>.yaml` for a single flow — `uat.sh` has no `flow` subcommand) |
 | **Estimated runtime** | ~45s mobile unit, ~15s server unit, ~12m Maestro full suite |
 
 **Gotcha:** `.native.test.*` suffix excluded under node env — use plain `.test.ts` for pure helpers, reserve `.native.test.*` for RN-renderer-coupled tests.
@@ -56,10 +56,12 @@ created: 2026-04-20
 | 17-03-02 | 03 | 3 | P17-03 | source-contract | `cd apps/mobile && pnpm test -- --run src/app/__tests__/search.test.ts` | ❌ W0 | ⬜ pending |
 | 17-03-03 | 03 | 3 | P17-05 | source-contract | `cd apps/mobile && pnpm test -- --run src/app/recipes/__tests__/discover.test.ts` | Partially | ⬜ pending |
 | 17-03-04 | 03 | 3 | P17-06 | source-contract | Same as 17-03-01 (RegenerateFab removal + HeaderEllipsis actions assertions) | ❌ W0 | ⬜ pending |
-| 17-04-01 | 04 | 4 | P17-05 | e2e | `cd apps/mobile && ./.maestro/scripts/uat.sh flow 27-something-new-search` | ❌ W0 | ⬜ pending |
-| 17-04-02 | 04 | 4 | P17-01 | e2e | Rebase `apps/mobile/.maestro/20-kitchen-segment-toggle.yaml:77` (Suggestions → Something New) | Partially | ⬜ pending |
+| 17-04-01 | 04 | 4 | P17-05 | e2e | `cd apps/mobile && maestro test .maestro/27-something-new-search.yaml` | ❌ W0 | ⬜ pending |
+| 17-04-02 | 04 | 4 | P17-01 | e2e | `cd apps/mobile && maestro test .maestro/20-kitchen-segment-toggle.yaml` (after rebasing line ~77 Suggestions → Something New) | Partially | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+
+> **Note on Maestro invocation:** `apps/mobile/.maestro/scripts/uat.sh` supports only `boot|open|shot|log|reset|smoke|all|help`. There is NO `flow` subcommand — `uat.sh flow <name>` silently falls through to help and exits 0, which would let a verification gate pass without ever running the flow. For single-flow runs, always use `maestro test .maestro/<flow>.yaml` directly. `uat.sh all` is fine for full-suite runs.
 
 ---
 
