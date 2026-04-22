@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 16-07 (Settings dark-mode toggle + Maestro UAT + Phase 9 cleanup) — complete [Wave 4 landed; Settings section, flow 28, StepDisplay+VoiceStatusBadge deleted]
+current_plan: Not started
 status: verifying
 stopped_at: Completed 16-07-PLAN.md (Settings Cooking section dark-mode toggle, Maestro flow 28 non-voice UAT, Phase 9 cleanup)
-last_updated: "2026-04-22T04:58:10.260Z"
-last_activity: 2026-04-22 -- Completed 16-07 (Settings dark-mode toggle wired to cookingStore.setDarkMode with persistence, Maestro flow 28 with 7 screenshots, StepDisplay + VoiceStatusBadge deleted, 16-08 is the final plan)
+last_updated: "2026-04-22T05:05:18.750Z"
+last_activity: 2026-04-22
 progress:
   total_phases: 25
   completed_phases: 20
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 16 of 25 (Cooking Mode UX Enhancements — post-v1 polish, voice latency, dark mode, Phase 19 token alignment)
-Current Plan: 16-07 (Settings dark-mode toggle + Maestro UAT + Phase 9 cleanup) — complete [Wave 4 landed; Settings section, flow 28, StepDisplay+VoiceStatusBadge deleted]
+Phase: 17 of 25 (something new ai powered recipe exploration with search and remix)
+Current Plan: Not started
 Status: Wave 4 plan 16-07 green. Settings Cooking section now renders "Dark cooking mode" toggle wired to `cookingStore.setDarkMode` (persisted via `partialize: (state) => ({ darkMode: state.darkMode })`). Exact UI-SPEC copy used verbatim: title "Dark cooking mode", subtitle "Darker background while cooking. Matches Spotify's Now Playing feel.". Section placed between Pantry and Account blocks. accessibilityRole="switch" + accessibilityState={{ checked }} on the row wrapper so Maestro can drive it via the plain title text. Maestro flow 28-cooking-mode-ui.yaml authored — 49 steps, 7 screenshots (landing → ingredient check → step advance → step back → exit confirm → dark toggle → dark cooking). Voice paths intentionally NOT covered; DEVICE-TEST-16 (plan 16-08) will cover them on a physical iPhone per CLAUDE.md UAT section (simulator has no audio injection). Phase 9 cleanup: StepDisplay.tsx + VoiceStatusBadge.tsx deleted (grep confirms zero consumer imports); cook.tsx header comment and 15-*.yaml stub comment updated to reflect removal. Two task commits: bae1f1a (feat: Settings + deletions), 36b06bd (test: Maestro flow 28). Maestro flow 28 could NOT be executed end-to-end because the running Metro was started from the monorepo root instead of apps/mobile (pre-existing dev-env bug — `./index` fails to resolve, cascading to expo-haptics). Per AUTO_MODE_OVERRIDE, the human-verify checkpoint was auto-approved inline and the failing sim run logged in SUMMARY issues; DEVICE-TEST-16 remains the authoritative visual gate. 159/159 cooking+app tests green; TypeScript clean on touched files. Phase 16 Wave 4 complete. Only plan 16-08 (DEVICE-TEST-16 physical-device voice run) remains in Phase 16. Milestone v1.0 remains 100% complete.
-Last activity: 2026-04-22 -- Completed 16-07 (Settings dark-mode toggle wired to cookingStore.setDarkMode with persistence, Maestro flow 28 with 7 screenshots, StepDisplay + VoiceStatusBadge deleted, 16-08 is the final plan)
+Last activity: 2026-04-22
 
 Progress: [██████████] 100%
 
