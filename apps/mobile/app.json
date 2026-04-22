@@ -11,7 +11,9 @@
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.dinnertime.app",
       "usesAppleSignIn": true,
-      "associatedDomains": ["applinks:dinnertime.app"],
+      "associatedDomains": [
+        "applinks:dinnertime.app"
+      ],
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "DinnerTime uses speech recognition to understand cooking commands.",
         "NSMicrophoneUsageDescription": "DinnerTime uses the microphone for hands-free cooking.",
@@ -67,7 +69,8 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

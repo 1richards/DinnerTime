@@ -26,6 +26,15 @@ export default function SettingsLayout() {
         name="account/change-email"
         options={{ title: 'Change email' }}
       />
+      {/* Phase 23-02: destructive-half account screens. */}
+      <Stack.Screen
+        name="account/export"
+        options={{ title: 'Export data' }}
+      />
+      <Stack.Screen
+        name="account/delete"
+        options={{ title: 'Delete account' }}
+      />
     </Stack>
   );
 }
