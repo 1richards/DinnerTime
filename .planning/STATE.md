@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 16-04 (Scrollable recipe primitives — StepCard + IngredientRow + ScrollableRecipe + useCurrentStepScroll) — complete
+current_plan: 16-04 (Scrollable recipe primitives) — complete [executed in parallel with 16-03 and 16-05, all three Wave 2 plans now green]
 status: completed
-stopped_at: Completed 16-04-PLAN.md (scrollable recipe primitives + imperative scrollToIngredients() ref handle)
-last_updated: "2026-04-22T04:28:42Z"
-last_activity: 2026-04-22 -- Completed 16-04 (StepCard + IngredientRow + ScrollableRecipe + useCurrentStepScroll, Wave 2)
+stopped_at: Completed 16-04-PLAN.md (scrollable recipe primitives — StepCard/IngredientRow/ScrollableRecipe/useCurrentStepScroll + imperative scrollToIngredients() ref handle)
+last_updated: "2026-04-22T04:32:42.914Z"
+last_activity: 2026-04-22 -- Completed 16-04 (StepCard + IngredientRow + ScrollableRecipe + useCurrentStepScroll with forwardRef + useImperativeHandle, Wave 2)
 progress:
   total_phases: 25
   completed_phases: 20
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 16 of 25 (Cooking Mode UX Enhancements — post-v1 polish, voice latency, dark mode, Phase 19 token alignment)
-Current Plan: 16-05 (Voice command feedback primitives — CommandToast + show_ingredients intent + 72pt StepNavButtons + retokened AskSheet) — complete
-Status: Wave 2 plan 16-05 green. Shipped voice-command feedback primitives: `CommandToast` (1.5s setTimeout auto-dismiss, `accessibilityLiveRegion="polite"`, brand left-edge accent strip, body/700 centered) — purely visual primitive; the dispatcher owns the haptic. `intentRouter` gained a `SHOW_INGREDIENTS` regex (`\b(show|see|list|what)\b(?:\s+\w+){0,3}\s+ingredients\b`) positioned AFTER resume and BEFORE the ask fallthrough — locked CONTEXT contract ("voice 'show ingredients' scrolls to the section"). `CookingIntent` union +`{ type: 'show_ingredients' }`. `handleTranscript` gained three new `TranscriptDeps` (onCommandToast, onCommandHaptic, onShowIngredients); every recognized intent except ask/pause/resume fires haptic + toast. Timer case dropped `deps.speak(...)` per UI-SPEC §Voice feedback principle ("silent confirmation, no TTS echo"). New `show_ingredients` case dispatches stopSpeech → haptic → toast('Ingredients') → onShowIngredients — with NO network call. `StepNavButtons` rewritten as a hand-rolled 72pt Pressable tree (Phase 19 tokens + `iconPropsForText('display')`) — 72pt deviation is explicitly documented inline per UI-SPEC §Spacing §Exceptions (cooking-hands accessibility). Prop interface flipped from `canGoBack/canGoNext` → `disableBack/disableNext`; cook.tsx mapped with `!` until 16-06. `AskSheet` retokened (0 hex literals), added optional `error` prop rendering Phase 19 `ErrorState` banner, and wired incremental-answer rendering (spinner hides on first delta) so 16-06 can forward SSE chunks directly. cook.tsx gained three no-op callbacks as TranscriptDeps stub — real handlers wire in 16-06. 50 targeted tests green (CommandToast ×4, intentRouter ×30, handleTranscript ×16); broader cooking suite 108/114 across 18/19 files (6 failures are pre-existing 16-04 ScrollableRecipe red stubs deferred per SCOPE BOUNDARY). Milestone v1.0 remains 100% complete; Phase 16 is post-v1 polish.
-Last activity: 2026-04-22 -- Completed 16-05 (CommandToast + show_ingredients intent + 72pt StepNavButtons + retokened AskSheet, Wave 2)
+Current Plan: 16-04 (Scrollable recipe primitives) — complete [executed in parallel with 16-03 and 16-05, all three Wave 2 plans now green]
+Status: Wave 2 plan 16-04 green. Shipped the Claude.ai-artifact recipe primitives — `StepCard` (display 34pt current / title 22pt non-current + 4pt brand left rail on current / reserved invisible rail on non-current), `IngredientRow` (tap-to-check with success-tinted checkmark.circle.fill + line-through + tertiary text + fireIngredientHaptic Light impact), `ScrollableRecipe` (forwardRef-wrapped ScrollView rendering INGREDIENTS + STEPS sections with onLayout y-capture for both step cards and the ingredients wrapper), `useCurrentStepScroll` (sync function that calls scrollRef.current.scrollTo({ y: Math.max(0, stepY-120), animated: true }) on each invocation — Pattern 2 center-offset locked at 120pt). Imperative `ScrollableRecipeHandle` exposes `scrollToIngredients()` via useImperativeHandle; falls back silently to y=0 when onLayout has not yet fired. Internal `scrollableRecipeRender(props, ref)` exported alongside the forwardRef wrapper so vitest node-env tests can invoke it directly without a React renderer. 13 targeted tests green (StepCard ×3, IngredientRow ×3, useCurrentStepScroll ×1, ScrollableRecipe ×6 including 4 new ref-API assertions extended into the Wave 0 stub). 16-04's primitives unblock 16-06 cook.tsx integration; ScrollableRecipeHandle + the dispatcher-side show_ingredients intent from 16-05 are the two halves of the voice "show ingredients" contract. Sibling plans 16-03 (sticky header cluster — haptics/useVoiceAmplitude/VoiceWaveform/StopTTSButton/StickyCookingHeader + TimerBar retoken) and 16-05 (CommandToast + show_ingredients intent + 72pt StepNavButtons + AskSheet retoken) also landed green in parallel. Full mobile cooking suite: 19 files / 114 tests green. Milestone v1.0 remains 100% complete; Phase 16 post-v1 polish Wave 2 now cleared.
+Last activity: 2026-04-22 -- Completed 16-04 (StepCard + IngredientRow + ScrollableRecipe + useCurrentStepScroll with forwardRef + useImperativeHandle, Wave 2)
 
 Progress: [██████████] 100%
 
@@ -146,6 +146,7 @@ Progress: [██████████] 100%
 | Phase 16 P01 | 9min | 2 tasks | 4 files |
 | Phase 16 P03 | 12min | 3 tasks | 7 files |
 | Phase 16 P05 | 11min | 2 tasks | 10 files |
+| Phase 16 P04 | 11 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -476,6 +477,9 @@ Recent decisions affecting current work:
 - [Phase 16]: Timer intent dropped speak() per UI-SPEC silent-confirmation rule — toast/haptic replaces TTS echo
 - [Phase 16]: StepNavButtons 72pt hand-rolled Pressable (not Phase 19 Button) — keeps 44pt Button invariant intact; 72pt deviation localized
 - [Phase 16]: show_ingredients regex permits up to 3 intervening tokens; 'what ingredients are substitutes for X' accepted edge-case routed to show_ingredients instead of /ask
+- [Phase 16]: 16-04: Two-layer ScrollableRecipe export (forwardRef wrapper + raw scrollableRecipeRender fn) — forwardRef return value is not directly callable, so static-inspection tests need the raw render function alongside the production export
+- [Phase 16]: 16-04: useCurrentStepScroll implemented as sync function (no useEffect) — Wave 0 test invokes it from vitest node env without a React renderer; hooks would throw Invalid hook call. React's render-diffing still caps firing cadence to prop changes.
+- [Phase 16]: 16-04: Ingredient-check icon tone = success (not brand) — UI-SPEC §Color accent budget reserved for rail/timer/mic/Stop/nav-pressed/toast; success semantically reads as checked/done
 
 ### Pending Todos
 
@@ -519,6 +523,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T04:30:59.860Z
-Stopped at: Completed 16-05-PLAN.md (voice command feedback primitives — CommandToast + show_ingredients + 72pt StepNavButtons + AskSheet retoken)
+Last session: 2026-04-22T04:32:42.909Z
+Stopped at: Completed 16-04-PLAN.md (scrollable recipe primitives — StepCard/IngredientRow/ScrollableRecipe/useCurrentStepScroll + imperative scrollToIngredients() ref handle)
 Resume file: None
