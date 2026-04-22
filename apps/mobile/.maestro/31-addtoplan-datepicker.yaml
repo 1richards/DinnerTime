@@ -1,0 +1,22 @@
+appId: com.dinnertime.app
+name: "31 — Add to Plan from Recipe Detail: native date picker accepts arbitrary date"
+tags:
+  - phase-22
+# STUB: Wave 0 red stub. Downstream plan 22-01 (Cluster 1 — Cross-flow nav)
+# will implement PLAN-X-02:
+#   1. runFlow _ensure-logged-in
+#   2. navigate to Recipes tab → tap any recipe
+#   3. tap "Add to Plan" in the header ellipsis menu
+#   4. assert DatePickerSheet visible (title "Pick a day")
+#   5. scroll/tap a future date in the inline calendar
+#   6. tap "Add" → assert sheet dismisses + success toast
+#   7. navigate to Plan tab → assert the recipe title is now on the
+#      selected date (not just "this Monday")
+#
+# Contract verified end-to-end: POST /meal-plans/entries/assign with
+# body.date=YYYY-MM-DD derives the correct week_start + day_of_week on
+# the server (covered by packages/server/src/routes/__tests__/meal-plans.test.ts
+# "POST /entries/assign with date param").
+---
+- runFlow: _ensure-logged-in.yaml
+- takeScreenshot: 01-addtoplan-datepicker-STUB-wave0

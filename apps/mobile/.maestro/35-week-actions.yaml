@@ -1,0 +1,22 @@
+appId: com.dinnertime.app
+name: "35 — Week actions: WeekActionSheet (regenerate, shift ±1, duplicate last week, shopping)"
+tags:
+  - phase-22
+# STUB: Wave 0 red stub. Downstream plan 22-02 (Cluster 2a — Week actions)
+# will implement PLAN-X-08:
+#   1. runFlow _ensure-logged-in
+#   2. navigate to Plan tab
+#   3. tap week-header overflow (ellipsis) → WeekActionSheet opens
+#   4. verify actions visible: "Regenerate", "Shift +1 week",
+#      "Shift -1 week", "Duplicate last week", "Shopping list"
+#   5. tap "Shift +1 week" → assert week header date advances by 7 days
+#      (new week_start = current + 7d)
+#   6. tap overflow → "Shift -1 week" → back to original week
+#   7. tap "Duplicate last week" → assert new entries from prior week
+#      are cloned with status reset to 'planned'
+#
+# Telemetry: plan.week_regenerated / plan.week_shifted /
+# plan.week_duplicated events fire on each action.
+---
+- runFlow: _ensure-logged-in.yaml
+- takeScreenshot: 01-week-actions-STUB-wave0

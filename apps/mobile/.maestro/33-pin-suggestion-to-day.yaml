@@ -1,0 +1,21 @@
+appId: com.dinnertime.app
+name: "33 — Pin suggestion to day: Something New \"Pin to day\" action invokes date picker"
+tags:
+  - phase-22
+# STUB: Wave 0 red stub. Downstream plan 22-01 (Cluster 1 — Cross-flow nav)
+# will implement PLAN-X-04:
+#   1. runFlow _ensure-logged-in
+#   2. navigate to Something New tab
+#   3. wait for AI suggestion card to render
+#   4. tap overflow (ellipsis) on a SuggestionCard → "Pin to day"
+#   5. assert DatePickerSheet visible
+#   6. tap a future date → tap "Add"
+#   7. assert success toast
+#   8. navigate to Plan tab → assert suggestion title on the selected date
+#
+# Note: suggestions with no saved recipe use POST /entries/assign with
+# recipe_id: null (backend already supports this — see 22-RESEARCH.md
+# Pitfall 7).
+---
+- runFlow: _ensure-logged-in.yaml
+- takeScreenshot: 01-pin-suggestion-STUB-wave0

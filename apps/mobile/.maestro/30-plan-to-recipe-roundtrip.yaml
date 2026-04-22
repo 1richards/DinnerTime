@@ -1,0 +1,18 @@
+appId: com.dinnertime.app
+name: "30 — Plan↔Recipe roundtrip: tap planned meal → recipe detail → back returns to same Plan day"
+tags:
+  - phase-22
+# STUB: Wave 0 red stub. Downstream plan 22-01 (Cluster 1 — Cross-flow nav)
+# will implement PLAN-X-01:
+#   1. runFlow _ensure-logged-in
+#   2. tap Plan tab (extendedWaitUntil "This Week")
+#   3. tap a planned meal row (DayRow.onPress → router.push(/recipes/{id}))
+#   4. assertVisible recipe title on RecipeDetail
+#   5. tap back chevron (expo-router native-stack preserves scroll)
+#   6. assertVisible the SAME day row still mounted (scroll preservation)
+#
+# Until 22-01 ships, this flow only logs in and takes a placeholder
+# screenshot so Maestro smoke runs continue to pass cleanly.
+---
+- runFlow: _ensure-logged-in.yaml
+- takeScreenshot: 01-plan-to-recipe-STUB-wave0

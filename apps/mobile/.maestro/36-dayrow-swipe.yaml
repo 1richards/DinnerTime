@@ -1,0 +1,28 @@
+appId: com.dinnertime.app
+name: "36 — DayRow swipe-to-action: swap / mark cooked / skip"
+tags:
+  - phase-22
+# STUB: Wave 0 red stub. Downstream plan 22-06 (Cluster 4 — Info density +
+# swipe) will implement PLAN-X-16:
+#   1. runFlow _ensure-logged-in
+#   2. navigate to Plan tab
+#   3. swipe LEFT on a day row → assert 3 actions revealed:
+#      [Swap] [Mark cooked] [Skip]
+#   4. tap "Mark cooked" → assert row updates to cooked state (chip color
+#      change + checkmark)
+#   5. swipe LEFT on another row → tap "Skip" → skip-reason prompt
+#      appears (focus_reason = "travel" | "ate out" | custom)
+#   6. type "travel" → submit → assert row shows skipped chip with reason
+#   7. swipe LEFT on a third row → tap "Swap" → regenerate flow
+#
+# Implementation note: uses ReanimatedSwipeable from
+# react-native-gesture-handler@^2.30 (NOT the deprecated Swipeable). Haptic
+# feedback fires on threshold cross. Manual verification on physical iPhone
+# required for 60fps gesture smoothness — see 22-VALIDATION.md Manual-Only
+# Verifications.
+#
+# Telemetry: plan.swipe_action with payload.variant ∈ { 'swap', 'cook',
+# 'skip' } fires on each action.
+---
+- runFlow: _ensure-logged-in.yaml
+- takeScreenshot: 01-dayrow-swipe-STUB-wave0

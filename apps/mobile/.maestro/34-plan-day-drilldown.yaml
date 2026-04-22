@@ -1,0 +1,21 @@
+appId: com.dinnertime.app
+name: "34 — Plan day drill-down: /plan/[date] shows ingredients checklist + cook now"
+tags:
+  - phase-22
+# STUB: Wave 0 red stub. Downstream plan 22-04 (Cluster 2c — Day drill-down)
+# will implement PLAN-X-07:
+#   1. runFlow _ensure-logged-in
+#   2. navigate to Plan tab
+#   3. long-press or tap a day row (TBD by 22-04 gesture choice) →
+#      router.push(/plan/{date})
+#   4. assert new route visible with:
+#      - day header "{DayName} {MM}/{DD}"
+#      - ingredients checklist from MealPlanEntry.ingredients
+#      - timer shortcuts (from recipe)
+#      - "Cook now" button → router.push(/recipes/{recipe_id}/cook)
+#   5. tap back → assert returns to Plan tab, same scroll position
+#
+# Telemetry: plan.day_drill_opened event fires on mount.
+---
+- runFlow: _ensure-logged-in.yaml
+- takeScreenshot: 01-plan-day-drilldown-STUB-wave0

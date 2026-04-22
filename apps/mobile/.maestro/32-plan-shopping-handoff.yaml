@@ -1,0 +1,21 @@
+appId: com.dinnertime.app
+name: "32 — Plan → Shopping handoff: day/week \"Shopping list\" button opens HandoffSheet"
+tags:
+  - phase-22
+# STUB: Wave 0 red stub. Downstream plan 22-01 (Cluster 1 — Cross-flow nav)
+# will implement PLAN-X-03:
+#   1. runFlow _ensure-logged-in
+#   2. navigate to Plan tab (with a generated week already present)
+#   3. tap "Shopping list" on the week header (aggregates all ingredients)
+#   4. assert HandoffSheet visible in sending state
+#   5. wait for success state ("{N} items ready" + "Open in Instacart")
+#   6. tap "View shopping list" to dismiss → return to Plan tab
+#   7. (optional) tap "Shopping list" on a single day row → same flow
+#      with a narrower ingredient set
+#
+# Telemetry: plan.shopping_handoff_opened event should fire (payload
+# includes meal_plan_id + date). Covered by /telemetry/plan tests once
+# 22-01 wires the logger.
+---
+- runFlow: _ensure-logged-in.yaml
+- takeScreenshot: 01-plan-shopping-handoff-STUB-wave0
