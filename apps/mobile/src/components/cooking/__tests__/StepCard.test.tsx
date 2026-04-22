@@ -8,7 +8,6 @@
 import { describe, it, expect } from 'vitest';
 import type { ReactElement } from 'react';
 
-// @ts-expect-error — component does not exist yet (Wave 0 red stub; shipped 16-05)
 import { StepCard } from '../StepCard';
 
 type AnyEl = ReactElement<any>;

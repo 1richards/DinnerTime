@@ -8,7 +8,6 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 
-// @ts-expect-error — module does not exist yet (Wave 0 red stub; shipped 16-05)
 import { useCurrentStepScroll } from '../useCurrentStepScroll';
 
 describe('useCurrentStepScroll', () => {
