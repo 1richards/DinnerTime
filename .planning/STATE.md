@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 23-01
+current_plan: 23-07 (23-01..06 all shipped; 23-07 deep-link allowlist + 23-08 app-store readiness remain)
 status: planning
-stopped_at: Completed 23-05-PLAN.md — error handling (NFR-12/13/14)
-last_updated: "2026-04-22T09:41:43.247Z"
+stopped_at: Completed 23-01-PLAN.md — Account management (change password, change email, About, Connected Services)
+last_updated: "2026-04-22T09:44:46.310Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
   completed_phases: 22
   total_plans: 118
-  completed_plans: 111
+  completed_plans: 113
   percent: 99
 ---
 
@@ -165,6 +165,8 @@ Progress: [██████████] 99%
 | Phase 23 P00 | 10min | 3 tasks | 17 files |
 | Phase 23 P03 | 7min | 2 tasks | 9 files |
 | Phase 23 P05 | 7min | 2 tasks | 10 files |
+| Phase 23 P04 | 16min | 2 tasks | 9 files |
+| Phase 23 P01 | 11min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -541,6 +543,12 @@ Recent decisions affecting current work:
 - [Phase 23]: Broadened offline detection to match any Error with /network request failed|network error/i (not only TypeError). RN surfaces the canonical message under both exception types depending on the native-bridge path; the broader match is strictly more correct and satisfies the Wave-0 red stub which used plain new Error().
 - [Phase 23]: Chose Hono app.onError((err, c) => rateLimitErrorHandler(err, c)) over app.use('*', ...) middleware — onError is the Hono v4 recommended catch-all hook, gives access to HTTPException.getResponse() for pass-through, and keeps the handler trivially unit-testable via a minimal Hono app in isolation.
 - [Phase 23]: ErrorBoundary mounted OUTSIDE BiometricGate + ReAuthModal in _layout.tsx — per plan, the Face ID overlay and re-auth modal should still paint even if an underlying screen's render threw. Boundary wraps only the navigable content tree (AuthStateBanner + RootNavigator).
+- [Phase 23]: 23-04: Placed canonical authedFetch at src/lib/authedFetch.ts and re-exported it from src/auth/sessionRefresh.ts so both Wave-0 red test stubs (importing from different paths) resolve to the same implementation — avoids logic duplication.
+- [Phase 23]: 23-04: Outer-stateless / inner-hook split for ReAuthModal — outer component exposes action Pressables + secureTextEntry marker at JSX tree level so vitest-node can invoke it as a plain function; inner ReAuthForm owns useState for live input wiring. Mirrors 22-04 IngredientChecklist precedent.
+- [Phase 23]: 23-01: Re-auth via Supabase signInWithPassword(currentEmail, currentPassword) is the idiomatic substitute for a dedicated reauthenticate primitive; wrong-current-password → 401.
+- [Phase 23]: 23-04: NFR-11 (returning-user onboarding skip) verified in-place rather than re-implemented — authStore.isOnboarded + (auth)/_layout.tsx Redirect have been the single source of truth since Phase 01. Documentation comment added to authStore rather than new routing logic.
+- [Phase 23]: 23-01: 501 stubs for /account/export + /account/delete so their 401-no-auth tests go green via authMiddleware while 23-02 owns the happy-path GREEN.
+- [Phase 23]: 23-01: Inline Bearer fetch in change-password + change-email screens with TODO-23-04 marker — avoids cross-plan diff coupling since 23-04 is executing in parallel, and 401-on-wrong-password is semantically NOT a session-expiry 401.
 
 ### Pending Todos
 
@@ -584,6 +592,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T09:41:27.878Z
-Stopped at: Completed 23-05-PLAN.md — error handling (NFR-12/13/14)
+Last session: 2026-04-22T09:44:46.306Z
+Stopped at: Completed 23-01-PLAN.md — Account management (change password, change email, About, Connected Services)
 Resume file: None

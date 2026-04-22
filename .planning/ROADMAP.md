@@ -553,7 +553,7 @@ Plans:
 - [ ] 23-01-PLAN.md — Account management: change password + change email + AboutSection + ConnectedServicesSection (non-destructive half)
 - [ ] 23-02-PLAN.md — Export data + Delete account: buildExportDump service, GET /account/export, POST /account/delete with admin.deleteUser, DeleteAccountSheet with type-DELETE guard
 - [x] 23-03-PLAN.md — Biometric unlock: expo-local-authentication wrapper, settingsStore toggle, BiometricGate root overlay, Security section in Settings
-- [ ] 23-04-PLAN.md — Session lifecycle: authedFetch + sessionRefresh 401-retry, ReAuthModal, forgot-password + reset-password screens + deep link handler, sign-out copy polish, onboarding-skip verification
+- [x] 23-04-PLAN.md — Session lifecycle: authedFetch + sessionRefresh 401-retry, ReAuthModal, forgot-password + reset-password screens + deep link handler, sign-out copy polish, onboarding-skip verification
 - [x] 23-05-PLAN.md — Error handling: global ErrorBoundary + NetworkErrorBanner + classifyNetworkError classifier + server rateLimitErrors onError middleware
 - [ ] 23-06-PLAN.md — Observability: Sentry client init + PII-stripping beforeSend, server requestLogging middleware, AIClient instrumentation + recordAiCall writer, POST /telemetry/ai route, mobile ai/telemetry.ts batcher
 - [ ] 23-07-PLAN.md — Security + App Store draft: deepLinkAllowlist, HTTPS-only audit, PII hygiene grep, PRIVACY/TERMS markdown, .planning/app-store/ drafts (privacy-manifest.json, description, keywords, screenshot shotlist), human-action ASC checkpoint
