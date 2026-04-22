@@ -12,24 +12,18 @@ import { Image } from 'expo-image';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 import { RemixSheet } from '../recipes/RemixSheet';
+import { DatePickerSheet } from '../plan/DatePickerSheet';
 import { supabase } from '../../lib/supabase';
 import { colors } from '../../design/tokens';
 import { FOOD_IMAGES } from '../../constants/foodImages';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
+import { logPlanEvent, sanitizePayload } from '../../plan/telemetry';
 import type { DinnerSuggestion } from '../../types/suggestions';
 
 interface Props {
   visible: boolean;
   suggestion: DinnerSuggestion | null;
   onClose: () => void;
-}
-
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-function todayDayOfWeek(): number {
-  // JS getDay(): Sun=0..Sat=6. Shift so Mon=0.
-  const js = new Date().getDay();
-  return js === 0 ? 6 : js - 1;
 }
 
 const getApiBaseUrl = (): string =>
@@ -41,30 +35,45 @@ async function getAuthToken(): Promise<string> {
   return data.session.access_token;
 }
 
+function formatIsoDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return iso;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const MONTHS = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+  return `${DAYS[date.getUTCDay()]}, ${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}`;
+}
+
 export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) {
   const fetchCurrentPlan = useMealPlanStore((s) => s.fetchCurrent);
-  const [selectedDay, setSelectedDay] = useState<number>(todayDayOfWeek());
-  const [planning, setPlanning] = useState(false);
-  const [planned, setPlanned] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [planned, setPlanned] = useState<string | null>(null);
   const [remixOpen, setRemixOpen] = useState(false);
+  const [sessionId] = useState<string>(() =>
+    typeof globalThis.crypto?.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID()
+      : `sp-${Date.now()}`,
+  );
 
   // Reset state each time the modal opens for a new suggestion.
   React.useEffect(() => {
     if (visible) {
-      setSelectedDay(todayDayOfWeek());
-      setPlanned(false);
-      setPlanning(false);
+      setPlanned(null);
+      setPickerOpen(false);
       setRemixOpen(false);
     }
   }, [visible, suggestion?.title]);
 
-  const handleAddToPlan = async () => {
+  const handleAddToPlan = async (isoDate: string) => {
     if (!suggestion) return;
-    setPlanning(true);
+    setPickerOpen(false);
     try {
       const token = await getAuthToken();
       const body = {
-        day: selectedDay,
+        date: isoDate,
         title: suggestion.title,
         description: suggestion.description,
         ingredients: [
@@ -75,6 +84,7 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
         difficulty: suggestion.difficulty,
         kid_friendly: suggestion.kid_friendly,
         why_suggested: suggestion.why_suggested,
+        recipe_id: null, // ad-hoc — 22-RESEARCH Pitfall 7
       };
       const res = await fetch(`${getApiBaseUrl()}/api/v1/meal-plans/entries/assign`, {
         method: 'POST',
@@ -87,16 +97,23 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         Alert.alert('Could not plan meal', err.error ?? 'Please try again.');
-        setPlanning(false);
         return;
       }
-      setPlanned(true);
-      setPlanning(false);
-      // Refresh the plan cache so the Plan tab reflects the new entry.
+      const resBody = await res.json().catch(() => ({}));
+      const mealPlanId: string | null = resBody?.data?.meal_plan_id ?? null;
+      logPlanEvent({
+        name: 'plan.suggestion_pin_succeeded',
+        session_id: sessionId,
+        meal_plan_id: mealPlanId,
+        payload: sanitizePayload({
+          date: isoDate,
+          meal_plan_id: mealPlanId,
+        }),
+      });
+      setPlanned(isoDate);
       fetchCurrentPlan().catch(() => {});
     } catch (err) {
       Alert.alert('Could not plan meal', err instanceof Error ? err.message : String(err));
-      setPlanning(false);
     }
   };
 
@@ -200,46 +217,6 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
             </View>
           )}
 
-          {/* Day picker */}
-          <View style={styles.card}>
-            <Text style={styles.sectionHeading}>Add to meal plan</Text>
-            <View style={styles.dayRow}>
-              {DAY_LABELS.map((label, i) => {
-                const isToday = i === todayDayOfWeek();
-                const isSelected = i === selectedDay;
-                return (
-                  <Pressable
-                    key={i}
-                    onPress={() => setSelectedDay(i)}
-                    style={[
-                      styles.dayChip,
-                      isSelected && styles.dayChipSelected,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.dayChipText,
-                        isSelected && styles.dayChipTextSelected,
-                      ]}
-                    >
-                      {label}
-                    </Text>
-                    {isToday && (
-                      <Text
-                        style={[
-                          styles.dayChipTodayDot,
-                          isSelected && { color: '#FFFFFF' },
-                        ]}
-                      >
-                        ·
-                      </Text>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
           {/* Remix this suggestion */}
           <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
             <Pressable
@@ -287,25 +264,26 @@ export function SuggestionPreviewModal({ visible, suggestion, onClose }: Props) 
             <View style={styles.plannedRow}>
               <SymbolIcon name="checkmark.circle.fill" size={22} tintColor="#10B981" />
               <Text style={styles.plannedText}>
-                Added to {DAY_LABELS[selectedDay]}
+                Added to {formatIsoDate(planned)}
               </Text>
               <View style={{ flex: 1 }} />
               <Button title="Done" variant="outline" onPress={onClose} />
             </View>
           ) : (
             <Button
-              title={
-                planning
-                  ? 'Planning...'
-                  : selectedDay === todayDayOfWeek()
-                    ? 'Add to tonight'
-                    : `Add to ${DAY_LABELS[selectedDay]}`
-              }
-              onPress={handleAddToPlan}
-              loading={planning}
+              title="Add to Plan"
+              onPress={() => setPickerOpen(true)}
             />
           )}
         </View>
+
+        <DatePickerSheet
+          visible={pickerOpen}
+          title={`Pin "${suggestion.title}" to…`}
+          confirmLabel="Pin"
+          onConfirm={handleAddToPlan}
+          onDismiss={() => setPickerOpen(false)}
+        />
       </View>
     </Modal>
   );
@@ -438,38 +416,6 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     color: '#5C4B39',
     fontStyle: 'italic',
-  },
-  dayRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 4,
-  },
-  dayChip: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#F8F1E5',
-    borderWidth: 1,
-    borderColor: '#E5D9CA',
-  },
-  dayChipSelected: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
-  },
-  dayChipText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#7A6651',
-  },
-  dayChipTextSelected: {
-    color: '#FFFFFF',
-  },
-  dayChipTodayDot: {
-    fontSize: 16,
-    lineHeight: 14,
-    color: colors.brand,
-    marginTop: -2,
   },
   bottomBar: {
     position: 'absolute',
