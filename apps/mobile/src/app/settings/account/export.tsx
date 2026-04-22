@@ -14,7 +14,16 @@ import { Stack } from 'expo-router';
 // because it's a simpler call surface for a one-off "write a text file"
 // operation that doesn't need the new streaming/Blob affordances.
 import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+// expo-sharing requires native module — lazy-load so the screen renders
+// even when running on a dev client that hasn't been rebuilt to include it.
+// The Download button will surface a graceful error in that case.
+function getSharing(): typeof import('expo-sharing') | null {
+  try {
+    return require('expo-sharing');
+  } catch {
+    return null;
+  }
+}
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
 import { authedFetch } from '../../../lib/authedFetch';
@@ -66,6 +75,12 @@ export default function ExportDataScreen() {
       await FileSystem.writeAsStringAsync(fileUri, body, {
         encoding: FileSystem.EncodingType.UTF8,
       });
+
+      const Sharing = getSharing();
+      if (!Sharing) {
+        show('Export needs a dev-client rebuild to share files.', 'error');
+        return;
+      }
 
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
