@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 17-04 (Maestro UAT happy-path + flow 20 rebase) — complete
 status: verifying
-stopped_at: Completed 17-04-PLAN.md
-last_updated: "2026-04-21T03:40:56.641Z"
+stopped_at: Completed 16-00-PLAN.md (Phase 16 Wave 0 scaffolding — 17 red test stubs + cookingStore extended + expo-haptics installed + DEVICE-TEST-16.md)
+last_updated: "2026-04-22T04:00:08.749Z"
 last_activity: 2026-04-21 -- Completed 17-04 (Maestro flow 27 green; flow 20 rebased; Phase 17 close-out; milestone 100%)
 progress:
   total_phases: 25
   completed_phases: 20
-  total_plans: 87
-  completed_plans: 87
+  total_plans: 96
+  completed_plans: 88
   percent: 100
 ---
 
@@ -141,6 +141,7 @@ Progress: [██████████] 100%
 | Phase 17 P02 | 3min | 2 tasks | 5 files |
 | Phase 17 P03 | 7 min | 3 tasks | 6 files |
 | Phase 17 P04 | 11 min | 3 tasks | 2 files |
+| Phase 16-cooking-mode-ux-enhancements-voice-interaction-and-model-ui-polish-information-display P00 | 15min | 2 tasks | 24 files |
 
 ## Accumulated Context
 
@@ -455,6 +456,10 @@ Recent decisions affecting current work:
 - [Phase 17]: 17-03: PantryOnlyToggle component built but not mounted on the Kitchen Something New segment in Plan 03. /search modal owns the submit via native Switch (test contract locked); segment-level pill placement deferred to UAT in Plan 17-04 without rework — toggle state rehydrates from useSuggestionsStore.pantryOnly on each modal open
 - [Phase 17]: Maestro selector pattern: use .*Label.* regex for Pressable segment buttons whose accessibilityLabel masks child Text from AX tree — CLAUDE.md documented this for old Suggestions label; same gotcha applies to Something New. Plain-literal tapOn fails silently; regex matches the AX label substring.
 - [Phase 17]: Maestro submit pattern for /search modal: pressKey:enter with TextInput returnKeyType=search + onSubmitEditing — /search modal title Text 'Search' shadows submit Button title in AX traversal; keyboard Enter fires onSubmitEditing directly, avoiding selector ambiguity. Precedent in flow 11.
+- [Phase 16]: Persist only darkMode via partialize — ingredientChecks/lastCommandToast/currentSessionId are ephemeral per cooking session
+- [Phase 16]: Session id regenerates on every enter() (not on explicit startSession()); clears on exit()
+- [Phase 16]: Component tests use the Phase 19 static-inspection pattern (flatten + className assertion) rather than @testing-library/react-native
+- [Phase 16]: Red-stub tests use @ts-expect-error + Cannot-find-module imports — provides clear Wave 0 signal for later plans
 
 ### Pending Todos
 
@@ -498,6 +503,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-21T03:33:19.156Z
-Stopped at: Completed 17-04-PLAN.md
+Last session: 2026-04-22T04:00:08.743Z
+Stopped at: Completed 16-00-PLAN.md (Phase 16 Wave 0 scaffolding — 17 red test stubs + cookingStore extended + expo-haptics installed + DEVICE-TEST-16.md)
 Resume file: None

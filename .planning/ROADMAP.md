@@ -344,7 +344,7 @@ Plans:
   5. Voice commands to navigate (next/previous step, repeat, pause timer, set timer, show ingredients) work reliably with clear visual confirmation
 **Plans**: 9 plans
 Plans:
-- [ ] 16-00-PLAN.md — Wave 0 test scaffolding + cookingStore extensions + expo-haptics install + DEVICE-TEST-16 skeleton
+- [x] 16-00-PLAN.md — Wave 0 test scaffolding + cookingStore extensions + expo-haptics install + DEVICE-TEST-16 skeleton
 - [ ] 16-01-PLAN.md — Telemetry pipeline: cooking_events migration + POST /telemetry/cooking + mobile batched logger
 - [ ] 16-02-PLAN.md — SSE streaming /cooking/ask-stream server route + mobile streamAsk client
 - [ ] 16-03-PLAN.md — Header primitives: StickyCookingHeader, VoiceWaveform, StopTTSButton, TimerBar retoken + haptics helpers + useVoiceAmplitude
