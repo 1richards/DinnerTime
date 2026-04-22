@@ -22,7 +22,6 @@
  */
 import { describe, it, expect } from 'vitest';
 
-// @ts-expect-error — module does not exist yet (Wave 0 red stub; ships in 23-07)
 const { isDeepLinkAllowed, ALLOWED_DEEP_LINK_PATHS } = await import('../deepLinkAllowlist.js');
 
 describe('ALLOWED_DEEP_LINK_PATHS', () => {

@@ -52,7 +52,9 @@ export async function runSseSmoke(opts: SseSmokeOptions): Promise<void> {
     question: opts.question ?? 'how do I know the chicken is done?',
   });
 
-  console.log('[sse-smoke] starting fetch to /cooking/ask-stream');
+  // Phase 23-07 (NFR-25): all log emissions in this dev-only smoke script
+  // are wrapped in `__DEV__` so nothing ships in production bundles.
+  if (__DEV__) console.log('[sse-smoke] starting fetch to /cooking/ask-stream');
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -61,16 +63,17 @@ export async function runSseSmoke(opts: SseSmokeOptions): Promise<void> {
     },
     body,
   });
-  console.log(`[sse-smoke] status=${res.status}`);
+  if (__DEV__) console.log(`[sse-smoke] status=${res.status}`);
 
   // RN 0.83 compatibility gate — if body is null, log FALLBACK and exit.
   if (!res.body) {
-    console.log(
-      '[sse-smoke] FALLBACK: res.body is null — RN fetch ReadableStream unsupported. Document in DEVICE-TEST-16.md.'
-    );
+    if (__DEV__)
+      console.log(
+        '[sse-smoke] FALLBACK: res.body is null — RN fetch ReadableStream unsupported. Document in DEVICE-TEST-16.md.'
+      );
     return;
   }
-  console.log('[sse-smoke] body=<ReadableStream>');
+  if (__DEV__) console.log('[sse-smoke] body=<ReadableStream>');
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -81,9 +84,9 @@ export async function runSseSmoke(opts: SseSmokeOptions): Promise<void> {
     const chunk = decoder.decode(value, { stream: true });
     for (const line of chunk.split('\n')) {
       if (line.startsWith('data: ')) {
-        console.log(`[sse-smoke] delta: ${line.slice(6)}`);
+        if (__DEV__) console.log(`[sse-smoke] delta: ${line.slice(6)}`);
       }
     }
   }
-  console.log('[sse-smoke] done');
+  if (__DEV__) console.log('[sse-smoke] done');
 }

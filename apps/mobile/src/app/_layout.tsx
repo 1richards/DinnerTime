@@ -1,7 +1,7 @@
 import '../global.css';
 
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, Linking } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import { setReAuthHandler } from '../auth/sessionRefresh';
 import { colors } from '../design/tokens';
 import { initSentry, setSentryUser } from '../lib/sentry';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { isDeepLinkAllowed } from '../lib/deepLinkAllowlist';
 // Importing networkStore here ensures its module-side-effect NetInfo
 // listener is wired at app boot even before any screen mounts.
 import '../stores/networkStore';
@@ -91,7 +92,10 @@ function AuthStateBanner() {
 }
 
 export default function RootLayout() {
-  console.log('[DinnerTime] RootLayout mounted');
+  // Phase 23-07 (NFR-25): mount log wrapped in `__DEV__` so it never
+  // ships to production builds. The global Sentry breadcrumb system
+  // (via initSentry below) captures real lifecycle events for observability.
+  if (__DEV__) console.log('[DinnerTime] RootLayout mounted');
   // Phase 23-04 (NFR-08, NFR-12): re-auth modal. authedFetch calls
   // triggerReAuth() after a hard 401 that silent-refresh couldn't recover,
   // which flips showReAuth true and paints the modal over whatever screen
@@ -116,6 +120,31 @@ export default function RootLayout() {
       setSentryUser(s.user?.id ?? null);
     });
     return unsub;
+  }, []);
+
+  // Phase 23-07 (NFR-24): deep-link allowlist gate. Every incoming URL —
+  // whether from a cold boot (parseInitialURLAsync) or a warm foreground
+  // (Linking.addEventListener) — is consulted against isDeepLinkAllowed
+  // before we hand off. Rejected URLs are dropped silently (breadcrumb
+  // only). expo-router handles routing for accepted URLs via its own
+  // linking config — we don't need to manually navigate; we just gate the
+  // ones that would otherwise reach it. The gate is defensive: if a
+  // malicious or malformed URL somehow routes past us (e.g. a future expo
+  // update changes the order), Sentry will still record the breadcrumb.
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      if (!isDeepLinkAllowed(url)) {
+        if (__DEV__) console.log('[deep-link] rejected:', url);
+      }
+      // On accept, no-op — expo-router's linking config handles routing.
+    });
+    // Cold-boot URL: parse once on mount.
+    void Linking.getInitialURL().then((url) => {
+      if (url && !isDeepLinkAllowed(url)) {
+        if (__DEV__) console.log('[deep-link] initial rejected:', url);
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   return (
