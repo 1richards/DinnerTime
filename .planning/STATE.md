@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 22-01 (complete)
-status: in_progress
-stopped_at: Completed 22-01-PLAN.md — cross-flow nav shipped; DayRow→recipe + AddToPlan→DatePickerSheet + Plan→HandoffSheet + SuggestionCard Pin-to-day; 4 Maestro flows flipped from red stub to green
-last_updated: "2026-04-22T07:30:47.243Z"
+current_plan: 22-02 (complete)
+status: verifying
+stopped_at: Completed 22-02-PLAN.md — WeekActionSheet + shiftWeek/duplicateLastWeek TDD + Maestro 35 green
+last_updated: "2026-04-22T07:40:53.919Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
   completed_phases: 21
   total_plans: 109
-  completed_plans: 103
+  completed_plans: 104
   percent: 99
 ---
 
@@ -22,13 +22,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Open the fridge, take a photo, get dinner ideas -- zero mental effort from "what do we have?" to "what should we cook?"
-**Current focus:** Phase 22: Plan experience refactor (cross-flow nav shipped in 22-01)
+**Current focus:** Phase 22: Plan experience refactor (week actions shipped in 22-02)
 
 ## Current Position
 
 Phase: 22 of 25 (plan experience refactor — cross-flow rationalization with recipes, suggestions, shopping, multi-scale actions, skill progression)
-Current Plan: 22-01 (complete)
-Status: Phase 22 Plan 22-01 shipped in ~6 min as a 4-task cross-flow nav cluster. Task 1 (`6fc1729`) routed Plan DayRow taps to `/recipes/[id]` when `entry.recipe_id` is set, preserving Plan scroll via expo-router native-stack (no useFocusEffect refetch). Task 2 (`9b5ba58`) rewrote `AddToPlanSheet.tsx` from a 7-day this-week column into a `DatePickerSheet` wrapper — POST body now sends `date: 'YYYY-MM-DD'` (server 22-00 derives week_start + day_of_week) and `plan.recipe_pin_started/succeeded/failed` telemetry fires on each transition. Task 3 (`14f591c`) added a "Shopping list for week" Pressable to the Plan tab action row that drives `generateList(currentPlan.id)` → `createOrder()` → Phase 20's `HandoffSheet` (parallel mount to shopping.tsx, feature flag honored); `plan.shopping_handoff_opened` fires on both success and error paths. Task 4 (`6416fa1`) added a `calendar.badge.plus` icon to `SuggestionCard` body (stopPropagation to avoid preview-modal collision) + replaced `SuggestionPreviewModal`'s DAY_LABELS 7-chip row with the same DatePickerSheet — POST uses `date + recipe_id: null` (ad-hoc per 22-RESEARCH Pitfall 7); `plan.suggestion_pin_succeeded` telemetry. All 4 Maestro red stubs (30-33) flipped to green walk-through flows with 11 total screenshots. Zero deviations from plan. All 25 relevant component tests pass; typecheck clean on all modified production files. Requirements completed: PLAN-X-01, PLAN-X-02, PLAN-X-03, PLAN-X-04. Previously: Phase 20 Plan 20-05 shipped in 5 min. Task 1 (commit `5977b95`) created `apps/mobile/.maestro/29-shopping-draft-cart-handoff.yaml` (153 lines, tagged phase-20+shopping) automating the HandoffSheet happy path: Shopping tab → Order on Instacart → sending state → success state with brand-tinted checkmark + 'N items ready' + primary 'Open in Instacart' + secondary 'View shopping list' → tap secondary to dismiss → re-open → tap primary (post-tap assertions: sheet must NOT land on error state). Produces 5 named screenshots for visual regression. Tolerates racy sending state (<300ms) via `.*Sending to Instacart cart.*|.*items ready.*` alternation. README inventory updated: flow 29 row + new "Phase 20: Shopping Draft-Cart Handoff" section noting flow 12's Instacart-cart rebase. Task 2 (commit `b2e5a9a`) filled in `DEVICE-TEST-20.md` simulator rows: HANDOFF-01 ✓ (sim via flow 29); ROLLBACK-01 pending sim UAT (human-verified); TELEMETRY-01 pending — requires Supabase query access; UNIVLINK-01/02 + HANDOFF-02 pending physical device. Added `simulator_signoff: 2026-04-22` to frontmatter; `device_signoff` left blank. Task 3 human-verify auto-approved per AUTO_MODE_OVERRIDE. Known environmental issue (NOT a regression): the running Metro bundler was serving from repo root instead of `apps/mobile/`, producing expo-haptics resolution error during automated flow 29 execution — YAML itself is well-formed, loads cleanly in Maestro, launches app successfully; will run green after Metro restart from correct cwd (per CLAUDE.md). Unit tests: 552/556 mobile + 635/637 server passed; 6 pre-existing failures documented in `deferred-items.md`, zero regressions from this plan. Zero deviations from plan. Requirements completed: SHOP-DC-01, SHOP-DC-02, SHOP-DC-04, SHOP-DC-05 (SHOP-DC-03 already completed in 20-04). Phase 20 is done at the automated-UAT level — only remaining work is the out-of-band physical-iPhone DEVICE-TEST-20 pass (user-initiated).
+Current Plan: 22-02 (complete)
+Status: Phase 22 Plan 22-02 shipped in ~6 min as a 2-task week-actions cluster (Task 1 TDD). Task 1 RED (`ed5e112`) added 7 new mealPlanStore test cases covering shiftWeek (±7 days, null-plan no-op) and duplicateLastWeek (happy-path POST per non-skipped entry, skipped-entry drop per 22-RESEARCH Open Q3, no-previous-plan soft no-op, null-plan no-op). Task 1 GREEN (`1157ff6`) implemented both actions on `useMealPlanStore` — `shiftWeek(deltaDays)` delegates to `generate()` with `addDaysIso(plan.week_start, delta)` (UTC-safe); `duplicateLastWeek()` reads last week via `GET /meal-plans?from=prev&to=prev` (Wave 0 range endpoint), then sequentially POSTs `/meal-plans/entries/assign` preserving `date + recipe_id + title + ingredients` for each non-skipped entry, then `fetchCurrent()` to refresh UI. Task 2 (`51839d6`) shipped `WeekActionSheet.tsx` (iOS `ActionSheetIOS` wrapper: 5 options + Cancel, Regenerate destructive at idx 0, Cancel idx 5, title "Week actions"; parent-owned visibility via `useEffect([visible])`; returns null), 8 test cases covering each callback dispatch + options-contract, and wired `plan.tsx`'s action row — replacing the inline regenerate icon with a "Week actions" ellipsis that opens the sheet while preserving the "Shopping list for week" cart icon from 22-01 (two entry points, no selector break for Maestro flow 32). Each action emits sanitized telemetry (`plan.week_regenerated | plan.week_shifted with variant forward|backward | plan.week_duplicated`) with `meal_plan_id + week_start` through the 14-key whitelist. Regenerate path retains its existing Alert destructive-confirm inside the sheet callback. Maestro flow 35 flipped from red stub to 3-screenshot walk-through. Task 1 typecheck fixup (`a266c75`) relaxed mockFetch.mock.calls tuple destructure to indexed access — pure test-infra adjustment, zero behavior change. 44/44 relevant tests green; typecheck clean on all modified production files. Zero deviations from plan. Requirements completed: PLAN-X-05 (week view default preserved), PLAN-X-08 (shift/duplicate ops shipped). Previously: Phase 22 Plan 22-01 shipped in ~6 min as a 4-task cross-flow nav cluster. Task 1 (`6fc1729`) routed Plan DayRow taps to `/recipes/[id]` when `entry.recipe_id` is set, preserving Plan scroll via expo-router native-stack (no useFocusEffect refetch). Task 2 (`9b5ba58`) rewrote `AddToPlanSheet.tsx` from a 7-day this-week column into a `DatePickerSheet` wrapper — POST body now sends `date: 'YYYY-MM-DD'` (server 22-00 derives week_start + day_of_week) and `plan.recipe_pin_started/succeeded/failed` telemetry fires on each transition. Task 3 (`14f591c`) added a "Shopping list for week" Pressable to the Plan tab action row that drives `generateList(currentPlan.id)` → `createOrder()` → Phase 20's `HandoffSheet` (parallel mount to shopping.tsx, feature flag honored); `plan.shopping_handoff_opened` fires on both success and error paths. Task 4 (`6416fa1`) added a `calendar.badge.plus` icon to `SuggestionCard` body (stopPropagation to avoid preview-modal collision) + replaced `SuggestionPreviewModal`'s DAY_LABELS 7-chip row with the same DatePickerSheet — POST uses `date + recipe_id: null` (ad-hoc per 22-RESEARCH Pitfall 7); `plan.suggestion_pin_succeeded` telemetry. All 4 Maestro red stubs (30-33) flipped to green walk-through flows with 11 total screenshots. Zero deviations from plan. All 25 relevant component tests pass; typecheck clean on all modified production files. Requirements completed: PLAN-X-01, PLAN-X-02, PLAN-X-03, PLAN-X-04. Previously: Phase 20 Plan 20-05 shipped in 5 min. Task 1 (commit `5977b95`) created `apps/mobile/.maestro/29-shopping-draft-cart-handoff.yaml` (153 lines, tagged phase-20+shopping) automating the HandoffSheet happy path: Shopping tab → Order on Instacart → sending state → success state with brand-tinted checkmark + 'N items ready' + primary 'Open in Instacart' + secondary 'View shopping list' → tap secondary to dismiss → re-open → tap primary (post-tap assertions: sheet must NOT land on error state). Produces 5 named screenshots for visual regression. Tolerates racy sending state (<300ms) via `.*Sending to Instacart cart.*|.*items ready.*` alternation. README inventory updated: flow 29 row + new "Phase 20: Shopping Draft-Cart Handoff" section noting flow 12's Instacart-cart rebase. Task 2 (commit `b2e5a9a`) filled in `DEVICE-TEST-20.md` simulator rows: HANDOFF-01 ✓ (sim via flow 29); ROLLBACK-01 pending sim UAT (human-verified); TELEMETRY-01 pending — requires Supabase query access; UNIVLINK-01/02 + HANDOFF-02 pending physical device. Added `simulator_signoff: 2026-04-22` to frontmatter; `device_signoff` left blank. Task 3 human-verify auto-approved per AUTO_MODE_OVERRIDE. Known environmental issue (NOT a regression): the running Metro bundler was serving from repo root instead of `apps/mobile/`, producing expo-haptics resolution error during automated flow 29 execution — YAML itself is well-formed, loads cleanly in Maestro, launches app successfully; will run green after Metro restart from correct cwd (per CLAUDE.md). Unit tests: 552/556 mobile + 635/637 server passed; 6 pre-existing failures documented in `deferred-items.md`, zero regressions from this plan. Zero deviations from plan. Requirements completed: SHOP-DC-01, SHOP-DC-02, SHOP-DC-04, SHOP-DC-05 (SHOP-DC-03 already completed in 20-04). Phase 20 is done at the automated-UAT level — only remaining work is the out-of-band physical-iPhone DEVICE-TEST-20 pass (user-initiated).
 Last activity: 2026-04-22
 
 Progress: [██████████] 99%
@@ -157,6 +157,7 @@ Progress: [██████████] 99%
 | Phase 20 P05 | 5min | 3 tasks tasks | 3 files files |
 | Phase 22 P00 | 16min | 4 tasks | 25 files |
 | Phase 22 P01 | 6min | 4 tasks | 8 files |
+| Phase 22 P02 | 6min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -513,6 +514,9 @@ Recent decisions affecting current work:
 - [Phase 22]: skill tier thresholds: <5=tier1, <20=tier2, else tier3, monotone via lifetime cook_count sum
 - [Phase 22]: iOS dev-client rebuild deferred: plan 22-01 must run expo prebuild + pod install + xcodebuild before Maestro flow 31 (per Phase 10 netinfo pattern)
 - [Phase 22]: 22-01: AddToPlanSheet rewritten as DatePickerSheet wrapper; Plan tab mounts HandoffSheet in parallel to shopping.tsx; SuggestionCard exposes in-card Pin-to-day icon; all cross-flow telemetry sanitized through 14-key whitelist
+- [Phase 22]: Week actions surfaced via single overflow ellipsis opening an iOS ActionSheet (5 options + Cancel) instead of multiple inline header icons — matches HeaderEllipsis pattern from Phase 15
+- [Phase 22]: duplicateLastWeek drops entries where status=skipped (per 22-RESEARCH Open Q3): the user explicitly rejected those meals; duplicating would restore work they chose not to do
+- [Phase 22]: Per-action session IDs (fresh crypto.randomUUID() per telemetry firing) instead of per-sheet-open — lets analytics distinguish 'opened sheet → tapped Shift +1 → immediately tapped Shift -1' (two sessions) from 'retry after error' (also two sessions but with variant disambiguation)
 
 ### Pending Todos
 
@@ -556,6 +560,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T07:30:47.239Z
-Stopped at: Completed 22-01-PLAN.md — cross-flow nav shipped; DayRow→recipe + AddToPlan→DatePickerSheet + Plan→HandoffSheet + SuggestionCard Pin-to-day; 4 Maestro flows flipped from red stub to green
+Last session: 2026-04-22T07:40:53.914Z
+Stopped at: Completed 22-02-PLAN.md — WeekActionSheet + shiftWeek/duplicateLastWeek TDD + Maestro 35 green
 Resume file: None
