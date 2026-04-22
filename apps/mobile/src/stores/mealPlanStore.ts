@@ -13,6 +13,17 @@ interface MealPlanState {
   swappingDay: number | null;
   cookingDay: number | null;
 
+  /**
+   * Phase 22-03: Map of ISO-date → MealPlanEntry covering the currently
+   * rendered Month view window (5 weeks by default). Populated by
+   * `fetchRange`. Keyed by the entry's actual calendar date (computed as
+   * `plan.week_start` + `entry.day_of_week` days) rather than week_start,
+   * so the MonthGrid can look cells up directly by ISO.
+   */
+  monthPlans: Map<string, MealPlanEntry>;
+  monthLoading: boolean;
+  monthError: string | null;
+
   fetchCurrent: () => Promise<void>;
   generate: (weekStart: string) => Promise<void>;
   swapDay: (day: number) => Promise<void>;
@@ -30,6 +41,15 @@ interface MealPlanState {
    * No-op when `currentPlan` is null.
    */
   duplicateLastWeek: () => Promise<void>;
+  /**
+   * Phase 22-03: Fetch meal plans in the range [fromWeekStart, toWeekStart]
+   * via GET /meal-plans?from=&to=&projection=month. Flattens the result
+   * into a single `monthPlans` Map keyed by ISO date. Dedupes concurrent
+   * calls via `monthLoading`. Errors surface via `monthError`.
+   *
+   * Bounds cap is server-enforced (|to-from| ≤ 70 days via migration 22-00).
+   */
+  fetchRange: (fromWeekStart: string, toWeekStart: string) => Promise<void>;
 }
 
 /**
@@ -85,6 +105,9 @@ export const useMealPlanStore = create<MealPlanState>()(
   error: null,
   swappingDay: null,
   cookingDay: null,
+  monthPlans: new Map<string, MealPlanEntry>(),
+  monthLoading: false,
+  monthError: null,
 
   fetchCurrent: async () => {
     set({ loading: true, error: null });
@@ -336,12 +359,70 @@ export const useMealPlanStore = create<MealPlanState>()(
       });
     }
   },
+
+  fetchRange: async (fromWeekStart: string, toWeekStart: string) => {
+    // Dedupe: if already loading, bail out. Caller is responsible for
+    // awaiting the prior fetchRange (or can fire-and-forget — this just
+    // prevents double-POSTs when e.g. the month toggle fires useEffect
+    // twice during StrictMode renders).
+    if (get().monthLoading) return;
+    set({ monthLoading: true, monthError: null });
+    try {
+      const res = await authedFetch(
+        `/meal-plans?from=${fromWeekStart}&to=${toWeekStart}&projection=month`,
+        { method: 'GET' }
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}) as { error?: string });
+        set({
+          monthError: body.error ?? 'Failed to load month',
+          monthLoading: false,
+        });
+        return;
+      }
+      const body = await res.json();
+      const m = new Map<string, MealPlanEntry>();
+      for (const plan of (body.data ?? []) as Array<{
+        week_start: string;
+        entries?: Array<MealPlanEntry & { day_of_week: number }>;
+      }>) {
+        for (const e of plan.entries ?? []) {
+          const iso = addDaysIso(plan.week_start, e.day_of_week);
+          m.set(iso, e);
+        }
+      }
+      set({ monthPlans: m, monthLoading: false, monthError: null });
+    } catch (err) {
+      set({
+        monthError: err instanceof Error ? err.message : 'Failed to load month',
+        monthLoading: false,
+      });
+    }
+  },
     }),
     {
       name: 'dinnertime-meal-plan',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ currentPlan: state.currentPlan }),
-      version: 1,
+      // Persist currentPlan + monthPlans. Map can't be JSON-serialized
+      // directly — coerce to a plain object on write, reconstruct on
+      // rehydrate (onRehydrateStorage below).
+      partialize: (state) => ({
+        currentPlan: state.currentPlan,
+        monthPlans: Object.fromEntries(state.monthPlans),
+      }),
+      version: 2,
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        const raw = state.monthPlans as unknown;
+        if (raw instanceof Map) return; // already a Map (e.g., fresh start)
+        if (raw && typeof raw === 'object') {
+          state.monthPlans = new Map(
+            Object.entries(raw as Record<string, MealPlanEntry>)
+          );
+        } else {
+          state.monthPlans = new Map();
+        }
+      },
     }
   )
 );
