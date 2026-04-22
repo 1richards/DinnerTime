@@ -69,7 +69,10 @@ describe('requestLoggingMiddleware', () => {
     const app = new Hono();
     app.use('*', requestLoggingMiddleware);
     app.use('*', async (c, next) => {
-      c.set('user', { id: 'user-42' });
+      // Hono's strict key typing rejects arbitrary keys — cast through unknown.
+      (c.set as unknown as (k: string, v: unknown) => void)('user', {
+        id: 'user-42',
+      });
       await next();
     });
     app.get('/ok', (c) => c.json({ ok: true }));
@@ -84,7 +87,7 @@ describe('requestLoggingMiddleware', () => {
     const app = new Hono();
     app.use('*', requestLoggingMiddleware);
     app.get('/ok', (c) => {
-      capture.id = c.get('request_id');
+      capture.id = (c.get as unknown as (k: string) => unknown)('request_id');
       return c.json({ ok: true });
     });
 

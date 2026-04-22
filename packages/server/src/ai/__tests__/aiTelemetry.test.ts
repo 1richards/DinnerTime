@@ -87,7 +87,9 @@ describe('recordAiCall', () => {
   it('does NOT throw when the supabase insert returns an error', async () => {
     insertSpy.mockResolvedValueOnce({
       data: null,
-      error: { message: 'insert boom' },
+      // Cast so TS accepts our narrow mock shape; runtime shape is what
+      // recordAiCall reads.
+      error: { message: 'insert boom' } as unknown as null,
     });
     await expect(
       recordAiCall({
