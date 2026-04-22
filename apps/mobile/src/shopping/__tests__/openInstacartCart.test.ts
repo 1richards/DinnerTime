@@ -11,22 +11,34 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { linkingMock, webBrowserMock } = vi.hoisted(() => {
-  return {
-    linkingMock: { openURL: vi.fn() },
-    webBrowserMock: { openBrowserAsync: vi.fn() },
-  };
-});
+const { linkingMock, webBrowserMock, logShoppingEventMock, sanitizePayloadMock } =
+  vi.hoisted(() => {
+    return {
+      linkingMock: { openURL: vi.fn() },
+      webBrowserMock: { openBrowserAsync: vi.fn() },
+      logShoppingEventMock: vi.fn(),
+      sanitizePayloadMock: vi.fn((x: unknown) => x),
+    };
+  });
 
-vi.mock('react-native', async () => {
-  const actual = await vi.importActual<Record<string, unknown>>('react-native');
-  return {
-    ...actual,
-    Linking: linkingMock,
-  };
-});
+// react-native is globally mocked in vitest.setup.ts (Flow-annotated source
+// cannot be parsed by vitest). We augment that mock here by re-declaring
+// `Linking` as our local spy. The setup's other primitives (View, Text, …)
+// are unused in this file so a minimal re-export is sufficient.
+vi.mock('react-native', () => ({
+  Linking: linkingMock,
+}));
 
 vi.mock('expo-web-browser', () => webBrowserMock);
+
+// Wave 1 added telemetry calls inside openInstacartCart (SHOP-DC-04
+// Pitfall 3: split server-ok from user-tap-through). Mock the telemetry
+// module so the helper tests stay focused on the Linking/WebBrowser
+// contract and don't try to POST through the batcher.
+vi.mock('../telemetry', () => ({
+  logShoppingEvent: logShoppingEventMock,
+  sanitizePayload: sanitizePayloadMock,
+}));
 
 import { openInstacartCart } from '../openInstacartCart';
 
