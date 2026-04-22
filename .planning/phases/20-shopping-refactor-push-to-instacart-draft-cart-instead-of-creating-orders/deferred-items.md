@@ -35,3 +35,23 @@ is interpreted as "do not *add* regressions" — not "fix pre-existing ones."
 
 Verify in a later wave that touches `shoppingStore.generateList` /
 `fetchCurrent` (probably 20-01 or 20-02).
+
+### packages/server — 2 pre-existing unrelated failures
+
+Discovered: 2026-04-22 during Plan 20-00 execution (full server suite run at
+Task 3 wrap-up). Confirmed pre-existing by running the same two files with
+Plan 20-00 telemetry changes absent.
+
+Failing cases:
+
+1. `__tests__/meal-plans.test.ts > POST /meal-plans/generate (AI) > generates a 7-day meal plan`
+2. `src/ai/__tests__/taskRouting.test.ts > taskRouting > env.GOOGLE_API_KEY throws when unset and returns value when set`
+
+Neither file was touched by Plan 20-00. `taskRouting` is an env-var contract
+test that appears to have a missing env teardown; `meal-plans.test.ts`
+references the AI meal plan generator which is unrelated to shopping. Both
+are out of scope for Phase 20.
+
+**Action for Phase 20 Wave 0:** DO NOT FIX. Expected to be picked up by
+whichever phase next touches the AI task router / meal-plan generator (or
+as a dedicated maintenance plan).

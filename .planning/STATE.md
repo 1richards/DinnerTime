@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: Not started
-status: verifying
-stopped_at: Completed 16-07-PLAN.md (Settings Cooking section dark-mode toggle, Maestro flow 28 non-voice UAT, Phase 9 cleanup)
-last_updated: "2026-04-22T05:05:18.750Z"
+current_plan: 20-00-PLAN.md (complete — Wave 0 scaffolding)
+status: "Phase 20 Wave 0 green. Shipped Nyquist-compliant scaffolding in 3 task commits (e797f91 + 9c58478 + 37d9e31, ~9 min total). Migration `00024_shopping_events.sql` clones `00020_cooking_events.sql` 1:1 with `recipe_id`/`step_index` replaced by nullable `shopping_list_id` (FK `shopping_lists` ON DELETE SET NULL) + `shopping_order_id` (FK `shopping_orders` ON DELETE SET NULL); 12 static assertions added to `migrations.test.ts` locking the contract (81/81 server migration tests green). 5 red mobile test files landed with paired MINIMAL production stubs so failures are assertion-diffs not module-not-founds: `shopping/__tests__/telemetry.test.ts` (7 cases, 14-key whitelist: Phase-16's 9 + 5 shopping-specific item_count/list_id/order_id/app_installed/variant), `shopping/__tests__/openInstacartCart.test.ts` (3 cases — Linking.openURL first, WebBrowser fallback on reject), `shopping/__tests__/classifyHandoffError.test.ts` (7 cases across TypeError/5xx/401/403/default), `components/shopping/__tests__/HandoffSheet.test.tsx` (10 cases across 3 discriminated-union states using the Phase 16/19 static-inspection pattern — project does not use @testing-library/react-native), `stores/__tests__/settingsStore.test.ts` (4 cases — default 'draft_cart', setter, persist to `dinnertime-settings` AsyncStorage, rehydrate). Production stubs with `// TODO(phase-20-01|03)` markers: telemetry.ts (no-ops), openInstacartCart.ts (throws), classifyHandoffError.ts (returns 'network' default so 3/7 cases pass + 4 red), HandoffSheet.tsx (`<Text>stub</Text>`). settingsStore.ts shipped REAL (Zustand + persist + AsyncStorage, mirrors cookingStore pattern, default 'draft_cart' implements SHOP-DC-05) — 4/4 settingsStore tests flip green in the same plan. Server `telemetry.test.ts` extended with 5 new `/telemetry/shopping` cases (401 green, 4 others RED with 404 — Wave 1 target). DEVICE-TEST-20.md skeleton with 6-row checklist (UNIVLINK-01/02 universal-link routing, HANDOFF-01/02 sheet state + error retry, ROLLBACK-01 hidden Settings toggle, TELEMETRY-01 shopping_events round-trip) ships for physical-iPhone UAT. 4 pre-existing unrelated test failures (shoppingStore.generateList/fetchCurrent × 2, meal-plans AI × 1, taskRouting env × 1) logged to `deferred-items.md` — confirmed pre-existing on HEAD, NOT caused by Phase 20. Next: plan 20-01 (shopping telemetry pipeline client + server — the one Wave 1 that flips 6 red cases green)."
+stopped_at: Completed 20-00-PLAN.md (Wave 0 scaffolding — 3 commits, 15 files, 9 min)
+last_updated: "2026-04-22T05:41:35.271Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
   completed_phases: 20
-  total_plans: 96
-  completed_plans: 95
+  total_plans: 102
+  completed_plans: 96
   percent: 100
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 
 ## Current Position
 
-Phase: 17 of 25 (something new ai powered recipe exploration with search and remix)
-Current Plan: Not started
-Status: Wave 4 plan 16-07 green. Settings Cooking section now renders "Dark cooking mode" toggle wired to `cookingStore.setDarkMode` (persisted via `partialize: (state) => ({ darkMode: state.darkMode })`). Exact UI-SPEC copy used verbatim: title "Dark cooking mode", subtitle "Darker background while cooking. Matches Spotify's Now Playing feel.". Section placed between Pantry and Account blocks. accessibilityRole="switch" + accessibilityState={{ checked }} on the row wrapper so Maestro can drive it via the plain title text. Maestro flow 28-cooking-mode-ui.yaml authored — 49 steps, 7 screenshots (landing → ingredient check → step advance → step back → exit confirm → dark toggle → dark cooking). Voice paths intentionally NOT covered; DEVICE-TEST-16 (plan 16-08) will cover them on a physical iPhone per CLAUDE.md UAT section (simulator has no audio injection). Phase 9 cleanup: StepDisplay.tsx + VoiceStatusBadge.tsx deleted (grep confirms zero consumer imports); cook.tsx header comment and 15-*.yaml stub comment updated to reflect removal. Two task commits: bae1f1a (feat: Settings + deletions), 36b06bd (test: Maestro flow 28). Maestro flow 28 could NOT be executed end-to-end because the running Metro was started from the monorepo root instead of apps/mobile (pre-existing dev-env bug — `./index` fails to resolve, cascading to expo-haptics). Per AUTO_MODE_OVERRIDE, the human-verify checkpoint was auto-approved inline and the failing sim run logged in SUMMARY issues; DEVICE-TEST-16 remains the authoritative visual gate. 159/159 cooking+app tests green; TypeScript clean on touched files. Phase 16 Wave 4 complete. Only plan 16-08 (DEVICE-TEST-16 physical-device voice run) remains in Phase 16. Milestone v1.0 remains 100% complete.
+Phase: 20 of 25 (shopping refactor — push to Instacart draft cart)
+Current Plan: 20-00-PLAN.md (complete — Wave 0 scaffolding)
+Status: Phase 20 Wave 0 green. Shipped Nyquist-compliant scaffolding in 3 task commits (e797f91 + 9c58478 + 37d9e31, ~9 min total). Migration `00024_shopping_events.sql` clones `00020_cooking_events.sql` 1:1 with `recipe_id`/`step_index` replaced by nullable `shopping_list_id` (FK `shopping_lists` ON DELETE SET NULL) + `shopping_order_id` (FK `shopping_orders` ON DELETE SET NULL); 12 static assertions added to `migrations.test.ts` locking the contract (81/81 server migration tests green). 5 red mobile test files landed with paired MINIMAL production stubs so failures are assertion-diffs not module-not-founds: `shopping/__tests__/telemetry.test.ts` (7 cases, 14-key whitelist: Phase-16's 9 + 5 shopping-specific item_count/list_id/order_id/app_installed/variant), `shopping/__tests__/openInstacartCart.test.ts` (3 cases — Linking.openURL first, WebBrowser fallback on reject), `shopping/__tests__/classifyHandoffError.test.ts` (7 cases across TypeError/5xx/401/403/default), `components/shopping/__tests__/HandoffSheet.test.tsx` (10 cases across 3 discriminated-union states using the Phase 16/19 static-inspection pattern — project does not use @testing-library/react-native), `stores/__tests__/settingsStore.test.ts` (4 cases — default 'draft_cart', setter, persist to `dinnertime-settings` AsyncStorage, rehydrate). Production stubs with `// TODO(phase-20-01|03)` markers: telemetry.ts (no-ops), openInstacartCart.ts (throws), classifyHandoffError.ts (returns 'network' default so 3/7 cases pass + 4 red), HandoffSheet.tsx (`<Text>stub</Text>`). settingsStore.ts shipped REAL (Zustand + persist + AsyncStorage, mirrors cookingStore pattern, default 'draft_cart' implements SHOP-DC-05) — 4/4 settingsStore tests flip green in the same plan. Server `telemetry.test.ts` extended with 5 new `/telemetry/shopping` cases (401 green, 4 others RED with 404 — Wave 1 target). DEVICE-TEST-20.md skeleton with 6-row checklist (UNIVLINK-01/02 universal-link routing, HANDOFF-01/02 sheet state + error retry, ROLLBACK-01 hidden Settings toggle, TELEMETRY-01 shopping_events round-trip) ships for physical-iPhone UAT. 4 pre-existing unrelated test failures (shoppingStore.generateList/fetchCurrent × 2, meal-plans AI × 1, taskRouting env × 1) logged to `deferred-items.md` — confirmed pre-existing on HEAD, NOT caused by Phase 20. Next: plan 20-01 (shopping telemetry pipeline client + server — the one Wave 1 that flips 6 red cases green).
 Last activity: 2026-04-22
 
 Progress: [██████████] 100%
@@ -149,6 +149,7 @@ Progress: [██████████] 100%
 | Phase 16 P04 | 11 | 2 tasks | 4 files |
 | Phase 16 P06 | 12min | 2 tasks | 3 files |
 | Phase 16 P07 | 12min | 3 tasks | 6 files |
+| Phase 20 P00 | 9min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -486,6 +487,7 @@ Recent decisions affecting current work:
 - [Phase 16]: Phase 16-06: SSE Ask flow primary + askAssistant fallback on NO_STREAM_BODY / NO_AUTH (Pitfall 1 — RN 0.83 ReadableStream guard). Other error codes (CLAUDE_ERROR, HTTP_4xx/5xx, STREAM_ERROR) surface as askError and render ErrorState in AskSheet.
 - [Phase 16]: 16-07: Settings Cooking section inline vs dedicated component — single toggle row doesn't justify a separate CookingSection.tsx; matches inline Pantry section pattern
 - [Phase 16]: 16-07: Maestro flow 28 covers only non-voice paths; voice STT/TTS locked behind DEVICE-TEST-16 per CLAUDE.md UAT (simulator has no audio injection)
+- [Phase 20]: Phase 20 Wave 0 — clone Phase 16 telemetry 1:1 for shopping (new shopping_events table, separate client module, separate server route); skip Linking.canOpenURL probe per Pitfall 2; ship settingsStore real inline (not stub) so SHOP-DC-05 rollback contract exists before Wave 1 consumers land
 
 ### Pending Todos
 
@@ -529,6 +531,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T04:58:10.256Z
-Stopped at: Completed 16-07-PLAN.md (Settings Cooking section dark-mode toggle, Maestro flow 28 non-voice UAT, Phase 9 cleanup)
+Last session: 2026-04-22T05:41:35.266Z
+Stopped at: Completed 20-00-PLAN.md (Wave 0 scaffolding — 3 commits, 15 files, 9 min)
 Resume file: None

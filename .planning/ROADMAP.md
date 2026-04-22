@@ -428,7 +428,7 @@ Plans:
   6. Existing Phase 8 shopping-list features (auto-generation from meal plan, consolidation, manual edits) remain functional before the cart handoff
 **Plans**: 5 plans
 Plans:
-- [ ] 20-00-PLAN.md — Wave 0 scaffolding: 5 red mobile test stubs, server telemetry + migrations test extensions, 00024_shopping_events migration, settingsStore (shoppingHandoffMode flag), DEVICE-TEST-20 skeleton
+- [x] 20-00-PLAN.md — Wave 0 scaffolding: 5 red mobile test stubs, server telemetry + migrations test extensions, 00024_shopping_events migration, settingsStore (shoppingHandoffMode flag), DEVICE-TEST-20 skeleton
 - [ ] 20-01-PLAN.md — Shopping telemetry pipeline (mobile logger cloned from cooking/telemetry + POST /api/v1/telemetry/shopping route) + openInstacartCart deep-link helper + classifyHandoffError discriminator
 - [ ] 20-02-PLAN.md — Settings hidden rollback toggle (5-tap reveal gesture on "Shopping" section header, flips shoppingHandoffMode between draft_cart and legacy)
 - [ ] 20-03-PLAN.md — HandoffSheet primitive (Apple-Pay-style bottom-sheet, 3 visible states: sending / success / error with variant-specific copy)
