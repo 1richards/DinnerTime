@@ -429,8 +429,8 @@ Plans:
 **Plans**: 5 plans
 Plans:
 - [x] 20-00-PLAN.md — Wave 0 scaffolding: 5 red mobile test stubs, server telemetry + migrations test extensions, 00024_shopping_events migration, settingsStore (shoppingHandoffMode flag), DEVICE-TEST-20 skeleton
-- [ ] 20-01-PLAN.md — Shopping telemetry pipeline (mobile logger cloned from cooking/telemetry + POST /api/v1/telemetry/shopping route) + openInstacartCart deep-link helper + classifyHandoffError discriminator
-- [ ] 20-02-PLAN.md — Settings hidden rollback toggle (5-tap reveal gesture on "Shopping" section header, flips shoppingHandoffMode between draft_cart and legacy)
+- [x] 20-01-PLAN.md — Shopping telemetry pipeline (mobile logger cloned from cooking/telemetry + POST /api/v1/telemetry/shopping route) + openInstacartCart deep-link helper + classifyHandoffError discriminator
+- [x] 20-02-PLAN.md — Settings hidden rollback toggle (5-tap reveal gesture on "Shopping" section header, flips shoppingHandoffMode between draft_cart and legacy)
 - [ ] 20-03-PLAN.md — HandoffSheet primitive (Apple-Pay-style bottom-sheet, 3 visible states: sending / success / error with variant-specific copy)
 - [ ] 20-04-PLAN.md — Integration: rewire shopping.tsx handleOrder (HandoffSheet + feature flag + telemetry wiring) + rename orders.tsx → handoffs.tsx (UI-only, DB unchanged) + Maestro flow 12 copy rebase
 - [ ] 20-05-PLAN.md — Maestro flow 29 (happy path + dismiss), full regression sweep, DEVICE-TEST-20 simulator rows, human UAT checkpoint

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 20-00-PLAN.md (complete — Wave 0 scaffolding)
-status: "Phase 20 Wave 0 green. Shipped Nyquist-compliant scaffolding in 3 task commits (e797f91 + 9c58478 + 37d9e31, ~9 min total). Migration `00024_shopping_events.sql` clones `00020_cooking_events.sql` 1:1 with `recipe_id`/`step_index` replaced by nullable `shopping_list_id` (FK `shopping_lists` ON DELETE SET NULL) + `shopping_order_id` (FK `shopping_orders` ON DELETE SET NULL); 12 static assertions added to `migrations.test.ts` locking the contract (81/81 server migration tests green). 5 red mobile test files landed with paired MINIMAL production stubs so failures are assertion-diffs not module-not-founds: `shopping/__tests__/telemetry.test.ts` (7 cases, 14-key whitelist: Phase-16's 9 + 5 shopping-specific item_count/list_id/order_id/app_installed/variant), `shopping/__tests__/openInstacartCart.test.ts` (3 cases — Linking.openURL first, WebBrowser fallback on reject), `shopping/__tests__/classifyHandoffError.test.ts` (7 cases across TypeError/5xx/401/403/default), `components/shopping/__tests__/HandoffSheet.test.tsx` (10 cases across 3 discriminated-union states using the Phase 16/19 static-inspection pattern — project does not use @testing-library/react-native), `stores/__tests__/settingsStore.test.ts` (4 cases — default 'draft_cart', setter, persist to `dinnertime-settings` AsyncStorage, rehydrate). Production stubs with `// TODO(phase-20-01|03)` markers: telemetry.ts (no-ops), openInstacartCart.ts (throws), classifyHandoffError.ts (returns 'network' default so 3/7 cases pass + 4 red), HandoffSheet.tsx (`<Text>stub</Text>`). settingsStore.ts shipped REAL (Zustand + persist + AsyncStorage, mirrors cookingStore pattern, default 'draft_cart' implements SHOP-DC-05) — 4/4 settingsStore tests flip green in the same plan. Server `telemetry.test.ts` extended with 5 new `/telemetry/shopping` cases (401 green, 4 others RED with 404 — Wave 1 target). DEVICE-TEST-20.md skeleton with 6-row checklist (UNIVLINK-01/02 universal-link routing, HANDOFF-01/02 sheet state + error retry, ROLLBACK-01 hidden Settings toggle, TELEMETRY-01 shopping_events round-trip) ships for physical-iPhone UAT. 4 pre-existing unrelated test failures (shoppingStore.generateList/fetchCurrent × 2, meal-plans AI × 1, taskRouting env × 1) logged to `deferred-items.md` — confirmed pre-existing on HEAD, NOT caused by Phase 20. Next: plan 20-01 (shopping telemetry pipeline client + server — the one Wave 1 that flips 6 red cases green)."
-stopped_at: Completed 20-00-PLAN.md (Wave 0 scaffolding — 3 commits, 15 files, 9 min)
-last_updated: "2026-04-22T05:41:35.271Z"
+current_plan: 20-02-PLAN.md (complete — Wave 2 hidden rollback UI)
+status: "Phase 20 Wave 1a green. Plan 20-01 shipped in 2 task commits (f042540 + 1a862ec, ~4 min). Task 1 (f042540): cloned `cooking/telemetry.ts` into `shopping/telemetry.ts` with 14-key PII whitelist (9 Phase-16 + 5 shopping: item_count/list_id/order_id/app_installed/variant), POSTs to `/api/v1/telemetry/shopping`, preserved all Phase 16 correctness invariants (splice-after-await, QUEUE_CAP=200, BATCH_SIZE=10, sync-sentinel token-getter). Extended `packages/server/src/routes/telemetry.ts` with sibling `POST /shopping` handler — zod schema swaps recipe_id/step_index for shopping_list_id/shopping_order_id, inserts into `shopping_events`, profile_id server-injected. Resolved Open Question 3 with sibling handler (NOT sibling file) — `index.ts` mount unchanged. Task 2 (1a862ec): shipped `openInstacartCart(url, opts)` (Linking.openURL first, WebBrowser.openBrowserAsync fallback on throw, additive handoff_opened_{app|web} telemetry inline — covers Pitfall 3 server-ok vs user-tap-through split) and `classifyHandoffError(err)` (auth 401/403 → instacart_api 5xx → network default, fail-safe unknown-shape → network). Rule 3 auto-fix: replaced `vi.importActual('react-native')` in openInstacartCart.test.ts (rolldown cannot parse Flow-annotated RN source) with direct mock + telemetry module mock. 12 red Wave 0 test cases flipped green (5 mobile telemetry + 4 server shopping + 3 openInstacartCart — wait, actually: 5 mobile telemetry + 4 server shopping + 3 openInstacartCart + 4 classifyHandoffError = 16 cases). Mobile shopping suite: 16/16 green. Server telemetry suite: 9/9 green (4 cooking + 5 shopping, zero cooking regression). HandoffSheet still RED 9/9 per plan (20-03 target). Incidental scope bleed: `apps/mobile/src/components/settings/ShoppingHandoffSection.tsx` (Phase 20-02 hidden 5-tap toggle UI) was untracked at session start and included in Task 1 commit — inert until 20-02 wires it into settings.tsx, reduces 20-02 workload. Requirements completed: SHOP-DC-03, SHOP-DC-04, SHOP-DC-06. Next: plan 20-02 (settings rollback toggle) or 20-03 (HandoffSheet)."
+stopped_at: Completed 20-01-PLAN.md — shopping telemetry pipeline + helpers
+last_updated: "2026-04-22T05:48:52.214Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
   completed_phases: 20
   total_plans: 102
-  completed_plans: 96
+  completed_plans: 98
   percent: 100
 ---
 
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 20 of 25 (shopping refactor — push to Instacart draft cart)
-Current Plan: 20-00-PLAN.md (complete — Wave 0 scaffolding)
-Status: Phase 20 Wave 0 green. Shipped Nyquist-compliant scaffolding in 3 task commits (e797f91 + 9c58478 + 37d9e31, ~9 min total). Migration `00024_shopping_events.sql` clones `00020_cooking_events.sql` 1:1 with `recipe_id`/`step_index` replaced by nullable `shopping_list_id` (FK `shopping_lists` ON DELETE SET NULL) + `shopping_order_id` (FK `shopping_orders` ON DELETE SET NULL); 12 static assertions added to `migrations.test.ts` locking the contract (81/81 server migration tests green). 5 red mobile test files landed with paired MINIMAL production stubs so failures are assertion-diffs not module-not-founds: `shopping/__tests__/telemetry.test.ts` (7 cases, 14-key whitelist: Phase-16's 9 + 5 shopping-specific item_count/list_id/order_id/app_installed/variant), `shopping/__tests__/openInstacartCart.test.ts` (3 cases — Linking.openURL first, WebBrowser fallback on reject), `shopping/__tests__/classifyHandoffError.test.ts` (7 cases across TypeError/5xx/401/403/default), `components/shopping/__tests__/HandoffSheet.test.tsx` (10 cases across 3 discriminated-union states using the Phase 16/19 static-inspection pattern — project does not use @testing-library/react-native), `stores/__tests__/settingsStore.test.ts` (4 cases — default 'draft_cart', setter, persist to `dinnertime-settings` AsyncStorage, rehydrate). Production stubs with `// TODO(phase-20-01|03)` markers: telemetry.ts (no-ops), openInstacartCart.ts (throws), classifyHandoffError.ts (returns 'network' default so 3/7 cases pass + 4 red), HandoffSheet.tsx (`<Text>stub</Text>`). settingsStore.ts shipped REAL (Zustand + persist + AsyncStorage, mirrors cookingStore pattern, default 'draft_cart' implements SHOP-DC-05) — 4/4 settingsStore tests flip green in the same plan. Server `telemetry.test.ts` extended with 5 new `/telemetry/shopping` cases (401 green, 4 others RED with 404 — Wave 1 target). DEVICE-TEST-20.md skeleton with 6-row checklist (UNIVLINK-01/02 universal-link routing, HANDOFF-01/02 sheet state + error retry, ROLLBACK-01 hidden Settings toggle, TELEMETRY-01 shopping_events round-trip) ships for physical-iPhone UAT. 4 pre-existing unrelated test failures (shoppingStore.generateList/fetchCurrent × 2, meal-plans AI × 1, taskRouting env × 1) logged to `deferred-items.md` — confirmed pre-existing on HEAD, NOT caused by Phase 20. Next: plan 20-01 (shopping telemetry pipeline client + server — the one Wave 1 that flips 6 red cases green).
+Current Plan: 20-01-PLAN.md (complete — Wave 1 telemetry + helpers)
+Status: Phase 20 Wave 1a green. Plan 20-01 shipped in 2 task commits (f042540 + 1a862ec, ~4 min). Cloned `cooking/telemetry.ts` into `shopping/telemetry.ts` with 14-key PII whitelist (9 Phase-16 + 5 shopping-specific); extended `routes/telemetry.ts` with sibling `POST /shopping` handler (`shopping_events` insert, profile_id server-injected). Shipped `openInstacartCart` (Linking.openURL first, WebBrowser fallback, additive handoff_opened_{app|web} telemetry) and `classifyHandoffError` (auth 401/403 → instacart_api 5xx → network default). Rule 3 auto-fix on openInstacartCart.test.ts (replaced broken `vi.importActual('react-native')` with direct mock). Flipped 16 red cases green (5 mobile telemetry + 4 server shopping + 3 openInstacartCart + 4 classifyHandoffError). HandoffSheet still RED 9/9 per plan (20-03 target). Incidental scope bleed: ShoppingHandoffSection.tsx (Phase 20-02 asset) was pre-existing untracked and included in Task 1 commit — inert until 20-02 wires it. Requirements completed: SHOP-DC-03, SHOP-DC-04, SHOP-DC-06. Next: plan 20-02 (settings rollback toggle) or 20-03 (HandoffSheet).
 Last activity: 2026-04-22
 
 Progress: [██████████] 100%
@@ -150,6 +150,8 @@ Progress: [██████████] 100%
 | Phase 16 P06 | 12min | 2 tasks | 3 files |
 | Phase 16 P07 | 12min | 3 tasks | 6 files |
 | Phase 20 P00 | 9min | 3 tasks | 15 files |
+| Phase 20 P02 | 3min | 2 tasks | 2 files |
+| Phase 20 P01 | 4min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -488,6 +490,10 @@ Recent decisions affecting current work:
 - [Phase 16]: 16-07: Settings Cooking section inline vs dedicated component — single toggle row doesn't justify a separate CookingSection.tsx; matches inline Pantry section pattern
 - [Phase 16]: 16-07: Maestro flow 28 covers only non-voice paths; voice STT/TTS locked behind DEVICE-TEST-16 per CLAUDE.md UAT (simulator has no audio injection)
 - [Phase 20]: Phase 20 Wave 0 — clone Phase 16 telemetry 1:1 for shopping (new shopping_events table, separate client module, separate server route); skip Linking.canOpenURL probe per Pitfall 2; ship settingsStore real inline (not stub) so SHOP-DC-05 rollback contract exists before Wave 1 consumers land
+- [Phase 20]: 5-tap gesture within 1500ms is the hidden-reveal threshold for admin-only Settings UI (modeled after Apple's Build-Number-7-taps pattern)
+- [Phase 20]: SHOP-DC-05 rollback surface is a sliding-window tap-counter component (no timers, no new deps); placement is between Cooking dark-mode block and Account/Sign-out so existing Maestro flow 13-settings selectors stay valid
+- [Phase 20]: Sibling /shopping handler on existing routes/telemetry.ts router (not a new shopping-telemetry.ts file) — resolves Open Question 3 with smaller footprint
+- [Phase 20]: openInstacartCart emits handoff_opened_{app|web} telemetry inline (not at call-site) so HandoffSheet/Maestro callers auto-inherit Pitfall 3 conversion-rate separation
 
 ### Pending Todos
 
@@ -531,6 +537,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T05:41:35.266Z
-Stopped at: Completed 20-00-PLAN.md (Wave 0 scaffolding — 3 commits, 15 files, 9 min)
+Last session: 2026-04-22T05:48:47.562Z
+Stopped at: Completed 20-01-PLAN.md — shopping telemetry pipeline + helpers
 Resume file: None
