@@ -8,7 +8,18 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { ReactElement } from 'react';
 
-// @ts-expect-error — component does not exist yet (Wave 0 red stub; shipped 16-05)
+// Mock expo-symbols + expo-haptics so the IngredientRow import chain doesn't
+// pull in expo-modules-core (which references the RN-only `__DEV__` global).
+vi.mock('expo-symbols', () => ({
+  SymbolView: (_props: unknown) => null,
+}));
+vi.mock('expo-haptics', () => ({
+  impactAsync: vi.fn(async () => {}),
+  notificationAsync: vi.fn(async () => {}),
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
+  NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
+}));
+
 import { IngredientRow } from '../IngredientRow';
 
 type AnyEl = ReactElement<any>;
