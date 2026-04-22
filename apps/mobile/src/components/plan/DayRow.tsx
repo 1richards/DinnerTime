@@ -71,11 +71,13 @@ export function DayRow({
         ? 'skipped'
         : 'planned';
 
-  // Phase 22-05: `isStretch` is now live — derived client-side in plan.tsx
-  // via pickStretchDay() and attached per-render to exactly one entry's
-  // MealPlanEntry.is_stretch. `pantryReady` stays future-wired in 22-06
-  // (also client-derived; harmless `undefined` here means the pantry-ready
-  // chip doesn't render yet).
+  // Phase 22-05 + 22-06: both flags are live and derived client-side in
+  // plan.tsx — `is_stretch` via pickStretchDay() (stretch meal of the week)
+  // and `pantry_ready` via computePantryReady(entry.ingredients, pantryItems)
+  // (≥80% of non-staple ingredients already in the pantry). The
+  // `deriveStatusChips` matrix layers up to three chips: status + stretch +
+  // pantry-ready. All three use Phase 19 tokens (success / warning /
+  // default) — no raw hex literals downstream.
   const chips = deriveStatusChips({
     status,
     isStretch: entry.is_stretch === true,

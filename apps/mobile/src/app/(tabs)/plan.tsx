@@ -17,12 +17,14 @@ import { useMealPlanStore } from '../../stores/mealPlanStore';
 import { useShoppingStore } from '../../stores/shoppingStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useProgressionStore } from '../../stores/progressionStore';
+import { usePantryStore } from '../../stores/pantryStore';
 import { pickStretchDay } from '../../plan/stretchPicker';
-import { DayRow } from '../../components/plan/DayRow';
 import { EmptyPlanState } from '../../components/plan/EmptyPlanState';
 import { FocusBanner } from '../../components/plan/FocusBanner';
 import { SwapSheet } from '../../components/plan/SwapSheet';
 import { CookConfirm } from '../../components/plan/CookConfirm';
+import { SwipeableDayRow } from '../../components/plan/SwipeableDayRow';
+import { computePantryReady } from '../../components/plan/pantryReady';
 import { WeekActionSheet } from '../../components/plan/WeekActionSheet';
 import { MonthGrid } from '../../components/plan/MonthGrid';
 import { MonthPatterns } from '../../components/plan/MonthPatterns';
@@ -93,6 +95,10 @@ export default function PlanScreen() {
   const [swapTarget, setSwapTarget] = useState<number | null>(null);
   const [cookTarget, setCookTarget] = useState<number | null>(null);
   const [cookDelta, setCookDelta] = useState<MealPlanIngredient[] | null>(null);
+  // Phase 22-06: Day the user is about to skip via swipe. Triggers an
+  // Alert.prompt for a free-form reason. Null when no skip confirmation is
+  // in flight.
+  const [skipTarget, setSkipTarget] = useState<number | null>(null);
   const [handoffState, setHandoffState] = useState<HandoffState>({ kind: 'idle' });
   const [handoffSessionId, setHandoffSessionId] = useState<string>('');
   // Phase 22-02: Week-level action sheet (regenerate / shift ±1 / duplicate
@@ -157,14 +163,29 @@ export default function PlanScreen() {
     return pickStretchDay(currentPlan.entries, medianComplexity);
   }, [currentPlan, medianComplexity]);
 
+  // Phase 22-06: pantry items are consumed per render to compute the
+  // `pantry_ready` flag on each entry. Subscribed via selector so changes
+  // to the pantry (scan confirm, mark-used, etc.) automatically refresh
+  // the Plan tab's chip state without a manual reload.
+  const pantryItems = usePantryStore((s) => s.items);
+
   const days = useMemo(
     () =>
       [0, 1, 2, 3, 4, 5, 6].map((d) => {
         const raw = entriesByDay.get(d) ?? null;
-        const entry = raw ? { ...raw, is_stretch: d === stretchDay } : null;
+        const entry = raw
+          ? {
+              ...raw,
+              is_stretch: d === stretchDay,
+              pantry_ready: computePantryReady(
+                raw.ingredients ?? [],
+                pantryItems,
+              ),
+            }
+          : null;
         return { day: d, entry };
       }),
-    [entriesByDay, stretchDay]
+    [entriesByDay, stretchDay, pantryItems]
   );
 
   // Phase 22-05: telemetry. plan.stretch_displayed fires once per
@@ -211,6 +232,37 @@ export default function PlanScreen() {
     setCookTarget(null);
     setCookDelta(null);
   }, []);
+
+  // Phase 22-06: Skip flow. SwipeableDayRow fires onSkip(day) → we stash
+  // the target day and open an iOS Alert.prompt for the free-form reason
+  // (empty string allowed → stored as null). On submit, call the store's
+  // optimistic skipDay. The Alert is opened via a useEffect so the sheet
+  // dismiss animation doesn't clobber the prompt presentation.
+  useEffect(() => {
+    if (skipTarget == null) return;
+    Alert.prompt(
+      'Skip this day?',
+      'Optional reason (e.g., travel, ate out).',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => setSkipTarget(null),
+        },
+        {
+          text: 'Skip',
+          style: 'destructive',
+          onPress: (text?: string) => {
+            const trimmed = (text ?? '').trim();
+            const reason = trimmed.length > 0 ? trimmed : null;
+            void useMealPlanStore.getState().skipDay(skipTarget, reason);
+            setSkipTarget(null);
+          },
+        },
+      ],
+      'plain-text',
+    );
+  }, [skipTarget]);
 
   // Plan → Shopping handoff (22-01 / PLAN-X-03). Mirrors shopping.tsx's
   // handleOrder (canonical copy, unchanged there). Aggregates this week's
@@ -676,13 +728,14 @@ export default function PlanScreen() {
           keyExtractor={(item) => `day-${item.day}`}
           ListHeaderComponent={listHeader}
           renderItem={({ item }) => (
-            <DayRow
+            <SwipeableDayRow
               entry={item.entry}
               dayLabel={DAY_LABELS[item.day]!}
               isSwapping={swappingDay === item.day}
               isCooking={cookingDay === item.day}
               onSwap={() => setSwapTarget(item.day)}
               onCook={() => setCookTarget(item.day)}
+              onSkip={() => setSkipTarget(item.day)}
               onPress={() => {
                 if (!item.entry) return;
                 // Plan → Recipe Detail (22-01 / PLAN-X-01). When the entry
