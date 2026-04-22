@@ -371,4 +371,222 @@ describe('mealPlanStore', () => {
       expect(state.error).toBeNull();
     });
   });
+
+  describe('shiftWeek', () => {
+    it('calls generate with week_start + 7 days for shiftWeek(7)', async () => {
+      const plan = makePlan({ week_start: '2026-05-11' });
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            data: makePlan({ week_start: '2026-05-18' }),
+          }),
+      });
+
+      await useMealPlanStore.getState().shiftWeek(7);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/meal-plans/generate'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ week_start: '2026-05-18' }),
+        })
+      );
+      const state = useMealPlanStore.getState();
+      expect(state.currentPlan?.week_start).toBe('2026-05-18');
+    });
+
+    it('calls generate with week_start - 7 days for shiftWeek(-7)', async () => {
+      const plan = makePlan({ week_start: '2026-05-11' });
+      useMealPlanStore.setState({ currentPlan: plan });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            data: makePlan({ week_start: '2026-05-04' }),
+          }),
+      });
+
+      await useMealPlanStore.getState().shiftWeek(-7);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/meal-plans/generate'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ week_start: '2026-05-04' }),
+        })
+      );
+    });
+
+    it('is a no-op when currentPlan is null', async () => {
+      useMealPlanStore.setState({ currentPlan: null });
+
+      await useMealPlanStore.getState().shiftWeek(7);
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('duplicateLastWeek', () => {
+    it('reads last week and POSTs /entries/assign for each non-skipped entry', async () => {
+      const currentPlan = makePlan({ week_start: '2026-05-11', entries: [] });
+      useMealPlanStore.setState({ currentPlan });
+
+      const lastWeekPlan = {
+        id: 'prev-plan',
+        week_start: '2026-05-04',
+        generated_at: '2026-05-03T00:00:00Z',
+        entries: [
+          makeEntry(0, { title: 'Mon meal', status: 'planned', recipe_id: 'r-mon' }),
+          makeEntry(1, { title: 'Tue meal', status: 'planned' }),
+          makeEntry(2, { title: 'Wed meal', status: 'cooked' }),
+        ],
+      };
+
+      // 1st call: GET /meal-plans?from=2026-05-04&to=2026-05-04
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: [lastWeekPlan] }),
+      });
+
+      // 3 POST /entries/assign calls (one per non-skipped entry)
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ data: {} }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ data: {} }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ data: {} }),
+        });
+
+      // fetchCurrent at the end
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: currentPlan }),
+      });
+
+      await useMealPlanStore.getState().duplicateLastWeek();
+
+      // First call — GET range for previous week
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining(
+          '/api/v1/meal-plans?from=2026-05-04&to=2026-05-04'
+        ),
+        expect.objectContaining({ method: 'GET' })
+      );
+
+      // Calls 2-4 — POST /entries/assign for Mon, Tue, Wed of target week
+      const assignCalls = mockFetch.mock.calls.filter(([url]: [string]) =>
+        url.includes('/meal-plans/entries/assign')
+      );
+      expect(assignCalls).toHaveLength(3);
+
+      const assignBodies = assignCalls.map(([, init]: [string, RequestInit]) =>
+        JSON.parse(init.body as string)
+      );
+      expect(assignBodies[0]!.date).toBe('2026-05-11'); // day_of_week=0 → Mon
+      expect(assignBodies[0]!.title).toBe('Mon meal');
+      expect(assignBodies[0]!.recipe_id).toBe('r-mon');
+      expect(assignBodies[1]!.date).toBe('2026-05-12'); // Tue
+      expect(assignBodies[2]!.date).toBe('2026-05-13'); // Wed
+    });
+
+    it('drops entries where status is skipped', async () => {
+      const currentPlan = makePlan({ week_start: '2026-05-11', entries: [] });
+      useMealPlanStore.setState({ currentPlan });
+
+      const lastWeekPlan = {
+        id: 'prev-plan',
+        week_start: '2026-05-04',
+        generated_at: '2026-05-03T00:00:00Z',
+        entries: [
+          makeEntry(0, { title: 'Mon meal', status: 'planned' }),
+          makeEntry(1, { title: 'Tue skipped', status: 'skipped' }),
+          makeEntry(2, { title: 'Wed meal', status: 'planned' }),
+        ],
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: [lastWeekPlan] }),
+      });
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ data: {} }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ data: {} }),
+        });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: currentPlan }),
+      });
+
+      await useMealPlanStore.getState().duplicateLastWeek();
+
+      const assignCalls = mockFetch.mock.calls.filter(([url]: [string]) =>
+        url.includes('/meal-plans/entries/assign')
+      );
+      // Only 2 POSTs — the skipped entry was dropped
+      expect(assignCalls).toHaveLength(2);
+      const titles = assignCalls.map(([, init]: [string, RequestInit]) =>
+        JSON.parse(init.body as string).title
+      );
+      expect(titles).toEqual(['Mon meal', 'Wed meal']);
+    });
+
+    it('surfaces soft error when no previous-week plan exists', async () => {
+      const currentPlan = makePlan({ week_start: '2026-05-11' });
+      useMealPlanStore.setState({ currentPlan });
+
+      // GET returns empty array (no previous-week plan)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      await useMealPlanStore.getState().duplicateLastWeek();
+
+      // Only the GET fetch — no /entries/assign calls
+      const assignCalls = mockFetch.mock.calls.filter(([url]: [string]) =>
+        url.includes('/meal-plans/entries/assign')
+      );
+      expect(assignCalls).toHaveLength(0);
+      const state = useMealPlanStore.getState();
+      expect(state.loading).toBe(false);
+    });
+
+    it('is a no-op when currentPlan is null', async () => {
+      useMealPlanStore.setState({ currentPlan: null });
+
+      await useMealPlanStore.getState().duplicateLastWeek();
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
 });
