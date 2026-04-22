@@ -34,6 +34,16 @@ interface SettingsState {
    */
   planFocusBannerEnabled: boolean;
   setPlanFocusBannerEnabled: (enabled: boolean) => void;
+  /**
+   * Phase 23-03 (NFR-07): opt-in Face ID unlock on app foreground. Default
+   * `false` per D-07 — biometric is NEVER on by default; only after the user
+   * explicitly toggles it ON AND completes a successful Face ID prompt in the
+   * Settings sheet do we persist `true`. When `true`, BiometricGate blocks
+   * the UI on background→active transitions until Face ID succeeds or the
+   * user chooses "Use password" (which signs out).
+   */
+  biometricUnlockEnabled: boolean;
+  setBiometricUnlockEnabled: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -43,6 +53,9 @@ export const useSettingsStore = create<SettingsState>()(
       setShoppingHandoffMode: (mode) => set({ shoppingHandoffMode: mode }),
       planFocusBannerEnabled: true,
       setPlanFocusBannerEnabled: (enabled) => set({ planFocusBannerEnabled: enabled }),
+      biometricUnlockEnabled: false,
+      setBiometricUnlockEnabled: (enabled) =>
+        set({ biometricUnlockEnabled: enabled }),
     }),
     {
       name: 'dinnertime-settings',
