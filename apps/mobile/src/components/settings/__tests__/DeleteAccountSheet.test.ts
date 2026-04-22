@@ -33,7 +33,7 @@ vi.mock('../../../stores/authStore', () => ({
   useAuthStore: Object.assign(() => ({ signOut }), { getState: () => ({ signOut }) }),
 }));
 
-// @ts-expect-error — module does not exist yet (Wave 0 red stub; ships in 23-02)
+// Module shipped in 23-02; Wave-0 red-stub @ts-expect-error removed.
 const mod = await import('../DeleteAccountSheet.js');
 const { canConfirmDelete } = mod;
 
@@ -63,13 +63,13 @@ describe('DeleteAccountSheet', () => {
     // on-success clears the auth session.
     //
     // Wave 1 MUST expose performDelete as a named export (used here).
-    // @ts-expect-error — Wave 0 red stub (helper not yet exported)
     const { performDelete } = mod;
     expect(typeof performDelete).toBe('function');
     await performDelete({ reason: 'switching apps' });
 
     expect(authedFetch).toHaveBeenCalled();
-    const [url, init] = authedFetch.mock.calls[0];
+    const call = (authedFetch as any).mock.calls[0] as [RequestInfo, RequestInit?];
+    const [url, init] = call;
     expect(String(url)).toMatch(/\/account\/delete$/);
     expect((init as RequestInit).method?.toUpperCase()).toBe('POST');
 
