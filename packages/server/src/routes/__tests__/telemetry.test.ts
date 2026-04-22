@@ -352,3 +352,122 @@ describe('POST /telemetry/plan', () => {
     expect(res.status).toBe(500);
   });
 });
+
+/**
+ * Red test stub (Phase 23 Wave 0) — handler lands in 23-06.
+ *
+ * Mirrors plan/shopping/cooking with task_name + model fields instead of
+ * domain FKs. Target table: ai_events (migration 00027). Requirement: NFR-17.
+ *
+ * Critical server-side contract: profile_id is ALWAYS server-injected from
+ * the authed user — never trusted from the body.
+ */
+describe('POST /telemetry/ai', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetTables();
+  });
+
+  it('401 without Authorization', async () => {
+    const app = makeApp();
+    const res = await app.request('/telemetry/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: [] }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('204 when events: [] (no-op)', async () => {
+    const app = makeApp();
+    const res = await app.request('/telemetry/ai', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: [] }),
+    });
+    expect(res.status).toBe(204);
+  });
+
+  it('200 and inserts 3 rows into ai_events with profile_id + task_name + model', async () => {
+    const app = makeApp();
+    const validEvent = (name: string, task_name: string) => ({
+      name,
+      session_id: 'sess-ai-abc',
+      timestamp: new Date().toISOString(),
+      task_name,
+      model: 'claude-sonnet-4-20250514',
+      payload: { latency_ms: 1200, input_tokens: 400, output_tokens: 180 },
+    });
+
+    const res = await app.request('/telemetry/ai', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        events: [
+          validEvent('ai.request_succeeded', 'pantry.scan'),
+          validEvent('ai.request_succeeded', 'recipe.discover'),
+          validEvent('ai.rate_limited', 'planner.generate_week'),
+        ],
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(supabase.from).toHaveBeenCalled();
+    const inserted = tableState['ai_events']?.insertedRows as
+      | Array<Record<string, unknown>>
+      | undefined;
+    expect(inserted).toHaveLength(3);
+    expect(inserted?.[0]?.profile_id).toBe('user-1');
+    expect(inserted?.[0]?.event_type).toBe('ai.request_succeeded');
+    expect(inserted?.[0]?.task_name).toBe('pantry.scan');
+    expect(inserted?.[0]?.model).toBe('claude-sonnet-4-20250514');
+  });
+
+  it('profile_id is server-injected — body override is ignored', async () => {
+    const app = makeApp();
+    const res = await app.request('/telemetry/ai', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        events: [
+          {
+            name: 'ai.request_succeeded',
+            session_id: 'sess-ai-xyz',
+            timestamp: new Date().toISOString(),
+            task_name: 'pantry.scan',
+            model: 'claude-sonnet-4-20250514',
+            // Malicious client attempts to spoof a different profile_id:
+            profile_id: 'attacker-profile-id',
+            payload: {},
+          },
+        ],
+      }),
+    });
+    expect(res.status).toBe(200);
+    const inserted = tableState['ai_events']?.insertedRows as
+      | Array<Record<string, unknown>>
+      | undefined;
+    // Server MUST inject the authed user's id — never the body's profile_id.
+    expect(inserted?.[0]?.profile_id).toBe('user-1');
+    expect(inserted?.[0]?.profile_id).not.toBe('attacker-profile-id');
+  });
+
+  it('400 when schema invalid (missing task_name or model)', async () => {
+    const app = makeApp();
+    const res = await app.request('/telemetry/ai', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        events: [
+          {
+            name: 'ai.request_succeeded',
+            session_id: 'sess-ai-abc',
+            timestamp: new Date().toISOString(),
+            // missing task_name and model — both required per the ai_events table
+            payload: {},
+          },
+        ],
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
+});

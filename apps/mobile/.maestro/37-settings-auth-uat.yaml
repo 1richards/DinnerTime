@@ -1,0 +1,41 @@
+appId: com.dinnertime.app
+name: "37 — settings + auth (Phase 23 UAT stub)"
+tags:
+  - phase-23
+  - uat
+# RED STUB — Phase 23 Wave 0.
+#
+# This flow is a placeholder that downstream plans (23-01..23-07) will expand
+# into a full Settings + auth UAT walk-through covering:
+#   - Account section (change password / change email / export / delete)
+#   - Biometric unlock prompt (foreground transition)
+#   - Re-auth modal on 401
+#   - Forgot-password flow
+#   - Deep-link allowlist rejection
+#   - Error boundary fallback + retry
+#
+# Today it just launches, takes one placeholder screenshot, and exits clean.
+# That's enough to prove the flow LOADS in Maestro (no YAML syntax errors)
+# while signaling "not implemented" to reviewers.
+---
+- launchApp:
+    clearState: true
+- openLink: "exp+dinnertime://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+- tapOn:
+    text: ".*Open.*"
+    optional: true
+- tapOn:
+    text: ".*Continue.*"
+    optional: true
+- tapOn:
+    point: "90%,32%"
+    optional: true
+
+- runFlow: _ensure-logged-in.yaml
+
+# Navigate to Settings tab (label may render as "Settings" or inside an AX label).
+- tapOn:
+    text: ".*Settings.*"
+    optional: true
+
+- takeScreenshot: 37-01-settings-stub-placeholder
