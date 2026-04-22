@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: 20-02-PLAN.md (complete — Wave 2 hidden rollback UI)
-status: "Phase 20 Wave 2 shipped in ~3 min. 20-02 wired the ShoppingHandoffSection (file had already landed in the earlier `f042540` 20-01 commit via an add-race — inert until this plan imported/mounted it) into `app/(tabs)/settings.tsx` via commit `a0e1ed0`. Section renders between the Cooking dark-mode block and Account/Sign-out: unrevealed state shows just 'Items send to Instacart as a draft cart.' so normal users see an info strip; 5 rapid taps on the 'Shopping' header within 1500ms flip `revealed` true and expose a Switch wired to `setShoppingHandoffMode`, persisting via 20-00's settingsStore AsyncStorage layer. Phase 19 tokens honored throughout (NativeWind warmGray/warmWhite/brand); one isolated hex literal `#D9D2C7` for Switch trackColor.false documented with phase-19-exception comment. TS clean on both target files (0 errors referencing ShoppingHandoffSection.tsx or settings.tsx). settingsStore.test.ts remains 4/4 green — no store surface changed. Maestro flow 13-settings.yaml labels untouched — 'Dark cooking mode' and 'Sign Out' sit in the same relative order. SHOP-DC-05 rollback surface is LIVE for DEVICE-TEST-20 ROLLBACK-01. Incidental: at session start several files belonging to 20-01/20-03 (shopping/telemetry.ts, classifyHandoffError.ts, openInstacartCart.ts) showed as modified — all left untouched; only our 2 target files were staged/committed. Requirements completed: SHOP-DC-05. Next: plan 20-03 (HandoffSheet + consumer-side branch in shopping.tsx reading shoppingHandoffMode)."
-stopped_at: Completed 20-02-PLAN.md — hidden rollback UI (SHOP-DC-05)
-last_updated: "2026-04-22T05:48:52.214Z"
+current_plan: 20-03-PLAN.md (complete — Wave 3 HandoffSheet 3-state modal)
+status: completed
+stopped_at: Completed 20-03-PLAN.md — HandoffSheet 3-state sheet (9/9 green)
+last_updated: "2026-04-22T06:00:41.524Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
   completed_phases: 20
   total_plans: 102
-  completed_plans: 98
+  completed_plans: 99
   percent: 100
 ---
 
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 20 of 25 (shopping refactor — push to Instacart draft cart)
-Current Plan: 20-02-PLAN.md (complete — Wave 2 hidden rollback UI)
-Status: Phase 20 Wave 2 shipped in ~3 min. 20-02 wired ShoppingHandoffSection (file already on disk from the 20-01 `f042540` add-race) into `app/(tabs)/settings.tsx` via commit `a0e1ed0`. 5-tap hidden-reveal on 'Shopping' header (within 1500ms) exposes a Switch that flips `setShoppingHandoffMode` ↔ 'legacy'; persist through 20-00 settingsStore. Phase 19 tokens honored; single isolated hex literal for Switch trackColor.false. TS clean on both target files; settingsStore.test.ts 4/4 green. Maestro flow 13-settings labels untouched. SHOP-DC-05 rollback surface is LIVE for DEVICE-TEST-20 ROLLBACK-01. Requirements completed: SHOP-DC-05. Next: plan 20-03 (HandoffSheet + consumer-side branch in shopping.tsx reading shoppingHandoffMode).
+Current Plan: 20-03-PLAN.md (complete — Wave 3 HandoffSheet 3-state modal)
+Status: Phase 20 Wave 3 shipped in ~10 min. 20-03 replaced the Wave 0 HandoffSheet stub (46 lines) with the real 304-line three-state discriminated-union sheet rendering idle/sending/success/error via commit `b84c69e`. Wave 0 HandoffSheet.test.tsx flipped green (9/9 red → 9/9 green). Two deviations from plan `action` — both auto-fixed (Rule 1): (a) CTAs rendered as inline Pressable+Text using Phase 19-02 `variantStyles.primary/ghost` class maps instead of the `<Button/>` component because the Wave 0 test does static tree-walk introspection that cannot see through component boundaries; (b) restructured Modal's child from `<Pressable backdrop><Pressable sheet>` to `<View container><Pressable backdrop-overlay/><View sheet>` so the test's first-pressable-match returns the CTA itself, not a surrounding dismiss handler. Phase 19 tokens honored throughout — zero raw hex except one documented `rgba(0,0,0,0.3)` backdrop literal. TS clean; full mobile suite down from 13 failing (pre-change) to 4 failing (pre-existing shoppingStore.test.ts, documented in deferred-items.md). Requirements completed: SHOP-DC-01, SHOP-DC-02, SHOP-DC-06. Next: plan 20-04 (consumer-side wiring — shopping.tsx + handoffs.tsx local useState<HandoffState>, gated on settingsStore.shoppingHandoffMode).
 Last activity: 2026-04-22
 
 Progress: [██████████] 100%
@@ -152,6 +152,7 @@ Progress: [██████████] 100%
 | Phase 20 P00 | 9min | 3 tasks | 15 files |
 | Phase 20 P02 | 3min | 2 tasks | 2 files |
 | Phase 20 P01 | 4min | 2 tasks | 5 files |
+| Phase 20 P03 | 10min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -494,6 +495,8 @@ Recent decisions affecting current work:
 - [Phase 20]: SHOP-DC-05 rollback surface is a sliding-window tap-counter component (no timers, no new deps); placement is between Cooking dark-mode block and Account/Sign-out so existing Maestro flow 13-settings selectors stay valid
 - [Phase 20]: Sibling /shopping handler on existing routes/telemetry.ts router (not a new shopping-telemetry.ts file) — resolves Open Question 3 with smaller footprint
 - [Phase 20]: openInstacartCart emits handoff_opened_{app|web} telemetry inline (not at call-site) so HandoffSheet/Maestro callers auto-inherit Pitfall 3 conversion-rate separation
+- [Phase 20]: HandoffSheet CTAs use Pressable+Text primitives reusing variantStyles map (not Button component) — static tree-walk tests can introspect the CTA's onPress and children-text directly; same design tokens, same visual output.
+- [Phase 20]: HandoffSheet sibling-backdrop pattern: outer Modal child is a plain View; dismiss-tap Pressable is an absolute-fill sibling behind the sheet — avoids wrapping CTAs in a dismiss Pressable whose onPress the test's first-match tree-walk would pick instead of the CTA's.
 
 ### Pending Todos
 
@@ -537,6 +540,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T05:48:47.562Z
-Stopped at: Completed 20-01-PLAN.md — shopping telemetry pipeline + helpers
+Last session: 2026-04-22T06:00:41.520Z
+Stopped at: Completed 20-03-PLAN.md — HandoffSheet 3-state sheet (9/9 green)
 Resume file: None
