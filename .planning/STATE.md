@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: 25-00 complete; next 25-01
 status: planning
-stopped_at: Completed 25-02-PLAN.md
-last_updated: "2026-04-22T14:08:46.706Z"
+stopped_at: Completed 25-01-PLAN.md
+last_updated: "2026-04-22T14:14:04.292Z"
 last_activity: 2026-04-22
 progress:
   total_phases: 25
   completed_phases: 23
   total_plans: 122
-  completed_plans: 119
+  completed_plans: 120
   percent: 97
 ---
 
@@ -173,6 +173,7 @@ Progress: [██████████] 97%
 | Phase 23 P08 | 6min | 2 tasks | 5 files |
 | Phase 25 P00 | 4min | 3 tasks | 6 files |
 | Phase 25 P02 | 6min | 3 tasks | 3 files |
+| Phase 25 P01 | 10min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -574,6 +575,8 @@ Recent decisions affecting current work:
 - [Phase 25]: Fly.io recommended over Railway for backend — comparison table in DEPLOYMENT.md; env-var list applies to both
 - [Phase 25]: Custom domain api.dinnertime.app is a hard dep before first production TestFlight (EAS bundle-inlines EXPO_PUBLIC_API_URL)
 - [Phase 25]: Internal TestFlight cap 15 for Phase 25 — avoids App Review, instant build push
+- [Phase 25]: 25-01 feedback pipeline: ADMIN_EMAILS_LIST gate + service-role supabaseAdmin client as application-layer allowlist on deny-by-default RLS tables
+- [Phase 25]: 25-01 outer/inner-split + module-level-latch pattern applied to AboutSection so useState-free outer component remains vitest-node testable (clones ReAuthModal pattern)
 
 ### Pending Todos
 
@@ -617,6 +620,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T14:08:19.564Z
-Stopped at: Completed 25-02-PLAN.md
+Last session: 2026-04-22T14:13:50.046Z
+Stopped at: Completed 25-01-PLAN.md
 Resume file: None
