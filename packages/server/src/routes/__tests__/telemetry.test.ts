@@ -128,3 +128,115 @@ describe('POST /telemetry/cooking', () => {
     expect(res.status).toBe(400);
   });
 });
+
+/**
+ * Red test stub (Phase 20 Wave 0) — route handler lands in 20-01.
+ *
+ * These cases target a NOT-YET-SHIPPED POST /telemetry/shopping sibling of
+ * /telemetry/cooking. Wave 1 (plan 20-01) will either:
+ *   (a) extend routes/telemetry.ts with a second handler, or
+ *   (b) add a new /telemetry/:channel parametric route,
+ *   (c) ship a sibling routes/shopping-telemetry.ts router and mount it.
+ *
+ * Whichever path is chosen, the HTTP contract (mount point + status codes +
+ * insert target table) must match these cases. See 20-RESEARCH.md
+ * Pattern 2 and Open Question 3.
+ *
+ * Requirement: SHOP-DC-04 (server-side shopping telemetry ingest).
+ */
+describe('POST /telemetry/shopping', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetTables();
+  });
+
+  it('401 without Authorization', async () => {
+    const app = makeApp();
+    const res = await app.request('/telemetry/shopping', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: [] }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('204 when events: [] (no-op)', async () => {
+    const app = makeApp();
+    const res = await app.request('/telemetry/shopping', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: [] }),
+    });
+    expect(res.status).toBe(204);
+  });
+
+  it('200 and inserts 3 rows into shopping_events with profile_id + event_type + list/order ids', async () => {
+    const app = makeApp();
+    const validEvent = (name: string) => ({
+      name,
+      session_id: 'sess-shop-abc',
+      timestamp: new Date().toISOString(),
+      shopping_list_id: 'list-fixture-20',
+      shopping_order_id: 'order-abc',
+      payload: { item_count: 4, variant: 'ok' },
+    });
+
+    const res = await app.request('/telemetry/shopping', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        events: [
+          validEvent('shopping.draft_cart_started'),
+          validEvent('shopping.draft_cart_succeeded'),
+          validEvent('shopping.handoff_opened_app'),
+        ],
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(supabase.from).toHaveBeenCalled();
+    // Wave 1 target table — shopping_events mirrors cooking_events path.
+    const inserted = tableState['shopping_events']?.insertedRows as
+      | Array<Record<string, unknown>>
+      | undefined;
+    expect(inserted).toHaveLength(3);
+    expect(inserted?.[0]?.profile_id).toBe('user-1');
+    expect(inserted?.[0]?.event_type).toBe('shopping.draft_cart_started');
+    expect(inserted?.[0]?.shopping_list_id).toBe('list-fixture-20');
+    expect(inserted?.[0]?.shopping_order_id).toBe('order-abc');
+  });
+
+  it('400 when schema invalid (missing events array)', async () => {
+    const app = makeApp();
+    const res = await app.request('/telemetry/shopping', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ foo: 'bar' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('500 when supabase insert returns an error', async () => {
+    // Seed the shopping_events insert to fail. We can't call makeApp()
+    // before seeding because makeBuilder is created lazily on first access;
+    // seed the table state then fire the request.
+    tableState['shopping_events'] = {
+      insertResult: { data: null, error: { message: 'insert boom' } },
+    };
+    const app = makeApp();
+    const res = await app.request('/telemetry/shopping', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        events: [
+          {
+            name: 'shopping.draft_cart_started',
+            session_id: 'sess-shop-abc',
+            timestamp: new Date().toISOString(),
+            payload: { item_count: 1 },
+          },
+        ],
+      }),
+    });
+    expect(res.status).toBe(500);
+  });
+});
