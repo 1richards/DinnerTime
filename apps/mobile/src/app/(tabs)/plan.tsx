@@ -19,6 +19,7 @@ import { DayRow } from '../../components/plan/DayRow';
 import { EmptyPlanState } from '../../components/plan/EmptyPlanState';
 import { SwapSheet } from '../../components/plan/SwapSheet';
 import { CookConfirm } from '../../components/plan/CookConfirm';
+import { WeekActionSheet } from '../../components/plan/WeekActionSheet';
 import {
   HandoffSheet,
   type HandoffState,
@@ -80,6 +81,9 @@ export default function PlanScreen() {
   const [cookDelta, setCookDelta] = useState<MealPlanIngredient[] | null>(null);
   const [handoffState, setHandoffState] = useState<HandoffState>({ kind: 'idle' });
   const [handoffSessionId, setHandoffSessionId] = useState<string>('');
+  // Phase 22-02: Week-level action sheet (regenerate / shift ±1 / duplicate
+  // last / shopping). Opens on ellipsis tap in the header action row.
+  const [weekSheetVisible, setWeekSheetVisible] = useState(false);
 
   const { onScroll, largeTitleOpacity, largeTitleTranslate, compactHeaderOpacity } =
     useCollapsingHeader();
@@ -91,21 +95,6 @@ export default function PlanScreen() {
   const handleGenerate = useCallback(() => {
     generate(currentMondayIso());
   }, [generate]);
-
-  const handleRegenerate = useCallback(() => {
-    Alert.alert(
-      'Regenerate week?',
-      'This will replace your current plan with a new 7-day plan.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Regenerate',
-          style: 'destructive',
-          onPress: () => generate(currentPlan?.week_start ?? currentMondayIso()),
-        },
-      ]
-    );
-  }, [generate, currentPlan]);
 
   const entriesByDay = useMemo(() => {
     const map = new Map<number, MealPlanEntry>();
@@ -243,6 +232,109 @@ export default function PlanScreen() {
     setHandoffState({ kind: 'idle' });
   }, []);
 
+  // Phase 22-02: week-action handlers. Each action emits a sanitized
+  // telemetry event with `meal_plan_id` + `week_start` so analysts can
+  // join against the plan_events table. `variant` disambiguates shift
+  // direction.
+  const handleOpenWeekSheet = useCallback(() => {
+    setWeekSheetVisible(true);
+  }, []);
+
+  const handleWeekSheetDismiss = useCallback(() => {
+    setWeekSheetVisible(false);
+  }, []);
+
+  const handleShiftForward = useCallback(() => {
+    if (!currentPlan) return;
+    const sessionId =
+      typeof globalThis.crypto?.randomUUID === 'function'
+        ? globalThis.crypto.randomUUID()
+        : `wk-${Date.now()}`;
+    logPlanEvent({
+      name: 'plan.week_shifted',
+      session_id: sessionId,
+      meal_plan_id: currentPlan.id,
+      payload: sanitizePayload({
+        variant: 'forward',
+        meal_plan_id: currentPlan.id,
+        week_start: currentPlan.week_start,
+      }),
+    });
+    void useMealPlanStore.getState().shiftWeek(7);
+  }, [currentPlan]);
+
+  const handleShiftBackward = useCallback(() => {
+    if (!currentPlan) return;
+    const sessionId =
+      typeof globalThis.crypto?.randomUUID === 'function'
+        ? globalThis.crypto.randomUUID()
+        : `wk-${Date.now()}`;
+    logPlanEvent({
+      name: 'plan.week_shifted',
+      session_id: sessionId,
+      meal_plan_id: currentPlan.id,
+      payload: sanitizePayload({
+        variant: 'backward',
+        meal_plan_id: currentPlan.id,
+        week_start: currentPlan.week_start,
+      }),
+    });
+    void useMealPlanStore.getState().shiftWeek(-7);
+  }, [currentPlan]);
+
+  const handleDuplicateLastWeek = useCallback(() => {
+    if (!currentPlan) return;
+    const sessionId =
+      typeof globalThis.crypto?.randomUUID === 'function'
+        ? globalThis.crypto.randomUUID()
+        : `wk-${Date.now()}`;
+    logPlanEvent({
+      name: 'plan.week_duplicated',
+      session_id: sessionId,
+      meal_plan_id: currentPlan.id,
+      payload: sanitizePayload({
+        meal_plan_id: currentPlan.id,
+        week_start: currentPlan.week_start,
+      }),
+    });
+    void useMealPlanStore.getState().duplicateLastWeek();
+  }, [currentPlan]);
+
+  // Phase 22-02: Regenerate via sheet re-uses the existing Alert confirm to
+  // guard against accidental destructive taps, then fires telemetry + the
+  // underlying generate() call. Wrapped so we can fire telemetry
+  // symmetrically with the other week actions.
+  const handleRegenerateFromSheet = useCallback(() => {
+    if (!currentPlan) return;
+    const sessionId =
+      typeof globalThis.crypto?.randomUUID === 'function'
+        ? globalThis.crypto.randomUUID()
+        : `wk-${Date.now()}`;
+    Alert.alert(
+      'Regenerate week?',
+      'This will replace your current plan with a new 7-day plan.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Regenerate',
+          style: 'destructive',
+          onPress: () => {
+            logPlanEvent({
+              name: 'plan.week_regenerated',
+              session_id: sessionId,
+              meal_plan_id: currentPlan.id,
+              payload: sanitizePayload({
+                meal_plan_id: currentPlan.id,
+                week_start: currentPlan.week_start,
+              }),
+            });
+            generate(currentPlan.week_start);
+          },
+        },
+      ]
+    );
+  }, [currentPlan, generate]);
+
   if (loading && !currentPlan) {
     return (
       <SafeAreaView
@@ -294,7 +386,12 @@ export default function PlanScreen() {
         <Text style={styles.compactTitle}>This Week</Text>
       </Animated.View>
 
-      {/* Action row — shopping-list + regenerate icons */}
+      {/*
+        Action row — Phase 22-02: single ellipsis opens WeekActionSheet
+        (regenerate / shift ±1 / duplicate / shopping list). The dedicated
+        "Shopping list for week" icon from 22-01 is preserved so users have
+        both entry points and existing Maestro flow 32 keeps its selector.
+      */}
       <View style={styles.actionRow} pointerEvents="box-none">
         <View style={{ flex: 1 }} />
         <Pressable
@@ -306,12 +403,12 @@ export default function PlanScreen() {
           <SymbolIcon name="cart" size={20} tintColor="#3E332A" />
         </Pressable>
         <Pressable
-          onPress={handleRegenerate}
+          onPress={handleOpenWeekSheet}
           style={styles.actionBtn}
           hitSlop={8}
-          accessibilityLabel="Regenerate week"
+          accessibilityLabel="Week actions"
         >
-          <SymbolIcon name="arrow.clockwise" size={20} tintColor="#3E332A" />
+          <SymbolIcon name="ellipsis" size={20} tintColor="#3E332A" />
         </Pressable>
       </View>
 
@@ -389,6 +486,16 @@ export default function PlanScreen() {
         onOpenCart={handleOpenCart}
         onRetry={handleHandoffRetry}
         onDismiss={handleHandoffDismiss}
+      />
+
+      <WeekActionSheet
+        visible={weekSheetVisible}
+        onDismiss={handleWeekSheetDismiss}
+        onRegenerate={handleRegenerateFromSheet}
+        onShiftForward={handleShiftForward}
+        onShiftBackward={handleShiftBackward}
+        onDuplicateLastWeek={handleDuplicateLastWeek}
+        onShoppingList={handleShoppingHandoff}
       />
     </SafeAreaView>
   );
