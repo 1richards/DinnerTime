@@ -716,6 +716,164 @@ describe('00026_meal_plans_focus.sql (static)', () => {
 });
 
 // -----------------------------------------------------------------------------
+// Phase 23 migrations — STATIC contract assertions
+// -----------------------------------------------------------------------------
+
+describe('00027_ai_events.sql (static)', () => {
+  const sql = readMigration('00027_ai_events.sql');
+
+  it('creates the ai_events table', () => {
+    expect(sql).toMatch(/CREATE\s+TABLE\s+ai_events/i);
+  });
+
+  it('declares id BIGSERIAL PRIMARY KEY', () => {
+    expect(sql).toMatch(/id\s+BIGSERIAL\s+PRIMARY\s+KEY/i);
+  });
+
+  it('declares profile_id FK to auth.users ON DELETE CASCADE', () => {
+    expect(sql).toMatch(
+      /profile_id\s+UUID\s+NOT\s+NULL\s+REFERENCES\s+auth\.users\(id\)\s+ON\s+DELETE\s+CASCADE/i,
+    );
+  });
+
+  it('declares session_id TEXT NOT NULL and event_type TEXT NOT NULL', () => {
+    expect(sql).toMatch(/session_id\s+TEXT\s+NOT\s+NULL/i);
+    expect(sql).toMatch(/event_type\s+TEXT\s+NOT\s+NULL/i);
+  });
+
+  it('declares task_name TEXT NOT NULL and model TEXT NOT NULL', () => {
+    expect(sql).toMatch(/task_name\s+TEXT\s+NOT\s+NULL/i);
+    expect(sql).toMatch(/model\s+TEXT\s+NOT\s+NULL/i);
+  });
+
+  it("declares payload JSONB NOT NULL DEFAULT '{}'::jsonb", () => {
+    expect(sql).toMatch(
+      /payload\s+JSONB\s+NOT\s+NULL\s+DEFAULT\s+'\{\}'::jsonb/i,
+    );
+  });
+
+  it('declares client_ts NOT NULL and server_ts NOT NULL DEFAULT now()', () => {
+    expect(sql).toMatch(/client_ts\s+TIMESTAMPTZ\s+NOT\s+NULL/i);
+    expect(sql).toMatch(
+      /server_ts\s+TIMESTAMPTZ\s+NOT\s+NULL\s+DEFAULT\s+now\(\)/i,
+    );
+  });
+
+  it('does NOT include shopping_list_id, meal_plan_id, or recipe_id columns (cross-channel hygiene)', () => {
+    const withoutComments = sql
+      .split('\n')
+      .map((line) => line.replace(/--.*$/, ''))
+      .join('\n');
+    expect(withoutComments).not.toMatch(/\bshopping_list_id\b/i);
+    expect(withoutComments).not.toMatch(/\bmeal_plan_id\b/i);
+    expect(withoutComments).not.toMatch(/\brecipe_id\b/i);
+  });
+
+  it('creates three indexes (profile+server_ts DESC; task_name; session_id)', () => {
+    expect(sql).toMatch(
+      /CREATE\s+INDEX\s+ai_events_profile_ts_idx\s+ON\s+ai_events\(profile_id,\s*server_ts\s+DESC\)/i,
+    );
+    expect(sql).toMatch(
+      /CREATE\s+INDEX\s+ai_events_task_name_idx\s+ON\s+ai_events\(task_name\)/i,
+    );
+    expect(sql).toMatch(
+      /CREATE\s+INDEX\s+ai_events_session_idx\s+ON\s+ai_events\(session_id\)/i,
+    );
+  });
+
+  it('enables Row Level Security', () => {
+    expect(sql).toMatch(
+      /ALTER\s+TABLE\s+ai_events\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/i,
+    );
+  });
+
+  it('declares exactly SELECT + INSERT policies, both keyed on auth.uid() = profile_id', () => {
+    expect(sql).toMatch(
+      /CREATE\s+POLICY\s+"users read own ai events"[\s\S]*FOR\s+SELECT[\s\S]*USING\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/i,
+    );
+    expect(sql).toMatch(
+      /CREATE\s+POLICY\s+"users insert own ai events"[\s\S]*FOR\s+INSERT[\s\S]*WITH\s+CHECK\s*\(\s*auth\.uid\(\)\s*=\s*profile_id\s*\)/i,
+    );
+  });
+
+  it('declares no UPDATE or DELETE policy (append-only by construction)', () => {
+    expect(sql).not.toMatch(/CREATE\s+POLICY[^;]*FOR\s+UPDATE/i);
+    expect(sql).not.toMatch(/CREATE\s+POLICY[^;]*FOR\s+DELETE/i);
+  });
+
+  it('documents Phase 23 NFR-17 via COMMENT ON TABLE', () => {
+    expect(sql).toMatch(/COMMENT\s+ON\s+TABLE\s+ai_events/i);
+    expect(sql).toMatch(/Phase\s+23/i);
+    expect(sql).toMatch(/NFR-17/i);
+  });
+});
+
+describe('00028_account_deletions.sql (static)', () => {
+  const sql = readMigration('00028_account_deletions.sql');
+
+  it('creates the account_deletions table', () => {
+    expect(sql).toMatch(/CREATE\s+TABLE\s+account_deletions/i);
+  });
+
+  it('declares id BIGSERIAL PRIMARY KEY', () => {
+    expect(sql).toMatch(/id\s+BIGSERIAL\s+PRIMARY\s+KEY/i);
+  });
+
+  it('declares profile_id UUID NOT NULL (no FK — auth.users row is cascaded away on delete)', () => {
+    // Column declaration must be present.
+    expect(sql).toMatch(/profile_id\s+UUID\s+NOT\s+NULL/i);
+    // Scoped check: the profile_id column must NOT declare an FK to auth.users
+    // on the same line/segment. Matches the column definition up to the first
+    // comma or line end (ignoring inline comment).
+    const lineWithoutComment = sql
+      .split('\n')
+      .find((l) => /^\s*profile_id\s+UUID\s+NOT\s+NULL/i.test(l))
+      ?.replace(/--.*$/, '')
+      ?? '';
+    expect(lineWithoutComment).not.toMatch(/REFERENCES\s+auth\.users/i);
+  });
+
+  it('declares requested_at NOT NULL DEFAULT now()', () => {
+    expect(sql).toMatch(
+      /requested_at\s+TIMESTAMPTZ\s+NOT\s+NULL\s+DEFAULT\s+now\(\)/i,
+    );
+  });
+
+  it('declares reason TEXT nullable', () => {
+    expect(sql).toMatch(/reason\s+TEXT(?!\s+NOT\s+NULL)/i);
+  });
+
+  it('declares scheduled_purge_at NOT NULL DEFAULT (now() + interval 30 days)', () => {
+    expect(sql).toMatch(
+      /scheduled_purge_at\s+TIMESTAMPTZ\s+NOT\s+NULL\s+DEFAULT\s+\(\s*now\(\)\s*\+\s*interval\s+'30\s+days'\s*\)/i,
+    );
+  });
+
+  it('creates profile_id index', () => {
+    expect(sql).toMatch(
+      /CREATE\s+INDEX\s+account_deletions_profile_id_idx\s+ON\s+account_deletions\(profile_id\)/i,
+    );
+  });
+
+  it('enables Row Level Security', () => {
+    expect(sql).toMatch(
+      /ALTER\s+TABLE\s+account_deletions\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/i,
+    );
+  });
+
+  it('declares NO RLS policies (deny-by-default to anon/authenticated; service_role only)', () => {
+    expect(sql).not.toMatch(/CREATE\s+POLICY/i);
+  });
+
+  it('documents Phase 23 NFR-04 + service-role-only access via COMMENT ON TABLE', () => {
+    expect(sql).toMatch(/COMMENT\s+ON\s+TABLE\s+account_deletions/i);
+    expect(sql).toMatch(/Phase\s+23/i);
+    expect(sql).toMatch(/NFR-04/i);
+    expect(sql).toMatch(/service_role/i);
+  });
+});
+
+// -----------------------------------------------------------------------------
 // LIVE — runs only when Supabase credentials are present
 // -----------------------------------------------------------------------------
 
