@@ -402,6 +402,62 @@ export default function KitchenScreen() {
       </Animated.View>
       <InlineSearchPill placeholder="Search recipes" context="library" />
       <SegmentedControl segment={segment} setSegment={setSegment} />
+      {/* Library filter toolbar — mirrors the Refresh/Clear row on Something
+          New. Visible by default so users discover filtering without having
+          to find the tiny floating icon. Active-filter count appears inline. */}
+      <View style={styles.libraryToolbar}>
+        <Text style={styles.resultsCount}>
+          {filteredRecipes.length}{' '}
+          {filteredRecipes.length === 1 ? 'recipe' : 'recipes'}
+          {activeFilterCount > 0 ? ` · ${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'}` : ''}
+        </Text>
+        <View style={styles.toolbarActions}>
+          <Pressable
+            onPress={() => setFilterSheetOpen(true)}
+            hitSlop={8}
+            accessibilityLabel="Narrow your recipes"
+            style={({ pressed }) => [
+              styles.toolbarBtn,
+              activeFilterCount > 0 && styles.toolbarBtnActive,
+              pressed && styles.toolbarBtnPressed,
+            ]}
+          >
+            <SymbolIcon
+              name="line.3.horizontal.decrease.circle"
+              size={16}
+              tintColor={activeFilterCount > 0 ? '#FFFFFF' : colors.brand}
+            />
+            <Text
+              style={[
+                styles.toolbarBtnText,
+                activeFilterCount > 0 && { color: '#FFFFFF' },
+              ]}
+            >
+              Narrow results
+            </Text>
+          </Pressable>
+          {activeFilterCount > 0 && (
+            <Pressable
+              onPress={() => setFilters(EMPTY_FILTERS)}
+              hitSlop={8}
+              accessibilityLabel="Clear filters"
+              style={({ pressed }) => [
+                styles.toolbarBtn,
+                pressed && styles.toolbarBtnPressed,
+              ]}
+            >
+              <SymbolIcon
+                name="xmark.circle"
+                size={16}
+                tintColor={colors.textSecondary}
+              />
+              <Text style={[styles.toolbarBtnText, { color: colors.textSecondary }]}>
+                Clear
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      </View>
     </View>
   );
 
@@ -455,54 +511,11 @@ export default function KitchenScreen() {
         <Text style={styles.compactTitle}>Kitchen</Text>
       </Animated.View>
 
-      {/* Search pill moved inline into each segment's list header (below the
-          large title + segmented control). Absolute-positioned top:8 variant
-          removed for header/search rhythm parity with Pantry + Plan. */}
-
-      {/* Action row (top-right). Something New: HeaderEllipsis. Library:
-          filter + discover. */}
-      <View style={styles.actionRow} pointerEvents="box-none">
-        <View style={{ flex: 1 }} />
-
-        {segment === 'suggestions' && (
-          <View style={styles.actionBtn}>
-            <SomethingNewEllipsis />
-          </View>
-        )}
-
-        {segment === 'library' && (
-          <>
-            <Pressable
-              onPress={() => setFilterSheetOpen(true)}
-              style={[
-                styles.actionBtn,
-                activeFilterCount > 0 && styles.actionBtnActive,
-              ]}
-              hitSlop={8}
-              accessibilityLabel="Open filters"
-            >
-              <SymbolIcon
-                name="line.3.horizontal.decrease.circle"
-                size={20}
-                tintColor={activeFilterCount > 0 ? '#FFFFFF' : colors.textPrimary}
-              />
-              {activeFilterCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{activeFilterCount}</Text>
-                </View>
-              )}
-            </Pressable>
-            <Pressable
-              onPress={() => router.push('/recipes/discover')}
-              style={styles.actionBtn}
-              hitSlop={8}
-              accessibilityLabel="Discover recipes"
-            >
-              <SymbolIcon name="sparkles" size={20} tintColor={colors.warning} />
-            </Pressable>
-          </>
-        )}
-      </View>
+      {/* Top action row removed — Something New's ellipsis was redundant with
+          the on-page Refresh/Clear toolbar, and Recipe Box's Discover sparkle
+          was redundant with the Something New segment. Filter moved inline
+          into the library list header below (libraryFilterToolbar). Clearing
+          the row lets the large title float all the way to the top. */}
 
       {/* Both lists mounted in parallel; hide the inactive one with display:none
           so its scroll position, search, and filter state survive segment toggles. */}
@@ -707,5 +720,47 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 20,
+  },
+  // Library-side visible toolbar — mirrors SomethingNewResults' Refresh/Clear
+  // styling so the two segments feel consistent. Active filter state fills
+  // the button with the brand color for obvious on/off state.
+  libraryToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    marginHorizontal: 20,
+    gap: 8,
+  },
+  resultsCount: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    flexShrink: 1,
+    marginRight: 8,
+  },
+  toolbarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  toolbarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceSubtle,
+  },
+  toolbarBtnActive: {
+    backgroundColor: colors.brand,
+  },
+  toolbarBtnPressed: {
+    opacity: 0.6,
+  },
+  toolbarBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.brand,
   },
 });
