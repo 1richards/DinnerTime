@@ -583,6 +583,16 @@ export default function PlanScreen() {
     );
   }, [currentPlan, generate]);
 
+  // Phase 22-05: Settings → Plan → "Weekly Skill Focus banner" toggle.
+  // Default true. Read reactively so flipping the toggle in Settings
+  // immediately hides/shows the banner without a tab re-mount. MUST run
+  // before the early returns below — placing it after the conditionals
+  // caused "rendered more hooks than during the previous render" when
+  // currentPlan transitions null → populated.
+  const planFocusBannerEnabled = useSettingsStore(
+    (s) => s.planFocusBannerEnabled
+  );
+
   if (loading && !currentPlan) {
     return (
       <SafeAreaView
@@ -609,13 +619,6 @@ export default function PlanScreen() {
   }
 
   const weekRange = formatRangeFromWeekStart(currentPlan.week_start);
-
-  // Phase 22-05: Settings → Plan → "Weekly Skill Focus banner" toggle.
-  // Default true. Read reactively so flipping the toggle in Settings
-  // immediately hides/shows the banner without a tab re-mount.
-  const planFocusBannerEnabled = useSettingsStore(
-    (s) => s.planFocusBannerEnabled
-  );
 
   const scaleSegmentedControl = (
     <View style={styles.segmentWrap}>

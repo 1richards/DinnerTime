@@ -241,9 +241,9 @@ export default function PantryScreen() {
       <Pressable
         onPress={() => setImportSheetOpen(true)}
         style={styles.fab}
-        accessibilityLabel="Scan items"
+        accessibilityLabel="Add items to pantry"
       >
-        <SymbolIcon name="camera.fill" size={28} tintColor="#FFFFFF" />
+        <SymbolIcon name="plus" size={30} weight="bold" tintColor="#FFFFFF" />
       </Pressable>
 
       <BulkImportSheet
