@@ -197,7 +197,12 @@ export async function resolveCanonical(
   }
 
   // 4) Auto-create candidate. Never fails a scan.
-  const { data: inserted, error: insertErr } = await supabase
+  // canonical_ingredients has RLS policy service-role-only for writes. Use the
+  // admin client if the caller didn't pre-bind one (e.g. legacy callers still
+  // passing only `supabase`).
+  const { supabaseAdmin } = await import('../config/supabase.js');
+  const writeClient = supabaseAdmin;
+  const { data: inserted, error: insertErr } = await writeClient
     .from('canonical_ingredients')
     .insert({
       canonical_name: norm,

@@ -296,6 +296,7 @@ pantry.post('/confirm', async (c) => {
 
     return c.json({ data });
   } catch (error) {
+    console.error('[pantry/confirm] reconcile error:', error);
     const message = error instanceof Error ? error.message : 'Reconciliation failed';
     return c.json({ error: message }, 500);
   }
