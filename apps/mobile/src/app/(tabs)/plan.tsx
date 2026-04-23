@@ -42,6 +42,7 @@ import {
   collapsingHeaderStyles,
   LARGE_HEADER_HEIGHT,
 } from '../../components/ui/useCollapsingHeader';
+import { InlineSearchPill } from '../../components/ui/SearchBar';
 import { colors } from '../../design/tokens';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -669,6 +670,7 @@ export default function PlanScreen() {
         </View>
         {planFocusBannerEnabled && <FocusBanner />}
       </Animated.View>
+      <InlineSearchPill placeholder="Search recipes to add" context="library" />
       {scaleSegmentedControl}
     </View>
   );
@@ -686,6 +688,7 @@ export default function PlanScreen() {
           <Text style={styles.largeSubtitle}>{weekRange}</Text>
         </View>
       </Animated.View>
+      <InlineSearchPill placeholder="Search recipes to add" context="library" />
       {scaleSegmentedControl}
     </View>
   );

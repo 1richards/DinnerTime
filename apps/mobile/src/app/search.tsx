@@ -135,10 +135,7 @@ function SomethingNewSearch() {
                   setQuery(p);
                   submitQuery(p);
                 }}
-                style={({ pressed }) => [
-                  styles.promptChip,
-                  pressed && styles.promptChipPressed,
-                ]}
+                style={styles.promptChip}
                 accessibilityLabel={`Search for ${p}`}
                 accessibilityRole="button"
               >
@@ -200,12 +197,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   promptChip: {
+    // White surface with a real shadow so the chip reads as a distinct pill
+    // against the creamy bg. The previous surfaceSubtle (#F1EAE0) had only
+    // ~5% lightness difference against bg and disappeared visually.
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: colors.surfaceSubtle,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: '#7A6651',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 1,
   },
   promptChipPressed: {
     opacity: 0.6,
