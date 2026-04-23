@@ -77,7 +77,6 @@ export default function PantryScreen() {
     onScroll,
     largeTitleOpacity,
     largeTitleTranslate,
-    compactHeaderOpacity,
   } = useCollapsingHeader();
 
   // Enriched items (confidence decay + isUncertain derivation). Location
@@ -210,17 +209,10 @@ export default function PantryScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-warmWhite" edges={['top', 'bottom']}>
-      {/* Compact nav bar */}
-      <Animated.View
-        pointerEvents="box-none"
-        style={[styles.compactHeader, { opacity: compactHeaderOpacity }]}
-      >
-        <Text style={styles.compactTitle}>Pantry</Text>
-      </Animated.View>
-
-      {/* Search moved inline into listHeader below the large "Pantry" title
-          for rhythm parity with Kitchen + Plan. */}
+    <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
+      {/* Compact nav bar removed — large "Pantry" title scrolls off naturally
+          so the list consumes full vertical real estate. Search moved inline
+          into listHeader below the large title. */}
 
       <PantryItemList
         items={filteredAvailable}

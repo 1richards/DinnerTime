@@ -119,30 +119,55 @@ function SomethingNewSearch() {
         />
       </View>
 
-      {prompts.length > 0 && (
+      {(recentQueries.length > 0 || prompts.length > 0) && (
         <ScrollView
           style={styles.promptsScroll}
           contentContainerStyle={styles.promptsContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.promptsHeading}>TRY ONE OF THESE</Text>
-          <View style={styles.promptsWrap}>
-            {prompts.map((p) => (
-              <Pressable
-                key={p}
-                onPress={() => {
-                  setQuery(p);
-                  submitQuery(p);
-                }}
-                style={styles.promptChip}
-                accessibilityLabel={`Search for ${p}`}
-                accessibilityRole="button"
-              >
-                <Text style={styles.promptChipText}>{p}</Text>
-              </Pressable>
-            ))}
-          </View>
+          {recentQueries.length > 0 && (
+            <>
+              <Text style={styles.promptsHeading}>RECENT SEARCHES</Text>
+              <View style={[styles.promptsWrap, { marginBottom: 20 }]}>
+                {recentQueries.map((q) => (
+                  <Pressable
+                    key={`recent-${q}`}
+                    onPress={() => {
+                      setQuery(q);
+                      submitQuery(q);
+                    }}
+                    style={styles.promptChip}
+                    accessibilityLabel={`Search again for ${q}`}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.promptChipText}>{q}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
+          {prompts.length > 0 && (
+            <>
+              <Text style={styles.promptsHeading}>TRY ONE OF THESE</Text>
+              <View style={styles.promptsWrap}>
+                {prompts.map((p) => (
+                  <Pressable
+                    key={p}
+                    onPress={() => {
+                      setQuery(p);
+                      submitQuery(p);
+                    }}
+                    style={styles.promptChip}
+                    accessibilityLabel={`Search for ${p}`}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.promptChipText}>{p}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
         </ScrollView>
       )}
     </View>

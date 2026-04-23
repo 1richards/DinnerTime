@@ -133,21 +133,33 @@ export function SomethingNewResults({ onRequestPreview }: SomethingNewResultsPro
             onPress={refresh}
             hitSlop={8}
             accessibilityLabel="Regenerate ideas"
-            style={({ pressed }) => [styles.toolbarBtn, pressed && styles.toolbarBtnPressed]}
+            style={({ pressed }) => [
+              styles.iconBtn,
+              pressed && styles.iconBtnPressed,
+            ]}
           >
-            <SymbolIcon name="arrow.clockwise" size={16} tintColor={colors.brand} />
-            <Text style={styles.toolbarBtnText}>Refresh</Text>
+            <SymbolIcon
+              name="arrow.clockwise"
+              size={20}
+              weight="semibold"
+              tintColor={colors.brand}
+            />
           </Pressable>
           <Pressable
             onPress={() => clearHistory()}
             hitSlop={8}
             accessibilityLabel="Clear ideas"
-            style={({ pressed }) => [styles.toolbarBtn, pressed && styles.toolbarBtnPressed]}
+            style={({ pressed }) => [
+              styles.iconBtn,
+              pressed && styles.iconBtnPressed,
+            ]}
           >
-            <SymbolIcon name="xmark.circle" size={16} tintColor={colors.textSecondary} />
-            <Text style={[styles.toolbarBtnText, { color: colors.textSecondary }]}>
-              Clear
-            </Text>
+            <SymbolIcon
+              name="xmark"
+              size={20}
+              weight="semibold"
+              tintColor={colors.textSecondary}
+            />
           </Pressable>
         </View>
       </View>
@@ -370,21 +382,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  toolbarBtn: {
-    flexDirection: 'row',
+  // Icon-only Refresh/Clear buttons — mirror the Recipe Box filter button
+  // pattern so the two toolbars visually match.
+  iconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceSubtle,
+    justifyContent: 'center',
   },
-  toolbarBtnPressed: {
+  iconBtnPressed: {
     opacity: 0.6,
-  },
-  toolbarBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.brand,
   },
 });

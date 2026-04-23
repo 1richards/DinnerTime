@@ -116,7 +116,7 @@ export default function PlanScreen() {
   const monthPlans = useMealPlanStore((s) => s.monthPlans);
   const monthLoading = useMealPlanStore((s) => s.monthLoading);
 
-  const { onScroll, largeTitleOpacity, largeTitleTranslate, compactHeaderOpacity } =
+  const { onScroll, largeTitleOpacity, largeTitleTranslate } =
     useCollapsingHeader();
 
   useEffect(() => {
@@ -656,6 +656,36 @@ export default function PlanScreen() {
     </View>
   );
 
+  // Inline Plan actions — shopping list + week-level ellipsis. Icon-only
+  // 38pt circular affordances to match the Kitchen + Recipe Box toolbar
+  // buttons. Sits below the FocusBanner (see listHeader order).
+  const planActionsRow = (
+    <View style={styles.planActionsRow}>
+      <Pressable
+        onPress={handleShoppingHandoff}
+        accessibilityLabel="Shopping list for week"
+        hitSlop={8}
+        style={({ pressed }) => [
+          styles.planActionIconBtn,
+          pressed && styles.planActionBtnPressed,
+        ]}
+      >
+        <SymbolIcon name="cart" size={20} weight="semibold" tintColor={colors.brand} />
+      </Pressable>
+      <Pressable
+        onPress={handleOpenWeekSheet}
+        accessibilityLabel="Week actions"
+        hitSlop={8}
+        style={({ pressed }) => [
+          styles.planActionIconBtn,
+          pressed && styles.planActionBtnPressed,
+        ]}
+      >
+        <SymbolIcon name="ellipsis" size={20} weight="semibold" tintColor={colors.brand} />
+      </Pressable>
+    </View>
+  );
+
   const listHeader = (
     <View>
       <Animated.View
@@ -668,10 +698,11 @@ export default function PlanScreen() {
           <Text style={styles.largeTitle}>This Week</Text>
           <Text style={styles.largeSubtitle}>{weekRange}</Text>
         </View>
-        {planFocusBannerEnabled && <FocusBanner />}
       </Animated.View>
       <InlineSearchPill placeholder="Search recipes to add" context="library" />
       {scaleSegmentedControl}
+      {planFocusBannerEnabled && <FocusBanner />}
+      {planActionsRow}
     </View>
   );
 
@@ -690,47 +721,22 @@ export default function PlanScreen() {
       </Animated.View>
       <InlineSearchPill placeholder="Search recipes to add" context="library" />
       {scaleSegmentedControl}
+      {planActionsRow}
     </View>
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-warmWhite" edges={['top', 'bottom']}>
-      {/* Compact nav bar */}
-      <Animated.View
-        pointerEvents="box-none"
-        style={[styles.compactHeader, { opacity: compactHeaderOpacity }]}
-      >
-        <Text style={styles.compactTitle}>This Week</Text>
-      </Animated.View>
+    <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
+      {/* Compact nav bar removed — large "This Week" title scrolls off
+          naturally so the list consumes full vertical real estate. */}
 
-      {/*
-        Action row — Phase 22-02: single ellipsis opens WeekActionSheet
-        (regenerate / shift ±1 / duplicate / shopping list). The dedicated
-        "Shopping list for week" icon from 22-01 is preserved so users have
-        both entry points and existing Maestro flow 32 keeps its selector.
-      */}
-      <View style={styles.actionRow} pointerEvents="box-none">
-        <View style={{ flex: 1 }} />
-        <Pressable
-          onPress={handleShoppingHandoff}
-          style={styles.actionBtn}
-          hitSlop={8}
-          accessibilityLabel="Shopping list for week"
-        >
-          <SymbolIcon name="cart" size={20} tintColor="#3E332A" />
-        </Pressable>
-        <Pressable
-          onPress={handleOpenWeekSheet}
-          style={styles.actionBtn}
-          hitSlop={8}
-          accessibilityLabel="Week actions"
-        >
-          <SymbolIcon name="ellipsis" size={20} tintColor="#3E332A" />
-        </Pressable>
-      </View>
+      {/* Action row moved inline into each list header below the Week/Month
+          segmented control (see planActionsRow in scaleSegmentedControl's
+          vicinity). Top-floating action cluster removed for header/content
+          rhythm parity with Kitchen. */}
 
       {error && error !== 'already_cooked' && (
-        <View className="mx-4 mb-2 p-3 rounded-xl bg-red-50 border border-red-200" style={{ marginTop: 52 }}>
+        <View className="mx-4 mb-2 p-3 rounded-xl bg-red-50 border border-red-200" style={{ marginTop: 8 }}>
           <Text className="text-sm text-red-700">{error}</Text>
         </View>
       )}
@@ -897,5 +903,27 @@ const styles = StyleSheet.create({
   },
   segmentLabelActive: {
     color: '#FFFFFF',
+  },
+  // Inline Plan actions — icon-only shopping list + week actions. Right-
+  // aligned below the FocusBanner to match Kitchen's toolbar rhythm.
+  planActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    gap: 8,
+  },
+  planActionIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  planActionBtnPressed: {
+    opacity: 0.6,
   },
 });

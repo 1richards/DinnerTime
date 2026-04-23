@@ -339,12 +339,6 @@ export default function KitchenScreen() {
   const suggestionsHeader = useCollapsingHeader();
   const libraryHeader = useCollapsingHeader();
 
-  // Active header drives the compact top bar
-  const activeCompactOpacity =
-    segment === 'suggestions'
-      ? suggestionsHeader.compactHeaderOpacity
-      : libraryHeader.compactHeaderOpacity;
-
   // ---------- library fetches ----------
   useEffect(() => {
     if (!isOnline && recipes.length > 0) return;
@@ -412,50 +406,46 @@ export default function KitchenScreen() {
           {activeFilterCount > 0 ? ` · ${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'}` : ''}
         </Text>
         <View style={styles.toolbarActions}>
-          <Pressable
-            onPress={() => setFilterSheetOpen(true)}
-            hitSlop={8}
-            accessibilityLabel="Narrow your recipes"
-            style={({ pressed }) => [
-              styles.toolbarBtn,
-              activeFilterCount > 0 && styles.toolbarBtnActive,
-              pressed && styles.toolbarBtnPressed,
-            ]}
-          >
-            <SymbolIcon
-              name="line.3.horizontal.decrease.circle"
-              size={16}
-              tintColor={activeFilterCount > 0 ? '#FFFFFF' : colors.brand}
-            />
-            <Text
-              style={[
-                styles.toolbarBtnText,
-                activeFilterCount > 0 && { color: '#FFFFFF' },
-              ]}
-            >
-              Narrow results
-            </Text>
-          </Pressable>
           {activeFilterCount > 0 && (
             <Pressable
               onPress={() => setFilters(EMPTY_FILTERS)}
               hitSlop={8}
               accessibilityLabel="Clear filters"
               style={({ pressed }) => [
-                styles.toolbarBtn,
+                styles.filterIconBtn,
                 pressed && styles.toolbarBtnPressed,
               ]}
             >
               <SymbolIcon
-                name="xmark.circle"
-                size={16}
+                name="xmark"
+                size={18}
+                weight="semibold"
                 tintColor={colors.textSecondary}
               />
-              <Text style={[styles.toolbarBtnText, { color: colors.textSecondary }]}>
-                Clear
-              </Text>
             </Pressable>
           )}
+          <Pressable
+            onPress={() => setFilterSheetOpen(true)}
+            hitSlop={8}
+            accessibilityLabel="Filter recipes"
+            style={({ pressed }) => [
+              styles.filterIconBtn,
+              activeFilterCount > 0 && styles.filterIconBtnActive,
+              pressed && styles.toolbarBtnPressed,
+            ]}
+          >
+            <SymbolIcon
+              name="line.3.horizontal.decrease"
+              size={20}
+              weight="semibold"
+              tintColor={activeFilterCount > 0 ? '#FFFFFF' : colors.brand}
+            />
+            {activeFilterCount > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+              </View>
+            )}
+          </Pressable>
         </View>
       </View>
     </View>
@@ -502,14 +492,9 @@ export default function KitchenScreen() {
 
   // ---------- render ----------
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={['top', 'bottom']}>
-      {/* Compact nav bar — fades in on scroll (active segment drives it) */}
-      <Animated.View
-        pointerEvents="box-none"
-        style={[styles.compactHeader, { opacity: activeCompactOpacity }]}
-      >
-        <Text style={styles.compactTitle}>Kitchen</Text>
-      </Animated.View>
+    <SafeAreaView className="flex-1 bg-bg" edges={['bottom']}>
+      {/* Compact nav bar removed — large "Kitchen" / "Hey, {name}!" title
+          scrolls off naturally to maximize vertical real estate. */}
 
       {/* Top action row removed — Something New's ellipsis was redundant with
           the on-page Refresh/Clear toolbar, and Recipe Box's Discover sparkle
@@ -547,14 +532,10 @@ export default function KitchenScreen() {
             segment={segment}
             setSegment={setSegment}
           />
-          {hasHistory && (
-            <RecentQueryChips
-              queries={recentQueries}
-              onSelect={(q) => {
-                void searchRecipes(q, { pantryOnly });
-              }}
-            />
-          )}
+          {/* Recent-query chips removed from this surface — historic
+              searches now surface inside the search dialog instead, so
+              they're available when users are about to type a new query
+              rather than cluttering the results view. */}
           {showPhase17Results ? (
             <SomethingNewResults
               onRequestPreview={(r) => setPreviewRecipe(r)}
@@ -746,21 +727,66 @@ const styles = StyleSheet.create({
   toolbarBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceSubtle,
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.brand,
+    shadowColor: '#7A6651',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 1,
   },
   toolbarBtnActive: {
     backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
   toolbarBtnPressed: {
     opacity: 0.6,
   },
   toolbarBtnText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.brand,
+    lineHeight: 18,
+  },
+  // Icon-only filter button — matches the 36pt circular affordance pattern
+  // used in nav action rows elsewhere. No label text because the 3-lines
+  // glyph is a well-known UI-design standard for "filter".
+  filterIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterIconBtnActive: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.destructive,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.bg,
+  },
+  filterBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });
