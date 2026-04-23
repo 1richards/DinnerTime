@@ -43,9 +43,12 @@ const ACTION_BTN_BG = 'rgba(255,255,255,0.9)';
 export const collapsingHeaderStyles = StyleSheet.create({
   largeHeader: {
     paddingHorizontal: 20,
-    paddingTop: 0,
+    // ~12pt of breathing room above the big title so it doesn't butt up
+    // against the banner/status chrome above it (user feedback after the
+    // redundant safe-area inset was removed).
+    paddingTop: 12,
     paddingBottom: 4,
-    marginTop: -6,
+    marginTop: 0,
   },
   largeTitle: {
     ...typography.display,

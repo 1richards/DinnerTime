@@ -699,11 +699,11 @@ export default function PlanScreen() {
           <Text style={styles.largeTitle}>This Week</Text>
           <Text style={styles.largeSubtitle}>{weekRange}</Text>
         </View>
-        {planFocusBannerEnabled && <FocusBanner />}
       </Animated.View>
       <InlineSearchPill placeholder="Search recipes to add" context="library" />
       {scaleSegmentedControl}
       {planActionsRow}
+      {planFocusBannerEnabled && <FocusBanner />}
     </View>
   );
 
@@ -727,7 +727,7 @@ export default function PlanScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-warmWhite" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
       {/* Compact nav bar removed — large "This Week" title scrolls off
           naturally so the list consumes full vertical real estate. */}
 
