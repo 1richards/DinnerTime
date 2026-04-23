@@ -681,31 +681,33 @@ function VariationCard({
 
         {!saved && !modified && (
           <View>
-            <Pressable
-              onPress={onCook}
-              disabled={disabled || isWorking}
-              style={({ pressed }) => [
-                styles.actionBtnCookFull,
-                pressed && !disabled && !isWorking && { opacity: 0.85 },
-                (disabled || isWorking) && !isCooking && { opacity: 0.5 },
-              ]}
-            >
-              {isCooking ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <SymbolIcon name="flame.fill" size={16} tintColor="#FFFFFF" />
-                  <Text style={styles.actionBtnCookFullText}>Cook now</Text>
-                </>
-              )}
-            </Pressable>
+            <View style={styles.actionBtnCookFull}>
+              <Pressable
+                onPress={onCook}
+                disabled={disabled || isWorking}
+                style={({ pressed }) => [
+                  styles.actionBtnCookFullInner,
+                  pressed && !(disabled || isWorking) ? { opacity: 0.85 } : null,
+                  (disabled || isWorking) && !isCooking ? { opacity: 0.5 } : null,
+                ]}
+              >
+                {isCooking ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <SymbolIcon name="flame.fill" size={16} tintColor="#FFFFFF" />
+                    <Text style={styles.actionBtnCookFullText}>Cook now</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
             <Pressable
               onPress={openOverflow}
               disabled={disabled || isWorking}
               style={({ pressed }) => [
                 styles.moreActionsBtn,
-                pressed && !disabled && !isWorking && { opacity: 0.7 },
-                (disabled || isWorking) && { opacity: 0.5 },
+                pressed && !(disabled || isWorking) ? { opacity: 0.7 } : null,
+                (disabled || isWorking) ? { opacity: 0.5 } : null,
               ]}
             >
               <Text style={styles.moreActionsText}>More actions</Text>
@@ -874,13 +876,17 @@ const styles = StyleSheet.create({
   },
   actionBtnCookFull: {
     backgroundColor: '#B85C2E',
+    height: 50,
+    borderRadius: 12,
+    width: '100%',
+    overflow: 'hidden',
+  },
+  actionBtnCookFullInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 50,
-    borderRadius: 12,
-    width: '100%',
+    flex: 1,
   },
   actionBtnCookFullText: {
     fontSize: 16,
