@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -452,6 +452,7 @@ export function RemixSheet({
                 isCooking={workingIdx === i && workingAction === 'cook'}
                 disabled={workingIdx !== null && workingIdx !== i}
                 canModifyExisting={source.kind === 'saved'}
+                baseIngredients={baseForSave?.ingredients}
                 onExpand={() => handleExpand(i, v)}
                 onCook={() => handleCookNow(i, v)}
                 onSaveAsNew={() => handleSaveAsNew(i, v)}
@@ -583,6 +584,7 @@ interface VariationCardProps {
   isCooking: boolean;
   disabled: boolean;
   canModifyExisting: boolean;
+  baseIngredients?: Array<string | BaseIngredient>;
   onExpand: () => void;
   onCook: () => void;
   onSaveAsNew: () => void;
@@ -603,6 +605,7 @@ function VariationCard({
   isCooking,
   disabled,
   canModifyExisting,
+  baseIngredients,
   onExpand,
   onCook,
   onSaveAsNew,
@@ -610,12 +613,29 @@ function VariationCard({
   onOpenSaved,
   onOpenModified,
 }: VariationCardProps) {
-  // RemixVariation carries only {title, description} — NO ingredients field.
-  // Do NOT pass `ingredients` here; the hook's session cache keys on the
-  // fingerprint of whatever it receives, and the server-side prompt works
-  // fine with title + description alone.
+  // Normalize the parent's loose BaseIngredient[] (mix of strings and objects)
+  // into the strict ParsedIngredient[] shape that useGeneratedRecipeImage
+  // expects. Nulled optional fields are intentional — the hook tolerates them.
+  const normalizedBaseIngredients = useMemo(() => {
+    if (!baseIngredients || baseIngredients.length === 0) return null;
+    return baseIngredients.map((i) =>
+      typeof i === 'string'
+        ? { name: i, quantity: null, unit: null, notes: null }
+        : {
+            name: i.name,
+            quantity: i.quantity ?? null,
+            unit: i.unit ?? null,
+            notes: i.notes ?? null,
+          },
+    );
+  }, [baseIngredients]);
+
+  // Hero image uses base-recipe ingredients as visual anchors so Gemini
+  // renders the actual dish family (e.g. tacos for a taco remix), not just
+  // the variation's title keyword.
   const generatedUri = useGeneratedRecipeImage(variation.title, {
     description: variation.description,
+    ingredients: normalizedBaseIngredients,
   });
   const heroUri = getRecipeImage(
     `remix-card-${index}-${variation.title}`,
@@ -661,7 +681,9 @@ function VariationCard({
           </View>
           <Text style={styles.variationTitle}>{variation.title}</Text>
         </View>
-        <Text style={styles.variationDescription}>{variation.description}</Text>
+        <Text style={styles.variationDescription} numberOfLines={2}>
+          {variation.description}
+        </Text>
 
         {saved && (
           <Pressable
@@ -711,11 +733,16 @@ function VariationCard({
               onPress={openOverflow}
               disabled={disabled || isWorking}
               style={({ pressed }) => [
-                styles.moreActionsBtn,
+                styles.moreActionsPill,
                 pressed && !(disabled || isWorking) ? { opacity: 0.7 } : null,
                 (disabled || isWorking) ? { opacity: 0.5 } : null,
               ]}
             >
+              <SymbolIcon
+                name="ellipsis"
+                size={16}
+                tintColor={colors.textSecondary}
+              />
               <Text style={styles.moreActionsText}>More actions</Text>
             </Pressable>
           </View>
@@ -916,16 +943,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
   },
-  moreActionsBtn: {
+  moreActionsPill: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    gap: 6,
+    height: 40,
+    width: '100%',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F1EAE0',
+    backgroundColor: 'transparent',
     marginTop: 12,
   },
   moreActionsText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#7A6651',
+    color: colors.textSecondary,
   },
   statusRow: {
     flexDirection: 'row',
