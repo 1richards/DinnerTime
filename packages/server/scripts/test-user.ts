@@ -2,13 +2,15 @@
 //
 // Usage:
 //   tsx scripts/test-user.ts ensure   # create if missing, print id + jwt
-//   tsx scripts/test-user.ts reset    # delete all rows owned by the test user (does NOT delete the user)
+//   tsx scripts/test-user.ts reset    # delete all rows owned by the test user (does NOT delete the user) + re-seed pantry
+//   tsx scripts/test-user.ts clear    # delete recipes + pantry_items for the test user (keeps auth user, profile, household)
 //   tsx scripts/test-user.ts jwt      # print a fresh access token (requires existing user)
 //   tsx scripts/test-user.ts info     # print user id + email + jwt as JSON
 //
 // Reads SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_ANON_KEY from process.env.
 
 import { createClient } from '@supabase/supabase-js';
+import { buildSeedPantryRows } from './fixtures/seed-pantry.js';
 
 const TEST_EMAIL = process.env.TEST_USER_EMAIL ?? 'uat@dinnertime.test';
 const TEST_PASSWORD = process.env.TEST_USER_PASSWORD ?? 'UATovernight2026';
@@ -122,33 +124,46 @@ async function reset() {
 
   // Seed a baseline pantry so meal plan generation has ingredients to work with.
   // Without this, the AI returns EMPTY_PANTRY and downstream UAT flows fail.
-  const seedPantry = [
-    { name: 'Chicken Breast', category: 'protein', source_location: 'fridge', unit: 'lb', quantity: 2 },
-    { name: 'Ground Beef', category: 'protein', source_location: 'freezer', unit: 'lb', quantity: 1 },
-    { name: 'Pasta', category: 'grain', source_location: 'pantry', unit: 'box', quantity: 2 },
-    { name: 'Rice', category: 'grain', source_location: 'pantry', unit: 'lb', quantity: 1 },
-    { name: 'Onion', category: 'produce', source_location: 'pantry', unit: 'piece', quantity: 3 },
-    { name: 'Garlic', category: 'produce', source_location: 'pantry', unit: 'head', quantity: 2 },
-    { name: 'Tomatoes', category: 'produce', source_location: 'fridge', unit: 'piece', quantity: 4 },
-    { name: 'Bell Peppers', category: 'produce', source_location: 'fridge', unit: 'piece', quantity: 3 },
-    { name: 'Spinach', category: 'produce', source_location: 'fridge', unit: 'bag', quantity: 1 },
-    { name: 'Eggs', category: 'protein', source_location: 'fridge', unit: 'dozen', quantity: 1 },
-    { name: 'Milk', category: 'dairy', source_location: 'fridge', unit: 'gal', quantity: 1 },
-    { name: 'Cheese', category: 'dairy', source_location: 'fridge', unit: 'block', quantity: 1 },
-    { name: 'Olive Oil', category: 'condiment', source_location: 'pantry', unit: 'bottle', quantity: 1 },
-    { name: 'Soy Sauce', category: 'condiment', source_location: 'pantry', unit: 'bottle', quantity: 1 },
-    { name: 'Black Beans', category: 'grain', source_location: 'pantry', unit: 'can', quantity: 2 },
-  ].map((p) => ({
-    ...p,
-    profile_id: user.id,
-    normalized_name: p.name.toLowerCase().trim(),
-    confidence: 1,
-    status: 'available',
-  }));
+  // Seed data lives in scripts/fixtures/seed-pantry.ts so generate-test-recipes
+  // and any future tooling can share the exact same inputs.
+  const seedPantry = buildSeedPantryRows(user.id);
   const { error: pantryErr } = await admin.from('pantry_items').insert(seedPantry);
   if (pantryErr) console.error(`[test-user] seed pantry: ${pantryErr.message}`);
 
   console.error(`[test-user] reset complete for ${TEST_EMAIL} (+ ${seedPantry.length} pantry items)`);
+  return user;
+}
+
+/**
+ * Surgical wipe: delete ONLY the test user's recipes + pantry_items.
+ *
+ * Unlike `reset`, this intentionally preserves:
+ *   - auth.users row (same id keeps JWTs valid)
+ *   - profiles row (so onboarding stays completed)
+ *   - household_members rows (so discovery still has dietary context)
+ *   - meal_plans / shopping_lists (not what we're iterating on here)
+ *
+ * Use case: the "wipe recipes, regenerate from pantry, eyeball imagery" loop
+ * paired with generate-test-recipes.ts. If you want a full nuke, run `reset`.
+ */
+async function clear() {
+  const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+  if (listErr) throw listErr;
+  const user = list.users.find((u) => u.email === TEST_EMAIL);
+  if (!user) {
+    console.error(`[test-user] no user to clear: ${TEST_EMAIL}`);
+    return null;
+  }
+
+  // Only these two tables. `recipe_step_tips` is a child of `recipes` and
+  // cascades automatically on recipe delete (same assumption reset() relies on).
+  const tables = ['recipes', 'pantry_items'] as const;
+  for (const table of tables) {
+    const { error } = await admin.from(table).delete().eq('profile_id', user.id);
+    if (error) console.error(`[test-user] clear ${table}: ${error.message}`);
+  }
+
+  console.error(`[test-user] cleared recipes + pantry_items for ${TEST_EMAIL}`);
   return user;
 }
 
@@ -172,6 +187,10 @@ async function main() {
     }
     case 'reset': {
       await reset();
+      break;
+    }
+    case 'clear': {
+      await clear();
       break;
     }
     case 'jwt': {
