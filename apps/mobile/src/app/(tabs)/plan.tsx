@@ -116,7 +116,7 @@ export default function PlanScreen() {
   const monthPlans = useMealPlanStore((s) => s.monthPlans);
   const monthLoading = useMealPlanStore((s) => s.monthLoading);
 
-  const { onScroll, largeTitleOpacity, largeTitleTranslate, compactHeaderOpacity } =
+  const { onScroll, largeTitleOpacity, largeTitleTranslate } =
     useCollapsingHeader();
 
   useEffect(() => {
@@ -695,13 +695,8 @@ export default function PlanScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-warmWhite" edges={['top', 'bottom']}>
-      {/* Compact nav bar */}
-      <Animated.View
-        pointerEvents="box-none"
-        style={[styles.compactHeader, { opacity: compactHeaderOpacity }]}
-      >
-        <Text style={styles.compactTitle}>This Week</Text>
-      </Animated.View>
+      {/* Compact nav bar removed — large "This Week" title scrolls off
+          naturally so the list consumes full vertical real estate. */}
 
       {/*
         Action row — Phase 22-02: single ellipsis opens WeekActionSheet
