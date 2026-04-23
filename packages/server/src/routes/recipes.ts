@@ -18,6 +18,7 @@ import {
   discoverRecipes,
   type DiscoveryPreferences,
 } from '../services/recipeDiscovery.js';
+import { generateRecipeImage } from '../services/recipeImageGen.js';
 
 // Fields a client is allowed to patch. Anything else in the body is ignored.
 const PATCHABLE_FIELDS = [
@@ -131,14 +132,19 @@ recipes.post('/search', async (c) => {
   const supabase = c.get('supabase');
   const user = c.get('user');
 
-  // Strict body validation -- empty/whitespace query is a 400.
+  // Strict body validation. Empty query is accepted when pantryOnly=true
+  // (the "dinner ideas from my pantry" flow — the pantry manifest IS the
+  // signal, no text query needed). Otherwise a text query is required.
   let body: { query?: string; pantryOnly?: boolean };
   try {
     body = await c.req.json();
   } catch {
     return c.json({ error: 'Invalid JSON body' }, 400);
   }
-  if (typeof body.query !== 'string' || body.query.trim().length === 0) {
+  if (typeof body.query !== 'string') {
+    return c.json({ error: 'Query is required' }, 400);
+  }
+  if (body.query.trim().length === 0 && body.pantryOnly !== true) {
     return c.json({ error: 'Query is required' }, 400);
   }
 
@@ -464,6 +470,34 @@ recipes.post('/remix', async (c) => {
     const message = error instanceof Error ? error.message : 'Failed to apply remix';
     return c.json({ error: message }, 500);
   }
+});
+
+/**
+ * POST /generate-image — generate an AI hero image for a recipe title.
+ *
+ * Body: { title: string }
+ * Returns: { url: string | null }
+ *
+ * Fire-and-forget friendly: mobile cards call this asynchronously and swap
+ * their placeholder/keyword-match hero once the URL arrives. Server caches
+ * by sha256(title) in the recipe-images Storage bucket, so repeat titles
+ * return instantly on cache hit.
+ */
+recipes.post('/generate-image', async (c) => {
+  let body: { title?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+  if (typeof body.title !== 'string' || body.title.trim().length === 0) {
+    return c.json({ error: 'title is required' }, 400);
+  }
+  const url = await generateRecipeImage(body.title);
+  // null is a valid response — mobile keeps its fallback image. Return 200
+  // either way so callers don't need error-handling branches for the common
+  // "model safety block" case.
+  return c.json({ url });
 });
 
 export default recipes;

@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import type { DinnerSuggestion } from '../../types/suggestions';
 import { FOOD_IMAGES, getRecipeImage } from '../../constants/foodImages';
+import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
 import { supabase } from '../../lib/supabase';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
 import { colors } from '../../design/tokens';
@@ -126,14 +127,15 @@ export function SuggestionCard({ suggestion, onPress }: SuggestionCardProps) {
       : `sc-${Date.now()}`,
   );
 
-  // Title-aware image pick: matches dish-type keywords (e.g. "Salsa Scrambled
-  // Eggs" → breakfast pool, not a random hero). Falls back to a hash of the
-  // title + cuisine type if no keyword matches.
-  const heroUri = getRecipeImage(
+  // Title-aware keyword fallback (shown while Gemini image generates).
+  const fallbackUri = getRecipeImage(
     `suggestion-${suggestion.title}-${suggestion.cuisine_type ?? ''}`,
     null,
     suggestion.title,
   );
+  // Async Gemini nano-banana hero, cached server-side by title hash.
+  const generatedUri = useGeneratedRecipeImage(suggestion.title);
+  const heroUri = generatedUri ?? fallbackUri;
   // Suppress unused-warning on FOOD_IMAGES if it's no longer referenced.
   void FOOD_IMAGES;
 

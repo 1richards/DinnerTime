@@ -33,6 +33,7 @@ import { SuggestionSkeleton } from './SuggestionSkeleton';
 
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
 import { getRecipeImage } from '../../constants/foodImages';
+import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
 import { colors } from '../../design/tokens';
 import type { ParsedRecipe } from '../../types/recipe';
 
@@ -127,11 +128,16 @@ function ResultCard({
   const totalTime =
     recipe.total_time_minutes ??
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
-  const heroUri = getRecipeImage(
+  const fallbackUri = getRecipeImage(
     `something-new-${recipe.title}-${idx}`,
     recipe.image_url,
     recipe.title,
   );
+  // Skip generation if we already have an image_url (imported recipes).
+  const generatedUri = useGeneratedRecipeImage(recipe.title, {
+    skip: !!recipe.image_url,
+  });
+  const heroUri = generatedUri ?? fallbackUri;
 
   return (
     <Pressable onPress={onPress} style={styles.card}>
