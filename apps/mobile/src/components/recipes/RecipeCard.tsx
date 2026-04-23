@@ -139,7 +139,7 @@ export function RecipeCard({
                   {previewActions.working === 'cook' ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <SymbolIcon name="flame.fill" size={18} tintColor="#FFE4B5" />
+                    <SymbolIcon name="flame.fill" size={24} tintColor="#FFE4B5" />
                   )}
                 </Pressable>
               )}
@@ -157,7 +157,7 @@ export function RecipeCard({
                   ]}
                   accessibilityLabel="Remix recipe"
                 >
-                  <SymbolIcon name="sparkles" size={18} tintColor="#FFE4B5" />
+                  <SymbolIcon name="sparkles" size={24} tintColor="#FFE4B5" />
                 </Pressable>
               )}
               {previewActions.onSave && (
@@ -184,7 +184,7 @@ export function RecipeCard({
                   ) : (
                     <SymbolIcon
                       name={previewActions.saved ? 'checkmark.circle.fill' : 'bookmark'}
-                      size={20}
+                      size={26}
                       tintColor={previewActions.saved ? '#10B981' : '#FFFFFF'}
                     />
                   )}
@@ -213,7 +213,7 @@ export function RecipeCard({
                 {/* `#FFE4B5` is an intentional decorative warm off-white accent
                     specifically for the sparkle glyph over dark imagery — NOT a
                     brand color. Documented deviation from Phase 19 purity. */}
-                <SymbolIcon name="sparkles" size={18} tintColor="#FFE4B5" />
+                <SymbolIcon name="sparkles" size={24} tintColor="#FFE4B5" />
               </Pressable>
               <Pressable
                 onPress={(e) => {
@@ -231,7 +231,7 @@ export function RecipeCard({
               >
                 <SymbolIcon
                   name={recipe.is_favorite ? 'heart.fill' : 'heart'}
-                  size={20}
+                  size={26}
                   tintColor={recipe.is_favorite ? colors.destructive : '#FFFFFF'}
                 />
               </Pressable>
@@ -315,18 +315,19 @@ const styles = StyleSheet.create({
   },
   actionCluster: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: 10,
+    right: 10,
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   actionBadge: {
-    // 44pt is Apple's minimum recommended touch target — the old 36pt was
-    // easy to fat-finger over hero imagery.
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    // 52pt exceeds Apple's 44pt minimum — intentionally generous because
+    // these overlays sit over busy hero imagery and need to read clearly
+    // + tolerate imprecise thumbs in a cooking/shopping context.
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
   },

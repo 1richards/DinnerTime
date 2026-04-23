@@ -423,8 +423,8 @@ export default function KitchenScreen() {
             ]}
           >
             <SymbolIcon
-              name="line.3.horizontal.decrease.circle"
-              size={16}
+              name="slider.horizontal.3"
+              size={18}
               tintColor={activeFilterCount > 0 ? '#FFFFFF' : colors.brand}
             />
             <Text
@@ -448,7 +448,7 @@ export default function KitchenScreen() {
             >
               <SymbolIcon
                 name="xmark.circle"
-                size={16}
+                size={18}
                 tintColor={colors.textSecondary}
               />
               <Text style={[styles.toolbarBtnText, { color: colors.textSecondary }]}>
@@ -746,10 +746,10 @@ const styles = StyleSheet.create({
   toolbarBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 12,
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: 16,
     backgroundColor: colors.surfaceSubtle,
   },
   toolbarBtnActive: {
@@ -759,8 +759,9 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   toolbarBtnText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.brand,
+    lineHeight: 18,
   },
 });
