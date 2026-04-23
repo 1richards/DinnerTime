@@ -74,14 +74,15 @@ interface ModeOption {
   mode: RemixMode;
   label: string;
   sub: string;
-  emoji: string;
+  symbol: string; // SF Symbol name
+  tint: string; // chip background + symbol tint color
 }
 
 const MODES: ModeOption[] = [
-  { mode: 'surprise', label: 'Surprise me', sub: 'A bold creative twist', emoji: '🎲' },
-  { mode: 'protein', label: 'Swap protein', sub: 'Keep the dish, change the star', emoji: '🥩' },
-  { mode: 'veggies', label: 'Swap veggies', sub: 'Different flavor profile', emoji: '🥗' },
-  { mode: 'quicker', label: 'Make it quicker', sub: 'Shortcut the cook time', emoji: '⏱️' },
+  { mode: 'surprise', label: 'Surprise me', sub: 'A bold creative twist', symbol: 'sparkles', tint: colors.brand },
+  { mode: 'protein', label: 'Swap protein', sub: 'Keep the dish, change the star', symbol: 'flame.fill', tint: colors.brand },
+  { mode: 'veggies', label: 'Swap veggies', sub: 'Different flavor profile', symbol: 'leaf.fill', tint: colors.success },
+  { mode: 'quicker', label: 'Make it quicker', sub: 'Shortcut the cook time', symbol: 'bolt.fill', tint: colors.brand },
 ];
 
 const getApiBaseUrl = (): string =>
@@ -372,7 +373,7 @@ export function RemixSheet({
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={styles.label}>REMIX</Text>
-            <Text style={styles.title} numberOfLines={1}>
+            <Text style={styles.title} numberOfLines={2}>
               {recipeTitle}
             </Text>
           </View>
@@ -387,23 +388,29 @@ export function RemixSheet({
             <Text style={styles.helperText}>
               How do you want to shake it up?
             </Text>
-            {MODES.map((m) => (
-              <Pressable
-                key={m.mode}
-                onPress={() => handleMode(m.mode)}
-                style={({ pressed }) => [
-                  styles.modeCard,
-                  pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
-                ]}
-              >
-                <Text style={styles.modeEmoji}>{m.emoji}</Text>
-                <View style={{ flex: 1 }}>
+            <View style={styles.modeGrid}>
+              {MODES.map((m) => (
+                <Pressable
+                  key={m.mode}
+                  onPress={() => handleMode(m.mode)}
+                  style={({ pressed }) => [
+                    styles.modeCard,
+                    pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+                  ]}
+                >
+                  <View style={[styles.modeChip, { backgroundColor: `${m.tint}1A` }]}>
+                    <SymbolIcon
+                      name={m.symbol as never}
+                      size={26}
+                      tintColor={m.tint}
+                      weight="semibold"
+                    />
+                  </View>
                   <Text style={styles.modeLabel}>{m.label}</Text>
                   <Text style={styles.modeSub}>{m.sub}</Text>
-                </View>
-                <SymbolIcon name="chevron.forward" size={18} tintColor="#A89178" />
-              </Pressable>
-            ))}
+                </Pressable>
+              ))}
+            </View>
           </ScrollView>
         )}
 
@@ -429,7 +436,6 @@ export function RemixSheet({
         {selectedMode && variations && !loading && (
           <ScrollView contentContainerStyle={styles.resultsContainer}>
             <Text style={styles.resultsLabel}>
-              {MODES.find((m) => m.mode === selectedMode)?.emoji}{' '}
               {MODES.find((m) => m.mode === selectedMode)?.label}
             </Text>
             {variations.map((v, i) => (
@@ -755,20 +761,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modesContainer: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 40,
   },
   helperText: {
-    fontSize: 14,
-    color: '#7A6651',
-    marginBottom: 14,
+    fontSize: 20,
+    fontWeight: '900',
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
   modeCard: {
-    flexDirection: 'row',
+    width: '48%',
+    minHeight: 160,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
     borderRadius: 16,
-    padding: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 12,
     marginBottom: 12,
     shadowColor: '#7A6651',
     shadowOffset: { width: 0, height: 2 },
@@ -776,19 +793,25 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  modeEmoji: {
-    fontSize: 28,
-    marginRight: 14,
+  modeChip: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   modeLabel: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#1A140F',
+    color: colors.textPrimary,
+    textAlign: 'center',
     marginBottom: 2,
   },
   modeSub: {
     fontSize: 13,
-    color: '#7A6651',
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,
