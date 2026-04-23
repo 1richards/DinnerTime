@@ -55,9 +55,9 @@ export const FOOD_IMAGES = {
     'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?auto=format&fit=crop&w=800&q=80',
     'https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=800&q=80',
   ],
-};
+} as const;
 
-// Flat pool for random assignment (used when a recipe has no image)
+// Flat pool for pure-hash fallback (used when a recipe has no title AND no image URL)
 export const ALL_FOOD_IMAGES: string[] = [
   ...FOOD_IMAGES.hero,
   ...FOOD_IMAGES.pasta,
@@ -72,16 +72,125 @@ export const ALL_FOOD_IMAGES: string[] = [
   ...FOOD_IMAGES.breakfast,
 ];
 
-/**
- * Deterministically pick an image for a recipe by hashing its ID.
- * Same recipe always gets the same image, no randomness at render time.
- */
-export function getRecipeImage(recipeId: string, imageUrl?: string | null): string {
-  if (imageUrl) return imageUrl;
-  let hash = 0;
-  for (let i = 0; i < recipeId.length; i++) {
-    hash = (hash * 31 + recipeId.charCodeAt(i)) & 0xffffffff;
+// Keyword → category mapping. First matching keyword wins. Order matters:
+// more-specific dishes appear before generic ingredients (a "chicken stir-fry"
+// should pick stirFry, not chicken). Matching is case-insensitive substring
+// on the recipe title.
+const CATEGORY_KEYWORDS: Array<[string, keyof typeof FOOD_IMAGES]> = [
+  // Specific dishes first (most discriminating)
+  ['stir-fry', 'stirFry'],
+  ['stir fry', 'stirFry'],
+  ['stirfry', 'stirFry'],
+  ['taco', 'taco'],
+  ['burrito', 'taco'],
+  ['quesadilla', 'taco'],
+  ['enchilada', 'taco'],
+  ['fajita', 'taco'],
+  ['sushi', 'sushi'],
+  ['sashimi', 'sushi'],
+  ['maki', 'sushi'],
+  ['poke', 'sushi'],
+  ['burger', 'burger'],
+  ['cheeseburger', 'burger'],
+  ['hamburger', 'burger'],
+  ['pasta', 'pasta'],
+  ['spaghetti', 'pasta'],
+  ['fettuccine', 'pasta'],
+  ['linguine', 'pasta'],
+  ['penne', 'pasta'],
+  ['rigatoni', 'pasta'],
+  ['lasagna', 'pasta'],
+  ['lasagne', 'pasta'],
+  ['ravioli', 'pasta'],
+  ['carbonara', 'pasta'],
+  ['bolognese', 'pasta'],
+  ['alfredo', 'pasta'],
+  ['noodle', 'pasta'], // after specific pastas so "rice noodle" doesn't misfire
+  ['salad', 'salad'],
+  ['slaw', 'salad'],
+  ['soup', 'soup'],
+  ['stew', 'soup'],
+  ['chowder', 'soup'],
+  ['chili', 'soup'],
+  ['ramen', 'soup'],
+  ['pho', 'soup'],
+  ['bisque', 'soup'],
+  // Breakfast indicators
+  ['scrambled egg', 'breakfast'],
+  ['scrambled-egg', 'breakfast'],
+  ['fried egg', 'breakfast'],
+  ['omelet', 'breakfast'],
+  ['omelette', 'breakfast'],
+  ['pancake', 'breakfast'],
+  ['waffle', 'breakfast'],
+  ['french toast', 'breakfast'],
+  ['frittata', 'breakfast'],
+  ['quiche', 'breakfast'],
+  ['granola', 'breakfast'],
+  ['oatmeal', 'breakfast'],
+  ['breakfast', 'breakfast'],
+  // Baked goods (dessert/bread — rare for dinner but present)
+  ['bread', 'bakedGoods'],
+  ['muffin', 'bakedGoods'],
+  ['scone', 'bakedGoods'],
+  ['cookie', 'bakedGoods'],
+  // Proteins (most generic — last so a "chicken pasta" lands on pasta above)
+  ['chicken', 'chicken'],
+  ['poultry', 'chicken'],
+  ['turkey', 'chicken'],
+  // Egg on its own (after scrambled-egg specifics) falls to breakfast
+  ['egg', 'breakfast'],
+];
+
+function hash32(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) & 0xffffffff;
   }
-  const idx = Math.abs(hash) % ALL_FOOD_IMAGES.length;
-  return ALL_FOOD_IMAGES[idx];
+  return Math.abs(h);
+}
+
+/**
+ * Deterministically pick a category for a recipe based on title keywords.
+ * Returns null if no keyword matches.
+ */
+function categoryForTitle(title: string | undefined): keyof typeof FOOD_IMAGES | null {
+  if (!title) return null;
+  const lower = title.toLowerCase();
+  for (const [keyword, category] of CATEGORY_KEYWORDS) {
+    if (lower.includes(keyword)) return category;
+  }
+  return null;
+}
+
+/**
+ * Deterministically pick an image for a recipe.
+ *
+ * Priority:
+ *   1. If `imageUrl` is non-empty, use it verbatim (imported-recipe hero).
+ *   2. If `title` matches a cuisine-category keyword, pick deterministically
+ *      from that category's image pool.
+ *   3. Otherwise, hash `recipeId` into the full pool (legacy behavior).
+ *
+ * Same recipe always gets the same image — no randomness at render time.
+ *
+ * `title` is optional to preserve the two-arg callsites that existed before
+ * the title-aware matcher landed. New callers should pass `title` so meals
+ * at least loosely visually match what they are.
+ */
+export function getRecipeImage(
+  recipeId: string,
+  imageUrl?: string | null,
+  title?: string | null,
+): string {
+  if (imageUrl) return imageUrl;
+  const category = categoryForTitle(title ?? undefined);
+  if (category) {
+    const pool = FOOD_IMAGES[category];
+    // Use the title (not id) as the hash seed so renaming a recipe via edit
+    // doesn't change the image within the same category.
+    const seed = title ?? recipeId;
+    return pool[hash32(seed) % pool.length];
+  }
+  return ALL_FOOD_IMAGES[hash32(recipeId) % ALL_FOOD_IMAGES.length];
 }

@@ -60,7 +60,7 @@ export default function RecipeDetailScreen() {
 
   const baseServings = recipe.servings ?? 1;
   const multiplier = baseServings > 0 ? servings / baseServings : 1;
-  const heroUri = getRecipeImage(recipe.id, recipe.image_url);
+  const heroUri = getRecipeImage(recipe.id, recipe.image_url, recipe.title);
 
   const totalTime =
     recipe.total_time_minutes ??

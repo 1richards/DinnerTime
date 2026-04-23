@@ -127,7 +127,11 @@ function ResultCard({
   const totalTime =
     recipe.total_time_minutes ??
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
-  const heroUri = getRecipeImage(`something-new-${recipe.title}-${idx}`);
+  const heroUri = getRecipeImage(
+    `something-new-${recipe.title}-${idx}`,
+    recipe.image_url,
+    recipe.title,
+  );
 
   return (
     <Pressable onPress={onPress} style={styles.card}>

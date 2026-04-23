@@ -85,7 +85,7 @@ export function DayRow({
   });
 
   const thumbnailUri = entry.recipe_id
-    ? getRecipeImage(entry.recipe_id, null)
+    ? getRecipeImage(entry.recipe_id, null, entry.title)
     : null;
 
   return (

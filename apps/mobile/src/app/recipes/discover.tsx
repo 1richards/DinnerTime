@@ -177,7 +177,11 @@ export default function DiscoverScreen() {
               recipe.total_time_minutes ??
               (recipe.prep_time_minutes ?? 0) +
                 (recipe.cook_time_minutes ?? 0);
-            const heroUri = getRecipeImage(`discover-${recipe.title}-${idx}`);
+            const heroUri = getRecipeImage(
+              `discover-${recipe.title}-${idx}`,
+              recipe.image_url,
+              recipe.title,
+            );
             return (
               <Pressable
                 key={`${recipe.title}-${idx}`}
@@ -241,7 +245,11 @@ export default function DiscoverScreen() {
         {previewIdx !== null && recipes[previewIdx] && (
           <PreviewSheet
             recipe={recipes[previewIdx]}
-            heroUri={getRecipeImage(`discover-${recipes[previewIdx].title}-${previewIdx}`)}
+            heroUri={getRecipeImage(
+              `discover-${recipes[previewIdx].title}-${previewIdx}`,
+              recipes[previewIdx].image_url,
+              recipes[previewIdx].title,
+            )}
             onClose={() => setPreviewIdx(null)}
             onSave={async () => {
               await handleSave(previewIdx, recipes[previewIdx]);

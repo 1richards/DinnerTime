@@ -611,6 +611,7 @@ export default function KitchenScreen() {
             heroUri={getRecipeImage(
               `something-new-${previewRecipe.title}`,
               previewRecipe.image_url,
+              previewRecipe.title,
             )}
             onClose={() => setPreviewRecipe(null)}
             onSave={handlePreviewSave}

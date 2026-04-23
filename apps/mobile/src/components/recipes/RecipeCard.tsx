@@ -36,7 +36,7 @@ export function RecipeCard({ recipe, mode = 'grid', onPress }: RecipeCardProps) 
     recipe.total_time_minutes ??
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
 
-  const imageUri = getRecipeImage(recipe.id, recipe.image_url);
+  const imageUri = getRecipeImage(recipe.id, recipe.image_url, recipe.title);
 
   return (
     <>

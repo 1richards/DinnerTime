@@ -3,7 +3,7 @@ import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import type { DinnerSuggestion } from '../../types/suggestions';
-import { FOOD_IMAGES } from '../../constants/foodImages';
+import { FOOD_IMAGES, getRecipeImage } from '../../constants/foodImages';
 import { supabase } from '../../lib/supabase';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
 import { colors } from '../../design/tokens';
@@ -126,11 +126,16 @@ export function SuggestionCard({ suggestion, onPress }: SuggestionCardProps) {
       : `sc-${Date.now()}`,
   );
 
-  const heroUri =
-    FOOD_IMAGES.hero[
-      (suggestion.title.length + (suggestion.cuisine_type?.length ?? 0)) %
-        FOOD_IMAGES.hero.length
-    ];
+  // Title-aware image pick: matches dish-type keywords (e.g. "Salsa Scrambled
+  // Eggs" → breakfast pool, not a random hero). Falls back to a hash of the
+  // title + cuisine type if no keyword matches.
+  const heroUri = getRecipeImage(
+    `suggestion-${suggestion.title}-${suggestion.cuisine_type ?? ''}`,
+    null,
+    suggestion.title,
+  );
+  // Suppress unused-warning on FOOD_IMAGES if it's no longer referenced.
+  void FOOD_IMAGES;
 
   const pantryCount = suggestion.ingredients_used.length;
 
