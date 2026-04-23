@@ -656,6 +656,37 @@ export default function PlanScreen() {
     </View>
   );
 
+  // Inline Plan actions — shopping list + week-level ellipsis (regenerate,
+  // shift, duplicate). Sits below the Week/Month segmented control so the
+  // "Get this week's groceries" and "Week actions" affordances are visible
+  // on the page, matching the Kitchen toolbar pattern.
+  const planActionsRow = (
+    <View style={styles.planActionsRow}>
+      <Pressable
+        onPress={handleShoppingHandoff}
+        accessibilityLabel="Shopping list for week"
+        style={({ pressed }) => [
+          styles.planActionBtn,
+          pressed && styles.planActionBtnPressed,
+        ]}
+      >
+        <SymbolIcon name="cart" size={18} weight="semibold" tintColor={colors.brand} />
+        <Text style={styles.planActionBtnText}>Shopping list</Text>
+      </Pressable>
+      <Pressable
+        onPress={handleOpenWeekSheet}
+        accessibilityLabel="Week actions"
+        style={({ pressed }) => [
+          styles.planActionBtn,
+          pressed && styles.planActionBtnPressed,
+        ]}
+      >
+        <SymbolIcon name="ellipsis" size={18} weight="semibold" tintColor={colors.brand} />
+        <Text style={styles.planActionBtnText}>Week actions</Text>
+      </Pressable>
+    </View>
+  );
+
   const listHeader = (
     <View>
       <Animated.View
@@ -672,6 +703,7 @@ export default function PlanScreen() {
       </Animated.View>
       <InlineSearchPill placeholder="Search recipes to add" context="library" />
       {scaleSegmentedControl}
+      {planActionsRow}
     </View>
   );
 
@@ -690,6 +722,7 @@ export default function PlanScreen() {
       </Animated.View>
       <InlineSearchPill placeholder="Search recipes to add" context="library" />
       {scaleSegmentedControl}
+      {planActionsRow}
     </View>
   );
 
@@ -698,34 +731,13 @@ export default function PlanScreen() {
       {/* Compact nav bar removed — large "This Week" title scrolls off
           naturally so the list consumes full vertical real estate. */}
 
-      {/*
-        Action row — Phase 22-02: single ellipsis opens WeekActionSheet
-        (regenerate / shift ±1 / duplicate / shopping list). The dedicated
-        "Shopping list for week" icon from 22-01 is preserved so users have
-        both entry points and existing Maestro flow 32 keeps its selector.
-      */}
-      <View style={styles.actionRow} pointerEvents="box-none">
-        <View style={{ flex: 1 }} />
-        <Pressable
-          onPress={handleShoppingHandoff}
-          style={styles.actionBtn}
-          hitSlop={8}
-          accessibilityLabel="Shopping list for week"
-        >
-          <SymbolIcon name="cart" size={20} tintColor="#3E332A" />
-        </Pressable>
-        <Pressable
-          onPress={handleOpenWeekSheet}
-          style={styles.actionBtn}
-          hitSlop={8}
-          accessibilityLabel="Week actions"
-        >
-          <SymbolIcon name="ellipsis" size={20} tintColor="#3E332A" />
-        </Pressable>
-      </View>
+      {/* Action row moved inline into each list header below the Week/Month
+          segmented control (see planActionsRow in scaleSegmentedControl's
+          vicinity). Top-floating action cluster removed for header/content
+          rhythm parity with Kitchen. */}
 
       {error && error !== 'already_cooked' && (
-        <View className="mx-4 mb-2 p-3 rounded-xl bg-red-50 border border-red-200" style={{ marginTop: 52 }}>
+        <View className="mx-4 mb-2 p-3 rounded-xl bg-red-50 border border-red-200" style={{ marginTop: 8 }}>
           <Text className="text-sm text-red-700">{error}</Text>
         </View>
       )}
@@ -892,5 +904,33 @@ const styles = StyleSheet.create({
   },
   segmentLabelActive: {
     color: '#FFFFFF',
+  },
+  // Inline Plan actions — shopping list + week actions. Lives below the
+  // Week/Month segment for parity with Kitchen's inline toolbar pattern.
+  planActionsRow: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    gap: 8,
+  },
+  planActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  planActionBtnPressed: {
+    opacity: 0.6,
+  },
+  planActionBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.brand,
   },
 });
