@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, Animated, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
-import { StickySearchPill } from '../../components/ui/SearchBar';
+import { InlineSearchPill } from '../../components/ui/SearchBar';
 import { usePantryStore } from '../../stores/pantryStore';
 import { useAuthStore } from '../../stores/authStore';
 import { usePantryItems } from '../../hooks/usePantryItems';
@@ -74,7 +74,6 @@ export default function PantryScreen() {
   const [importSheetOpen, setImportSheetOpen] = useState(false);
 
   const {
-    scrollY,
     onScroll,
     largeTitleOpacity,
     largeTitleTranslate,
@@ -204,6 +203,7 @@ export default function PantryScreen() {
         <Text style={styles.largeTitle}>Pantry</Text>
         <Text style={styles.largeSubtitle}>{filteredAvailable.length} items</Text>
       </View>
+      <InlineSearchPill placeholder="Search pantry" context="pantry" />
       {groupingRow}
       {filterRow}
     </Animated.View>
@@ -219,13 +219,8 @@ export default function PantryScreen() {
         <Text style={styles.compactTitle}>Pantry</Text>
       </Animated.View>
 
-      {/* Sticky search pill — always visible above the list; elevation animates
-          with scrollY via the Phase 19-03 primitive. */}
-      <StickySearchPill
-        placeholder="Search pantry"
-        context="pantry"
-        scrollY={scrollY}
-      />
+      {/* Search moved inline into listHeader below the large "Pantry" title
+          for rhythm parity with Kitchen + Plan. */}
 
       <PantryItemList
         items={filteredAvailable}
@@ -241,9 +236,9 @@ export default function PantryScreen() {
       <Pressable
         onPress={() => setImportSheetOpen(true)}
         style={styles.fab}
-        accessibilityLabel="Scan items"
+        accessibilityLabel="Add items to pantry"
       >
-        <SymbolIcon name="camera.fill" size={28} tintColor="#FFFFFF" />
+        <SymbolIcon name="plus" size={30} weight="bold" tintColor="#FFFFFF" />
       </Pressable>
 
       <BulkImportSheet
