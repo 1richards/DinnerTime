@@ -23,8 +23,9 @@ import { env } from '../config/env.js';
 import { supabaseAdmin } from '../config/supabase.js';
 
 const BUCKET = 'recipe-images';
-// Nano Banana — the currently shipping preview model for image generation.
-const MODEL = 'gemini-2.5-flash-image-preview';
+// Nano Banana — stable image-generation model. The earlier `-preview` suffix
+// was retired when the model graduated; calls to it now 404.
+const MODEL = 'gemini-2.5-flash-image';
 
 export interface IngredientHint {
   name: string;
