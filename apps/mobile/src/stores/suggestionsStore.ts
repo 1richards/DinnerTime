@@ -29,7 +29,9 @@ interface SuggestionsState {
   recentQueries: string[];
   lastQuery: string | null;
   pantryOnly: boolean;
+  isAppending: boolean;
   searchRecipes: (query: string, options: SearchOptions) => Promise<void>;
+  appendSearchResults: (query: string, options: SearchOptions) => Promise<void>;
   clearHistory: () => void;
 }
 
@@ -61,6 +63,7 @@ export const useSuggestionsStore = create<SuggestionsState>()(
       recentQueries: [],
       lastQuery: null,
       pantryOnly: false,
+      isAppending: false,
 
       // Legacy actions — D-10 byte-exact lock. DO NOT REFACTOR.
       fetchSuggestions: async () => {
@@ -161,11 +164,67 @@ export const useSuggestionsStore = create<SuggestionsState>()(
         }
       },
 
+      appendSearchResults: async (query, options) => {
+        // Guard: no base query to append against. /api/v1/recipes/search needs
+        // a non-empty query string — without it the endpoint returns nothing
+        // useful, so we short-circuit.
+        if (!query || query.trim().length === 0) return;
+
+        // NOTE: do NOT set isLoading here. The SomethingNewResults skeleton
+        // branch is keyed on isLoading; flipping it would replace the current
+        // grid with a skeleton which is the exact UX this action was built to
+        // avoid. `isAppending` is a separate flag that only the load-more
+        // button consumes.
+        set({ isAppending: true, error: null });
+        try {
+          const token = await getAuthToken();
+          const response = await fetch(
+            `${getApiBaseUrl()}/api/v1/recipes/search`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ query, pantryOnly: options.pantryOnly }),
+            }
+          );
+
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            // Surface the error but KEEP existing searchResults — user's
+            // current grid is preserved so they can try again.
+            set({
+              error: err.error ?? 'Failed to load more ideas',
+              isAppending: false,
+            });
+            return;
+          }
+
+          const { data } = await response.json();
+          set((s) => ({
+            searchResults: [
+              ...s.searchResults,
+              ...((data ?? []) as ParsedRecipe[]),
+            ],
+            isAppending: false,
+            error: null,
+          }));
+        } catch (err) {
+          set({
+            error:
+              err instanceof Error ? err.message : 'Failed to load more ideas',
+            isAppending: false,
+          });
+        }
+      },
+
       clearHistory: () => {
         set({
           recentQueries: [],
           searchResults: [],
           lastQuery: null,
+          isAppending: false,
         });
       },
     }),

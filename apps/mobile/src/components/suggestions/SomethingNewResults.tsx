@@ -27,6 +27,7 @@ import {
   StyleSheet,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 
@@ -55,6 +56,10 @@ export function SomethingNewResults({ onRequestPreview }: SomethingNewResultsPro
   const clearHistory = useSuggestionsStore((s) => s.clearHistory);
   const lastQuery = useSuggestionsStore((s) => s.lastQuery);
   const pantryOnly = useSuggestionsStore((s) => s.pantryOnly);
+  const appendSearchResults = useSuggestionsStore(
+    (s) => s.appendSearchResults,
+  );
+  const isAppending = useSuggestionsStore((s) => s.isAppending);
 
   const refresh = () => {
     // Regenerate with the same query args that produced the current list.
@@ -172,6 +177,39 @@ export function SomethingNewResults({ onRequestPreview }: SomethingNewResultsPro
           onPress={() => onRequestPreview(recipe)}
         />
       ))}
+
+      {searchResults.length > 0 && (
+        <Pressable
+          onPress={() => {
+            if (!lastQuery) return;
+            void appendSearchResults(lastQuery, { pantryOnly });
+          }}
+          disabled={isAppending || !lastQuery}
+          style={({ pressed }) => [
+            styles.loadMoreBtn,
+            pressed && !isAppending ? { opacity: 0.7 } : null,
+            isAppending || !lastQuery ? { opacity: 0.5 } : null,
+          ]}
+          accessibilityLabel="Show me more ideas"
+        >
+          {isAppending ? (
+            <>
+              <ActivityIndicator size="small" color={colors.brand} />
+              <Text style={styles.loadMoreText}>Finding more...</Text>
+            </>
+          ) : (
+            <>
+              <SymbolIcon
+                name="plus.circle"
+                size={18}
+                tintColor={colors.brand}
+                weight="semibold"
+              />
+              <Text style={styles.loadMoreText}>Show me more ideas</Text>
+            </>
+          )}
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
@@ -250,7 +288,10 @@ function PreviewRecipeCard({
   const handleSave = async () => {
     setWorking('save');
     try {
-      await saveRecipe({ ...recipe, source_type: 'ai' });
+      // heroUri bakes in the resolved Gemini generatedUri (or a pre-existing
+      // recipe.image_url); persisting it here keeps the library card's hero
+      // visually identical to the Something New card the user just tapped.
+      await saveRecipe({ ...recipe, image_url: heroUri, source_type: 'ai' });
       const err = useRecipeStore.getState().error;
       if (err) {
         Alert.alert('Save failed', err);
@@ -271,7 +312,7 @@ function PreviewRecipeCard({
       const beforeIds = new Set(
         useRecipeStore.getState().recipes.map((r) => r.id),
       );
-      await saveRecipe({ ...recipe, source_type: 'ai' });
+      await saveRecipe({ ...recipe, image_url: heroUri, source_type: 'ai' });
       const state = useRecipeStore.getState();
       if (state.error) {
         Alert.alert('Save failed', state.error);
@@ -396,5 +437,24 @@ const styles = StyleSheet.create({
   },
   iconBtnPressed: {
     opacity: 0.6,
+  },
+  loadMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  loadMoreText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.brand,
   },
 });
