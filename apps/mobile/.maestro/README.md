@@ -56,7 +56,7 @@ Screenshots land in `~/.maestro/tests/<run-id>/` and are also embedded in the ru
 | `09-meal-plan-generate.yaml` | Generate (or verify) a 7-day meal plan on the Plan tab. | network + AI |
 | `10-meal-plan-swap.yaml` | Swap one day's meal via the SwapSheet. | existing plan + AI |
 | `11-shopping-list-generate.yaml` | Generate shopping list from plan, add manual item. | existing plan + AI |
-| `12-shopping-orders.yaml` | Navigate to order history screen. | — |
+| `12-shopping-orders.yaml` | Navigate to **Instacart cart** history screen (Phase 20: labels rebased from "Instacart order" → "Instacart cart" per SHOP-DC-01; filename preserved). | — |
 | `13-settings.yaml` | Update skill level, toggle cuisine, add family member modal. | — |
 | `14-cook-tab.yaml` | Cook tab renders, "Open Recipes" navigates, "Start Cooking" visible. | ≥1 recipe |
 | `15-cook-voice-mode-stub.yaml` | **STUB — SKIPPED** Voice cooking mode requires VOICE/STT. | physical device |
@@ -71,6 +71,12 @@ Screenshots land in `~/.maestro/tests/<run-id>/` and are also embedded in the ru
 | `24-pantry-staples.yaml` | PantryItemCard ellipsis → "Mark as staple" → Staples filter chip (Phase 21-04/05). | ≥1 pantry item |
 | `25-pantry-search-pill.yaml` | Pantry tab sticky search pill → /search modal → query → dismiss (Phase 21-04). | — |
 | `26-pantry-rules.yaml` | Settings → Pantry Rules → Add Rule FAB → canonical pick → 30-day preview → save → delete (Phase 21-05). | network + canonical_ingredients seeded |
+| `29-shopping-draft-cart-handoff.yaml` | HandoffSheet sending → success → dismiss + re-open → Open-in-Instacart CTA (Phase 20-05; happy path only, error/universal-link paths deferred to DEVICE-TEST-20). | existing plan + AI |
+
+### Phase 20: Shopping Draft-Cart Handoff
+
+- `12-shopping-orders.yaml` — rebased to assert "Instacart cart" vocabulary (was "Instacart order"); filename preserved per CLAUDE.md UAT rule.
+- `29-shopping-draft-cart-handoff.yaml` — NEW. Covers the full simulator-runnable happy path: Shopping tab → "Order on Instacart" → HandoffSheet sending → success → dismiss via secondary ("View shopping list") and primary ("Open in Instacart") CTAs. Universal-link app routing, network-error retry, and feature-flag rollback are deferred to `DEVICE-TEST-20.md`.
 
 ## Phase 15 note — manual-only flows
 
@@ -110,3 +116,51 @@ brittle nav state — keep the banner in dev builds. Strip it before TestFlight.
   are best-effort — wrap them in `optional: true` and rely on screenshots.
 - The `MAESTRO_*` env vars must be set in the shell that runs `maestro test` —
   don't commit credentials.
+
+## Phase 25 — Screenshot capture (launch asset flow)
+
+Flow `38-screenshot-capture.yaml` captures the 5 App Store screenshots per
+`.planning/app-store/screenshots-shotlist.md`.
+
+**Run twice — once per device bucket:**
+
+```bash
+# 6.9" bucket (iPhone 17 Pro, 1320x2868)
+xcrun simctl shutdown all
+xcrun simctl boot "iPhone 17 Pro"
+open -a Simulator
+cd apps/mobile
+maestro test .maestro/38-screenshot-capture.yaml
+
+# 6.5" bucket (iPhone 11 Pro Max, 1242x2688)
+xcrun simctl shutdown all
+xcrun simctl boot "iPhone 11 Pro Max"
+open -a Simulator
+maestro test .maestro/38-screenshot-capture.yaml
+```
+
+**Prereqs:**
+
+- The dev client is installed on each simulator before running (`xcrun simctl
+  install booted ios/build/Build/Products/Debug-iphonesimulator/DinnerTime.app`).
+- Metro is running in `--lan` mode (`npx expo start --dev-client --lan`).
+- The test account is seeded: at least 4 pantry items, 1 planned day on the
+  current week, 1 saved recipe. Unseeded accounts produce empty-state shots —
+  acceptable for dev iteration, not acceptable for App Store submission.
+
+**Post-run:**
+
+1. Find captures: `ls ~/.maestro/tests/<latest-run>/screenshots/`.
+2. Rename + copy to `.planning/app-store/screenshots/`:
+   - `6_9_shot_1_kitchen.png` etc. for the 6.9" run
+   - `6_5_shot_1_kitchen.png` etc. for the 6.5" run
+3. Review post-capture checklist in `.planning/app-store/screenshots-shotlist.md`:
+   - [ ] No time/battery/signal artifacts — toggle In-Call Status Bar in Simulator
+   - [ ] No debug banners — strip `src/app/_layout.tsx` AuthStateBanner or run
+         production-like build
+   - [ ] No seed-data emails (patrick+dev@dinnertime.app) visible
+4. Upload to App Store Connect → DinnerTime → 6.9" + 6.5" buckets.
+
+**If any shot is wrong:** re-run `38-screenshot-capture.yaml` with a better-seeded
+account, or fall back to manual capture via
+`xcrun simctl io booted screenshot <path>.png` driving each screen by hand.

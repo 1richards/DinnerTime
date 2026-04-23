@@ -36,4 +36,16 @@ export const env = {
   get PORT() {
     return parseInt(optionalEnv('PORT', '3000'), 10);
   },
+  /**
+   * Phase 25-01 (BETA-11): comma-separated list of admin emails authorized
+   * to hit GET /admin/beta-invites. Parsed case-insensitively (lowercased,
+   * trimmed, empty filtered). Empty string / unset → no admin access, which
+   * is the safe default for a plain dev environment.
+   */
+  get ADMIN_EMAILS_LIST(): string[] {
+    return (process.env.ADMIN_EMAILS ?? '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+  },
 } as const;

@@ -60,7 +60,7 @@ export default function RecipeDetailScreen() {
 
   const baseServings = recipe.servings ?? 1;
   const multiplier = baseServings > 0 ? servings / baseServings : 1;
-  const heroUri = getRecipeImage(recipe.id, recipe.image_url);
+  const heroUri = getRecipeImage(recipe.id, recipe.image_url, recipe.title);
 
   const totalTime =
     recipe.total_time_minutes ??
@@ -187,14 +187,24 @@ export default function RecipeDetailScreen() {
           />
         </View>
 
-        {/* Edit stays as a body CTA. Add to Plan, Remix, and Delete moved
-            into the HeaderEllipsis overflow menu at top-right (Phase 15 D-05). */}
-        <View className="px-4 mt-3">
-          <Button
-            title="Edit"
-            variant="outline"
-            onPress={() => router.push(`/recipes/${recipe.id}/edit`)}
-          />
+        {/* Edit + Remix as body CTAs. Remix hoisted out of the overflow
+            menu so Recipe Box has parity with Something New's remix entry
+            point — the interaction set matches across surfaces. */}
+        <View className="px-4 mt-3 flex-row" style={{ gap: 8 }}>
+          <View style={{ flex: 1 }}>
+            <Button
+              title="Edit"
+              variant="outline"
+              onPress={() => router.push(`/recipes/${recipe.id}/edit`)}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              title="Remix"
+              variant="outline"
+              onPress={() => setRemixOpen(true)}
+            />
+          </View>
         </View>
       </ScrollView>
 

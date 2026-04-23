@@ -164,6 +164,72 @@ describe('buildMealPlanPrompt', () => {
     const avoidBlock = prompt.slice(prompt.indexOf('AVOID REPEATING'));
     expect(avoidBlock).toContain('(none)');
   });
+
+  // -----------------------------------------------------------------------
+  // Phase 22-05 — skill tier gate + focus theme
+  // -----------------------------------------------------------------------
+
+  describe('Phase 22-05: skill tier gate', () => {
+    it('skillTier=1 → prompt contains the avoid-hard-recipes clause', () => {
+      const ctx: MealPlanContext = { ...baseContext, skillTier: 1 };
+      const prompt = buildMealPlanPrompt(ctx);
+      expect(prompt).toContain("Avoid recipes with difficulty='hard'");
+      expect(prompt).toMatch(/estimated_time > 60/);
+    });
+
+    it('skillTier=2 → prompt does NOT contain the avoid-hard-recipes clause', () => {
+      const ctx: MealPlanContext = { ...baseContext, skillTier: 2 };
+      const prompt = buildMealPlanPrompt(ctx);
+      expect(prompt).not.toContain("Avoid recipes with difficulty='hard'");
+    });
+
+    it('skillTier=3 → prompt does NOT contain the avoid-hard-recipes clause', () => {
+      const ctx: MealPlanContext = { ...baseContext, skillTier: 3 };
+      const prompt = buildMealPlanPrompt(ctx);
+      expect(prompt).not.toContain("Avoid recipes with difficulty='hard'");
+    });
+
+    it('skillTier undefined defaults to 2 (no avoid-hard-recipes clause)', () => {
+      const prompt = buildMealPlanPrompt(baseContext);
+      expect(prompt).not.toContain("Avoid recipes with difficulty='hard'");
+    });
+
+    it("prompt always includes a SKILL TIER: line (number reflects context.skillTier or default 2)", () => {
+      const prompt1 = buildMealPlanPrompt({ ...baseContext, skillTier: 1 });
+      expect(prompt1).toMatch(/SKILL TIER:\s*1/);
+      const prompt3 = buildMealPlanPrompt({ ...baseContext, skillTier: 3 });
+      expect(prompt3).toMatch(/SKILL TIER:\s*3/);
+      const promptDefault = buildMealPlanPrompt(baseContext);
+      expect(promptDefault).toMatch(/SKILL TIER:\s*2/);
+    });
+  });
+
+  describe('Phase 22-05: focus theme', () => {
+    it("focusTheme='knife skills' → prompt contains THIS WEEK'S THEME block", () => {
+      const ctx: MealPlanContext = { ...baseContext, focusTheme: 'knife skills' };
+      const prompt = buildMealPlanPrompt(ctx);
+      expect(prompt).toContain("THIS WEEK'S THEME: knife skills");
+      expect(prompt).toMatch(/at least 2 recipes/);
+      expect(prompt).toMatch(/why_suggested/);
+    });
+
+    it('focusTheme=null → prompt does NOT contain the theme block', () => {
+      const ctx: MealPlanContext = { ...baseContext, focusTheme: null };
+      const prompt = buildMealPlanPrompt(ctx);
+      expect(prompt).not.toContain("THIS WEEK'S THEME");
+    });
+
+    it('focusTheme undefined → prompt does NOT contain the theme block', () => {
+      const prompt = buildMealPlanPrompt(baseContext);
+      expect(prompt).not.toContain("THIS WEEK'S THEME");
+    });
+
+    it('focusTheme empty string → prompt does NOT contain the theme block', () => {
+      const ctx: MealPlanContext = { ...baseContext, focusTheme: '' };
+      const prompt = buildMealPlanPrompt(ctx);
+      expect(prompt).not.toContain("THIS WEEK'S THEME");
+    });
+  });
 });
 
 // ---------- generateMealPlanTool Tests ----------

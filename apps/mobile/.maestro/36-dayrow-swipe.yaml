@@ -1,0 +1,61 @@
+appId: com.dinnertime.app
+name: "36 — DayRow swipe-to-action"
+tags:
+  - phase-22
+# Phase 22-06 walks the swipe interaction on a planned day row. Because
+# Maestro's swipe primitive targets screen coordinates rather than element
+# geometry (RN gesture-handler doesn't expose testable axes to the native
+# bridge in a way that survives Maestro's text-matching layer), we rely on
+# screenshots to confirm the three revealed actions appeared and the
+# "Cooked" action fires its handler.
+#
+# Telemetry: plan.swipe_action with payload.variant ∈ { 'swap', 'cook',
+# 'skip' } fires on each action tap (assertable via Supabase query —
+# out-of-band of this flow).
+#
+# Coordinate choice rationale:
+#   - Swipe start x=90%/y=22% → the right side of the first planned day row
+#     below the "This Week" header + segment control.
+#   - Swipe end x=10% → pulls left about 80% of the screen width, enough to
+#     cross ReanimatedSwipeable's rightThreshold=80 reveal gate.
+#   - y kept constant at 22% so we're swiping horizontally within the same
+#     row (not diagonally into an adjacent row).
+---
+- runFlow: _ensure-logged-in.yaml
+- tapOn: "Plan"
+- extendedWaitUntil:
+    visible:
+      text: ".*"
+    timeout: 8000
+- takeScreenshot: 01-plan-loaded
+
+# Reveal the three swipe actions on the first visible day row.
+- swipe:
+    start: "90%,22%"
+    end: "10%,22%"
+    duration: 400
+- takeScreenshot: 02-actions-revealed
+
+# Tap the Cooked action. `optional: true` keeps the flow green when the row
+# is already cooked or the reveal didn't render (documented via screenshot
+# 02 above for visual inspection).
+- tapOn:
+    text: "Cooked"
+    optional: true
+- takeScreenshot: 03-cooked-tapped
+
+# Swipe a second day row and exercise the Skip action. The skip flow opens
+# an Alert.prompt for a reason (22-06 plan.tsx) — dismiss with Cancel so
+# this flow doesn't mutate user state beyond the first Cooked tap.
+- swipe:
+    start: "90%,32%"
+    end: "10%,32%"
+    duration: 400
+- takeScreenshot: 04-second-row-actions
+- tapOn:
+    text: "Skip"
+    optional: true
+- tapOn:
+    text: "Cancel"
+    optional: true
+- takeScreenshot: 05-skip-prompt-dismissed

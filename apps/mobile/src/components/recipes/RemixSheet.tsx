@@ -20,6 +20,9 @@ import {
 } from '../../stores/progressionStore';
 import { useRecipeStore } from '../../stores/recipeStore';
 import { supabase } from '../../lib/supabase';
+import { PreviewSheet, type DiscoveredRecipe } from '../../app/recipes/discover';
+import { getRecipeImage } from '../../constants/foodImages';
+import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
 import type { ParsedRecipe } from '../../types/recipe';
 import { colors } from '../../design/tokens';
 
@@ -28,9 +31,13 @@ import { colors } from '../../design/tokens';
  * - `{ kind: 'saved', recipeId }`: looks up the recipe via GET variations
  * - `{ kind: 'inline', context }`: uses POST variations for unsaved data
  *
- * The save-as-recipe flow hits POST /recipes/remix with a base context
- * (derived from whichever source) + the selected variation, receives a
- * full ParsedRecipe, then calls saveRecipe to persist.
+ * Each variation card offers three commits:
+ *   1. Expand — fetch the full ParsedRecipe from POST /recipes/remix and
+ *      open it in a PreviewSheet for review.
+ *   2. Save as new recipe — persist the full ParsedRecipe as a new library
+ *      entry (source_type: 'ai').
+ *   3. Modify existing recipe — only when source.kind === 'saved'; replaces
+ *      the source recipe's contents with the variation via updateRecipe.
  */
 export type RemixSource =
   | { kind: 'saved'; recipeId: string }
@@ -84,6 +91,29 @@ async function getAuthToken(): Promise<string> {
   return data.session.access_token;
 }
 
+// Shared call — POSTs to /recipes/remix and returns the expanded ParsedRecipe.
+// All three commit actions (expand, save-new, modify-existing) hit this endpoint.
+async function fetchRemixedRecipe(
+  base: RemixSheetProps['baseForSave'] extends infer T ? T : never,
+  variation: RemixVariation,
+): Promise<ParsedRecipe> {
+  const token = await getAuthToken();
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/recipes/remix`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ base, variation }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? 'Failed to generate recipe');
+  }
+  const body = await res.json();
+  return body.data as ParsedRecipe;
+}
+
 export function RemixSheet({
   visible,
   recipeTitle,
@@ -96,13 +126,22 @@ export function RemixSheet({
     (s) => s.fetchVariationsForContext,
   );
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
+  const updateRecipe = useRecipeStore((s) => s.updateRecipe);
 
   const [selectedMode, setSelectedMode] = useState<RemixMode | null>(null);
   const [variations, setVariations] = useState<RemixVariation[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [savingIdx, setSavingIdx] = useState<number | null>(null);
+
+  // Per-variation state
+  const [fullByIdx, setFullByIdx] = useState<Record<number, ParsedRecipe>>({});
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [workingIdx, setWorkingIdx] = useState<number | null>(null);
+  const [workingAction, setWorkingAction] = useState<
+    'expand' | 'save' | 'modify' | 'cook' | null
+  >(null);
   const [savedIdxs, setSavedIdxs] = useState<Set<number>>(new Set());
+  const [modifiedIdxs, setModifiedIdxs] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!visible) {
@@ -111,10 +150,47 @@ export function RemixSheet({
       setVariations(null);
       setLoading(false);
       setError(null);
-      setSavingIdx(null);
+      setFullByIdx({});
+      setExpandedIdx(null);
+      setWorkingIdx(null);
+      setWorkingAction(null);
       setSavedIdxs(new Set());
+      setModifiedIdxs(new Set());
     }
   }, [visible]);
+
+  const resolveBase = (): NonNullable<RemixSheetProps['baseForSave']> => {
+    return (
+      baseForSave ??
+      (source.kind === 'inline'
+        ? {
+            title: source.context.title,
+            description: source.context.description ?? null,
+            ingredients: source.context.ingredients,
+            total_time_minutes: source.context.total_time_minutes ?? null,
+          }
+        : { title: recipeTitle })
+    );
+  };
+
+  // Returns the cached full recipe if present, otherwise fetches it.
+  const ensureFull = async (
+    idx: number,
+    variation: RemixVariation,
+  ): Promise<ParsedRecipe | null> => {
+    if (fullByIdx[idx]) return fullByIdx[idx];
+    try {
+      const full = await fetchRemixedRecipe(resolveBase(), variation);
+      setFullByIdx((prev) => ({ ...prev, [idx]: full }));
+      return full;
+    } catch (err) {
+      Alert.alert(
+        'Remix failed',
+        err instanceof Error ? err.message : String(err),
+      );
+      return null;
+    }
+  };
 
   const handleMode = async (mode: RemixMode) => {
     setSelectedMode(mode);
@@ -122,6 +198,8 @@ export function RemixSheet({
     setError(null);
     setVariations(null);
     setSavedIdxs(new Set());
+    setModifiedIdxs(new Set());
+    setFullByIdx({});
 
     const result =
       source.kind === 'saved'
@@ -140,73 +218,146 @@ export function RemixSheet({
     setSelectedMode(null);
     setVariations(null);
     setError(null);
-    setSavingIdx(null);
     setSavedIdxs(new Set());
+    setModifiedIdxs(new Set());
+    setFullByIdx({});
   };
 
-  const handleSaveAsRecipe = async (idx: number, variation: RemixVariation) => {
-    setSavingIdx(idx);
+  const handleExpand = async (idx: number, variation: RemixVariation) => {
+    setWorkingIdx(idx);
+    setWorkingAction('expand');
+    const full = await ensureFull(idx, variation);
+    setWorkingIdx(null);
+    setWorkingAction(null);
+    if (full) setExpandedIdx(idx);
+  };
+
+  const handleSaveAsNew = async (idx: number, variation: RemixVariation) => {
+    setWorkingIdx(idx);
+    setWorkingAction('save');
     try {
-      const token = await getAuthToken();
-
-      // Build the base context for the /recipes/remix call. If an explicit
-      // baseForSave was provided (saved recipe with full ingredients + steps),
-      // use that. Otherwise fall back to whatever context we have.
-      const base =
-        baseForSave ??
-        (source.kind === 'inline'
-          ? {
-              title: source.context.title,
-              description: source.context.description ?? null,
-              ingredients: source.context.ingredients,
-              total_time_minutes: source.context.total_time_minutes ?? null,
-            }
-          : { title: recipeTitle });
-
-      const res = await fetch(`${getApiBaseUrl()}/api/v1/recipes/remix`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ base, variation }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        Alert.alert('Remix save failed', err.error ?? 'Please try again.');
-        setSavingIdx(null);
-        return;
-      }
-      const body = await res.json();
-      const parsed = body.data as ParsedRecipe;
-      await saveRecipe({ ...parsed, source_type: 'ai' });
-
+      const full = await ensureFull(idx, variation);
+      if (!full) return;
+      await saveRecipe({ ...full, source_type: 'ai' });
       const state = useRecipeStore.getState();
       if (state.error) {
         Alert.alert('Save failed', state.error);
-        setSavingIdx(null);
         return;
       }
       setSavedIdxs((prev) => new Set([...prev, idx]));
-      setSavingIdx(null);
-    } catch (err) {
-      Alert.alert(
-        'Remix save failed',
-        err instanceof Error ? err.message : String(err),
-      );
-      setSavingIdx(null);
+    } finally {
+      setWorkingIdx(null);
+      setWorkingAction(null);
     }
   };
 
-  const handleOpenSaved = (idx: number) => {
-    // Best-effort: close the sheet and navigate to the most recent recipe
-    // in the store (the one we just saved).
+  const handleModifyExisting = async (
+    idx: number,
+    variation: RemixVariation,
+  ) => {
+    if (source.kind !== 'saved') return;
+    setWorkingIdx(idx);
+    setWorkingAction('modify');
+    try {
+      const full = await ensureFull(idx, variation);
+      if (!full) return;
+      await updateRecipe(source.recipeId, {
+        title: full.title,
+        description: full.description,
+        ingredients: full.ingredients,
+        steps: full.steps,
+        prep_time_minutes: full.prep_time_minutes,
+        cook_time_minutes: full.cook_time_minutes,
+        total_time_minutes: full.total_time_minutes,
+        servings: full.servings,
+        image_url: full.image_url,
+      });
+      const state = useRecipeStore.getState();
+      if (state.error) {
+        Alert.alert('Update failed', state.error);
+        return;
+      }
+      setModifiedIdxs((prev) => new Set([...prev, idx]));
+    } finally {
+      setWorkingIdx(null);
+      setWorkingAction(null);
+    }
+  };
+
+  const handleOpenSaved = () => {
+    // Close the sheet and navigate to the most recent recipe in the store
+    // (the one we just saved).
     const all = useRecipeStore.getState().recipes;
     if (all.length > 0) {
       onClose();
       router.push(`/recipes/${all[0].id}`);
     }
   };
+
+  const handleOpenModified = () => {
+    if (source.kind !== 'saved') return;
+    onClose();
+    router.push(`/recipes/${source.recipeId}`);
+  };
+
+  // Cook Now: persist the variation, then jump straight into the cooking flow.
+  // Saved-source remix → modify existing + cook against source.recipeId.
+  // Inline-source remix → save as new + cook against the newly created id.
+  const handleCookNow = async (idx: number, variation: RemixVariation) => {
+    setWorkingIdx(idx);
+    setWorkingAction('cook');
+    try {
+      const full = await ensureFull(idx, variation);
+      if (!full) return;
+
+      let cookId: string | null = null;
+
+      if (source.kind === 'saved') {
+        await updateRecipe(source.recipeId, {
+          title: full.title,
+          description: full.description,
+          ingredients: full.ingredients,
+          steps: full.steps,
+          prep_time_minutes: full.prep_time_minutes,
+          cook_time_minutes: full.cook_time_minutes,
+          total_time_minutes: full.total_time_minutes,
+          servings: full.servings,
+          image_url: full.image_url,
+        });
+        if (useRecipeStore.getState().error) {
+          Alert.alert('Update failed', useRecipeStore.getState().error!);
+          return;
+        }
+        setModifiedIdxs((prev) => new Set([...prev, idx]));
+        cookId = source.recipeId;
+      } else {
+        const beforeIds = new Set(
+          useRecipeStore.getState().recipes.map((r) => r.id),
+        );
+        await saveRecipe({ ...full, source_type: 'ai' });
+        const state = useRecipeStore.getState();
+        if (state.error) {
+          Alert.alert('Save failed', state.error);
+          return;
+        }
+        setSavedIdxs((prev) => new Set([...prev, idx]));
+        const newRecipe = state.recipes.find((r) => !beforeIds.has(r.id));
+        cookId = newRecipe?.id ?? state.recipes[0]?.id ?? null;
+      }
+
+      if (cookId) {
+        onClose();
+        router.push(`/recipes/${cookId}/cook`);
+      }
+    } finally {
+      setWorkingIdx(null);
+      setWorkingAction(null);
+    }
+  };
+
+  const expandedVariation =
+    expandedIdx !== null && variations ? variations[expandedIdx] : null;
+  const expandedFull = expandedIdx !== null ? fullByIdx[expandedIdx] : undefined;
 
   return (
     <Modal
@@ -281,7 +432,13 @@ export function RemixSheet({
             </Text>
             {variations.map((v, i) => {
               const saved = savedIdxs.has(i);
-              const saving = savingIdx === i;
+              const modified = modifiedIdxs.has(i);
+              const isWorking = workingIdx === i;
+              const isExpanding = isWorking && workingAction === 'expand';
+              const isSaving = isWorking && workingAction === 'save';
+              const isModifying = isWorking && workingAction === 'modify';
+              const isCooking = isWorking && workingAction === 'cook';
+              const disabled = workingIdx !== null && workingIdx !== i;
               return (
                 <View key={i} style={styles.variationCard}>
                   <View style={styles.variationHeader}>
@@ -292,33 +449,125 @@ export function RemixSheet({
                   </View>
                   <Text style={styles.variationDescription}>{v.description}</Text>
 
-                  {saved ? (
+                  {saved && (
                     <Pressable
-                      onPress={() => handleOpenSaved(i)}
-                      style={styles.savedRow}
+                      onPress={handleOpenSaved}
+                      style={[styles.statusRow, styles.savedRow]}
                     >
                       <SymbolIcon name="checkmark.circle.fill" size={16} tintColor="#047857" />
                       <Text style={styles.savedText}>Saved to library</Text>
                       <SymbolIcon name="chevron.forward" size={14} tintColor="#047857" />
                     </Pressable>
-                  ) : (
+                  )}
+
+                  {modified && (
                     <Pressable
-                      onPress={() => handleSaveAsRecipe(i, v)}
-                      disabled={saving}
-                      style={({ pressed }) => [
-                        styles.saveBtn,
-                        pressed && { opacity: 0.8 },
-                      ]}
+                      onPress={handleOpenModified}
+                      style={[styles.statusRow, styles.modifiedRow]}
                     >
-                      {saving ? (
-                        <ActivityIndicator size="small" color="#C05A00" />
-                      ) : (
-                        <>
-                          <SymbolIcon name="plus.circle" size={16} tintColor="#C05A00" />
-                          <Text style={styles.saveBtnText}>Save as new recipe</Text>
-                        </>
-                      )}
+                      <SymbolIcon name="checkmark.circle.fill" size={16} tintColor="#047857" />
+                      <Text style={styles.savedText}>Existing recipe updated</Text>
+                      <SymbolIcon name="chevron.forward" size={14} tintColor="#047857" />
                     </Pressable>
+                  )}
+
+                  {!saved && !modified && (
+                    <View style={styles.actionRow}>
+                      <Pressable
+                        onPress={() => handleExpand(i, v)}
+                        disabled={disabled || isWorking}
+                        style={({ pressed }) => [
+                          styles.actionBtn,
+                          styles.actionBtnPrimary,
+                          pressed && !disabled && { opacity: 0.85 },
+                          disabled && { opacity: 0.5 },
+                        ]}
+                      >
+                        {isExpanding ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <>
+                            <SymbolIcon
+                              name="arrow.up.left.and.arrow.down.right"
+                              size={14}
+                              tintColor="#FFFFFF"
+                            />
+                            <Text style={styles.actionBtnPrimaryText}>
+                              Expand
+                            </Text>
+                          </>
+                        )}
+                      </Pressable>
+                      <Pressable
+                        onPress={() => handleCookNow(i, v)}
+                        disabled={disabled || isWorking}
+                        style={({ pressed }) => [
+                          styles.actionBtn,
+                          styles.actionBtnCook,
+                          pressed && !disabled && { opacity: 0.85 },
+                          disabled && { opacity: 0.5 },
+                        ]}
+                      >
+                        {isCooking ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <>
+                            <SymbolIcon name="flame.fill" size={14} tintColor="#FFFFFF" />
+                            <Text style={styles.actionBtnPrimaryText}>
+                              Cook now
+                            </Text>
+                          </>
+                        )}
+                      </Pressable>
+                      <Pressable
+                        onPress={() => handleSaveAsNew(i, v)}
+                        disabled={disabled || isWorking}
+                        style={({ pressed }) => [
+                          styles.actionBtn,
+                          styles.actionBtnOutline,
+                          pressed && !disabled && { opacity: 0.85 },
+                          disabled && { opacity: 0.5 },
+                        ]}
+                      >
+                        {isSaving ? (
+                          <ActivityIndicator size="small" color="#C05A00" />
+                        ) : (
+                          <>
+                            <SymbolIcon name="plus.circle" size={14} tintColor="#C05A00" />
+                            <Text style={styles.actionBtnOutlineText}>
+                              Save as new
+                            </Text>
+                          </>
+                        )}
+                      </Pressable>
+                      {source.kind === 'saved' && (
+                        <Pressable
+                          onPress={() => handleModifyExisting(i, v)}
+                          disabled={disabled || isWorking}
+                          style={({ pressed }) => [
+                            styles.actionBtn,
+                            styles.actionBtnOutline,
+                            pressed && !disabled && { opacity: 0.85 },
+                            disabled && { opacity: 0.5 },
+                          ]}
+                        >
+                          {isModifying ? (
+                            <ActivityIndicator size="small" color="#C05A00" />
+                          ) : (
+                            <>
+                              <SymbolIcon
+                                name="arrow.triangle.2.circlepath"
+                                size={14}
+                                tintColor="#C05A00"
+                              />
+                              <Text style={styles.actionBtnOutlineText}>
+                                Modify existing
+                              </Text>
+                            </>
+                          )}
+                        </Pressable>
+                      )}
+                    </View>
                   )}
                 </View>
               );
@@ -332,7 +581,96 @@ export function RemixSheet({
           </ScrollView>
         )}
       </View>
+
+      {/* Nested expanded preview — full recipe for the tapped variation.
+          Rendered via the shared PreviewSheet with hideRemix + modify support. */}
+      <Modal
+        visible={expandedIdx !== null && expandedFull != null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setExpandedIdx(null)}
+      >
+        {expandedIdx !== null && expandedFull && expandedVariation && (
+          <RemixVariationPreview
+            idx={expandedIdx}
+            full={expandedFull}
+            saved={savedIdxs.has(expandedIdx)}
+            modified={modifiedIdxs.has(expandedIdx)}
+            saving={workingIdx === expandedIdx && workingAction === 'save'}
+            modifying={workingIdx === expandedIdx && workingAction === 'modify'}
+            cooking={workingIdx === expandedIdx && workingAction === 'cook'}
+            canModify={source.kind === 'saved'}
+            onClose={() => setExpandedIdx(null)}
+            onSave={() => handleSaveAsNew(expandedIdx, expandedVariation)}
+            onModify={() => handleModifyExisting(expandedIdx, expandedVariation)}
+            onCook={() => handleCookNow(expandedIdx, expandedVariation)}
+          />
+        )}
+      </Modal>
     </Modal>
+  );
+}
+
+// ---------- Nested preview wrapper — adds AI image generation + PreviewSheet ----------
+
+function RemixVariationPreview({
+  idx,
+  full,
+  saved,
+  modified,
+  saving,
+  modifying,
+  cooking,
+  canModify,
+  onClose,
+  onSave,
+  onModify,
+  onCook,
+}: {
+  idx: number;
+  full: ParsedRecipe;
+  saved: boolean;
+  modified: boolean;
+  saving: boolean;
+  modifying: boolean;
+  cooking: boolean;
+  canModify: boolean;
+  onClose: () => void;
+  onSave: () => Promise<void>;
+  onModify: () => Promise<void>;
+  onCook: () => Promise<void>;
+}) {
+  const generatedUri = useGeneratedRecipeImage(full.title, {
+    skip: !!full.image_url,
+    description: full.description,
+    ingredients: full.ingredients,
+  });
+  const heroUri = getRecipeImage(
+    `remix-${idx}-${full.title}`,
+    full.image_url ?? generatedUri,
+    full.title,
+  );
+  const discovered: DiscoveredRecipe = {
+    ...full,
+    _saved: saved,
+    _modified: modified,
+  };
+  return (
+    <PreviewSheet
+      recipe={discovered}
+      heroUri={heroUri}
+      onClose={onClose}
+      onSave={onSave}
+      saving={saving}
+      onModifyExisting={canModify ? onModify : undefined}
+      modifying={modifying}
+      onCookNow={onCook}
+      cooking={cooking}
+      hideRemix
+      saveLabel="Save as new recipe"
+      modifyLabel="Update existing recipe"
+      modifiedLabel="Existing recipe updated"
+    />
   );
 }
 
@@ -483,30 +821,58 @@ const styles = StyleSheet.create({
     color: '#3E332A',
     marginBottom: 12,
   },
-  saveBtn: {
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 10,
+    flexGrow: 1,
+    flexBasis: '30%',
+    minHeight: 40,
+  },
+  actionBtnPrimary: {
+    backgroundColor: colors.brand,
+  },
+  actionBtnCook: {
+    // Flame-red accent to distinguish the cook-now CTA from other primaries.
+    backgroundColor: '#B85C2E',
+  },
+  actionBtnPrimaryText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  actionBtnOutline: {
     borderWidth: 1,
     borderColor: '#FFD9B0',
     backgroundColor: '#FFF7EE',
   },
-  saveBtnText: {
+  actionBtnOutlineText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#C05A00',
   },
-  savedRow: {
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
     borderRadius: 10,
+  },
+  savedRow: {
     backgroundColor: '#D1FAE5',
+  },
+  modifiedRow: {
+    backgroundColor: '#DBEAFE',
   },
   savedText: {
     fontSize: 13,

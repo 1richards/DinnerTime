@@ -17,7 +17,7 @@ name: "15 — STUB: voice-guided cooking mode (SKIPPED — requires VOICE/STT)"
 # What this would test (when runnable on a real device):
 #   1. Open any recipe detail screen.
 #   2. Tap "Start Cooking" to enter /recipes/{id}/cook.
-#   3. Verify the StepDisplay renders step 1 text.
+#   3. Verify the ScrollableRecipe renders step 1 text (Phase 16: was StepDisplay).
 #   4. Speak "next step" and verify step 2 activates.
 #   5. Speak "set a timer for 5 minutes" and verify TimerBar shows.
 #   6. Tap Exit (cook-exit testID) to leave cooking mode.

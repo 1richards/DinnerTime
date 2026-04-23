@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import type { Recipe } from '../../types/recipe';
@@ -8,6 +8,22 @@ import { useRecipeStore } from '../../stores/recipeStore';
 import { colors } from '../../design/tokens';
 import { resolveCardClasses, type RecipeCardMode } from './recipeCardStyles';
 import { RemixSheet } from './RemixSheet';
+
+/**
+ * Preview-mode quick-action overlays. When `preview` is true AND any handler
+ * is provided, the card renders these icons over the hero (Save, Remix,
+ * Cook now) in place of the saved-mode Favorite + Remix cluster. Each button
+ * stops propagation so tapping an icon doesn't trigger the card's own onPress.
+ */
+export interface PreviewActions {
+  onSave?: () => void | Promise<void>;
+  onRemix?: () => void;
+  onCookNow?: () => void | Promise<void>;
+  /** Show a green check + "Saved" state instead of the save icon. */
+  saved?: boolean;
+  /** Which action is currently in-flight (shows a spinner on that icon). */
+  working?: 'save' | 'cook' | null;
+}
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -18,6 +34,17 @@ interface RecipeCardProps {
    * metadata stacked right. Used for Something New / search results (Phase 17).
    */
   mode?: RecipeCardMode;
+  /**
+   * When true, suppress mutative overlays (favorite heart + remix sparkle)
+   * and don't mount the RemixSheet. Used for unsaved preview surfaces
+   * (Something New results) where the recipe has no persistent id yet.
+   */
+  preview?: boolean;
+  /**
+   * Preview-mode quick actions — Save / Remix / Cook now overlays rendered
+   * over the hero. Only honored when `preview` is true.
+   */
+  previewActions?: PreviewActions;
   onPress?: (recipe: Recipe) => void;
 }
 
@@ -28,7 +55,13 @@ const SOURCE_LABELS: Record<Recipe['source_type'], string> = {
   ai: 'AI',
 };
 
-export function RecipeCard({ recipe, mode = 'grid', onPress }: RecipeCardProps) {
+export function RecipeCard({
+  recipe,
+  mode = 'grid',
+  preview = false,
+  previewActions,
+  onPress,
+}: RecipeCardProps) {
   const toggleFavorite = useRecipeStore((s) => s.toggleFavorite);
   const [remixOpen, setRemixOpen] = useState(false);
   const c = resolveCardClasses(mode);
@@ -36,7 +69,7 @@ export function RecipeCard({ recipe, mode = 'grid', onPress }: RecipeCardProps) 
     recipe.total_time_minutes ??
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
 
-  const imageUri = getRecipeImage(recipe.id, recipe.image_url);
+  const imageUri = getRecipeImage(recipe.id, recipe.image_url, recipe.title);
 
   return (
     <>
@@ -83,47 +116,127 @@ export function RecipeCard({ recipe, mode = 'grid', onPress }: RecipeCardProps) 
               {SOURCE_LABELS[recipe.source_type]}
             </Text>
           </View>
+          {/* Preview-mode quick actions — Save, Remix, Cook now. Rendered
+              over the hero when the card represents an unsaved ParsedRecipe
+              (e.g. Something New results). Each button stops propagation so
+              tapping the icon doesn't also trigger the card's onPress. */}
+          {preview && previewActions && (
+            <View style={styles.actionCluster}>
+              {previewActions.onCookNow && (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    void previewActions.onCookNow?.();
+                  }}
+                  hitSlop={10}
+                  disabled={previewActions.working != null}
+                  style={({ pressed }) => [
+                    styles.actionBadge,
+                    pressed && { opacity: 0.6 },
+                  ]}
+                  accessibilityLabel="Cook this recipe now"
+                >
+                  {previewActions.working === 'cook' ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <SymbolIcon name="flame.fill" size={18} tintColor="#FFE4B5" />
+                  )}
+                </Pressable>
+              )}
+              {previewActions.onRemix && (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    previewActions.onRemix?.();
+                  }}
+                  hitSlop={10}
+                  disabled={previewActions.working != null}
+                  style={({ pressed }) => [
+                    styles.actionBadge,
+                    pressed && { opacity: 0.6 },
+                  ]}
+                  accessibilityLabel="Remix recipe"
+                >
+                  <SymbolIcon name="sparkles" size={18} tintColor="#FFE4B5" />
+                </Pressable>
+              )}
+              {previewActions.onSave && (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    if (previewActions.saved) return;
+                    void previewActions.onSave?.();
+                  }}
+                  hitSlop={10}
+                  disabled={
+                    previewActions.saved || previewActions.working != null
+                  }
+                  style={({ pressed }) => [
+                    styles.actionBadge,
+                    pressed && { opacity: 0.6 },
+                  ]}
+                  accessibilityLabel={
+                    previewActions.saved ? 'Saved to library' : 'Save to library'
+                  }
+                >
+                  {previewActions.working === 'save' ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <SymbolIcon
+                      name={previewActions.saved ? 'checkmark.circle.fill' : 'bookmark'}
+                      size={20}
+                      tintColor={previewActions.saved ? '#10B981' : '#FFFFFF'}
+                    />
+                  )}
+                </Pressable>
+              )}
+            </View>
+          )}
           {/* Top-right action cluster: Remix sparkle + Favorite heart.
-              Both stop propagation so taps don't trigger the outer card. */}
-          <View style={styles.actionCluster}>
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                setRemixOpen(true);
-              }}
-              hitSlop={10}
-              style={({ pressed }) => [
-                styles.actionBadge,
-                pressed && { opacity: 0.6 },
-              ]}
-              accessibilityLabel="Remix recipe"
-            >
-              {/* `#FFE4B5` is an intentional decorative warm off-white accent
-                  specifically for the sparkle glyph over dark imagery — NOT a
-                  brand color. Documented deviation from Phase 19 purity. */}
-              <SymbolIcon name="sparkles" size={18} tintColor="#FFE4B5" />
-            </Pressable>
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                toggleFavorite(recipe.id);
-              }}
-              hitSlop={10}
-              style={({ pressed }) => [
-                styles.actionBadge,
-                pressed && { opacity: 0.6 },
-              ]}
-              accessibilityLabel={
-                recipe.is_favorite ? 'Unfavorite recipe' : 'Favorite recipe'
-              }
-            >
-              <SymbolIcon
-                name={recipe.is_favorite ? 'heart.fill' : 'heart'}
-                size={20}
-                tintColor={recipe.is_favorite ? colors.destructive : '#FFFFFF'}
-              />
-            </Pressable>
-          </View>
+              Both stop propagation so taps don't trigger the outer card.
+              Hidden in `preview` mode — unsaved ParsedRecipes have no id
+              to favorite or remix-against. */}
+          {!preview && (
+            <View style={styles.actionCluster}>
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setRemixOpen(true);
+                }}
+                hitSlop={10}
+                style={({ pressed }) => [
+                  styles.actionBadge,
+                  pressed && { opacity: 0.6 },
+                ]}
+                accessibilityLabel="Remix recipe"
+              >
+                {/* `#FFE4B5` is an intentional decorative warm off-white accent
+                    specifically for the sparkle glyph over dark imagery — NOT a
+                    brand color. Documented deviation from Phase 19 purity. */}
+                <SymbolIcon name="sparkles" size={18} tintColor="#FFE4B5" />
+              </Pressable>
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  toggleFavorite(recipe.id);
+                }}
+                hitSlop={10}
+                style={({ pressed }) => [
+                  styles.actionBadge,
+                  pressed && { opacity: 0.6 },
+                ]}
+                accessibilityLabel={
+                  recipe.is_favorite ? 'Unfavorite recipe' : 'Favorite recipe'
+                }
+              >
+                <SymbolIcon
+                  name={recipe.is_favorite ? 'heart.fill' : 'heart'}
+                  size={20}
+                  tintColor={recipe.is_favorite ? colors.destructive : '#FFFFFF'}
+                />
+              </Pressable>
+            </View>
+          )}
         </View>
 
         {/* Text content */}
@@ -131,6 +244,15 @@ export function RecipeCard({ recipe, mode = 'grid', onPress }: RecipeCardProps) 
           <Text className={c.title} numberOfLines={2}>
             {recipe.title}
           </Text>
+
+          {recipe.description ? (
+            <Text
+              className={`${c.description} mt-1`}
+              numberOfLines={2}
+            >
+              {recipe.description}
+            </Text>
+          ) : null}
 
           <View className={c.metaRow}>
             {totalTime > 0 && (
@@ -149,19 +271,21 @@ export function RecipeCard({ recipe, mode = 'grid', onPress }: RecipeCardProps) 
         </View>
       </Pressable>
 
-      <RemixSheet
-        visible={remixOpen}
-        recipeTitle={recipe.title}
-        source={{ kind: 'saved', recipeId: recipe.id }}
-        baseForSave={{
-          title: recipe.title,
-          description: recipe.description,
-          ingredients: recipe.ingredients,
-          steps: recipe.steps,
-          total_time_minutes: recipe.total_time_minutes,
-        }}
-        onClose={() => setRemixOpen(false)}
-      />
+      {!preview && (
+        <RemixSheet
+          visible={remixOpen}
+          recipeTitle={recipe.title}
+          source={{ kind: 'saved', recipeId: recipe.id }}
+          baseForSave={{
+            title: recipe.title,
+            description: recipe.description,
+            ingredients: recipe.ingredients,
+            steps: recipe.steps,
+            total_time_minutes: recipe.total_time_minutes,
+          }}
+          onClose={() => setRemixOpen(false)}
+        />
+      )}
     </>
   );
 }
@@ -194,13 +318,15 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   actionBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    // 44pt is Apple's minimum recommended touch target — the old 36pt was
+    // easy to fat-finger over hero imagery.
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },

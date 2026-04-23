@@ -30,6 +30,73 @@ export class AnthropicAdapter implements AIClient {
     return block?.text ?? '';
   }
 
+  /**
+   * Stream text deltas. Bridges @anthropic-ai/sdk's `.messages.stream(...)` to
+   * a plain async iterable so route handlers never touch vendor types.
+   *
+   * Pitfall 2 guard: tool calls break the `.on('text')` event — keep this
+   * adapter path tool-free. Structured outputs continue to go through
+   * `generateStructured`.
+   */
+  async *generateStream(i: GenerateTextInput): AsyncIterable<string> {
+    const stream = this.client.messages.stream({
+      model: this.model,
+      max_tokens: i.maxTokens ?? 1024,
+      system: i.system,
+      messages: [{ role: 'user', content: i.user }],
+    });
+
+    // Collect deltas via the SDK's event emitter and drain them via a queue
+    // so we can expose them as an AsyncIterable (decouples consumer backpressure
+    // from Anthropic's internal timing).
+    const queue: string[] = [];
+    let resolveNext: ((v: void) => void) | null = null;
+    let done = false;
+    let streamErr: unknown = null;
+
+    stream.on('text', (text: string) => {
+      queue.push(text);
+      if (resolveNext) {
+        const r = resolveNext;
+        resolveNext = null;
+        r();
+      }
+    });
+
+    stream.on('error', (err: unknown) => {
+      streamErr = err;
+      done = true;
+      if (resolveNext) {
+        const r = resolveNext;
+        resolveNext = null;
+        r();
+      }
+    });
+
+    stream.on('end', () => {
+      done = true;
+      if (resolveNext) {
+        const r = resolveNext;
+        resolveNext = null;
+        r();
+      }
+    });
+
+    while (true) {
+      if (queue.length > 0) {
+        yield queue.shift() as string;
+        continue;
+      }
+      if (streamErr) {
+        throw streamErr instanceof Error ? streamErr : new Error(String(streamErr));
+      }
+      if (done) return;
+      await new Promise<void>((resolve) => {
+        resolveNext = resolve;
+      });
+    }
+  }
+
   async generateStructured<T>(i: GenerateStructuredInput<T>): Promise<T> {
     const res = await this.client.messages.create({
       model: this.model,

@@ -74,14 +74,18 @@ export default function OnboardingScreen() {
 
   const handleComplete = async () => {
     if (!user) {
-      console.log('[onboarding] handleComplete: no user');
+      if (__DEV__) console.log('[onboarding] handleComplete: no user');
       return;
     }
 
-    console.log('[onboarding] handleComplete: starting, user.id =', user.id);
+    // Phase 23-07 (NFR-25): all console.log calls in onboarding are wrapped
+    // in `__DEV__` so PII (display_name, user.id, supabase payloads) never
+    // ships to production builds. Production errors route through
+    // Alert.alert (user-visible) + Sentry captureException (PII-scrubbed).
+    if (__DEV__) console.log('[onboarding] handleComplete: starting, user.id =', user.id);
     setSaving(true);
     try {
-      console.log('[onboarding] calling supabase.update...');
+      if (__DEV__) console.log('[onboarding] calling supabase.update...');
       const { data, error, status, statusText } = await supabase
         .from('profiles')
         .update({
@@ -95,17 +99,17 @@ export default function OnboardingScreen() {
         .eq('id', user.id)
         .select();
 
-      console.log('[onboarding] supabase.update returned', { data, error, status, statusText });
+      if (__DEV__) console.log('[onboarding] supabase.update returned', { data, error, status, statusText });
 
       if (error) {
         Alert.alert('Error', `Could not save: ${error.message}`);
         return;
       }
 
-      console.log('[onboarding] setting isOnboarded=true');
+      if (__DEV__) console.log('[onboarding] setting isOnboarded=true');
       useAuthStore.setState({ isOnboarded: true });
     } catch (err) {
-      console.log('[onboarding] EXCEPTION', err);
+      if (__DEV__) console.log('[onboarding] EXCEPTION', err);
       Alert.alert('Exception', String(err));
     } finally {
       setSaving(false);

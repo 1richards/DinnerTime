@@ -67,3 +67,68 @@ describe('routeIntent — case insensitivity', () => {
     expect(routeIntent('Go Back')).toEqual({ type: 'back' });
   });
 });
+
+describe('routeIntent — show_ingredients intent (Phase 16 COOK-UX-05)', () => {
+  it('routes "show ingredients" to { type: "show_ingredients" }', () => {
+    expect(routeIntent('show ingredients')).toEqual({
+      type: 'show_ingredients',
+    });
+  });
+
+  it('is case-insensitive ("Show ingredients")', () => {
+    expect(routeIntent('Show ingredients')).toEqual({
+      type: 'show_ingredients',
+    });
+  });
+
+  it('matches "can you show me the ingredients"', () => {
+    expect(routeIntent('can you show me the ingredients')).toEqual({
+      type: 'show_ingredients',
+    });
+  });
+
+  it('matches "see ingredients"', () => {
+    expect(routeIntent('see ingredients')).toEqual({
+      type: 'show_ingredients',
+    });
+  });
+
+  it('matches "list ingredients"', () => {
+    expect(routeIntent('list ingredients')).toEqual({
+      type: 'show_ingredients',
+    });
+  });
+
+  it('matches "what ingredients do I need"', () => {
+    expect(routeIntent('what ingredients do I need')).toEqual({
+      type: 'show_ingredients',
+    });
+  });
+
+  it('matches "what are the ingredients"', () => {
+    expect(routeIntent('what are the ingredients')).toEqual({
+      type: 'show_ingredients',
+    });
+  });
+
+  it('ACCEPTED edge case: "what ingredients are substitutes for butter" routes to show_ingredients', () => {
+    // The regex broadly matches any "what ... ingredients" phrase. This
+    // skips the /ask fallback for substitution questions — users must rephrase
+    // ("how do I substitute butter?") to trigger /ask. Locked contract per
+    // 16-05 behavior block; tighten the regex if UAT surfaces real friction.
+    expect(routeIntent('what ingredients are substitutes for butter')).toEqual({
+      type: 'show_ingredients',
+    });
+  });
+
+  it('regression guard: free-form questions without the trigger still fall through to ask', () => {
+    expect(routeIntent('how do I chop an onion?')).toEqual({
+      type: 'ask',
+      question: 'how do I chop an onion?',
+    });
+  });
+
+  it('regression guard: "next step" still routes to next (show_ingredients sits after nav)', () => {
+    expect(routeIntent('next step')).toEqual({ type: 'next' });
+  });
+});

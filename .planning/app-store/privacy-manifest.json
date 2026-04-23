@@ -1,0 +1,73 @@
+{
+  "_meta": {
+    "purpose": "Draft answers for App Store Connect privacy nutrition label form. Paste corresponding answers into the ASC form at App Store Connect -> DinnerTime -> App Privacy. Last audited: 2026-04-22 (Phase 23-07, NFR-26).",
+    "source_of_truth": "apps/mobile/PRIVACY.md",
+    "app_version": "1.0.0"
+  },
+  "data_types_collected": {
+    "contact_info": ["email_address"],
+    "user_content": ["photos", "other_user_content"],
+    "identifiers": ["user_id"],
+    "usage_data": ["product_interaction"],
+    "diagnostics": [
+      "crash_data",
+      "performance_data",
+      "other_diagnostic_data"
+    ]
+  },
+  "linked_to_user": [
+    "email_address",
+    "user_id",
+    "photos",
+    "other_user_content",
+    "product_interaction"
+  ],
+  "used_for_tracking": [],
+  "purposes": {
+    "app_functionality": [
+      "email_address",
+      "user_id",
+      "photos",
+      "other_user_content"
+    ],
+    "analytics": [
+      "product_interaction",
+      "crash_data",
+      "performance_data",
+      "other_diagnostic_data"
+    ]
+  },
+  "third_parties": [
+    {
+      "name": "Supabase",
+      "role": "Backend auth + database + storage",
+      "data": ["email_address", "user_id", "other_user_content"]
+    },
+    {
+      "name": "Anthropic Claude",
+      "role": "AI vision + text (pantry scan, recipe reasoning, cooking Q&A)",
+      "data": ["photos", "other_user_content"]
+    },
+    {
+      "name": "Google Gemini",
+      "role": "AI text for some search queries",
+      "data": ["other_user_content"]
+    },
+    {
+      "name": "Instacart",
+      "role": "Grocery hand-off via anonymous hosted link",
+      "data": []
+    },
+    {
+      "name": "Sentry",
+      "role": "Crash + performance reporting (PII-scrubbed before transmission)",
+      "data": ["user_id", "crash_data", "performance_data"]
+    }
+  ],
+  "data_minimization_notes": [
+    "Photos of the fridge/pantry are sent to Anthropic for AI vision and then discarded on our side; we do not persist the raw image bytes.",
+    "Voice input is transcribed on-device by iOS Speech Recognition; only the resulting text is transmitted for the duration of a cooking-mode turn.",
+    "Sentry beforeSend strips email|password|token|transcript|raw_query|prompt|display_name|name keys before transmission.",
+    "Server-side logs emit IDs and counts only — no emails, prompts, or transcripts."
+  ]
+}

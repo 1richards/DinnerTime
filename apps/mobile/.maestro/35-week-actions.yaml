@@ -1,0 +1,35 @@
+appId: com.dinnertime.app
+name: "35 — Week actions sheet (regenerate / shift ±1 / duplicate / shopping)"
+tags:
+  - phase-22
+# Phase 22-02 — Cluster 2a. The Plan tab's top-right ellipsis opens the
+# native iOS ActionSheet listing 5 week-level actions + Cancel:
+#   - Regenerate week
+#   - Shift +1 week
+#   - Shift -1 week
+#   - Duplicate last week
+#   - Shopping list for week
+#
+# This smoke covers the open→view→dismiss path. Each individual action
+# (regenerate confirm Alert / shift / duplicate) is exercised in a future
+# UAT when the dev-client supports the full native picker flow.
+---
+- runFlow: _ensure-logged-in.yaml
+- tapOn: "Plan"
+- extendedWaitUntil:
+    visible:
+      text: ".*(Week|This).*"
+    timeout: 15000
+- takeScreenshot: 01-plan-loaded
+- tapOn:
+    id: "Week actions"
+    optional: true
+# Fallback: tap by accessibilityLabel literal if id-match misses.
+- tapOn: "Week actions"
+- extendedWaitUntil:
+    visible:
+      text: ".*Shift.*"
+    timeout: 4000
+- takeScreenshot: 02-action-sheet
+- tapOn: "Cancel"
+- takeScreenshot: 03-dismissed

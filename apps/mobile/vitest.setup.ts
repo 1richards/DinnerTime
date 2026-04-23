@@ -51,6 +51,34 @@ vi.mock('expo-speech', () => ({
   isSpeakingAsync: vi.fn().mockResolvedValue(false),
 }));
 
+// expo-symbols pulls in expo-modules-core which references the RN-only
+// __DEV__ global and hard-crashes under vitest's Node env. Stub the one
+// export the codebase uses (SymbolView) so importers can mount in tests
+// without each file re-declaring the mock. Tests that need finer control
+// can still vi.mock('expo-symbols', ...) locally to override.
+vi.mock('expo-symbols', () => ({
+  SymbolView: (_props: unknown) => null,
+}));
+
+// Same reasoning as expo-symbols — expo-haptics imports expo-modules-core
+// and trips the __DEV__ guard under vitest. Global stub with the two enums
+// + impact/notification helpers used across the cooking surface. Tests that
+// care about call history can still re-mock locally with spies.
+vi.mock('expo-haptics', () => ({
+  impactAsync: vi.fn(async () => {}),
+  notificationAsync: vi.fn(async () => {}),
+  ImpactFeedbackStyle: {
+    Light: 'light',
+    Medium: 'medium',
+    Heavy: 'heavy',
+  },
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error',
+  },
+}));
+
 vi.mock('expo-keep-awake', () => ({
   useKeepAwake: vi.fn(),
 }));

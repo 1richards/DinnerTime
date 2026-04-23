@@ -17,6 +17,24 @@ export default function SettingsLayout() {
     >
       <Stack.Screen name="pantry-rules" options={{ title: 'Pantry Rules' }} />
       <Stack.Screen name="staples" options={{ title: 'Staples' }} />
+      {/* Phase 23-01: account management screens */}
+      <Stack.Screen
+        name="account/change-password"
+        options={{ title: 'Change password' }}
+      />
+      <Stack.Screen
+        name="account/change-email"
+        options={{ title: 'Change email' }}
+      />
+      {/* Phase 23-02: destructive-half account screens. */}
+      <Stack.Screen
+        name="account/export"
+        options={{ title: 'Export data' }}
+      />
+      <Stack.Screen
+        name="account/delete"
+        options={{ title: 'Delete account' }}
+      />
     </Stack>
   );
 }

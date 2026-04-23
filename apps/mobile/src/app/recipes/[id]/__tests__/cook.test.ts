@@ -49,10 +49,18 @@ function makeDeps() {
   const speak = vi.fn();
   const stopSpeech = vi.fn();
   const onAsk = vi.fn(async (_q: string) => undefined);
+  // Phase 16 COOK-UX-05 deps — real wiring ships in 16-06; tests only need
+  // the interface satisfied so TranscriptDeps type-checks.
+  const onCommandToast = vi.fn();
+  const onCommandHaptic = vi.fn();
+  const onShowIngredients = vi.fn();
   return {
     speak,
     stopSpeech,
     onAsk,
+    onCommandToast,
+    onCommandHaptic,
+    onShowIngredients,
     deps: {
       stopSpeech,
       next: store.next,
@@ -61,6 +69,9 @@ function makeDeps() {
       addTimer: store.addTimer,
       speak,
       onAsk,
+      onCommandToast,
+      onCommandHaptic,
+      onShowIngredients,
     },
   };
 }
@@ -131,16 +142,17 @@ describe('cook screen transcript dispatch', () => {
     expect(useCookingStore.getState().stepIndex).toBe(0);
   });
 
-  it('transcript "set a timer for 10 minutes" adds a 10-minute timer', async () => {
-    const { deps, speak } = makeDeps();
+  it('transcript "set a timer for 10 minutes" adds a 10-minute timer (Phase 16: silent — no TTS echo)', async () => {
+    const { deps, speak, onCommandToast } = makeDeps();
     await handleTranscript('set a timer for 10 minutes', deps);
     const timers = useCookingStore.getState().timers;
     expect(timers).toHaveLength(1);
     expect(timers[0].label).toContain('10 min');
     expect(timers[0].endsAt - Date.now()).toBeGreaterThan(9 * 60_000);
-    expect(speak).toHaveBeenCalledWith(
-      expect.stringContaining('10 minute'),
-    );
+    // UI-SPEC §Voice feedback principle: silent confirmation. Toast + haptic
+    // replaces the pre-Phase-16 TTS echo.
+    expect(speak).not.toHaveBeenCalled();
+    expect(onCommandToast).toHaveBeenCalledWith('Timer set · 10 min');
   });
 
   it('transcript "what can I substitute for buttermilk" dispatches ask flow', async () => {

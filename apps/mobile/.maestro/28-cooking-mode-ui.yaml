@@ -1,0 +1,213 @@
+appId: com.dinnertime.app
+name: "28 — cooking mode: non-voice UI happy path + dark-mode toggle"
+tags:
+  - phase-16
+  - cooking
+# Phase 16 Plan 07 — non-voice UAT for cooking mode UI on the iOS Simulator.
+#
+# Voice-driven paths (STT "next step" / "set a timer" / "show ingredients")
+# are NOT covered here for three reasons:
+#   1. expo-speech-recognition requires a physical-device microphone.
+#   2. Maestro has no audio-injection API for the simulator driver.
+#   3. DEVICE-TEST-16 (plan 16-08) covers the voice paths on a real iPhone.
+#
+# What this flow DOES verify (sim-runnable):
+#   - Enter cooking mode from recipe detail (Start Cooking)
+#   - ScrollableRecipe renders INGREDIENTS + STEPS sections
+#   - Current-step StepCard shows "STEP 1 of N"
+#   - Ingredient tap-to-check → strike-through + success-tinted check (visual)
+#   - StepNavButtons Next advances to "STEP 2 of N"
+#   - StepNavButtons Back returns to "STEP 1 of N"
+#   - Exit flow → ActionSheetIOS with "End cooking session?" + destructive
+#   - Settings Cooking section renders "Dark cooking mode" toggle (16-07 Task 1)
+#   - Toggle ON → re-enter cooking → dark palette applied
+#
+# Screenshots produced (7):
+#   28-01-cooking-mode-landing   — ScrollableRecipe rendered, STEP 1 active
+#   28-02-ingredient-checked     — ingredient tapped, strikethrough visible
+#   28-03-step-advanced          — STEP 2 of N after Next
+#   28-04-step-back              — STEP 1 of N after Back
+#   28-05-exit-confirm           — iOS action sheet visible
+#   28-06-dark-mode-toggled      — Settings toggle ON
+#   28-07-dark-mode-cooking      — Cooking screen with dark palette
+#
+# Selector caveats (CLAUDE.md UAT section):
+#   - Maestro text matcher is regex. Avoid `=`, `(`, `?`, `·` (middle dot) in
+#     assertions. All assertions below use plain labels or regex substrings.
+#   - StickyCookingHeader's Exit Pressable has accessibilityLabel="Exit cooking"
+#     (masks the "Exit" Text child). Use .*Exit.* to match the AX label substring.
+#   - StepNavButtons use accessibilityLabel="Back" / "Repeat" / "Next".
+#   - IngredientRow accessibilityLabel is "{qty} {name}, unchecked|checked".
+#     We don't tap by label — we tap the first ingredient row by visual
+#     position (below the INGREDIENTS section header).
+#   - "Start Cooking" (not "Cook") is the button label on recipe detail.
+#   - "End cooking session?" contains `?` — use .*End cooking session.* regex.
+---
+# Clean app restart — upstream flows may leave cook state in cookingStore.
+- launchApp:
+    clearState: true
+
+- runFlow: _ensure-logged-in.yaml
+
+# 1. Land on Kitchen. Switch to Recipe Box to find a saved recipe.
+- tapOn:
+    text: ".*Recipe Box.*"
+- extendedWaitUntil:
+    visible:
+      text: ".*in your recipe box.*"
+    timeout: 15000
+
+# 2. Tap the first recipe card. Recipe detail opens — look for "Start Cooking".
+- scroll
+- extendedWaitUntil:
+    visible:
+      text: ".*Start Cooking.*"
+    timeout: 15000
+  # If no recipe exists (fresh test account), the scroll may not surface one.
+  # The ensure-logged-in flow uses a seeded account that has recipes in
+  # Library post-Phase-17 test runs.
+
+# 3. Enter cooking mode.
+- tapOn:
+    text: ".*Start Cooking.*"
+
+# 4. Cooking screen mounts. ScrollableRecipe renders INGREDIENTS + STEPS.
+- extendedWaitUntil:
+    visible:
+      text: "INGREDIENTS"
+    timeout: 15000
+- assertVisible:
+    text: "STEPS"
+- assertVisible:
+    text: ".*STEP 1 of.*"
+- takeScreenshot: 28-01-cooking-mode-landing
+
+# 5. Tap the first ingredient row. IngredientRow renders as a Pressable with
+#    an accessibilityLabel of "{qty} {name}, unchecked". The exact label
+#    depends on the seeded recipe, so we tap the first row by position: the
+#    INGREDIENTS header is near the top of the ScrollView and the first
+#    ingredient row sits ~15-20% below it.
+- tapOn:
+    text: "INGREDIENTS"
+- tapOn:
+    point: "50%,40%"
+- takeScreenshot: 28-02-ingredient-checked
+
+# 6. Tap Next nav button. StepNavButtons sits at the bottom of the screen.
+#    accessibilityLabel="Next" is a plain literal string.
+- tapOn:
+    text: "Next"
+- extendedWaitUntil:
+    visible:
+      text: ".*STEP 2 of.*"
+    timeout: 5000
+- takeScreenshot: 28-03-step-advanced
+
+# 7. Tap Back. Returns to STEP 1.
+- tapOn:
+    text: "Back"
+- extendedWaitUntil:
+    visible:
+      text: ".*STEP 1 of.*"
+    timeout: 5000
+- takeScreenshot: 28-04-step-back
+
+# 8. Tap Exit (top-left). iOS ActionSheetIOS opens with destructive
+#    "End cooking session" + "Keep cooking" cancel. Selector uses regex
+#    to match the accessibilityLabel "Exit cooking".
+- tapOn:
+    text: ".*Exit cooking.*"
+- extendedWaitUntil:
+    visible:
+      text: ".*End cooking session.*"
+    timeout: 5000
+- takeScreenshot: 28-05-exit-confirm
+
+# 9. Dismiss action sheet via Keep cooking. We want to return to cooking
+#    so the next step (Settings navigation) starts from a predictable
+#    state (we'll exit via the destructive option after toggling dark mode).
+- tapOn:
+    text: "Keep cooking"
+- extendedWaitUntil:
+    visible:
+      text: ".*STEP 1 of.*"
+    timeout: 5000
+
+# 10. Exit cooking for real — destructive option takes us back to recipe detail.
+- tapOn:
+    text: ".*Exit cooking.*"
+- tapOn:
+    text: "End cooking session"
+- extendedWaitUntil:
+    visible:
+      text: ".*Start Cooking.*"
+    timeout: 10000
+
+# 11. Navigate to Settings via deep link (same pattern as flow 13).
+- openLink: "dinnertime:///settings"
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: ".*Family Members.*"
+    timeout: 15000
+
+# 12. Scroll to the Cooking section (near the bottom, above Account).
+- scrollUntilVisible:
+    element:
+      text: ".*Dark cooking mode.*"
+    direction: DOWN
+    timeout: 10000
+- assertVisible:
+    text: ".*Dark cooking mode.*"
+- assertVisible:
+    text: ".*Darker background while cooking.*"
+
+# 13. Tap the row — this toggles the iOS Switch via the accessibility
+#     label wrapper. The Switch is a sibling to the text but the row
+#     itself has accessibilityRole="switch" so the AX system handles the
+#     press. On Maestro we use the visible title text as the selector.
+- tapOn:
+    text: "Dark cooking mode"
+- takeScreenshot: 28-06-dark-mode-toggled
+
+# 14. Go back to Kitchen → Recipe Box → recipe detail → Start Cooking.
+#     Dark mode applies to the cooking-screen root inline style (scoped
+#     per CONTEXT D-03).
+- openLink: "dinnertime:///"
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: ".*What should we cook tonight.*"
+    timeout: 15000
+- tapOn:
+    text: ".*Recipe Box.*"
+- extendedWaitUntil:
+    visible:
+      text: ".*in your recipe box.*"
+    timeout: 15000
+- scroll
+- extendedWaitUntil:
+    visible:
+      text: ".*Start Cooking.*"
+    timeout: 15000
+- tapOn:
+    text: ".*Start Cooking.*"
+- extendedWaitUntil:
+    visible:
+      text: "INGREDIENTS"
+    timeout: 15000
+- takeScreenshot: 28-07-dark-mode-cooking
+
+# 15. Clean up — exit cooking so the next test run starts from a
+#     predictable state.
+- tapOn:
+    text: ".*Exit cooking.*"
+- tapOn:
+    text: "End cooking session"

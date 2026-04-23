@@ -8,31 +8,43 @@ DinnerTime is an AI-powered iOS meal planning app that eliminates the cognitive 
 
 Open the fridge, take a photo, get dinner ideas — zero mental effort from "what do we have?" to "what should we cook?"
 
+## Current State
+
+**v1.0 — Private Beta Launch Ready** (shipped 2026-04-22)
+
+25 phases complete. 122 plans. 269 tasks. Full details in `milestones/v1.0-ROADMAP.md`.
+
+Human-action items remaining before live beta (from `LAUNCH-HANDOFF.md`):
+1. Scan real pantry on physical iPhone (BETA-01)
+2. Deploy backend to Fly.io prod with rotated secrets (BETA-22/23)
+3. Upload TestFlight build via EAS Submit and configure test groups (BETA-08/09)
+4. Fill App Store Connect forms using the pre-generated app-store/ drafts (BETA-13/16/18/19)
+5. Run dogfood week — import 30 recipes, generate meal plan, cook and shop (BETA-02/03)
+
 ## Requirements
 
-### Validated
+### Validated (v1.0)
 
-(None yet — ship to validate)
+- [x] Photo-driven pantry scanning — snap fridge/pantry/freezer photos, AI identifies contents
+- [x] Fridge-to-dinner suggestions — AI recommends meals based on current pantry inventory
+- [x] Recipe import from URLs — paste a recipe website link, get a structured recipe card
+- [x] Recipe import from photos — photograph cookbook pages, handwritten cards, screenshots
+- [x] Recipe import from family/word of mouth — manual entry with AI assistance to structure it
+- [x] Weekly meal plan generation — AI creates a balanced week considering pantry, preferences, and variety
+- [x] Kid-friendly meal awareness — respect typical kid pickiness, suggest family-pleasing meals
+- [x] Shopping list auto-generation — consolidate ingredients from meal plan, subtract pantry items
+- [x] Instacart integration — one-tap grocery ordering from shopping lists
+- [x] Creative meal variations — AI suggests tweaks to keep repeat meals interesting
+- [x] Pantry usage tracking — mark items as used when meals are cooked, auto-deduct from inventory
+- [x] Conversational voice cooking mode — hands-free AI assistant while in the kitchen
+- [x] Gentle skill progression — nudge toward slightly more ambitious recipes as confidence builds
+- [x] Cloud storage and sync — reliable data persistence across sessions
+- [x] Recipe library — save, organize, search, and favorite recipes
+- [x] Internet recipe discovery — AI-powered search for new recipe ideas
 
 ### Active
 
-- [ ] Photo-driven pantry scanning — snap fridge/pantry/freezer photos, AI identifies contents
-- [ ] Fridge-to-dinner suggestions — AI recommends meals based on current pantry inventory
-- [ ] Recipe import from URLs — paste a recipe website link, get a structured recipe card
-- [ ] Recipe import from photos — photograph cookbook pages, handwritten cards, screenshots
-- [ ] Recipe import from family/word of mouth — manual entry with AI assistance to structure it
-- [ ] Weekly meal plan generation — AI creates a balanced week considering pantry, preferences, and variety
-- [ ] Kid-friendly meal awareness — respect typical kid pickiness, suggest family-pleasing meals
-- [ ] Shopping list auto-generation — consolidate ingredients from meal plan, subtract pantry items
-- [ ] Instacart integration — one-tap grocery ordering from shopping lists
-- [ ] Easy reordering — quickly reorder past grocery runs
-- [ ] Creative meal variations — AI suggests tweaks to keep repeat meals interesting
-- [ ] Pantry usage tracking — mark items as used when meals are cooked, auto-deduct from inventory
-- [ ] Conversational voice cooking mode — hands-free AI assistant while in the kitchen
-- [ ] Gentle skill progression — nudge toward slightly more ambitious recipes as confidence builds
-- [ ] Cloud storage and sync — reliable data persistence across sessions
-- [ ] Recipe library — save, organize, search, and favorite recipes
-- [ ] Internet recipe discovery — AI-powered search for new recipe ideas
+(None — see `/gsd:new-milestone` to open v1.1)
 
 ### Out of Scope
 
@@ -95,4 +107,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-07 after initialization*
+*Last updated: 2026-04-22 — v1.0 milestone shipped*

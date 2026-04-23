@@ -1,9 +1,13 @@
 import React, { useEffect } from 'react';
-import { View, ScrollView, ActivityIndicator, Alert, Text, Pressable } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Alert, Text, Pressable, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, router } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { usePreferencesStore } from '../../stores/preferencesStore';
+import { useCookingStore } from '../../stores/cookingStore';
+import { useProgressionStore } from '../../stores/progressionStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { deriveSkillTier } from '../../plan/skillTier';
 import { useToast } from '../../components/ui/Toast';
 import { Button } from '../../components/ui/Button';
 import { FamilyMembersSection } from '../../components/settings/FamilyMembersSection';
@@ -11,6 +15,11 @@ import { DietarySection } from '../../components/settings/DietarySection';
 import { CuisineSection } from '../../components/settings/CuisineSection';
 import { DislikesSection } from '../../components/settings/DislikesSection';
 import { SkillLevelSection } from '../../components/settings/SkillLevelSection';
+import { ShoppingHandoffSection } from '../../components/settings/ShoppingHandoffSection';
+import { BiometricUnlockSection } from '../../components/settings/BiometricUnlockSection';
+import { AccountSection } from '../../components/settings/AccountSection';
+import { ConnectedServicesSection } from '../../components/settings/ConnectedServicesSection';
+import { AboutSection } from '../../components/settings/AboutSection';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { colors } from '../../design/tokens';
 
@@ -20,6 +29,20 @@ export default function SettingsScreen() {
   const signOut = useAuthStore((s) => s.signOut);
   const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
   const isLoading = usePreferencesStore((s) => s.isLoading);
+  // Phase 16-07: cooking preferences — dark-mode toggle. Persisted via the
+  // cookingStore's partialize rule so the value survives app restarts.
+  const darkMode = useCookingStore((s) => s.darkMode);
+  const setDarkMode = useCookingStore((s) => s.setDarkMode);
+  // Phase 22-05: Plan section inputs — skill tier is derived read-only from
+  // progressionStore.cookStats (same helper the server uses), banner toggle
+  // is a persisted settingsStore boolean defaulting to true.
+  const cookStats = useProgressionStore((s) => s.cookStats);
+  const planFocusBannerEnabled = useSettingsStore(
+    (s) => s.planFocusBannerEnabled
+  );
+  const setPlanFocusBannerEnabled = useSettingsStore(
+    (s) => s.setPlanFocusBannerEnabled
+  );
   const { show, ToastComponent } = useToast();
 
   // If the user signs out while on this screen, kick them to login.
@@ -28,19 +51,26 @@ export default function SettingsScreen() {
   if (!isLoggedIn) return <Redirect href="/(auth)/login" />;
 
   const handleSignOut = () => {
-    Alert.alert('Sign out?', 'You\u2019ll need to sign back in to use DinnerTime.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          await signOut();
-          // Explicit navigation in case the <Redirect> above doesn't fire
-          // fast enough when the modal dismiss animation is still running.
-          router.replace('/(auth)/login');
+    // Phase 23-04 (NFR-10, D-10): polished sign-out copy. Distinguishes
+    // local-only data (cleared on sign-out) from cloud data (preserved
+    // across sessions) so users aren't anxious about losing recipes.
+    Alert.alert(
+      'Sign out?',
+      'Your local data — scanned pantry photos, draft meal plans — will be cleared. Your cloud data (recipes, past plans, history) stays and will come back when you sign in.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await signOut();
+            // Explicit navigation in case the <Redirect> above doesn't fire
+            // fast enough when the modal dismiss animation is still running.
+            router.replace('/(auth)/login');
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   useEffect(() => {
@@ -127,10 +157,131 @@ export default function SettingsScreen() {
 
         <View className="border-b border-warmGray-100 my-4" />
 
-        {/* Account */}
+        {/* Phase 16-07: Cooking preferences — dark-mode toggle per UI-SPEC
+            §Copywriting "Dark mode toggle" + §Component Inventory "Settings
+            additions". Wired to cookingStore.setDarkMode (persisted). */}
+        <View className="mb-2">
+          <Text className="text-label text-text-secondary uppercase mb-3">
+            COOKING
+          </Text>
+          <View
+            className="flex-row items-center justify-between py-4 border-b border-border"
+            accessibilityRole="switch"
+            accessibilityState={{ checked: darkMode }}
+            accessibilityLabel="Dark cooking mode"
+          >
+            <View className="flex-1 pr-4">
+              <Text className="text-body text-text-primary">
+                Dark cooking mode
+              </Text>
+              <Text className="text-body text-text-secondary">
+                Darker background while cooking. Matches Spotify's Now Playing feel.
+              </Text>
+            </View>
+            <Switch value={darkMode} onValueChange={setDarkMode} />
+          </View>
+        </View>
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Phase 22-05: Plan — Skill Tier (read-only, derived from cook
+            stats) + Weekly Skill Focus banner toggle. The tier display is
+            a one-line signal showing where the user is on the
+            beginner/intermediate/advanced ladder (threshold constants
+            shared with the server via apps/mobile/src/plan/skillTier.ts).
+            The toggle gates whether the FocusBanner renders at the top of
+            the Plan tab. */}
+        <View className="mb-2">
+          <Text className="text-label text-text-secondary uppercase mb-3">
+            PLAN
+          </Text>
+          <View
+            className="flex-row items-center justify-between py-4 border-b border-border"
+            accessibilityLabel="Skill tier"
+          >
+            <View className="flex-1 pr-4">
+              <Text className="text-body text-text-primary">Skill Tier</Text>
+              <Text className="text-body text-text-secondary">
+                Derived from your cooking history. Unlocks advanced recipes as
+                you cook.
+              </Text>
+            </View>
+            {(() => {
+              const tier = deriveSkillTier(cookStats);
+              const label =
+                tier === 1 ? 'Beginner' : tier === 2 ? 'Intermediate' : 'Advanced';
+              return (
+                <Text className="text-body text-text-primary font-semibold">
+                  Tier {tier} · {label}
+                </Text>
+              );
+            })()}
+          </View>
+          <View
+            className="flex-row items-center justify-between py-4 border-b border-border"
+            accessibilityRole="switch"
+            accessibilityState={{ checked: planFocusBannerEnabled }}
+            accessibilityLabel="Weekly Skill Focus banner"
+          >
+            <View className="flex-1 pr-4">
+              <Text className="text-body text-text-primary">
+                Weekly Skill Focus banner
+              </Text>
+              <Text className="text-body text-text-secondary">
+                Show a banner at the top of Plan letting you set a theme to
+                practice this week.
+              </Text>
+            </View>
+            <Switch
+              value={planFocusBannerEnabled}
+              onValueChange={setPlanFocusBannerEnabled}
+            />
+          </View>
+        </View>
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Phase 20-02 (SHOP-DC-05): hidden rollback toggle for the draft-cart
+            handoff flow. Header + muted subtitle are the only visible surface
+            for normal users; 5 taps within 1.5s on the "Shopping" header
+            reveals the legacy-mode Switch. Placed above Account per CONTEXT
+            D-03 (discreet, below existing content). */}
+        <ShoppingHandoffSection />
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Phase 23-03 (NFR-07): Security — Face ID unlock toggle. Placed
+            above Account so it groups with other auth-adjacent rows. Failure
+            toasts route through the page's existing useToast. */}
+        <BiometricUnlockSection showToast={show} />
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Phase 23-01: Account management rows (Change password / Change
+            email / Export data / Delete account). Export + Delete route to
+            stubs that 23-02 wires up. */}
+        <AccountSection />
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Phase 23-01: Connected Services placeholder — v1 Instacart is the
+            only integration, shown as "Not connected" since the current flow
+            uses anonymous link handoff (no OAuth connection to persist). */}
+        <ConnectedServicesSection />
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Phase 23-01: About — version, build, Privacy, Terms, Support. */}
+        <AboutSection />
+
+        <View className="border-b border-warmGray-100 my-4" />
+
+        {/* Session — existing sign-out block. The new AccountSection above
+            carries the account-management rows; this block stays minimal
+            until 23-04 consolidates the copy/polish pass. */}
         <View className="mt-2 mb-2">
           <Text className="text-xs font-bold text-warmGray-500 uppercase tracking-wider mb-3">
-            Account
+            Session
           </Text>
           {profile?.display_name ? (
             <Text className="text-sm text-warmGray-600 mb-4">

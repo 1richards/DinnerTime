@@ -1,0 +1,44 @@
+appId: com.dinnertime.app
+name: "31-month — Plan Month view + patterns"
+tags:
+  - phase-22
+# Phase 22-03 — Month view segmented control on the Plan tab.
+#
+# Flow:
+#   1. Login → Plan tab
+#   2. Assert Week segment is the default (Week | Month control visible)
+#   3. Screenshot Week view
+#   4. Tap Month segment → MonthGrid + MonthPatterns render
+#   5. Screenshot Month view
+#   6. Tap Week segment → back to Week list; scroll preserved (both lists
+#      stay mounted per Phase 12 display:none pattern)
+#   7. Screenshot back-to-week
+#
+# NOTE: Filename uses the `31-month-view.yaml` convention (Wave 0 already
+# shipped 31-addtoplan-datepicker.yaml — Maestro dedupes by filename, not
+# by numeric prefix).
+---
+- runFlow: _ensure-logged-in.yaml
+- tapOn: "Plan"
+- extendedWaitUntil:
+    visible:
+      text: ".*(Week|This|Day).*"
+    timeout: 15000
+- takeScreenshot: 01-week-view
+# Week | Month segmented control is visible as two pressables above the day
+# list. Week is active by default; tap Month to switch scale.
+- tapOn:
+    text: "Month"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: ".*(Protein|Cuisine|Repeats|No data yet).*"
+    timeout: 8000
+    optional: true
+- takeScreenshot: 02-month-view
+# Tap Week to toggle back. The week list's scroll state + any open sheets
+# survive the toggle via display:none (see plan.tsx).
+- tapOn:
+    text: "Week"
+    optional: true
+- takeScreenshot: 03-back-to-week

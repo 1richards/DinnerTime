@@ -373,4 +373,106 @@ describe('cooking routes', () => {
     // Last step must appear in system prompt
     expect(call.system).toContain('Cook on a hot griddle until bubbles form.');
   });
+
+  // =====================================================================
+  // Phase 16 — POST /cooking/ask-stream (SSE)
+  //
+  // Red test stubs for the streaming endpoint shipped in 16-01.
+  // The handler does not yet exist; these cases fail on 404 or on the
+  // content-type assertion and flip green when Wave 1 lands.
+  // =====================================================================
+
+  describe('POST /cooking/ask-stream (Phase 16 SSE)', () => {
+    it('responds with text/event-stream and emits event: delta then event: done', async () => {
+      setTable('recipes', {
+        maybeSingleResult: { data: RECIPE_ROW, error: null },
+      });
+      // Mock the AIClient to expose a streaming iterator. The production
+      // implementation can bridge to `client.stream()` or re-use
+      // generateText + fake chunking. Either way, the wire format is SSE.
+      mockGetClientFor.mockReturnValue({
+        generateText: mockGenerateText,
+        generateStream: vi.fn(async function* () {
+          yield 'Rest ';
+          yield 'for 5 ';
+          yield 'minutes.';
+        }),
+        generateStructured: vi.fn(),
+        analyzeImageStructured: vi.fn(),
+      });
+
+      const app = makeApp();
+      const res = await app.request('/cooking/ask-stream', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer t',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipe_id: 'recipe-1',
+          current_step_index: 1,
+          question: 'what next?',
+        }),
+      });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toMatch(/event-stream/);
+
+      const body = await res.text();
+      expect(body).toMatch(/event: delta/);
+      expect(body).toMatch(/event: done/);
+    });
+
+    it('emits event: error with CLAUDE_ERROR when the AI client throws', async () => {
+      setTable('recipes', {
+        maybeSingleResult: { data: RECIPE_ROW, error: null },
+      });
+      mockGetClientFor.mockReturnValue({
+        generateText: mockGenerateText,
+        generateStream: vi.fn(async function* () {
+          throw new Error('boom');
+          // eslint-disable-next-line no-unreachable
+          yield '';
+        }),
+        generateStructured: vi.fn(),
+        analyzeImageStructured: vi.fn(),
+      });
+
+      const app = makeApp();
+      const res = await app.request('/cooking/ask-stream', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer t',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipe_id: 'recipe-1',
+          current_step_index: 0,
+          question: 'why?',
+        }),
+      });
+      // Either 502 on the HTTP layer or an event-stream 200 with an
+      // embedded `event: error` frame. Both satisfy COOK-UX-01.
+      if (res.status === 200) {
+        const body = await res.text();
+        expect(body).toMatch(/event: error/);
+        expect(body).toMatch(/CLAUDE_ERROR/);
+      } else {
+        expect(res.status).toBe(502);
+      }
+    });
+
+    it('401 without Authorization', async () => {
+      const app = makeApp();
+      const res = await app.request('/cooking/ask-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipe_id: 'recipe-1',
+          current_step_index: 0,
+          question: 'hi',
+        }),
+      });
+      expect(res.status).toBe(401);
+    });
+  });
 });

@@ -1,22 +1,46 @@
+/**
+ * StepNavButtons — Phase 16 Wave 2 (16-05).
+ *
+ * UI-SPEC §Spacing §Exceptions: 72pt tap target (not Phase 19's 44pt) —
+ * cooking-hands accessibility for wet/greasy fingertips. Tokens (color,
+ * radius, typography, icon sizing via `iconPropsForText('display')`) stay
+ * Phase-19-compliant; only HEIGHT is overridden. This is a deliberate,
+ * scoped deviation — everywhere else in the app follows the 44pt minimum.
+ *
+ * Interface (Phase 16):
+ *   - { onBack, onRepeat, onNext, disableBack, disableNext }
+ *
+ * Semantics are the INVERSE of the Phase 9 `canGoBack`/`canGoNext` props.
+ * The 16-06 cook.tsx integration plan updates the callsite accordingly
+ * (current cook.tsx still passes canGoBack/canGoNext — TypeScript will
+ * flag this on rebuild and 16-06 will fix it).
+ *
+ * Why hand-roll the Pressable rather than use the Phase 19 `Button`? The
+ * Button primitive enforces 44pt height in its variantStyles; passing a
+ * height override would either require a new prop or bypass the variant
+ * contract. Keeping the 72pt deviation local to this component keeps the
+ * Button primitive's invariants intact.
+ */
 import React from 'react';
 import { View, Pressable, Text } from 'react-native';
-import { SymbolIcon } from '../ui/SymbolIcon';
+import { SymbolView } from 'expo-symbols';
+import { iconPropsForText } from '../../design/icons';
+import { colors } from '../../design/tokens';
 
-interface StepNavButtonsProps {
+export interface StepNavButtonsProps {
   onBack: () => void;
   onRepeat: () => void;
   onNext: () => void;
-  canGoBack: boolean;
-  canGoNext: boolean;
+  disableBack: boolean;
+  disableNext: boolean;
 }
 
 interface NavButtonProps {
   label: string;
-  // SF Symbols has no typed glyphMap — plain string (Pitfall 5).
+  /** SF Symbol glyph name — kept as a string because expo-symbols has no typed glyph map. */
   icon: string;
   onPress: () => void;
   disabled?: boolean;
-  primary?: boolean;
   testID?: string;
 }
 
@@ -25,47 +49,53 @@ function NavButton({
   icon,
   onPress,
   disabled = false,
-  primary = false,
   testID,
 }: NavButtonProps) {
-  const container = primary
-    ? 'bg-brand'
-    : 'bg-warmGray-100 border border-warmGray-200';
-  const textColor = primary ? 'text-white' : 'text-warmGray-800';
-  const iconColor = primary ? '#FFFFFF' : '#374151';
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
       disabled={disabled}
       testID={testID}
-      className={`flex-1 rounded-2xl items-center justify-center ${container} ${
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      className={`flex-1 flex-row items-center justify-center gap-2 bg-surface border border-border rounded-button ${
         disabled ? 'opacity-40' : ''
       }`}
-      style={{ minHeight: 72 }}
-      accessibilityLabel={label}
+      // 72pt deviation from Phase 19's 44pt minimum — see file header comment.
+      style={{ height: 72 }}
     >
-      <SymbolIcon name={icon as never} size={28} tintColor={iconColor} />
-      <Text className={`mt-1 text-base font-semibold ${textColor}`}>
-        {label}
-      </Text>
+      <SymbolView
+        name={icon as never}
+        {...iconPropsForText('display')}
+        tintColor={colors.textPrimary}
+      />
+      <Text className="text-body font-bold text-text-primary">{label}</Text>
     </Pressable>
   );
 }
 
+/**
+ * 72pt Back / Repeat / Next bar, bottom-anchored inside cook.tsx.
+ */
 export default function StepNavButtons({
   onBack,
   onRepeat,
   onNext,
-  canGoBack,
-  canGoNext,
+  disableBack,
+  disableNext,
 }: StepNavButtonsProps) {
   return (
-    <View className="flex-row gap-3 px-4 pb-4">
+    <View
+      className="flex-row items-center justify-between gap-3 px-4 bg-bg border-t border-border"
+      // Explicit 72pt height mirrors the nav bar band in UI-SPEC §Layout.
+      style={{ height: 72 }}
+    >
       <NavButton
         label="Back"
-        icon="arrow.backward"
+        icon="arrow.left"
         onPress={onBack}
-        disabled={!canGoBack}
+        disabled={disableBack}
         testID="cook-back"
       />
       <NavButton
@@ -76,10 +106,9 @@ export default function StepNavButtons({
       />
       <NavButton
         label="Next"
-        icon="arrow.forward"
+        icon="arrow.right"
         onPress={onNext}
-        disabled={!canGoNext}
-        primary
+        disabled={disableNext}
         testID="cook-next"
       />
     </View>

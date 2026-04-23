@@ -1,0 +1,34 @@
+appId: com.dinnertime.app
+name: "33 — Pin Something New suggestion to a day"
+tags:
+  - phase-22
+# Implements PLAN-X-04 (22-01 / Cluster 1 — Cross-flow nav).
+#
+# SuggestionCard now exposes a "Pin to day" icon (calendar.badge.plus) that
+# opens DatePickerSheet directly. Confirming posts to /meal-plans/entries/
+# assign with body.date + recipe_id: null (ad-hoc — per 22-RESEARCH Pitfall 7).
+# SuggestionPreviewModal's old DAY_LABELS column is also replaced with a
+# single "Add to Plan" CTA that opens the same DatePickerSheet.
+---
+- runFlow: _ensure-logged-in.yaml
+- tapOn: "Kitchen"
+- tapOn:
+    text: ".*Something New.*"
+    optional: true
+- tapOn:
+    text: ".*ideas from my pantry.*"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: ".*(Italian|Mediterranean|Asian|dinner|min).*"
+    timeout: 30000
+    optional: true
+- takeScreenshot: 01-something-new-results
+- tapOn: "Pin to day"
+- extendedWaitUntil:
+    visible:
+      text: ".*Pin.*"
+    timeout: 4000
+- takeScreenshot: 02-datepicker
+- tapOn: "Pin"
+- takeScreenshot: 03-pinned

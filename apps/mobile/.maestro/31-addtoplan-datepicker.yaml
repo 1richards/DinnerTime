@@ -1,0 +1,43 @@
+appId: com.dinnertime.app
+name: "31 — Add to Plan from Recipe Detail: native inline date picker"
+tags:
+  - phase-22
+# Implements PLAN-X-02 (22-01 / Cluster 1 — Cross-flow nav).
+#
+# AddToPlanSheet was rewritten to wrap DatePickerSheet (Phase 22 Wave 0),
+# so tapping "Add to Plan" on a recipe now presents an iOS inline calendar
+# bounded to [today, today+60d]. On confirm, POST /meal-plans/entries/assign
+# is called with body.date=YYYY-MM-DD (server 22-00 derives week_start +
+# day_of_week).
+#
+# This flow walks the path end-to-end; screenshot 02 captures the
+# DatePickerSheet; screenshot 03 captures the success Alert after tap Add.
+---
+- runFlow: _ensure-logged-in.yaml
+- tapOn: "Kitchen"
+- tapOn:
+    text: ".*Recipe Box.*"
+    optional: true
+# Tap the first recipe card in the box — ".*" regex picks the first visible
+# interactive node. If the library is empty we optionally skip.
+- tapOn:
+    index: 0
+    text: ".*"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: ".*(Ingredients|Start Cooking).*"
+    timeout: 8000
+- takeScreenshot: 01-recipe-detail
+# Open the hero-right ellipsis → "Add to Plan"
+- tapOn:
+    text: "More options"
+    optional: true
+- tapOn: "Add to Plan"
+- extendedWaitUntil:
+    visible:
+      text: ".*Add to Plan.*"
+    timeout: 6000
+- takeScreenshot: 02-datepicker-open
+- tapOn: "Add"
+- takeScreenshot: 03-added

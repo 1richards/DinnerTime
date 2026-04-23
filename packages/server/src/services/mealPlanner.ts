@@ -4,7 +4,7 @@ import type { JsonSchema, StructuredTool } from '../ai/types.js';
 import type { Difficulty, MealPlan, MealPlanEntry, MealPlanIngredient } from '../types/mealPlan.js';
 import { matchIngredientsToPantry } from './ingredientMatching.js';
 import type { PantryItem } from './pantry.js';
-import { logRecipeCook } from './progression.js';
+import { getCookStats, logRecipeCook } from './progression.js';
 
 // ---------- Context Types ----------
 
@@ -35,6 +35,20 @@ export interface MealPlanContext {
   recipeLibrary: RecipeLibraryEntry[];
   recentMealTitles: string[];
   weekStart: string;
+  // ---- Phase 22-05 extensions ----
+  /**
+   * Phase 22-05: derived skill tier (1=novice, 2=comfortable, 3=confident).
+   * Inferred server-side via deriveSkillTier(cookStats). When tier < 2 the
+   * prompt is gated to avoid hard-difficulty recipes and >60-min estimates.
+   */
+  skillTier?: 1 | 2 | 3;
+  /**
+   * Phase 22-05: optional weekly skill-focus theme (e.g. "knife skills",
+   * "pan sauces"). Free-form text read from meal_plans.focus_theme when a
+   * plan row exists for the target week_start. Generator nudges Claude to
+   * include ≥2 recipes exercising the theme.
+   */
+  focusTheme?: string | null;
 }
 
 // ---------- Prompt Assembly ----------
@@ -44,7 +58,15 @@ export interface MealPlanContext {
  * Pure function, exported for testing.
  */
 export function buildMealPlanPrompt(context: MealPlanContext): string {
-  const { pantryItems, preferences, recipeLibrary, recentMealTitles, weekStart } = context;
+  const {
+    pantryItems,
+    preferences,
+    recipeLibrary,
+    recentMealTitles,
+    weekStart,
+    skillTier,
+    focusTheme,
+  } = context;
 
   const ingredientsBlock = pantryItems
     .map((item) => `- ${item.name} (${item.quantity} ${item.unit}, ${item.category})`)
@@ -83,6 +105,28 @@ export function buildMealPlanPrompt(context: MealPlanContext): string {
     ? '- At least 3 of 7 nights must be kid_friendly=true (familiar flavors, simple textures for children)'
     : '';
 
+  // Phase 22-05: skill-tier gate. Tier 1 (<5 lifetime cooks) avoids hard
+  // recipes + long estimates so novices don't get demotivated by unreachable
+  // week plans. Tier 2/3 lifts the gate. When unspecified (existing callers
+  // that pre-date 22-05) default to tier 2 (the "comfortable" baseline).
+  const effectiveSkillTier = skillTier ?? 2;
+  const tierGateLine =
+    effectiveSkillTier < 2
+      ? "- Avoid recipes with difficulty='hard' or estimated_time > 60. User is still building basics."
+      : '';
+  // Always emit the SKILL TIER line so downstream Claude calls can condition
+  // on it even if the gate text is absent (tier >= 2 still affects phrasing).
+  const skillBlock = `SKILL TIER: ${effectiveSkillTier}${tierGateLine ? `\n${tierGateLine}` : ''}`;
+
+  // Phase 22-05: focus theme. Optional weekly nudge — when set, the
+  // generator is asked to include ≥2 recipes exercising the theme and name
+  // it in each recipe's `why_suggested`. Empty string is treated as absent
+  // (per plan: "null or empty → do NOT emit the block").
+  const focusBlock =
+    typeof focusTheme === 'string' && focusTheme.length > 0
+      ? `\n\nTHIS WEEK'S THEME: ${focusTheme}. Include at least 2 recipes that exercise this theme (name it in why_suggested).`
+      : '';
+
   return `Generate a 7-day dinner meal plan for the week starting ${weekStart}.
 
 AVAILABLE PANTRY:
@@ -107,6 +151,8 @@ WEEK STRUCTURE:
 - Mon-Thu = weeknight simpler (15-30 min, easy difficulty, low effort)
 - Fri-Sun = weekend ambitious allowed (longer cook times, medium/hard difficulty, projects OK)
 ${kidRule}
+
+${skillBlock}${focusBlock}
 
 OUTPUT CONTRACT:
 - Return EXACTLY 7 days, one per day_of_week (0..6, 0=Monday, 6=Sunday)
@@ -322,6 +368,40 @@ export async function generateMealPlan(
   ];
   const kidFriendlyNeeded = memberRows.some((m) => m.member_type === 'kid');
 
+  // Phase 22-05: derive skill tier from lifetime cook stats. Mirrors the
+  // mobile helper (apps/mobile/src/plan/skillTier.ts) so server + client
+  // tier boundaries stay in lockstep: <5=1, <20=2, else 3. Best-effort —
+  // getCookStats failure is non-fatal, tier defaults to 2 (comfortable).
+  let skillTier: 1 | 2 | 3 = 2;
+  try {
+    const cookStats = await getCookStats(supabase, profileId);
+    const totalCooks = cookStats.reduce((s, r) => s + r.cook_count, 0);
+    skillTier = totalCooks < 5 ? 1 : totalCooks < 20 ? 2 : 3;
+  } catch (e) {
+    console.warn('[mealPlanner] getCookStats failed — defaulting skillTier=2', e);
+  }
+
+  // Phase 22-05: fetch the existing meal_plan row (if any) for this
+  // week_start to surface focus_theme into the prompt. This intentionally
+  // runs BEFORE the delete-then-insert regenerate flow below so we preserve
+  // the user's focus theme across regenerations (the theme survives a wipe
+  // via the re-POSTed PATCH on return trip — but for this generation pass
+  // we read it now so the new plan honors the existing theme).
+  let focusTheme: string | null = null;
+  try {
+    const { data: weekPlanRow } = await supabase
+      .from('meal_plans')
+      .select('focus_theme')
+      .eq('profile_id', profileId)
+      .eq('week_start', weekStart)
+      .maybeSingle();
+    if (weekPlanRow && typeof (weekPlanRow as { focus_theme?: unknown }).focus_theme === 'string') {
+      focusTheme = (weekPlanRow as { focus_theme: string }).focus_theme;
+    }
+  } catch (e) {
+    console.warn('[mealPlanner] focus_theme lookup failed — continuing without theme', e);
+  }
+
   const context: MealPlanContext = {
     pantryItems: (pantryItems as PantryRow[]).map((p) => ({
       name: p.name,
@@ -340,6 +420,8 @@ export async function generateMealPlan(
     recipeLibrary: (recipes ?? []) as RecipeLibraryEntry[],
     recentMealTitles: ((recentMeals ?? []) as Array<{ title: string }>).map((r) => r.title),
     weekStart,
+    skillTier,
+    focusTheme,
   };
 
   const promptText = buildMealPlanPrompt(context);

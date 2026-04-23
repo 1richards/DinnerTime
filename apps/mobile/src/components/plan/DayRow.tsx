@@ -71,15 +71,21 @@ export function DayRow({
         ? 'skipped'
         : 'planned';
 
-  // `isStretch` / `pantryReady` flags are future-wired. MealPlanEntry does not
-  // carry them yet (see types/mealPlan.ts). Passing `undefined` keeps
-  // deriveStatusChips deterministic and the chip row renders only the
-  // status-derived chip today. When the entry shape gains these fields (Phase
-  // 22 plan refactor), the data-binding flip is a one-line change here.
-  const chips = deriveStatusChips({ status });
+  // Phase 22-05 + 22-06: both flags are live and derived client-side in
+  // plan.tsx — `is_stretch` via pickStretchDay() (stretch meal of the week)
+  // and `pantry_ready` via computePantryReady(entry.ingredients, pantryItems)
+  // (≥80% of non-staple ingredients already in the pantry). The
+  // `deriveStatusChips` matrix layers up to three chips: status + stretch +
+  // pantry-ready. All three use Phase 19 tokens (success / warning /
+  // default) — no raw hex literals downstream.
+  const chips = deriveStatusChips({
+    status,
+    isStretch: entry.is_stretch === true,
+    pantryReady: entry.pantry_ready === true,
+  });
 
   const thumbnailUri = entry.recipe_id
-    ? getRecipeImage(entry.recipe_id, null)
+    ? getRecipeImage(entry.recipe_id, null, entry.title)
     : null;
 
   return (

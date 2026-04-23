@@ -36,6 +36,9 @@ const SLOT_SIZE = Math.floor((SCREEN_WIDTH - H_PADDING - SLOT_GAP * (MAX_PHOTOS 
 export default function ScanScreen() {
   const [capturedPhotos, setCapturedPhotos] = useState<CapturedPhoto[]>([]);
   const [previewPhoto, setPreviewPhoto] = useState<CapturedPhoto | null>(null);
+  // Tracks whether the mount-time auto-camera has already been triggered, so
+  // we don't re-open the camera every time capturedPhotos is cleared.
+  const [autoLaunched, setAutoLaunched] = useState(false);
   const { startBatchScan, isScanning, scanResults } = usePantryStore();
 
   // Clear stale scan results on mount (Pitfall 3 mitigation)
@@ -52,14 +55,14 @@ export default function ScanScreen() {
     }
   }, [scanResults, isScanning]);
 
-  const handleTakePhoto = async () => {
+  const handleTakePhoto = async (): Promise<CapturedPhoto | null> => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
         'Camera Permission Required',
         'Please allow camera access in Settings to scan your kitchen.'
       );
-      return;
+      return null;
     }
 
     const result = await ImagePicker.launchCameraAsync({
@@ -69,7 +72,7 @@ export default function ScanScreen() {
     });
 
     if (result.canceled || !result.assets?.[0]?.base64) {
-      return;
+      return null;
     }
 
     const photo: CapturedPhoto = {
@@ -78,7 +81,30 @@ export default function ScanScreen() {
       uri: result.assets[0].uri,
     };
     setCapturedPhotos((prev) => [...prev, photo]);
+    return photo;
   };
+
+  // Auto-launch the camera on first mount so the user lands directly in the
+  // capture UI instead of having to tap a "Take Photo" button first. Also
+  // auto-submits the scan when the user finishes a single-photo capture,
+  // collapsing the old 5-tap flow (FAB → Take → shutter → Use → Submit) down
+  // to 3 (FAB → shutter → Use). Users who want a multi-photo batch can
+  // cancel the auto-submit by tapping the + thumbnail before it fires.
+  useEffect(() => {
+    if (autoLaunched) return;
+    setAutoLaunched(true);
+    void (async () => {
+      const photo = await handleTakePhoto();
+      if (photo) {
+        try {
+          await startBatchScan([photo.base64]);
+        } catch {
+          Alert.alert('Scan Failed', 'Could not analyze the image. Please try again.');
+        }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLaunched]);
 
   const handleRemovePhoto = (photoId: string) => {
     setCapturedPhotos((prev) => prev.filter((p) => p.id !== photoId));
