@@ -23,6 +23,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
 
@@ -46,8 +47,14 @@ export function SomethingNewResults({ onRequestPreview }: SomethingNewResultsPro
   const isLoading = useSuggestionsStore((s) => s.isLoading);
   const error = useSuggestionsStore((s) => s.error);
   const searchRecipes = useSuggestionsStore((s) => s.searchRecipes);
+  const clearHistory = useSuggestionsStore((s) => s.clearHistory);
   const lastQuery = useSuggestionsStore((s) => s.lastQuery);
   const pantryOnly = useSuggestionsStore((s) => s.pantryOnly);
+
+  const refresh = () => {
+    // Regenerate with the same query args that produced the current list.
+    void searchRecipes(lastQuery ?? '', { pantryOnly });
+  };
 
   if (isLoading) {
     return (
@@ -101,7 +108,44 @@ export function SomethingNewResults({ onRequestPreview }: SomethingNewResultsPro
       style={{ flex: 1 }}
       contentContainerStyle={styles.grid}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={isLoading}
+          onRefresh={refresh}
+          tintColor={colors.brand}
+        />
+      }
     >
+      {/* Results toolbar — visible refresh + clear controls */}
+      <View style={styles.resultsToolbar}>
+        <Text style={styles.resultsCount}>
+          {searchResults.length} {searchResults.length === 1 ? 'idea' : 'ideas'}
+          {pantryOnly ? ' from your pantry' : lastQuery ? ` for “${lastQuery}”` : ''}
+        </Text>
+        <View style={styles.toolbarActions}>
+          <Pressable
+            onPress={refresh}
+            hitSlop={8}
+            accessibilityLabel="Regenerate ideas"
+            style={({ pressed }) => [styles.toolbarBtn, pressed && styles.toolbarBtnPressed]}
+          >
+            <SymbolIcon name="arrow.clockwise" size={16} tintColor={colors.brand} />
+            <Text style={styles.toolbarBtnText}>Refresh</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => clearHistory()}
+            hitSlop={8}
+            accessibilityLabel="Clear ideas"
+            style={({ pressed }) => [styles.toolbarBtn, pressed && styles.toolbarBtnPressed]}
+          >
+            <SymbolIcon name="xmark.circle" size={16} tintColor={colors.textSecondary} />
+            <Text style={[styles.toolbarBtnText, { color: colors.textSecondary }]}>
+              Clear
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
       {searchResults.map((recipe, idx) => (
         <ResultCard
           key={`${recipe.title}-${idx}`}
@@ -207,6 +251,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 140,
+  },
+  resultsToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  resultsCount: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    flexShrink: 1,
+    marginRight: 8,
+  },
+  toolbarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  toolbarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceSubtle,
+  },
+  toolbarBtnPressed: {
+    opacity: 0.6,
+  },
+  toolbarBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.brand,
   },
   card: {
     backgroundColor: '#FFFFFF',
