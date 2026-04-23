@@ -532,14 +532,10 @@ export default function KitchenScreen() {
             segment={segment}
             setSegment={setSegment}
           />
-          {hasHistory && (
-            <RecentQueryChips
-              queries={recentQueries}
-              onSelect={(q) => {
-                void searchRecipes(q, { pantryOnly });
-              }}
-            />
-          )}
+          {/* Recent-query chips removed from this surface — historic
+              searches now surface inside the search dialog instead, so
+              they're available when users are about to type a new query
+              rather than cluttering the results view. */}
           {showPhase17Results ? (
             <SomethingNewResults
               onRequestPreview={(r) => setPreviewRecipe(r)}
