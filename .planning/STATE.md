@@ -4,14 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 25-03-PLAN.md. Phase 25 plans landed (feedback infra + launch docs + screenshot flow). Ready for execute-phase or direct human handoff per LAUNCH-HANDOFF.md.
-last_updated: "2026-04-22T14:39:47.986Z"
+stopped_at: Completed quick/1-build-reusable-pantry-seed-test-recipe-g/1-PLAN.md — pantry seed fixture extracted, test-user clear command added, generate-test-recipes.ts script landed. All three scripts typecheck clean; E2E deferred until dev server is running.
+last_updated: "2026-04-23T14:39:15.780Z"
 last_activity: 2026-04-22
 progress:
-  total_phases: 25
-  completed_phases: 24
-  total_plans: 122
-  completed_plans: 121
   percent: 97
 ---
 
@@ -577,6 +573,8 @@ Recent decisions affecting current work:
 - [Phase 25]: Internal TestFlight cap 15 for Phase 25 — avoids App Review, instant build push
 - [Phase 25]: 25-01 feedback pipeline: ADMIN_EMAILS_LIST gate + service-role supabaseAdmin client as application-layer allowlist on deny-by-default RLS tables
 - [Phase 25]: 25-01 outer/inner-split + module-level-latch pattern applied to AboutSection so useState-free outer component remains vitest-node testable (clones ReAuthModal pattern)
+- [Phase quick/1-build-reusable-pantry-seed-test-recipe-g]: Extracted pantry seed into scripts/fixtures/seed-pantry.ts (42 items, 7 categories) and added test-user.ts clear subcommand that wipes ONLY recipes + pantry_items so JWT/profile/household survive the regenerate-and-eyeball loop.
+- [Phase quick/1-build-reusable-pantry-seed-test-recipe-g]: generate-test-recipes.ts runs image generation sequentially and forwards title+description+ingredients to /recipes/generate-image per the recipeImageGen service docstring.
 
 ### Pending Todos
 
@@ -620,6 +618,6 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-22T14:20:00.000Z
-Stopped at: Completed 25-03-PLAN.md. Phase 25 plans landed (feedback infra + launch docs + screenshot flow). Ready for execute-phase or direct human handoff per LAUNCH-HANDOFF.md.
+Last session: 2026-04-23T14:39:08.937Z
+Stopped at: Completed quick/1-build-reusable-pantry-seed-test-recipe-g/1-PLAN.md — pantry seed fixture extracted, test-user clear command added, generate-test-recipes.ts script landed. All three scripts typecheck clean; E2E deferred until dev server is running.
 Resume file: None
