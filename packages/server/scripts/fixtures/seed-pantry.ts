@@ -1,4 +1,9 @@
 // Dev-only pantry seed fixture used by scripts/test-user.ts reset and scripts/generate-test-recipes.ts. Never imported from src/. Category values must match migration 00003 enum: produce|dairy|protein|grain|condiment|beverage|frozen|snack|other.
+//
+// Migration 00015 (Phase 24a) changed pantry_items.quantity to JSONB with
+// shape { value, unit, system }. The old flat `quantity NUMERIC + unit TEXT`
+// columns no longer exist — rows must be written in the new shape or the
+// insert fails with a schema-cache error.
 
 export type PantryCategory =
   | 'produce'
@@ -12,6 +17,14 @@ export type PantryCategory =
   | 'other';
 
 export type SourceLocation = 'fridge' | 'pantry' | 'freezer';
+
+export type QuantitySystem =
+  | 'count'
+  | 'imperial-weight'
+  | 'imperial-volume'
+  | 'metric-weight'
+  | 'metric-volume'
+  | 'custom';
 
 export interface SeedPantryItem {
   name: string;
@@ -91,18 +104,50 @@ export const seedPantryItems: SeedPantryItem[] = [
   { name: 'Tortilla Chips', category: 'snack', source_location: 'pantry', unit: 'bag', quantity: 1 },
 ];
 
+const IMPERIAL_WEIGHT_UNITS = new Set(['oz', 'lb']);
+const IMPERIAL_VOLUME_UNITS = new Set(['tsp', 'tbsp', 'cup', 'gal', 'pt', 'qt', 'floz']);
+const METRIC_WEIGHT_UNITS = new Set(['g', 'kg']);
+const METRIC_VOLUME_UNITS = new Set(['ml', 'l']);
+
+/** Infer the Phase-24a JSONB `system` field from the seed's unit string. */
+function systemForUnit(unit: string): QuantitySystem {
+  const u = unit.toLowerCase();
+  if (IMPERIAL_WEIGHT_UNITS.has(u)) return 'imperial-weight';
+  if (IMPERIAL_VOLUME_UNITS.has(u)) return 'imperial-volume';
+  if (METRIC_WEIGHT_UNITS.has(u)) return 'metric-weight';
+  if (METRIC_VOLUME_UNITS.has(u)) return 'metric-volume';
+  // Count-y units (piece/head/bag/bottle/jar/can/carton/box/loaf/bunch/block/dozen)
+  // map to 'count'. Anything else falls through to 'custom'.
+  const COUNT_UNITS = new Set([
+    'piece', 'head', 'bag', 'bottle', 'jar', 'can', 'carton',
+    'box', 'loaf', 'bunch', 'block', 'dozen', 'clove', 'sprig',
+  ]);
+  if (COUNT_UNITS.has(u)) return 'count';
+  return 'custom';
+}
+
 /**
  * Hydrate seed records with the columns `pantry_items` requires on insert:
  * `profile_id`, a normalized_name, plus the confidence/status defaults the
  * existing reset flow writes today. Kept tiny and loop-free so callers can
  * inline it without worrying about side effects.
+ *
+ * `quantity` is emitted as the Phase-24a JSONB shape
+ * `{ value, unit, system }`. The legacy flat `unit` column does not exist.
  */
 export function buildSeedPantryRows(profileId: string) {
   return seedPantryItems.map((item) => ({
-    ...item,
+    name: item.name,
+    category: item.category,
+    source_location: item.source_location,
     profile_id: profileId,
     normalized_name: item.name.toLowerCase().trim(),
     confidence: 1,
     status: 'available' as const,
+    quantity: {
+      value: item.quantity,
+      unit: item.unit,
+      system: systemForUnit(item.unit),
+    },
   }));
 }

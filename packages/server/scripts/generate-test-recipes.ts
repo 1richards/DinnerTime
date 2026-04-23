@@ -32,7 +32,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const TEST_EMAIL = process.env.TEST_USER_EMAIL ?? 'uat@dinnertime.test';
 const TEST_PASSWORD = process.env.TEST_USER_PASSWORD ?? 'UATovernight2026';
-const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:3000';
+// Server mounts all routes under basePath('/api/v1') — see packages/server/src/index.ts.
+const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:3000/api/v1';
 
 if (!SUPABASE_URL || !ANON_KEY) {
   console.error(
