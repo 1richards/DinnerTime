@@ -529,7 +529,7 @@ function RemixVariationPreview({
   onModify: () => Promise<void>;
   onCook: () => Promise<void>;
 }) {
-  const generatedUri = useGeneratedRecipeImage(full.title, {
+  const { url: generatedUri } = useGeneratedRecipeImage(full.title, {
     skip: !!full.image_url,
     description: full.description,
     ingredients: full.ingredients,
@@ -633,7 +633,7 @@ function VariationCard({
   // Hero image uses base-recipe ingredients as visual anchors so Gemini
   // renders the actual dish family (e.g. tacos for a taco remix), not just
   // the variation's title keyword.
-  const generatedUri = useGeneratedRecipeImage(variation.title, {
+  const { url: generatedUri } = useGeneratedRecipeImage(variation.title, {
     description: variation.description,
     ingredients: normalizedBaseIngredients,
   });

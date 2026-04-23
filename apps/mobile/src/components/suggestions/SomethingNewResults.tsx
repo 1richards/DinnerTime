@@ -263,7 +263,7 @@ function PreviewRecipeCard({
   idx: number;
   onPress: () => void;
 }) {
-  const generatedUri = useGeneratedRecipeImage(recipe.title, {
+  const { url: generatedUri, status } = useGeneratedRecipeImage(recipe.title, {
     skip: !!recipe.image_url,
     description: recipe.description,
     ingredients: recipe.ingredients,
@@ -326,6 +326,24 @@ function PreviewRecipeCard({
       setWorking(null);
     }
   };
+
+  // Skeleton fallback — prevents keyword-stock flash while Gemini resolves.
+  // Only engaged on Something New results where recipe.image_url is null
+  // (saved recipes always have a valid image and skip the hook entirely).
+  if (status === 'loading' && !recipe.image_url) {
+    return (
+      <>
+        <Pressable onPress={() => onPress()} style={previewSkeletonStyles.card}>
+          <View style={previewSkeletonStyles.hero} />
+          <View style={previewSkeletonStyles.body}>
+            <View style={previewSkeletonStyles.titleBar} />
+            <View style={previewSkeletonStyles.subtitleBar} />
+          </View>
+        </Pressable>
+        {/* Skip RemixSheet render while loading — user cannot remix a previewless card */}
+      </>
+    );
+  }
 
   return (
     <>
@@ -456,5 +474,47 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.brand,
+  },
+});
+
+// Preview-mode skeleton — rendered while the generated image is loading and
+// the recipe has no pre-existing image_url. Matches RecipeCard grid dimensions
+// (hero ~140, body padding, shadow) so the resolve is a content swap, not a
+// layout reflow. Flat tone (#F1EAE0) — no shimmer, no animation — matches the
+// existing variationHero tone used in RemixSheet.
+const previewSkeletonStyles = StyleSheet.create({
+  card: {
+    flex: 1,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    shadowColor: '#7A6651',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  hero: {
+    width: '100%',
+    height: 140,
+    backgroundColor: '#F1EAE0',
+  },
+  body: {
+    padding: 12,
+    gap: 8,
+  },
+  titleBar: {
+    height: 14,
+    width: '70%',
+    borderRadius: 4,
+    backgroundColor: '#F1EAE0',
+  },
+  subtitleBar: {
+    height: 10,
+    width: '50%',
+    borderRadius: 4,
+    backgroundColor: '#F1EAE0',
   },
 });

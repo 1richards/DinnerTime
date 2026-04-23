@@ -7,21 +7,19 @@
  * POST to `/api/v1/recipes/generate-image` which calls Gemini 2.5 Flash
  * Image (nano banana) and returns a cached Supabase Storage URL.
  *
- * Semantics:
- *   - Returns null while loading (or if title is empty, or if the server
- *     returns null).
- *   - Same title + ingredient fingerprint on a second render returns the
- *     cached URL from the shared in-memory map immediately (no HTTP trip).
- *   - Never throws. Always safe to chain with `?? fallbackHeroUri`.
+ * Return shape: `{ url, status }` where status is one of:
+ *   - 'loading'  — no cached entry yet (or inflight) and we haven't given up
+ *   - 'resolved' — url is non-null OR there is nothing to fetch (no title/skip)
+ *   - 'failed'   — a completed fetch returned null; do NOT retry this session
  *
- * Cost control: we dedupe by normalized title + ingredient fingerprint
- * across the whole session. Two cards for the same recipe share one fetch.
- * The server additionally caches in Storage so popular dishes are free
- * across sessions. Description + ingredients are forwarded to the server
- * so Gemini can produce a prompt that matches the *specific* dish rather
- * than a generic rendering of the title alone.
+ * Cost control: we dedupe by normalized title + ingredient fingerprint across
+ * the whole session. Two cards for the same recipe share one fetch. Resolved
+ * (non-null) URLs are persisted to AsyncStorage so popular dishes render
+ * instantly on next session. Failed (null) attempts are NOT persisted, so the
+ * user gets a fresh chance on the next app launch.
  */
 import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import type { ParsedIngredient } from '../types/recipe';
 
@@ -38,7 +36,11 @@ async function getAuthToken(): Promise<string | null> {
   }
 }
 
-type Entry = { url: string | null; inflight: Promise<string | null> | null };
+type Entry = {
+  url: string | null;
+  inflight: Promise<string | null> | null;
+  attempted: boolean;
+};
 const cache = new Map<string, Entry>();
 
 function norm(title: string): string {
@@ -107,6 +109,59 @@ async function fetchGeneratedUrl(
   }
 }
 
+// ---------- AsyncStorage persistence ----------
+
+const STORAGE_KEY = 'dinnertime-image-cache';
+let hydrated = false;
+// Listeners notified once hydration finishes so mounted hooks can re-evaluate.
+const hydrationListeners = new Set<() => void>();
+
+async function hydrateFromStorage(): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, { url: string | null }>;
+      for (const [key, val] of Object.entries(parsed)) {
+        // Only merge if not already populated (in-flight fetch wins over disk).
+        if (!cache.has(key) && val && typeof val.url === 'string') {
+          cache.set(key, { url: val.url, inflight: null, attempted: true });
+        }
+      }
+    }
+  } catch {
+    // Non-critical; cache just stays empty
+  } finally {
+    hydrated = true;
+    hydrationListeners.forEach((l) => l());
+    hydrationListeners.clear();
+  }
+}
+// Kick off hydration on module load — no await, no blocking
+void hydrateFromStorage();
+
+function persistToStorage(): void {
+  // Fire-and-forget; only persist resolved non-null URLs. Failed (null)
+  // attempts are intentionally dropped so retry on next session is possible.
+  const serializable: Record<string, { url: string }> = {};
+  for (const [key, entry] of cache.entries()) {
+    if (entry.url !== null) {
+      serializable[key] = { url: entry.url };
+    }
+  }
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(serializable)).catch(() => {
+    // Persistence is non-critical
+  });
+}
+
+// ---------- Hook ----------
+
+export type GeneratedImageStatus = 'loading' | 'resolved' | 'failed';
+
+export interface GeneratedImageResult {
+  url: string | null;
+  status: GeneratedImageStatus;
+}
+
 interface HookOptions {
   skip?: boolean;
   description?: string | null;
@@ -116,11 +171,22 @@ interface HookOptions {
 export function useGeneratedRecipeImage(
   title: string | null | undefined,
   options: HookOptions = {},
-): string | null {
+): GeneratedImageResult {
   const { skip, description, ingredients } = options;
-  const [url, setUrl] = useState<string | null>(() => {
-    if (!title || skip) return null;
-    return cache.get(cacheKeyFor(title, ingredients))?.url ?? null;
+
+  // Derive initial state from the in-memory cache synchronously (even if
+  // module-level hydration hasn't completed — we still read whatever is in
+  // the Map). Hydration runs on module load and flips the evaluate() branch
+  // below from queued to immediate.
+  const initialEntry =
+    !title || skip ? null : cache.get(cacheKeyFor(title, ingredients)) ?? null;
+
+  const [result, setResult] = useState<GeneratedImageResult>(() => {
+    if (!title || skip) return { url: null, status: 'resolved' };
+    if (initialEntry?.url) return { url: initialEntry.url, status: 'resolved' };
+    if (initialEntry?.attempted && !initialEntry.url)
+      return { url: null, status: 'failed' };
+    return { url: null, status: 'loading' };
   });
 
   // Serialize the ingredient identity into a stable string so the effect
@@ -128,38 +194,71 @@ export function useGeneratedRecipeImage(
   const ingredientFp = fingerprintIngredients(ingredients);
 
   useEffect(() => {
-    if (!title || skip) return;
-    const key = cacheKeyFor(title, ingredients);
-    const hit = cache.get(key);
-    if (hit?.url) {
-      if (hit.url !== url) setUrl(hit.url);
+    if (!title || skip) {
+      setResult({ url: null, status: 'resolved' });
       return;
     }
-    if (hit?.inflight) {
-      let cancelled = false;
-      hit.inflight.then((u) => {
-        if (!cancelled && u) setUrl(u);
+
+    let cancelled = false;
+
+    const evaluate = () => {
+      if (cancelled) return;
+      const key = cacheKeyFor(title, ingredients);
+      const hit = cache.get(key);
+
+      if (hit?.url) {
+        setResult({ url: hit.url, status: 'resolved' });
+        return;
+      }
+      if (hit?.attempted && !hit.url) {
+        setResult({ url: null, status: 'failed' });
+        return;
+      }
+      if (hit?.inflight) {
+        setResult({ url: null, status: 'loading' });
+        hit.inflight.then((u) => {
+          if (cancelled) return;
+          if (u) setResult({ url: u, status: 'resolved' });
+          else setResult({ url: null, status: 'failed' });
+        });
+        return;
+      }
+
+      // No entry — kick off fetch
+      setResult({ url: null, status: 'loading' });
+      const inflight = fetchGeneratedUrl({
+        title,
+        description: description ?? null,
+        ingredients: ingredients ?? null,
       });
+      cache.set(key, { url: null, inflight, attempted: false });
+      inflight.then((u) => {
+        cache.set(key, { url: u, inflight: null, attempted: true });
+        if (u !== null) persistToStorage();
+        if (cancelled) return;
+        if (u) setResult({ url: u, status: 'resolved' });
+        else setResult({ url: null, status: 'failed' });
+      });
+    };
+
+    if (hydrated) {
+      evaluate();
+    } else {
+      // Queue evaluation until hydration completes — avoids firing an HTTP
+      // request for a title that's about to be found in AsyncStorage.
+      const listener = () => evaluate();
+      hydrationListeners.add(listener);
       return () => {
         cancelled = true;
+        hydrationListeners.delete(listener);
       };
     }
-    const inflight = fetchGeneratedUrl({
-      title,
-      description: description ?? null,
-      ingredients: ingredients ?? null,
-    });
-    cache.set(key, { url: null, inflight });
-    let cancelled = false;
-    inflight.then((u) => {
-      cache.set(key, { url: u, inflight: null });
-      if (!cancelled && u) setUrl(u);
-    });
+
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, skip, ingredientFp, description, url]);
+  }, [title, skip, ingredientFp, description]);
 
-  return url;
+  return result;
 }

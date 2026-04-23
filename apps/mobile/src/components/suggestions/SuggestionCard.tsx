@@ -136,7 +136,7 @@ export function SuggestionCard({ suggestion, onPress }: SuggestionCardProps) {
   // Async Gemini nano-banana hero, cached server-side by title hash +
   // ingredient fingerprint. Forwarding description + ingredients_used gives
   // Gemini the context to render the specific dish instead of generic food.
-  const generatedUri = useGeneratedRecipeImage(suggestion.title, {
+  const { url: generatedUri } = useGeneratedRecipeImage(suggestion.title, {
     description: suggestion.description,
     ingredients: (suggestion.ingredients_used ?? []).map((name) => ({
       name,
