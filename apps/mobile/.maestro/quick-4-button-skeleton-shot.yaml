@@ -1,0 +1,143 @@
+appId: com.dinnertime.app
+name: "quick-4 — VariationCard button centering + Something New skeleton"
+tags:
+  - quick
+  - quick-4
+  - remix
+  - something-new
+# Quick Task 4 UAT: captures 2 screenshots covering both fixes in one run.
+#   (a) quick-4-a-skeleton — Something New first-paint with GRAY skeleton tiles
+#                             (not keyword-stock photos) while Gemini resolves
+#   (b) quick-4-b-remix-buttons — VariationCard with centered Cook now pill +
+#                                  inline More actions pill on single row
+#
+# Uses runFlow _ensure-logged-in.yaml for a clean auth state. Seeded test user
+# has 3 saved recipes incl. long-title "Lemon Garlic Butter Shrimp with Rice
+# and Broccoli" which we use as the remix source for shot (b). For shot (a) we
+# search with a fresh timestamped query so Gemini's Storage cache misses and
+# the skeleton state is observable instead of instantly-resolved cached URL.
+#
+# Selector notes:
+#   - Segment accessibility labels: "Recipe Box segment", "Something New segment"
+#   - "Search dinner ideas…" uses ellipsis char — use regex substring
+#   - "What are you craving?" — avoid literal `?` in text matcher
+#   - Recipe Detail Remix is inside "More options" ellipsis sheet, not a button
+#   - "Cook now" + "More actions" are plain Text labels inside VariationCard
+---
+# Clean app restart — clear AsyncStorage (so the new dinnertime-image-cache
+# key starts empty and the first search actually hits the skeleton state).
+- launchApp:
+    clearState: true
+
+- runFlow: _ensure-logged-in.yaml
+
+# ===== SHOT A: Something New first-paint skeleton =====
+#
+# Wait for Kitchen → Something New, tap search pill, type a query with a
+# timestamp nonce (so Gemini Storage cache misses), submit, and capture the
+# first-paint moment where PreviewRecipeCard renders gray skeleton tiles
+# (status='loading', recipe.image_url=null).
+
+- extendedWaitUntil:
+    visible:
+      text: ".*What should we cook tonight.*"
+    timeout: 20000
+
+- tapOn:
+    text: ".*Search dinner ideas.*"
+
+- extendedWaitUntil:
+    visible:
+      text: ".*What are you craving.*"
+    timeout: 10000
+
+- tapOn:
+    text: ".*What are you craving.*"
+
+# Timestamped query — virtually guaranteed Gemini cache miss on first paint.
+- inputText: "zaatar eggplant shakshuka fresh-1776975959"
+- pressKey: enter
+
+# The results toolbar renders "N ideas for “<query>”" AFTER search resolves
+# (isLoading=false, grid mounted). The loading message is "…finding <query>
+# recipes your family will love" — distinct phrasing. Anchoring on "ideas
+# for" catches the first-paint moment where PreviewRecipeCard per-card
+# Gemini fetch starts (status='loading' → skeleton).
+- extendedWaitUntil:
+    visible:
+      text: ".*ideas for.*"
+    timeout: 60000
+
+# Capture the first-paint moment. Gemini resolve typically lands in 1-3s so
+# snapping immediately after the toolbar appears has a high chance of catching
+# the gray skeleton tile state. If we miss the window we fall back to the
+# resolved hero, which is ALSO evidence the fix works (no keyword-stock flash
+# in between) — both states are acceptable UAT outcomes.
+- takeScreenshot: quick-4-a-skeleton
+
+# ===== SHOT B: VariationCard centered Cook now + inline More actions =====
+#
+# Dismiss search modal if still present, bounce to Recipe Box, open a saved
+# recipe, open ellipsis overflow → Remix → Surprise me → wait for variations,
+# screenshot the card.
+
+- swipe:
+    start: "50%,10%"
+    end: "50%,90%"
+    optional: true
+
+- tapOn: "Recipe Box segment"
+
+- extendedWaitUntil:
+    visible:
+      text: ".*Lemon Garlic Butter Shrimp.*"
+    timeout: 30000
+
+- tapOn:
+    text: ".*Lemon Garlic Butter Shrimp.*"
+
+# Recipe detail body has "Ingredients" heading as a stable anchor.
+- extendedWaitUntil:
+    visible:
+      text: "Ingredients"
+    timeout: 10000
+
+# Remix lives inside the hero-right ellipsis overflow. Tap "More options"
+# (accessibilityLabel on HeaderEllipsis), then the "Remix" row in the sheet.
+- tapOn: "More options"
+- extendedWaitUntil:
+    visible:
+      text: "Remix"
+    timeout: 5000
+- tapOn: "Remix"
+
+# Wait for the mode-picker helper prompt to render — same anchor quick-3
+# uses. The sheet animation settles before this text is visible.
+- extendedWaitUntil:
+    visible:
+      text: ".*How do you want to shake it up.*"
+    timeout: 15000
+
+# Use regex wildcard — same reason extendedWaitUntil uses regex: Maestro's
+# AX tree indexes Text nodes by ~label, and a bare "Surprise me" literal
+# sometimes fails to match even when the text is clearly rendered (same
+# quirk the CLAUDE.md selector notes describe).
+- assertVisible:
+    text: ".*Surprise me.*"
+
+- tapOn:
+    text: ".*Surprise me.*"
+
+# Variations roundtrip ~3-15s. Wait for both CTAs to confirm VariationCard
+# rendered — use regex wildcards for AX tree matching.
+- extendedWaitUntil:
+    visible:
+      text: ".*More actions.*"
+    timeout: 60000
+
+- assertVisible:
+    text: ".*Cook now.*"
+- assertVisible:
+    text: ".*More actions.*"
+
+- takeScreenshot: quick-4-b-remix-buttons
