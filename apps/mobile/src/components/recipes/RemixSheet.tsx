@@ -738,12 +738,14 @@ function VariationCard({
                 (disabled || isWorking) ? { opacity: 0.5 } : null,
               ]}
             >
-              <SymbolIcon
-                name="ellipsis"
-                size={16}
-                tintColor={colors.textSecondary}
-              />
-              <Text style={styles.moreActionsText}>More actions</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <SymbolIcon
+                  name="ellipsis"
+                  size={16}
+                  tintColor={colors.textSecondary}
+                />
+                <Text style={styles.moreActionsText}>More actions</Text>
+              </View>
             </Pressable>
           </View>
         )}
@@ -936,7 +938,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    flex: 1,
+    height: '100%',
+    width: '100%',
   },
   actionBtnCookFullText: {
     fontSize: 16,
