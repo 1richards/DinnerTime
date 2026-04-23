@@ -8,8 +8,10 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
+  ActionSheetIOS,
 } from 'react-native';
 import { router } from 'expo-router';
+import { Image } from 'expo-image';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 import {
@@ -430,148 +432,28 @@ export function RemixSheet({
               {MODES.find((m) => m.mode === selectedMode)?.emoji}{' '}
               {MODES.find((m) => m.mode === selectedMode)?.label}
             </Text>
-            {variations.map((v, i) => {
-              const saved = savedIdxs.has(i);
-              const modified = modifiedIdxs.has(i);
-              const isWorking = workingIdx === i;
-              const isExpanding = isWorking && workingAction === 'expand';
-              const isSaving = isWorking && workingAction === 'save';
-              const isModifying = isWorking && workingAction === 'modify';
-              const isCooking = isWorking && workingAction === 'cook';
-              const disabled = workingIdx !== null && workingIdx !== i;
-              return (
-                <View key={i} style={styles.variationCard}>
-                  <View style={styles.variationHeader}>
-                    <View style={styles.variationNum}>
-                      <Text style={styles.variationNumText}>{i + 1}</Text>
-                    </View>
-                    <Text style={styles.variationTitle}>{v.title}</Text>
-                  </View>
-                  <Text style={styles.variationDescription}>{v.description}</Text>
-
-                  {saved && (
-                    <Pressable
-                      onPress={handleOpenSaved}
-                      style={[styles.statusRow, styles.savedRow]}
-                    >
-                      <SymbolIcon name="checkmark.circle.fill" size={16} tintColor="#047857" />
-                      <Text style={styles.savedText}>Saved to library</Text>
-                      <SymbolIcon name="chevron.forward" size={14} tintColor="#047857" />
-                    </Pressable>
-                  )}
-
-                  {modified && (
-                    <Pressable
-                      onPress={handleOpenModified}
-                      style={[styles.statusRow, styles.modifiedRow]}
-                    >
-                      <SymbolIcon name="checkmark.circle.fill" size={16} tintColor="#047857" />
-                      <Text style={styles.savedText}>Existing recipe updated</Text>
-                      <SymbolIcon name="chevron.forward" size={14} tintColor="#047857" />
-                    </Pressable>
-                  )}
-
-                  {!saved && !modified && (
-                    <View style={styles.actionRow}>
-                      <Pressable
-                        onPress={() => handleExpand(i, v)}
-                        disabled={disabled || isWorking}
-                        style={({ pressed }) => [
-                          styles.actionBtn,
-                          styles.actionBtnPrimary,
-                          pressed && !disabled && { opacity: 0.85 },
-                          disabled && { opacity: 0.5 },
-                        ]}
-                      >
-                        {isExpanding ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
-                        ) : (
-                          <>
-                            <SymbolIcon
-                              name="arrow.up.left.and.arrow.down.right"
-                              size={14}
-                              tintColor="#FFFFFF"
-                            />
-                            <Text style={styles.actionBtnPrimaryText}>
-                              Expand
-                            </Text>
-                          </>
-                        )}
-                      </Pressable>
-                      <Pressable
-                        onPress={() => handleCookNow(i, v)}
-                        disabled={disabled || isWorking}
-                        style={({ pressed }) => [
-                          styles.actionBtn,
-                          styles.actionBtnCook,
-                          pressed && !disabled && { opacity: 0.85 },
-                          disabled && { opacity: 0.5 },
-                        ]}
-                      >
-                        {isCooking ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
-                        ) : (
-                          <>
-                            <SymbolIcon name="flame.fill" size={14} tintColor="#FFFFFF" />
-                            <Text style={styles.actionBtnPrimaryText}>
-                              Cook now
-                            </Text>
-                          </>
-                        )}
-                      </Pressable>
-                      <Pressable
-                        onPress={() => handleSaveAsNew(i, v)}
-                        disabled={disabled || isWorking}
-                        style={({ pressed }) => [
-                          styles.actionBtn,
-                          styles.actionBtnOutline,
-                          pressed && !disabled && { opacity: 0.85 },
-                          disabled && { opacity: 0.5 },
-                        ]}
-                      >
-                        {isSaving ? (
-                          <ActivityIndicator size="small" color="#C05A00" />
-                        ) : (
-                          <>
-                            <SymbolIcon name="plus.circle" size={14} tintColor="#C05A00" />
-                            <Text style={styles.actionBtnOutlineText}>
-                              Save as new
-                            </Text>
-                          </>
-                        )}
-                      </Pressable>
-                      {source.kind === 'saved' && (
-                        <Pressable
-                          onPress={() => handleModifyExisting(i, v)}
-                          disabled={disabled || isWorking}
-                          style={({ pressed }) => [
-                            styles.actionBtn,
-                            styles.actionBtnOutline,
-                            pressed && !disabled && { opacity: 0.85 },
-                            disabled && { opacity: 0.5 },
-                          ]}
-                        >
-                          {isModifying ? (
-                            <ActivityIndicator size="small" color="#C05A00" />
-                          ) : (
-                            <>
-                              <SymbolIcon
-                                name="arrow.triangle.2.circlepath"
-                                size={14}
-                                tintColor="#C05A00"
-                              />
-                              <Text style={styles.actionBtnOutlineText}>
-                                Modify existing
-                              </Text>
-                            </>
-                          )}
-                        </Pressable>
-                      )}
-                    </View>
-                  )}
-                </View>
-              );
-            })}
+            {variations.map((v, i) => (
+              <VariationCard
+                key={i}
+                variation={v}
+                index={i}
+                saved={savedIdxs.has(i)}
+                modified={modifiedIdxs.has(i)}
+                isWorking={workingIdx === i}
+                isExpanding={workingIdx === i && workingAction === 'expand'}
+                isSaving={workingIdx === i && workingAction === 'save'}
+                isModifying={workingIdx === i && workingAction === 'modify'}
+                isCooking={workingIdx === i && workingAction === 'cook'}
+                disabled={workingIdx !== null && workingIdx !== i}
+                canModifyExisting={source.kind === 'saved'}
+                onExpand={() => handleExpand(i, v)}
+                onCook={() => handleCookNow(i, v)}
+                onSaveAsNew={() => handleSaveAsNew(i, v)}
+                onModifyExisting={() => handleModifyExisting(i, v)}
+                onOpenSaved={handleOpenSaved}
+                onOpenModified={handleOpenModified}
+              />
+            ))}
             <View style={{ height: 16 }} />
             <Button
               title="Try Another Mode"
@@ -671,6 +553,202 @@ function RemixVariationPreview({
       modifyLabel="Update existing recipe"
       modifiedLabel="Existing recipe updated"
     />
+  );
+}
+
+// ---------- VariationCard — per-variation card with hero image + primary CTA ----------
+//
+// Extracted from the inline `variations.map((v, i) => ...)` body so that
+// `useGeneratedRecipeImage` can be called at component top-level (hook rules
+// forbid calling hooks inside a .map callback). The hero image starts as a
+// keyword-matched Unsplash fallback (via `getRecipeImage(seed, null, title)`)
+// and swaps to the Gemini-generated URL once the hook resolves — expo-image
+// crossfades the transition via `transition={200}`.
+
+interface VariationCardProps {
+  variation: RemixVariation;
+  index: number;
+  saved: boolean;
+  modified: boolean;
+  isWorking: boolean;
+  isExpanding: boolean;
+  isSaving: boolean;
+  isModifying: boolean;
+  isCooking: boolean;
+  disabled: boolean;
+  canModifyExisting: boolean;
+  onExpand: () => void;
+  onCook: () => void;
+  onSaveAsNew: () => void;
+  onModifyExisting: () => void;
+  onOpenSaved: () => void;
+  onOpenModified: () => void;
+}
+
+function VariationCard({
+  variation,
+  index,
+  saved,
+  modified,
+  isWorking,
+  isExpanding,
+  isSaving,
+  isModifying,
+  isCooking,
+  disabled,
+  canModifyExisting,
+  onExpand,
+  onCook,
+  onSaveAsNew,
+  onModifyExisting,
+  onOpenSaved,
+  onOpenModified,
+}: VariationCardProps) {
+  // RemixVariation carries only {title, description} — NO ingredients field.
+  // Do NOT pass `ingredients` here; the hook's session cache keys on the
+  // fingerprint of whatever it receives, and the server-side prompt works
+  // fine with title + description alone.
+  const generatedUri = useGeneratedRecipeImage(variation.title, {
+    description: variation.description,
+  });
+  const heroUri = getRecipeImage(
+    `remix-card-${index}-${variation.title}`,
+    generatedUri,
+    variation.title,
+  );
+
+  return (
+    <View style={styles.variationCard}>
+      <Image
+        source={{ uri: heroUri }}
+        style={styles.variationHero}
+        contentFit="cover"
+        transition={200}
+        cachePolicy="memory-disk"
+      />
+      <View style={styles.variationBody}>
+        <View style={styles.variationHeader}>
+          <View style={styles.variationNum}>
+            <Text style={styles.variationNumText}>{index + 1}</Text>
+          </View>
+          <Text style={styles.variationTitle}>{variation.title}</Text>
+        </View>
+        <Text style={styles.variationDescription}>{variation.description}</Text>
+
+        {saved && (
+          <Pressable
+            onPress={onOpenSaved}
+            style={[styles.statusRow, styles.savedRow]}
+          >
+            <SymbolIcon name="checkmark.circle.fill" size={16} tintColor="#047857" />
+            <Text style={styles.savedText}>Saved to library</Text>
+            <SymbolIcon name="chevron.forward" size={14} tintColor="#047857" />
+          </Pressable>
+        )}
+
+        {modified && (
+          <Pressable
+            onPress={onOpenModified}
+            style={[styles.statusRow, styles.modifiedRow]}
+          >
+            <SymbolIcon name="checkmark.circle.fill" size={16} tintColor="#047857" />
+            <Text style={styles.savedText}>Existing recipe updated</Text>
+            <SymbolIcon name="chevron.forward" size={14} tintColor="#047857" />
+          </Pressable>
+        )}
+
+        {!saved && !modified && (
+          <View style={styles.actionRow}>
+            <Pressable
+              onPress={onExpand}
+              disabled={disabled || isWorking}
+              style={({ pressed }) => [
+                styles.actionBtn,
+                styles.actionBtnPrimary,
+                pressed && !disabled && { opacity: 0.85 },
+                disabled && { opacity: 0.5 },
+              ]}
+            >
+              {isExpanding ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <SymbolIcon
+                    name="arrow.up.left.and.arrow.down.right"
+                    size={14}
+                    tintColor="#FFFFFF"
+                  />
+                  <Text style={styles.actionBtnPrimaryText}>Expand</Text>
+                </>
+              )}
+            </Pressable>
+            <Pressable
+              onPress={onCook}
+              disabled={disabled || isWorking}
+              style={({ pressed }) => [
+                styles.actionBtn,
+                styles.actionBtnCook,
+                pressed && !disabled && { opacity: 0.85 },
+                disabled && { opacity: 0.5 },
+              ]}
+            >
+              {isCooking ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <SymbolIcon name="flame.fill" size={14} tintColor="#FFFFFF" />
+                  <Text style={styles.actionBtnPrimaryText}>Cook now</Text>
+                </>
+              )}
+            </Pressable>
+            <Pressable
+              onPress={onSaveAsNew}
+              disabled={disabled || isWorking}
+              style={({ pressed }) => [
+                styles.actionBtn,
+                styles.actionBtnOutline,
+                pressed && !disabled && { opacity: 0.85 },
+                disabled && { opacity: 0.5 },
+              ]}
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color="#C05A00" />
+              ) : (
+                <>
+                  <SymbolIcon name="plus.circle" size={14} tintColor="#C05A00" />
+                  <Text style={styles.actionBtnOutlineText}>Save as new</Text>
+                </>
+              )}
+            </Pressable>
+            {canModifyExisting && (
+              <Pressable
+                onPress={onModifyExisting}
+                disabled={disabled || isWorking}
+                style={({ pressed }) => [
+                  styles.actionBtn,
+                  styles.actionBtnOutline,
+                  pressed && !disabled && { opacity: 0.85 },
+                  disabled && { opacity: 0.5 },
+                ]}
+              >
+                {isModifying ? (
+                  <ActivityIndicator size="small" color="#C05A00" />
+                ) : (
+                  <>
+                    <SymbolIcon
+                      name="arrow.triangle.2.circlepath"
+                      size={14}
+                      tintColor="#C05A00"
+                    />
+                    <Text style={styles.actionBtnOutlineText}>Modify existing</Text>
+                  </>
+                )}
+              </Pressable>
+            )}
+          </View>
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -781,13 +859,21 @@ const styles = StyleSheet.create({
   variationCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
     marginBottom: 12,
+    overflow: 'hidden',
     shadowColor: '#7A6651',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 1,
+  },
+  variationHero: {
+    width: '100%',
+    height: 170,
+    backgroundColor: '#F1EAE0',
+  },
+  variationBody: {
+    padding: 16,
   },
   variationHeader: {
     flexDirection: 'row',
