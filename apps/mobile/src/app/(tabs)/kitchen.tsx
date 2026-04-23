@@ -22,7 +22,7 @@ import { SuggestionList } from '../../components/suggestions/SuggestionList';
 import { SomethingNewResults } from '../../components/suggestions/SomethingNewResults';
 import { RecentQueryChips } from '../../components/suggestions/RecentQueryChips';
 import { RecipeCard } from '../../components/recipes/RecipeCard';
-import { StickySearchPill } from '../../components/ui/SearchBar';
+import { InlineSearchPill } from '../../components/ui/SearchBar';
 import { HeaderEllipsis } from '../../components/ui/HeaderEllipsis';
 import { Button } from '../../components/ui/Button';
 import { PreviewSheet } from '../recipes/discover';
@@ -266,6 +266,7 @@ function SuggestionsHeader({
         </View>
       </Animated.View>
       <SegmentedControl segment={segment} setSegment={setSegment} />
+      <InlineSearchPill placeholder="Search dinner ideas…" context="something-new" />
     </View>
   );
 }
@@ -400,6 +401,7 @@ export default function KitchenScreen() {
         </View>
       </Animated.View>
       <SegmentedControl segment={segment} setSegment={setSegment} />
+      <InlineSearchPill placeholder="Search recipes" context="library" />
     </View>
   );
 
@@ -453,26 +455,12 @@ export default function KitchenScreen() {
         <Text style={styles.compactTitle}>Kitchen</Text>
       </Animated.View>
 
-      {/* StickySearchPill — mounted per active segment. Library routes to the
-          existing Phase 19 full-text search; Something New routes to the
-          Phase 17 AI search branch. */}
-      {segment === 'library' && (
-        <StickySearchPill
-          placeholder="Search recipes"
-          context="library"
-          scrollY={libraryHeader.scrollY}
-        />
-      )}
-      {segment === 'suggestions' && (
-        <StickySearchPill
-          placeholder="Search dinner ideas…"
-          context="something-new"
-          scrollY={suggestionsHeader.scrollY}
-        />
-      )}
+      {/* Search pill moved inline into each segment's list header (below the
+          large title + segmented control). Absolute-positioned top:8 variant
+          removed for header/search rhythm parity with Pantry + Plan. */}
 
       {/* Action row (top-right). Something New: HeaderEllipsis. Library:
-          filter + discover. Search moved to the sticky pill above. */}
+          filter + discover. */}
       <View style={styles.actionRow} pointerEvents="box-none">
         <View style={{ flex: 1 }} />
 

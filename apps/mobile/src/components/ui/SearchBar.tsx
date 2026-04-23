@@ -87,6 +87,55 @@ export function StickySearchPill({ placeholder, context, scrollY, onPress }: Sti
 }
 
 // ---------------------------------------------------------------------------
+// InlineSearchPill — same visual treatment as StickySearchPill but flows
+// inline inside a scrollable list header instead of floating above it. Used
+// across Kitchen / Pantry / Plan so the header → search → content rhythm
+// stays consistent.
+// ---------------------------------------------------------------------------
+
+interface InlineSearchPillProps {
+  placeholder: string;
+  context: SearchContext;
+  onPress?: () => void;
+}
+
+export function InlineSearchPill({ placeholder, context, onPress }: InlineSearchPillProps) {
+  const handlePress =
+    onPress ?? (() => router.push(buildSearchHref(context) as `/search?${string}`));
+
+  return (
+    <View
+      style={{
+        marginHorizontal: 16,
+        marginBottom: 12,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: colors.surface,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+      }}
+    >
+      <Pressable
+        onPress={handlePress}
+        className="flex-1 flex-row items-center px-3"
+        accessibilityRole="search"
+        accessibilityLabel={placeholder}
+      >
+        <SymbolView
+          name="magnifyingglass"
+          {...iconPropsForText('caption')}
+          tintColor={colors.textTertiary}
+        />
+        <Text className="ml-2 text-body text-text-tertiary">{placeholder}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Legacy SearchBar — inline text input, preserved until Plan 19-05 migration
 // ---------------------------------------------------------------------------
 
