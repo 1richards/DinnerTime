@@ -53,6 +53,23 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="pantry"
+        options={{
+          headerShown: false,
+          title: 'Pantry',
+          tabBarLabel: 'Pantry',
+          tabBarIcon: ({ color, size, focused }) => (
+            <View style={{ width: size, height: size }}>
+              <SymbolIcon
+                name={focused ? 'basket.fill' : 'basket'}
+                size={size}
+                tintColor={color}
+              />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="plan"
         options={{
           headerShown: false,
@@ -64,23 +81,6 @@ export default function TabLayout() {
                 name="calendar"
                 size={size}
                 weight={focused ? 'semibold' : 'regular'}
-                tintColor={color}
-              />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="pantry"
-        options={{
-          headerShown: false,
-          title: 'Pantry',
-          tabBarLabel: 'Pantry',
-          tabBarIcon: ({ color, size, focused }) => (
-            <View style={{ width: size, height: size }}>
-              <SymbolIcon
-                name={focused ? 'basket.fill' : 'basket'}
-                size={size}
                 tintColor={color}
               />
             </View>

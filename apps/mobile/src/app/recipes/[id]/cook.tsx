@@ -49,7 +49,7 @@
  * after being superseded by ScrollableRecipe + StepCard and VoiceWaveform.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ActionSheetIOS } from 'react-native';
+import { View, Text, Pressable, ActionSheetIOS } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -77,6 +77,7 @@ import {
 } from '../../../cooking/telemetry';
 
 import { StickyCookingHeader } from '../../../components/cooking/StickyCookingHeader';
+import { SymbolIcon } from '../../../components/ui/SymbolIcon';
 import {
   ScrollableRecipe,
   type ScrollableRecipeHandle,
@@ -129,6 +130,7 @@ export default function CookScreen() {
     exit,
     next,
     back,
+    jumpToStep,
     repeat,
     addTimer,
     removeTimer,
@@ -593,6 +595,40 @@ export default function CookScreen() {
         onClear={clearCommandToast}
       />
 
+      {/* Voice-affordance hint. There's no wake word — the STT listener is
+          always-on while voiceEnabled. We surface this explicitly so users
+          don't try to invoke a wake phrase. When voice is off, the hint
+          becomes a tappable CTA to turn it on. */}
+      <Pressable
+        onPress={() => {
+          if (!voiceEnabled) {
+            useCookingStore.setState({ voiceEnabled: true });
+          }
+        }}
+        className={`px-4 py-2 flex-row items-center gap-2 border-b ${
+          voiceEnabled ? 'bg-surface border-border' : 'bg-surface-subtle border-border'
+        }`}
+        accessibilityLabel={
+          voiceEnabled
+            ? 'Voice commands are active. Speak naturally — no wake word needed.'
+            : 'Voice is off. Tap to enable hands-free commands.'
+        }
+      >
+        <SymbolIcon
+          name={voiceEnabled ? 'mic.fill' : 'mic.slash.fill'}
+          size={14}
+          tintColor={voiceEnabled ? colors.brand : colors.textTertiary}
+        />
+        <Text
+          className="text-caption text-text-secondary flex-1"
+          numberOfLines={1}
+        >
+          {voiceEnabled
+            ? 'Hands-free: say "next", "back", "repeat", or ask anything.'
+            : 'Tap to enable hands-free voice commands.'}
+        </Text>
+      </Pressable>
+
       {/* Scrollable Claude.ai-artifact recipe layout. The imperative ref
           exposes scrollToIngredients() for the voice show_ingredients
           intent (see onTranscript dep above). */}
@@ -603,6 +639,12 @@ export default function CookScreen() {
           currentStepIndex={stepIndex}
           ingredientChecks={ingredientChecks}
           onToggleIngredient={toggleIngredient}
+          onStepTap={(i) => {
+            void fireCommandHaptic();
+            stepSpeaker.stop();
+            jumpToStep(i);
+            if (recipe.steps[i]) stepSpeaker.speak(recipe.steps[i]);
+          }}
         />
 
         {/* Contextual tip banner (Phase 10). Retokenized from the old

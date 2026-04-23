@@ -15,6 +15,8 @@ import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { Image } from 'expo-image';
 import { Button } from '../../components/ui/Button';
 import { RemixSheet, type RemixSource } from '../../components/recipes/RemixSheet';
+import { ServingSizeStepper } from '../../components/recipes/ServingSizeStepper';
+import { ScaledIngredientList } from '../../components/recipes/ScaledIngredientList';
 import { useRecipeStore } from '../../stores/recipeStore';
 import { supabase } from '../../lib/supabase';
 import { getRecipeImage } from '../../constants/foodImages';
@@ -33,7 +35,10 @@ const getAuthToken = async (): Promise<string> => {
   return data.session.access_token;
 };
 
-export type DiscoveredRecipe = ParsedRecipe & { _saved?: boolean };
+export type DiscoveredRecipe = ParsedRecipe & {
+  _saved?: boolean;
+  _modified?: boolean;
+};
 
 export default function DiscoverScreen() {
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
@@ -270,18 +275,46 @@ export function PreviewSheet({
   onClose,
   onSave,
   saving,
+  onModifyExisting,
+  modifying = false,
+  onCookNow,
+  cooking = false,
+  hideRemix = false,
+  saveLabel = 'Save Recipe',
+  modifyLabel = 'Update existing recipe',
+  modifiedLabel = 'Recipe updated',
 }: {
   recipe: DiscoveredRecipe;
   heroUri: string;
   onClose: () => void;
   onSave: () => Promise<void>;
   saving: boolean;
+  /** If provided, render a second primary button that replaces an existing
+      recipe's contents with this variation (used from RemixSheet when the
+      source is a saved recipe). */
+  onModifyExisting?: () => Promise<void>;
+  modifying?: boolean;
+  /** If provided, render a Cook Now CTA that persists the recipe then
+      navigates into the cooking flow. */
+  onCookNow?: () => Promise<void>;
+  cooking?: boolean;
+  hideRemix?: boolean;
+  saveLabel?: string;
+  modifyLabel?: string;
+  modifiedLabel?: string;
 }) {
   const totalTime =
     recipe.total_time_minutes ??
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
 
   const [remixOpen, setRemixOpen] = useState(false);
+  // Servings stepper — initialize from the recipe's own servings (falling
+  // back to 1 when absent). Multiplier is applied purely client-side via
+  // ScaledIngredientList; the underlying recipe.ingredients data is never
+  // mutated, matching the Recipe Box detail behavior.
+  const baseServings = recipe.servings ?? 1;
+  const [servings, setServings] = useState<number>(baseServings);
+  const multiplier = baseServings > 0 ? servings / baseServings : 1;
 
   // Phase 17 P17-05: inline-source RemixSheet for unsaved discovery results.
   // `kind: 'inline'` avoids requiring recipe.id (which Discover cards don't have).
@@ -339,19 +372,17 @@ export function PreviewSheet({
         )}
 
         <View style={styles.sheetCard}>
-          <Text style={styles.sheetSectionHeading}>Ingredients</Text>
+          <View style={styles.sheetIngredientHeader}>
+            <Text style={styles.sheetSectionHeading}>Ingredients</Text>
+            <ServingSizeStepper servings={servings} onChange={setServings} />
+          </View>
           {recipe.ingredients.length === 0 ? (
             <Text style={styles.sheetEmpty}>No ingredients listed.</Text>
           ) : (
-            recipe.ingredients.map((ing, i) => (
-              <View key={i} style={styles.sheetIngredient}>
-                <View style={styles.sheetBullet} />
-                <Text style={styles.sheetIngredientText}>
-                  {[ing.quantity, ing.unit, ing.name].filter(Boolean).join(' ')}
-                  {ing.notes ? ` — ${ing.notes}` : ''}
-                </Text>
-              </View>
-            ))
+            <ScaledIngredientList
+              ingredients={recipe.ingredients}
+              multiplier={multiplier}
+            />
           )}
         </View>
 
@@ -372,7 +403,10 @@ export function PreviewSheet({
 
       {/* Fixed bottom save bar (Save + Remix — Phase 17 D-03). Pitfall 9
           invariant: onSave must remain unchanged so source_type: 'ai' still
-          stamps through the unchanged parent handleSave closure. */}
+          stamps through the unchanged parent handleSave closure.
+          When `onModifyExisting` is provided (Remix preview for a saved
+          recipe), a second primary button renders for updating the source
+          recipe in place. Remix is hidden in that flow to avoid nesting. */}
       <View style={styles.sheetBottomBar}>
         {recipe._saved ? (
           <View style={styles.sheetSavedRow}>
@@ -381,37 +415,85 @@ export function PreviewSheet({
             <View style={{ flex: 1 }} />
             <Button title="Done" variant="outline" onPress={onClose} />
           </View>
-        ) : (
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 1 }}>
-              <Button title="Save to Library" onPress={onSave} loading={saving} />
-            </View>
-            <View style={{ flex: 1 }}>
+        ) : recipe._modified ? (
+          <View style={styles.sheetSavedRow}>
+            <SymbolIcon name="checkmark.circle.fill" size={20} tintColor="#10B981" />
+            <Text style={styles.sheetSavedText}>{modifiedLabel}</Text>
+            <View style={{ flex: 1 }} />
+            <Button title="Done" variant="outline" onPress={onClose} />
+          </View>
+        ) : onModifyExisting ? (
+          <View style={{ gap: 8 }}>
+            <Button
+              title={saveLabel}
+              onPress={onSave}
+              loading={saving}
+              disabled={modifying || cooking}
+            />
+            <Button
+              title={modifyLabel}
+              variant="outline"
+              onPress={onModifyExisting}
+              loading={modifying}
+              disabled={saving || cooking}
+            />
+            {onCookNow && (
               <Button
-                title="Remix"
-                variant="outline"
-                onPress={() => setRemixOpen(true)}
+                title="Cook now"
+                onPress={onCookNow}
+                loading={cooking}
+                disabled={saving || modifying}
               />
+            )}
+          </View>
+        ) : (
+          <View style={{ gap: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Button title={saveLabel} onPress={onSave} loading={saving} disabled={cooking} />
+              </View>
+              {!hideRemix && (
+                <View style={{ flex: 1 }}>
+                  <Button
+                    title="Remix"
+                    variant="outline"
+                    onPress={() => setRemixOpen(true)}
+                    disabled={saving || cooking}
+                  />
+                </View>
+              )}
             </View>
+            {onCookNow && (
+              <Button
+                title="Cook now"
+                onPress={onCookNow}
+                loading={cooking}
+                disabled={saving}
+              />
+            )}
           </View>
         )}
       </View>
 
       {/* Phase 17 P17-05: RemixSheet with inline-source kind. Opens when the
-          user taps Remix on an unsaved discovery preview. */}
-      <RemixSheet
-        visible={remixOpen}
-        recipeTitle={recipe.title}
-        source={remixSource}
-        baseForSave={{
-          title: recipe.title,
-          description: recipe.description,
-          ingredients: recipe.ingredients,
-          steps: recipe.steps,
-          total_time_minutes: recipe.total_time_minutes,
-        }}
-        onClose={() => setRemixOpen(false)}
-      />
+          user taps Remix on an unsaved discovery preview. Suppressed via
+          `hideRemix` when this sheet is already mounted from within a
+          RemixSheet (avoids recursive remix modals). */}
+      {!hideRemix && (
+        <RemixSheet
+          visible={remixOpen}
+          recipeTitle={recipe.title}
+          source={remixSource}
+          baseForSave={{
+            title: recipe.title,
+            description: recipe.description,
+            ingredients: recipe.ingredients,
+            steps: recipe.steps,
+            total_time_minutes: recipe.total_time_minutes,
+          }}
+          onClose={() => setRemixOpen(false)}
+        />
+      )}
     </View>
   );
 }
@@ -556,6 +638,14 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 12,
+  },
+  sheetIngredientHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   sheetEmpty: {
     fontSize: 13,

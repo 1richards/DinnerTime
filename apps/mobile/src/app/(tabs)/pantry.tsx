@@ -48,10 +48,14 @@ const FILTER_TABS: { value: LocationFilter; label: string }[] = [
   { value: 'staples', label: 'Staples' },
 ];
 
+// Simplified to just Category + Recent. Location + Staples were removed
+// from the primary organization axis per user feedback — they lived too
+// close to the FILTER_TABS above (which already expose location chips) and
+// the resulting 4-tab row read as redundant. The underlying GroupingMode
+// type still supports 'location' / 'staples' because usePantryItemsGrouped
+// branches on it; we just don't surface those modes here anymore.
 const GROUPING_TABS: { value: GroupingMode; label: string }[] = [
-  { value: 'location', label: 'Location' },
   { value: 'category', label: 'Category' },
-  { value: 'staples', label: 'Staples' },
   { value: 'recently-added', label: 'Recent' },
 ];
 
@@ -92,6 +96,16 @@ export default function PantryScreen() {
       loadItems(profile.id);
     }
   }, [profile?.id, loadItems]);
+
+  // Migrate any persisted groupingMode that's no longer surfaced as a tab
+  // (location, staples) to the nearest supported option. Without this, the
+  // visible tab row would show no active selection for users who persisted
+  // one of the removed modes.
+  useEffect(() => {
+    if (groupingMode === 'location' || groupingMode === 'staples') {
+      setGroupingMode('category');
+    }
+  }, [groupingMode, setGroupingMode]);
 
   // Fire once on tab mount — staples Set drives both the filter chip and the
   // scan-accept threshold. loadStaples is idempotent: failures leave the Set
@@ -221,7 +235,7 @@ export default function PantryScreen() {
         ListHeaderComponent={listHeader}
         onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: 56, paddingBottom: 140 }}
+        contentContainerStyle={{ paddingTop: 0, paddingBottom: 140 }}
       />
 
       <Pressable

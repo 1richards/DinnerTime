@@ -10,16 +10,20 @@
  * Semantics:
  *   - Returns null while loading (or if title is empty, or if the server
  *     returns null).
- *   - Same title on a second render returns the cached URL from the shared
- *     in-memory map immediately (no HTTP round-trip).
+ *   - Same title + ingredient fingerprint on a second render returns the
+ *     cached URL from the shared in-memory map immediately (no HTTP trip).
  *   - Never throws. Always safe to chain with `?? fallbackHeroUri`.
  *
- * Cost control: we dedupe by normalized title across the whole session.
- * Two cards showing "Chicken Tikka Masala" share one fetch. Server
- * additionally caches in Storage so popular dishes are free across sessions.
+ * Cost control: we dedupe by normalized title + ingredient fingerprint
+ * across the whole session. Two cards for the same recipe share one fetch.
+ * The server additionally caches in Storage so popular dishes are free
+ * across sessions. Description + ingredients are forwarded to the server
+ * so Gemini can produce a prompt that matches the *specific* dish rather
+ * than a generic rendering of the title alone.
  */
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import type { ParsedIngredient } from '../types/recipe';
 
 function getApiBaseUrl(): string {
   return process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -41,7 +45,42 @@ function norm(title: string): string {
   return title.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-async function fetchGeneratedUrl(title: string): Promise<string | null> {
+/**
+ * Short client-side fingerprint mirroring the server's ingredient hash so
+ * our session cache key matches the server's Storage cache key. Exact hash
+ * doesn't need to match — it only needs to differ between distinct recipes
+ * sharing a title.
+ */
+function fingerprintIngredients(
+  ingredients: ParsedIngredient[] | null | undefined,
+): string {
+  if (!ingredients || ingredients.length === 0) return '';
+  const top = ingredients
+    .slice(0, 6)
+    .map((i) => (i.name ?? '').trim().toLowerCase())
+    .filter((n) => n.length > 0)
+    .sort()
+    .join('|');
+  return top;
+}
+
+function cacheKeyFor(
+  title: string,
+  ingredients: ParsedIngredient[] | null | undefined,
+): string {
+  const fp = fingerprintIngredients(ingredients);
+  return fp ? `${norm(title)}#${fp}` : norm(title);
+}
+
+interface ImageRequest {
+  title: string;
+  description?: string | null;
+  ingredients?: ParsedIngredient[] | null;
+}
+
+async function fetchGeneratedUrl(
+  req: ImageRequest,
+): Promise<string | null> {
   try {
     const token = await getAuthToken();
     if (!token) return null;
@@ -53,7 +92,11 @@ async function fetchGeneratedUrl(title: string): Promise<string | null> {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({
+          title: req.title,
+          description: req.description ?? null,
+          ingredients: req.ingredients ?? null,
+        }),
       },
     );
     if (!res.ok) return null;
@@ -64,18 +107,29 @@ async function fetchGeneratedUrl(title: string): Promise<string | null> {
   }
 }
 
+interface HookOptions {
+  skip?: boolean;
+  description?: string | null;
+  ingredients?: ParsedIngredient[] | null;
+}
+
 export function useGeneratedRecipeImage(
   title: string | null | undefined,
-  options: { skip?: boolean } = {},
+  options: HookOptions = {},
 ): string | null {
+  const { skip, description, ingredients } = options;
   const [url, setUrl] = useState<string | null>(() => {
-    if (!title || options.skip) return null;
-    return cache.get(norm(title))?.url ?? null;
+    if (!title || skip) return null;
+    return cache.get(cacheKeyFor(title, ingredients))?.url ?? null;
   });
 
+  // Serialize the ingredient identity into a stable string so the effect
+  // dep array changes only when the fingerprint actually changes.
+  const ingredientFp = fingerprintIngredients(ingredients);
+
   useEffect(() => {
-    if (!title || options.skip) return;
-    const key = norm(title);
+    if (!title || skip) return;
+    const key = cacheKeyFor(title, ingredients);
     const hit = cache.get(key);
     if (hit?.url) {
       if (hit.url !== url) setUrl(hit.url);
@@ -90,7 +144,11 @@ export function useGeneratedRecipeImage(
         cancelled = true;
       };
     }
-    const inflight = fetchGeneratedUrl(title);
+    const inflight = fetchGeneratedUrl({
+      title,
+      description: description ?? null,
+      ingredients: ingredients ?? null,
+    });
     cache.set(key, { url: null, inflight });
     let cancelled = false;
     inflight.then((u) => {
@@ -100,7 +158,8 @@ export function useGeneratedRecipeImage(
     return () => {
       cancelled = true;
     };
-  }, [title, options.skip, url]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, skip, ingredientFp, description, url]);
 
   return url;
 }

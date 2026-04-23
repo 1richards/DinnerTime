@@ -12,11 +12,13 @@
  * (kitchen.tsx) can mount the shared PreviewSheet — keeping this component
  * presentation-only.
  *
- * Card styling mirrors `apps/mobile/src/app/recipes/discover.tsx` so the
- * Something New grid visually matches the Discover surface.
+ * Each result is rendered via the shared `RecipeCard` component in `preview`
+ * mode so the Something New grid is visually identical to the Recipe Box.
+ * A synthetic `Recipe` is assembled per row (ParsedRecipe has no id /
+ * is_favorite); preview mode suppresses the favorite + remix action cluster.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -24,19 +26,22 @@ import {
   ScrollView,
   StyleSheet,
   RefreshControl,
+  Alert,
 } from 'react-native';
-import { Image } from 'expo-image';
+import { router } from 'expo-router';
 
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 import { ErrorState } from '../ui/ErrorState';
 import { SuggestionSkeleton } from './SuggestionSkeleton';
+import { RecipeCard } from '../recipes/RecipeCard';
+import { RemixSheet } from '../recipes/RemixSheet';
 
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
-import { getRecipeImage } from '../../constants/foodImages';
+import { useRecipeStore } from '../../stores/recipeStore';
 import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
 import { colors } from '../../design/tokens';
-import type { ParsedRecipe } from '../../types/recipe';
+import type { ParsedRecipe, Recipe } from '../../types/recipe';
 
 interface SomethingNewResultsProps {
   onRequestPreview: (recipe: ParsedRecipe) => void;
@@ -59,6 +64,7 @@ export function SomethingNewResults({ onRequestPreview }: SomethingNewResultsPro
   if (isLoading) {
     return (
       <View style={styles.skeletonWrap}>
+        <LoadingMessage query={lastQuery} pantryOnly={pantryOnly} />
         <SuggestionSkeleton />
       </View>
     );
@@ -147,7 +153,7 @@ export function SomethingNewResults({ onRequestPreview }: SomethingNewResultsPro
       </View>
 
       {searchResults.map((recipe, idx) => (
-        <ResultCard
+        <PreviewRecipeCard
           key={`${recipe.title}-${idx}`}
           recipe={recipe}
           idx={idx}
@@ -158,9 +164,47 @@ export function SomethingNewResults({ onRequestPreview }: SomethingNewResultsPro
   );
 }
 
-// ---------- Internal card (mirrors discover.tsx card styling) ----------
+// ---------- Loading message — echoes the user's query while searching ----------
+// Search latency is several seconds; showing the in-flight query back to the
+// user makes the wait feel purposeful rather than broken. Message shape:
+//   - pantryOnly only:           "…finding great meals from your pantry"
+//   - query only:                "…finding chicken tikka masala recipes your family will love"
+//   - pantryOnly + query:        "…finding chicken tikka masala recipes from your pantry"
+//   - nothing:                   "…finding dinner ideas"
 
-function ResultCard({
+function buildLoadingMessage(
+  query: string | null | undefined,
+  pantryOnly: boolean,
+): string {
+  const q = query?.trim();
+  if (q && pantryOnly) return `…finding ${q} recipes from your pantry`;
+  if (q) return `…finding ${q} recipes your family will love`;
+  if (pantryOnly) return '…finding great meals from your pantry';
+  return '…finding dinner ideas';
+}
+
+function LoadingMessage({
+  query,
+  pantryOnly,
+}: {
+  query: string | null | undefined;
+  pantryOnly: boolean;
+}) {
+  return (
+    <Text style={styles.loadingMessage}>
+      {buildLoadingMessage(query, pantryOnly)}
+    </Text>
+  );
+}
+
+// ---------- Preview card — wraps shared RecipeCard in preview mode ----------
+// Each Something New result is a ParsedRecipe without an id or is_favorite
+// flag. We synthesize a Recipe shape (stable preview-${idx} id for the image
+// cache key) and render it through RecipeCard in `preview` mode, which hides
+// the favorite + remix overlays. The hook-per-card shape is required because
+// useGeneratedRecipeImage is a hook; this keeps one fetch per unique title.
+
+function PreviewRecipeCard({
   recipe,
   idx,
   onPress,
@@ -169,59 +213,104 @@ function ResultCard({
   idx: number;
   onPress: () => void;
 }) {
-  const totalTime =
-    recipe.total_time_minutes ??
-    (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
-  const fallbackUri = getRecipeImage(
-    `something-new-${recipe.title}-${idx}`,
-    recipe.image_url,
-    recipe.title,
-  );
-  // Skip generation if we already have an image_url (imported recipes).
   const generatedUri = useGeneratedRecipeImage(recipe.title, {
     skip: !!recipe.image_url,
+    description: recipe.description,
+    ingredients: recipe.ingredients,
   });
-  const heroUri = generatedUri ?? fallbackUri;
+  const heroUri = recipe.image_url ?? generatedUri ?? null;
+
+  const saveRecipe = useRecipeStore((s) => s.saveRecipe);
+  const [saved, setSaved] = useState(false);
+  const [remixOpen, setRemixOpen] = useState(false);
+  const [working, setWorking] = useState<'save' | 'cook' | null>(null);
+
+  const synthetic: Recipe = {
+    ...recipe,
+    id: `preview-${idx}-${recipe.title}`,
+    profile_id: '',
+    image_url: heroUri,
+    is_favorite: false,
+    created_at: '',
+    updated_at: '',
+  };
+
+  const handleSave = async () => {
+    setWorking('save');
+    try {
+      await saveRecipe({ ...recipe, source_type: 'ai' });
+      const err = useRecipeStore.getState().error;
+      if (err) {
+        Alert.alert('Save failed', err);
+        return;
+      }
+      setSaved(true);
+    } finally {
+      setWorking(null);
+    }
+  };
+
+  // Cook Now: save first, then jump to the cooking screen against the newly
+  // created recipe id. Bypasses the normal preview-modal flow so the user
+  // lands in cook mode in one tap.
+  const handleCookNow = async () => {
+    setWorking('cook');
+    try {
+      const beforeIds = new Set(
+        useRecipeStore.getState().recipes.map((r) => r.id),
+      );
+      await saveRecipe({ ...recipe, source_type: 'ai' });
+      const state = useRecipeStore.getState();
+      if (state.error) {
+        Alert.alert('Save failed', state.error);
+        return;
+      }
+      setSaved(true);
+      const created = state.recipes.find((r) => !beforeIds.has(r.id));
+      const cookId = created?.id ?? state.recipes[0]?.id;
+      if (cookId) router.push(`/recipes/${cookId}/cook`);
+    } finally {
+      setWorking(null);
+    }
+  };
 
   return (
-    <Pressable onPress={onPress} style={styles.card}>
-      <Image
-        source={{ uri: heroUri }}
-        style={styles.cardImage}
-        contentFit="cover"
-        transition={300}
-        placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
-        cachePolicy="memory-disk"
+    <>
+      <RecipeCard
+        recipe={synthetic}
+        mode="grid"
+        preview
+        previewActions={{
+          onSave: handleSave,
+          onRemix: () => setRemixOpen(true),
+          onCookNow: handleCookNow,
+          saved,
+          working,
+        }}
+        onPress={() => onPress()}
       />
-      <View style={styles.cardBody}>
-        <Text style={styles.cardTitle} numberOfLines={2}>
-          {recipe.title}
-        </Text>
-        {recipe.description && (
-          <Text style={styles.cardDesc} numberOfLines={2}>
-            {recipe.description}
-          </Text>
-        )}
-        <View style={styles.cardMetaRow}>
-          {totalTime > 0 && (
-            <View style={styles.cardMetaItem}>
-              <SymbolIcon name="clock" size={14} tintColor="#6B7280" />
-              <Text style={styles.cardMetaText}>{totalTime} min</Text>
-            </View>
-          )}
-          {recipe.servings != null && (
-            <View style={styles.cardMetaItem}>
-              <SymbolIcon name="person.2" size={14} tintColor="#6B7280" />
-              <Text style={styles.cardMetaText}>{recipe.servings} servings</Text>
-            </View>
-          )}
-          <View style={styles.cardMetaItem}>
-            <SymbolIcon name="chevron.forward" size={16} tintColor={colors.brand} />
-            <Text style={styles.cardCtaText}>View recipe</Text>
-          </View>
-        </View>
-      </View>
-    </Pressable>
+      <RemixSheet
+        visible={remixOpen}
+        recipeTitle={recipe.title}
+        source={{
+          kind: 'inline',
+          context: {
+            title: recipe.title,
+            description: recipe.description,
+            ingredients: recipe.ingredients,
+            total_time_minutes: recipe.total_time_minutes,
+          },
+        }}
+        baseForSave={{
+          title: recipe.title,
+          description: recipe.description,
+          ingredients: recipe.ingredients,
+          steps: recipe.steps,
+          total_time_minutes: recipe.total_time_minutes,
+        }}
+        onClose={() => setRemixOpen(false)}
+      />
+    </>
   );
 }
 
@@ -229,6 +318,14 @@ const styles = StyleSheet.create({
   skeletonWrap: {
     paddingHorizontal: 16,
     paddingTop: 12,
+  },
+  loadingMessage: {
+    fontSize: 15,
+    fontStyle: 'italic',
+    color: colors.textSecondary,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+    lineHeight: 20,
   },
   emptyWrap: {
     padding: 24,
@@ -248,7 +345,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   grid: {
-    paddingHorizontal: 16,
+    // No horizontal padding — RecipeCard applies its own mx-4 margin so the
+    // grid cards render at the exact same width as the Recipe Box FlatList
+    // (which also doesn't add container padding). The toolbar compensates
+    // via marginHorizontal below.
     paddingTop: 12,
     paddingBottom: 140,
   },
@@ -257,7 +357,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
-    paddingHorizontal: 4,
+    marginHorizontal: 20,
   },
   resultsCount: {
     fontSize: 13,
@@ -285,57 +385,6 @@ const styles = StyleSheet.create({
   toolbarBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.brand,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    marginBottom: 14,
-    overflow: 'hidden',
-    shadowColor: '#7A6651',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardImage: {
-    width: '100%',
-    height: 160,
-    backgroundColor: '#2A221A',
-  },
-  cardBody: {
-    padding: 14,
-  },
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#1A140F',
-    marginBottom: 4,
-  },
-  cardDesc: {
-    fontSize: 13,
-    color: '#7A6651',
-    lineHeight: 18,
-    marginBottom: 8,
-  },
-  cardMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 14,
-  },
-  cardMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  cardMetaText: {
-    fontSize: 12,
-    color: '#7A6651',
-  },
-  cardCtaText: {
-    fontSize: 12,
-    fontWeight: '700',
     color: colors.brand,
   },
 });

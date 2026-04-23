@@ -9,6 +9,7 @@ interface CookingActions {
   exit: () => void;
   next: () => void;
   back: () => void;
+  jumpToStep: (index: number) => void;
   repeat: () => void;
   addTimer: (ms: number) => void;
   removeTimer: (id: string) => void;
@@ -83,6 +84,14 @@ export const useCookingStore = create<CookingState & CookingActions>()(
       back: () => {
         const { stepIndex } = get();
         set({ stepIndex: Math.max(0, stepIndex - 1) });
+      },
+
+      jumpToStep: (index) => {
+        const { recipe } = get();
+        if (!recipe) return;
+        const maxIndex = Math.max(0, recipe.steps.length - 1);
+        const clamped = Math.min(Math.max(0, index), maxIndex);
+        set({ stepIndex: clamped });
       },
 
       repeat: () => {

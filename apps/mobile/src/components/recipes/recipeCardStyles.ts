@@ -20,6 +20,7 @@ export interface CardClasses {
   imageContainer: string;
   body: string;
   title: string;
+  description: string;
   metaRow: string;
   metaText: string;
 }
@@ -31,6 +32,7 @@ export function resolveCardClasses(mode: RecipeCardMode): CardClasses {
       imageContainer: 'w-24 h-24 bg-surface-subtle',
       body: 'flex-1 p-3 justify-center',
       title: 'text-body text-text-primary font-semibold',
+      description: 'text-caption text-text-secondary',
       metaRow: 'flex-row items-center mt-1',
       metaText: 'text-caption text-text-secondary',
     };
@@ -41,6 +43,7 @@ export function resolveCardClasses(mode: RecipeCardMode): CardClasses {
     imageContainer: 'aspect-[4/3] bg-surface-subtle',
     body: 'p-4',
     title: 'text-title text-text-primary',
+    description: 'text-caption text-text-secondary',
     metaRow: 'flex-row items-center mt-2',
     metaText: 'text-caption text-text-secondary',
   };

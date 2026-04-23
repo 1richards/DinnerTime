@@ -76,7 +76,7 @@ export function IngredientRow({
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
       accessibilityLabel={accessibilityLabel}
-      className="flex-row items-center px-4 py-4 border-b border-border"
+      className="flex-row items-center px-4 py-2 border-b border-border"
     >
       <View className={iconClass}>
         <SymbolIcon name={iconName} size={20} tintColor={iconTint} />

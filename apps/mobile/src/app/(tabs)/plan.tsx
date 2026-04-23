@@ -617,19 +617,74 @@ export default function PlanScreen() {
     (s) => s.planFocusBannerEnabled
   );
 
+  const scaleSegmentedControl = (
+    <View style={styles.segmentWrap}>
+      <Pressable
+        onPress={() => setScale('week')}
+        style={[styles.segment, scale === 'week' && styles.segmentActive]}
+        accessibilityLabel="Week view"
+        accessibilityState={{ selected: scale === 'week' }}
+      >
+        <Text
+          style={[
+            styles.segmentLabel,
+            scale === 'week' && styles.segmentLabelActive,
+          ]}
+        >
+          Week
+        </Text>
+      </Pressable>
+      <Pressable
+        onPress={() => setScale('month')}
+        style={[styles.segment, scale === 'month' && styles.segmentActive]}
+        accessibilityLabel="Month view"
+        accessibilityState={{ selected: scale === 'month' }}
+      >
+        <Text
+          style={[
+            styles.segmentLabel,
+            scale === 'month' && styles.segmentLabelActive,
+          ]}
+        >
+          Month
+        </Text>
+      </Pressable>
+    </View>
+  );
+
   const listHeader = (
-    <Animated.View
-      style={{
-        opacity: largeTitleOpacity,
-        transform: [{ translateY: largeTitleTranslate }],
-      }}
-    >
-      <View style={styles.largeHeader}>
-        <Text style={styles.largeTitle}>This Week</Text>
-        <Text style={styles.largeSubtitle}>{weekRange}</Text>
-      </View>
-      {planFocusBannerEnabled && <FocusBanner />}
-    </Animated.View>
+    <View>
+      <Animated.View
+        style={{
+          opacity: largeTitleOpacity,
+          transform: [{ translateY: largeTitleTranslate }],
+        }}
+      >
+        <View style={styles.largeHeader}>
+          <Text style={styles.largeTitle}>This Week</Text>
+          <Text style={styles.largeSubtitle}>{weekRange}</Text>
+        </View>
+        {planFocusBannerEnabled && <FocusBanner />}
+      </Animated.View>
+      {scaleSegmentedControl}
+    </View>
+  );
+
+  const monthHeader = (
+    <View>
+      <Animated.View
+        style={{
+          opacity: largeTitleOpacity,
+          transform: [{ translateY: largeTitleTranslate }],
+        }}
+      >
+        <View style={styles.largeHeader}>
+          <Text style={styles.largeTitle}>This Week</Text>
+          <Text style={styles.largeSubtitle}>{weekRange}</Text>
+        </View>
+      </Animated.View>
+      {scaleSegmentedControl}
+    </View>
   );
 
   return (
@@ -674,47 +729,9 @@ export default function PlanScreen() {
         </View>
       )}
 
-      {/* Phase 22-03: Week | Month segmented control. Sits above the content
-          switch so it's always visible + tappable. Both lists remain
-          mounted below via display:none so scroll state survives toggling. */}
-      <View style={styles.segmentWrap}>
-        <Pressable
-          onPress={() => setScale('week')}
-          style={[
-            styles.segment,
-            scale === 'week' && styles.segmentActive,
-          ]}
-          accessibilityLabel="Week view"
-          accessibilityState={{ selected: scale === 'week' }}
-        >
-          <Text
-            style={[
-              styles.segmentLabel,
-              scale === 'week' && styles.segmentLabelActive,
-            ]}
-          >
-            Week
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setScale('month')}
-          style={[
-            styles.segment,
-            scale === 'month' && styles.segmentActive,
-          ]}
-          accessibilityLabel="Month view"
-          accessibilityState={{ selected: scale === 'month' }}
-        >
-          <Text
-            style={[
-              styles.segmentLabel,
-              scale === 'month' && styles.segmentLabelActive,
-            ]}
-          >
-            Month
-          </Text>
-        </Pressable>
-      </View>
+      {/* Phase 22-03: Week | Month segmented control now lives inside each
+          list's header (scaleSegmentedControl above), below the large "This
+          Week" title — matches the Kitchen tab's segment-under-header rhythm. */}
 
       {/* Week view — stays mounted when scale='month' via display:none so
           the DayRow's scroll, swap sheet, cook confirm state all survive
@@ -779,7 +796,12 @@ export default function PlanScreen() {
         style={[{ flex: 1 }, scale !== 'month' && { display: 'none' }]}
         pointerEvents={scale === 'month' ? 'auto' : 'none'}
       >
-        <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 140 }}
+          scrollEventThrottle={16}
+          onScroll={onScroll}
+        >
+          {monthHeader}
           <MonthGrid
             fromWeekStart={currentPlan.week_start}
             entriesByIso={monthPlans}

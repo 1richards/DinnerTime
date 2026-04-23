@@ -473,18 +473,33 @@ recipes.post('/remix', async (c) => {
 });
 
 /**
- * POST /generate-image — generate an AI hero image for a recipe title.
+ * POST /generate-image — generate an AI hero image for a recipe.
  *
- * Body: { title: string }
+ * Body: {
+ *   title: string,
+ *   description?: string | null,
+ *   ingredients?: Array<{ name: string; quantity?: number | null; unit?: string | null }> | null,
+ * }
  * Returns: { url: string | null }
  *
  * Fire-and-forget friendly: mobile cards call this asynchronously and swap
  * their placeholder/keyword-match hero once the URL arrives. Server caches
- * by sha256(title) in the recipe-images Storage bucket, so repeat titles
- * return instantly on cache hit.
+ * by sha256(title + ingredient fingerprint) in the recipe-images Storage
+ * bucket, so repeat recipes return instantly on cache hit. Passing
+ * description + ingredients dramatically improves specificity of the
+ * generated image — titles alone produced off-target "generic food photo"
+ * renders for dishes whose title didn't encode visual details.
  */
 recipes.post('/generate-image', async (c) => {
-  let body: { title?: string };
+  let body: {
+    title?: string;
+    description?: string | null;
+    ingredients?: Array<{
+      name?: string;
+      quantity?: number | null;
+      unit?: string | null;
+    }> | null;
+  };
   try {
     body = await c.req.json();
   } catch {
@@ -493,7 +508,20 @@ recipes.post('/generate-image', async (c) => {
   if (typeof body.title !== 'string' || body.title.trim().length === 0) {
     return c.json({ error: 'title is required' }, 400);
   }
-  const url = await generateRecipeImage(body.title);
+  const cleanedIngredients = Array.isArray(body.ingredients)
+    ? body.ingredients
+        .map((ing) => ({
+          name: typeof ing?.name === 'string' ? ing.name : '',
+          quantity: typeof ing?.quantity === 'number' ? ing.quantity : null,
+          unit: typeof ing?.unit === 'string' ? ing.unit : null,
+        }))
+        .filter((ing) => ing.name.trim().length > 0)
+    : null;
+  const url = await generateRecipeImage({
+    title: body.title,
+    description: typeof body.description === 'string' ? body.description : null,
+    ingredients: cleanedIngredients,
+  });
   // null is a valid response — mobile keeps its fallback image. Return 200
   // either way so callers don't need error-handling branches for the common
   // "model safety block" case.

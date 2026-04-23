@@ -316,6 +316,7 @@ export default function KitchenScreen() {
 
   const [previewRecipe, setPreviewRecipe] = useState<ParsedRecipe | null>(null);
   const [savingPreview, setSavingPreview] = useState(false);
+  const [cookingPreview, setCookingPreview] = useState(false);
 
   const hasResults = searchResults.length > 0;
   const hasHistory = recentQueries.length > 0;
@@ -391,7 +392,7 @@ export default function KitchenScreen() {
           transform: [{ translateY: libraryHeader.largeTitleTranslate }],
         }}
       >
-        <View style={[styles.largeHeader, { paddingTop: 48 }]}>
+        <View style={styles.largeHeader}>
           <Text style={styles.largeTitle}>Kitchen</Text>
           <Text style={styles.largeSubtitle}>
             {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'} in your recipe box
@@ -417,6 +418,27 @@ export default function KitchenScreen() {
       setPreviewRecipe(null);
     } finally {
       setSavingPreview(false);
+    }
+  };
+
+  // Cook Now from the Something New preview: save the recipe, then navigate
+  // into the cooking flow against the newly created recipe id.
+  const handlePreviewCookNow = async () => {
+    if (!previewRecipe) return;
+    setCookingPreview(true);
+    try {
+      const beforeIds = new Set(
+        useRecipeStore.getState().recipes.map((r) => r.id),
+      );
+      await saveRecipe({ ...previewRecipe, source_type: 'ai' });
+      const state = useRecipeStore.getState();
+      if (state.error) return;
+      const created = state.recipes.find((r) => !beforeIds.has(r.id));
+      const cookId = created?.id ?? state.recipes[0]?.id;
+      setPreviewRecipe(null);
+      if (cookId) router.push(`/recipes/${cookId}/cook`);
+    } finally {
+      setCookingPreview(false);
     }
   };
 
@@ -616,6 +638,8 @@ export default function KitchenScreen() {
             onClose={() => setPreviewRecipe(null)}
             onSave={handlePreviewSave}
             saving={savingPreview}
+            onCookNow={handlePreviewCookNow}
+            cooking={cookingPreview}
           />
         )}
       </Modal>

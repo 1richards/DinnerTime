@@ -30,6 +30,7 @@ import {
   ScrollView,
   View,
   Text,
+  Pressable,
   type LayoutChangeEvent,
 } from 'react-native';
 import type { Recipe } from '../../types/recipe';
@@ -53,6 +54,12 @@ export interface ScrollableRecipeProps {
   currentStepIndex: number;
   ingredientChecks?: Record<string, boolean>;
   onToggleIngredient?: (id: string) => void;
+  /**
+   * Direct-tap step navigation. When provided, each step card becomes a
+   * Pressable that calls onStepTap with the tapped step index. Lets the
+   * user jump between steps without using the back/next controls.
+   */
+  onStepTap?: (index: number) => void;
 }
 
 /**
@@ -65,6 +72,7 @@ export function scrollableRecipeRender(
     currentStepIndex,
     ingredientChecks,
     onToggleIngredient,
+    onStepTap,
   }: ScrollableRecipeProps,
   ref: React.Ref<ScrollableRecipeHandle>,
 ): React.ReactElement {
@@ -134,7 +142,9 @@ export function scrollableRecipeRender(
         })}
       </View>
 
-      {/* STEPS section — each step wrapped in a y-capturing View for scroll. */}
+      {/* STEPS section — each step wrapped in a y-capturing View for scroll.
+          When onStepTap is provided, the card is pressable so the user can
+          jump directly to any step without using the back/next controls. */}
       <View className="px-4 pt-6 bg-bg">
         <Text className="text-label text-text-secondary mb-4">STEPS</Text>
         {recipe.steps.map((step, i) => (
@@ -145,12 +155,27 @@ export function scrollableRecipeRender(
               stepYs.current[i] = e.nativeEvent.layout.y;
             }}
           >
-            <StepCard
-              stepNumber={i + 1}
-              totalSteps={recipe.steps.length}
-              text={step}
-              isCurrent={i === currentStepIndex}
-            />
+            {onStepTap ? (
+              <Pressable
+                onPress={() => onStepTap(i)}
+                accessibilityLabel={`Go to step ${i + 1}`}
+                accessibilityRole="button"
+              >
+                <StepCard
+                  stepNumber={i + 1}
+                  totalSteps={recipe.steps.length}
+                  text={step}
+                  isCurrent={i === currentStepIndex}
+                />
+              </Pressable>
+            ) : (
+              <StepCard
+                stepNumber={i + 1}
+                totalSteps={recipe.steps.length}
+                text={step}
+                isCurrent={i === currentStepIndex}
+              />
+            )}
           </View>
         ))}
       </View>

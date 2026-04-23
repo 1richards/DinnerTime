@@ -9,6 +9,16 @@
  *     TTS bleed-through when the user exits cooking mode.
  *   - enabled=false or text=undefined: no-op.
  *
+ * Voice selection:
+ *   - Prefers a British male voice ("Daniel", "Oliver", "Arthur") at the
+ *     highest quality tier (Premium > Enhanced > Default).
+ *   - Falls back to any en-GB voice, then to the system default.
+ *   - The chosen identifier is cached module-scope so we pick exactly once
+ *     per app lifetime. Picking is async (getAvailableVoicesAsync is a
+ *     Promise) but speak() degrades gracefully when the cache is empty —
+ *     the first call uses system default, later calls use the preferred
+ *     voice once the lookup settles.
+ *
  * Phase 16 (16-06) extensions:
  *   - Module-level `speak(text)` + `stop()` functions allow cook.tsx to
  *     imperatively drive TTS (for question answers + timer-done
@@ -36,17 +46,87 @@ export interface StepSpeakerHandle {
   stop: () => void;
 }
 
+// Voice-selection cache. Resolved once per app lifetime by the first consumer
+// to import this module; subsequent speak() calls read the already-resolved
+// identifier synchronously.
+let preferredVoiceId: string | undefined;
+let voiceLookupStarted = false;
+
+interface AnyVoice {
+  identifier: string;
+  name?: string;
+  language?: string;
+  quality?: string;
+}
+
+// Rank British male voices. Higher quality wins; Daniel/Oliver/Arthur are the
+// canonical iOS "British gentleman" voices. If none match, we settle for any
+// en-GB voice so the user at least gets the right accent.
+function scoreVoice(v: AnyVoice): number {
+  if (!v.language) return -1;
+  const isGB = v.language === 'en-GB' || v.language.toLowerCase().startsWith('en-gb');
+  if (!isGB) return -1;
+  const q = (v.quality ?? '').toLowerCase();
+  const qualityScore = q.includes('premium') ? 30 : q.includes('enhanced') ? 20 : 10;
+  const name = (v.name ?? '').toLowerCase();
+  const nameScore = /daniel|oliver|arthur|jamie/.test(name)
+    ? 40
+    : /\b(male|guy)\b/.test(name)
+      ? 20
+      : 0;
+  return qualityScore + nameScore;
+}
+
+async function resolvePreferredVoice(): Promise<void> {
+  if (voiceLookupStarted) return;
+  voiceLookupStarted = true;
+  try {
+    const voices = (await Speech.getAvailableVoicesAsync()) as AnyVoice[];
+    let best: AnyVoice | undefined;
+    let bestScore = -1;
+    for (const v of voices) {
+      const s = scoreVoice(v);
+      if (s > bestScore) {
+        bestScore = s;
+        best = v;
+      }
+    }
+    if (best && bestScore >= 0) {
+      preferredVoiceId = best.identifier;
+    }
+  } catch {
+    // getAvailableVoicesAsync throws on platforms without TTS — fall through
+    // and keep preferredVoiceId undefined so speak() uses the system default.
+  }
+}
+
+// Kick off the voice lookup on module load so the identifier is usually
+// resolved before the first speak() call.
+void resolvePreferredVoice();
+
+function baseSpeakOptions(): Speech.SpeechOptions {
+  // Keep `language: 'en-US'` — that's what STT listens in (useVoiceListener
+  // passes lang 'en-US'), and mismatched TTS/STT locales can lengthen the
+  // TTS-speaking window in ways that cause the STT echo-gate to swallow
+  // "next" / "repeat" commands (Pitfall 4 in useVoiceListener). When a
+  // British voice identifier resolves, iOS still speaks with that voice —
+  // `voice` overrides `language` for actual playback — so we get the
+  // accent without the STT-blocking side effect.
+  return {
+    language: 'en-US',
+    voice: preferredVoiceId,
+    rate: 0.95,
+    pitch: 1.0,
+    onError: (e) => console.warn('[tts]', e),
+  };
+}
+
 export function runStepSpeakerEffect(
   text: string | undefined,
   enabled: boolean,
 ): (() => void) | undefined {
   if (!enabled || !text) return undefined;
-  Speech.speak(text, {
-    language: 'en-US',
-    rate: 0.95,
-    pitch: 1.0,
-    onError: (e) => console.warn('[tts]', e),
-  });
+  Speech.speak(text, baseSpeakOptions());
   return () => {
     Speech.stop();
   };
@@ -64,12 +144,7 @@ export function useStepSpeaker(
   return useMemo<StepSpeakerHandle>(
     () => ({
       speak: (t: string) => {
-        Speech.speak(t, {
-          language: 'en-US',
-          rate: 0.95,
-          pitch: 1.0,
-          onError: (e) => console.warn('[tts]', e),
-        });
+        Speech.speak(t, baseSpeakOptions());
       },
       stop: () => {
         Speech.stop();
