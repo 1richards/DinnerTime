@@ -713,6 +713,7 @@ function VariationCard({
               <Pressable
                 onPress={onCook}
                 disabled={disabled || isWorking}
+                hitSlop={{ top: 14, bottom: 14, left: 140, right: 140 }}
                 style={({ pressed }) => [
                   styles.actionBtnCookFullInner,
                   pressed && !(disabled || isWorking) ? { opacity: 0.85 } : null,
@@ -932,14 +933,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     width: '100%',
     overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionBtnCookFullInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
-    height: '100%',
-    width: '100%',
   },
   actionBtnCookFullText: {
     fontSize: 16,
