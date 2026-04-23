@@ -591,9 +591,9 @@ function VariationCard({
   saved,
   modified,
   isWorking,
-  isExpanding,
-  isSaving,
-  isModifying,
+  isExpanding: _isExpanding,
+  isSaving: _isSaving,
+  isModifying: _isModifying,
   isCooking,
   disabled,
   canModifyExisting,
@@ -616,6 +616,28 @@ function VariationCard({
     generatedUri,
     variation.title,
   );
+
+  // ActionSheetIOS-driven overflow menu. Options order is stable:
+  //   [0] Expand preview
+  //   [1] Save as new recipe
+  //   [2] Modify existing (only when source.kind === 'saved')
+  //   [last] Cancel (cancelButtonIndex === options.length - 1)
+  // No destructiveButtonIndex — none of the overflow actions are destructive.
+  const openOverflow = () => {
+    const options: string[] = ['Expand preview', 'Save as new recipe'];
+    if (canModifyExisting) options.push('Modify existing');
+    options.push('Cancel');
+    const cancelButtonIndex = options.length - 1;
+    ActionSheetIOS.showActionSheetWithOptions(
+      { options, cancelButtonIndex },
+      (buttonIndex: number) => {
+        if (buttonIndex === 0) onExpand();
+        else if (buttonIndex === 1) onSaveAsNew();
+        else if (canModifyExisting && buttonIndex === 2) onModifyExisting();
+        // last index is Cancel → no-op
+      },
+    );
+  };
 
   return (
     <View style={styles.variationCard}>
@@ -658,93 +680,36 @@ function VariationCard({
         )}
 
         {!saved && !modified && (
-          <View style={styles.actionRow}>
-            <Pressable
-              onPress={onExpand}
-              disabled={disabled || isWorking}
-              style={({ pressed }) => [
-                styles.actionBtn,
-                styles.actionBtnPrimary,
-                pressed && !disabled && { opacity: 0.85 },
-                disabled && { opacity: 0.5 },
-              ]}
-            >
-              {isExpanding ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <SymbolIcon
-                    name="arrow.up.left.and.arrow.down.right"
-                    size={14}
-                    tintColor="#FFFFFF"
-                  />
-                  <Text style={styles.actionBtnPrimaryText}>Expand</Text>
-                </>
-              )}
-            </Pressable>
+          <View>
             <Pressable
               onPress={onCook}
               disabled={disabled || isWorking}
               style={({ pressed }) => [
-                styles.actionBtn,
-                styles.actionBtnCook,
-                pressed && !disabled && { opacity: 0.85 },
-                disabled && { opacity: 0.5 },
+                styles.actionBtnCookFull,
+                pressed && !disabled && !isWorking && { opacity: 0.85 },
+                (disabled || isWorking) && !isCooking && { opacity: 0.5 },
               ]}
             >
               {isCooking ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <SymbolIcon name="flame.fill" size={14} tintColor="#FFFFFF" />
-                  <Text style={styles.actionBtnPrimaryText}>Cook now</Text>
+                  <SymbolIcon name="flame.fill" size={16} tintColor="#FFFFFF" />
+                  <Text style={styles.actionBtnCookFullText}>Cook now</Text>
                 </>
               )}
             </Pressable>
             <Pressable
-              onPress={onSaveAsNew}
+              onPress={openOverflow}
               disabled={disabled || isWorking}
               style={({ pressed }) => [
-                styles.actionBtn,
-                styles.actionBtnOutline,
-                pressed && !disabled && { opacity: 0.85 },
-                disabled && { opacity: 0.5 },
+                styles.moreActionsBtn,
+                pressed && !disabled && !isWorking && { opacity: 0.7 },
+                (disabled || isWorking) && { opacity: 0.5 },
               ]}
             >
-              {isSaving ? (
-                <ActivityIndicator size="small" color="#C05A00" />
-              ) : (
-                <>
-                  <SymbolIcon name="plus.circle" size={14} tintColor="#C05A00" />
-                  <Text style={styles.actionBtnOutlineText}>Save as new</Text>
-                </>
-              )}
+              <Text style={styles.moreActionsText}>More actions</Text>
             </Pressable>
-            {canModifyExisting && (
-              <Pressable
-                onPress={onModifyExisting}
-                disabled={disabled || isWorking}
-                style={({ pressed }) => [
-                  styles.actionBtn,
-                  styles.actionBtnOutline,
-                  pressed && !disabled && { opacity: 0.85 },
-                  disabled && { opacity: 0.5 },
-                ]}
-              >
-                {isModifying ? (
-                  <ActivityIndicator size="small" color="#C05A00" />
-                ) : (
-                  <>
-                    <SymbolIcon
-                      name="arrow.triangle.2.circlepath"
-                      size={14}
-                      tintColor="#C05A00"
-                    />
-                    <Text style={styles.actionBtnOutlineText}>Modify existing</Text>
-                  </>
-                )}
-              </Pressable>
-            )}
           </View>
         )}
       </View>
@@ -907,44 +872,31 @@ const styles = StyleSheet.create({
     color: '#3E332A',
     marginBottom: 12,
   },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  actionBtn: {
+  actionBtnCookFull: {
+    backgroundColor: '#B85C2E',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    flexGrow: 1,
-    flexBasis: '30%',
-    minHeight: 40,
+    gap: 8,
+    height: 50,
+    borderRadius: 12,
+    width: '100%',
   },
-  actionBtnPrimary: {
-    backgroundColor: colors.brand,
-  },
-  actionBtnCook: {
-    // Flame-red accent to distinguish the cook-now CTA from other primaries.
-    backgroundColor: '#B85C2E',
-  },
-  actionBtnPrimaryText: {
-    fontSize: 13,
-    fontWeight: '700',
+  actionBtnCookFullText: {
+    fontSize: 16,
+    fontWeight: '800',
     color: '#FFFFFF',
   },
-  actionBtnOutline: {
-    borderWidth: 1,
-    borderColor: '#FFD9B0',
-    backgroundColor: '#FFF7EE',
+  moreActionsBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    marginTop: 12,
   },
-  actionBtnOutlineText: {
-    fontSize: 13,
+  moreActionsText: {
+    fontSize: 14,
     fontWeight: '700',
-    color: '#C05A00',
+    color: '#7A6651',
   },
   statusRow: {
     flexDirection: 'row',
