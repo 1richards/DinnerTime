@@ -265,8 +265,8 @@ function SuggestionsHeader({
           <Text style={styles.largeSubtitle}>What should we cook tonight?</Text>
         </View>
       </Animated.View>
-      <SegmentedControl segment={segment} setSegment={setSegment} />
       <InlineSearchPill placeholder="Search dinner ideas…" context="something-new" />
+      <SegmentedControl segment={segment} setSegment={setSegment} />
     </View>
   );
 }
@@ -400,8 +400,8 @@ export default function KitchenScreen() {
           </Text>
         </View>
       </Animated.View>
-      <SegmentedControl segment={segment} setSegment={setSegment} />
       <InlineSearchPill placeholder="Search recipes" context="library" />
+      <SegmentedControl segment={segment} setSegment={setSegment} />
     </View>
   );
 
