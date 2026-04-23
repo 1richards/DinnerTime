@@ -1,0 +1,168 @@
+appId: com.dinnertime.app
+name: "quick-3 — Remix mode picker + VariationCard polish + Something New append"
+tags:
+  - quick
+  - quick-3
+  - remix
+  - something-new
+# Quick Task 3 UAT: captures 3 screenshots covering the full polish pass.
+#   (a) remix-mode-picker — 2x2 SF Symbol grid with long title wrapped
+#   (b) remix-variation-card — pill More actions + 2-line description
+#   (c) something-new-append — >6 cards after Show-me-more-ideas tap
+#
+# Uses runFlow _ensure-logged-in.yaml for a clean auth state, then drives
+# the three surfaces. Test user is uat@dinnertime.test with 3 saved recipes
+# (shrimp-with-rice-and-broccoli gives us a long title for wrap testing +
+# tacos gives us the best visual check for ingredient-fed hero parity).
+#
+# Selector notes:
+#   - Recipe card titles render as plain Text; use .* regex for long names
+#   - "Remix" is a plain Text label on the PreviewSheet Remix CTA
+#   - Mode picker labels "Surprise me", "Swap protein", "Swap veggies",
+#     "Make it quicker" are all plain Text — safe to assertVisible
+#   - "More actions" is the pill button label — assertVisible after a
+#     variation card loads
+---
+- launchApp:
+    clearState: true
+
+- runFlow: _ensure-logged-in.yaml
+
+# ===== SHOT A: remix mode picker (2x2 grid) =====
+#
+# Switch the Kitchen segmented control to "Recipe Box" (segment chips
+# live inside the Kitchen screen, not as a separate tab). Then open the
+# first saved recipe with a long title — "Lemon Garlic Butter Shrimp with
+# Rice and Broccoli" is in the seeded test-user library and is long
+# enough to force 2-line wrap in the RemixSheet header.
+#
+# Segment Pressable accessibilityLabel="Recipe Box segment" masks the
+# Text child in Maestro's AX tree — regex against the AX label substring
+# is the stable selector (flow 27 README header documents this pitfall).
+- tapOn: "Recipe Box segment"
+
+# Wait for recipe grid to render, then tap the long-title recipe card.
+- extendedWaitUntil:
+    visible:
+      text: ".*Lemon Garlic Butter Shrimp.*"
+    timeout: 30000
+
+- tapOn:
+    text: ".*Lemon Garlic Butter Shrimp.*"
+
+# On the recipe detail screen, tap Remix to open the RemixSheet.
+- extendedWaitUntil:
+    visible:
+      text: "Remix"
+    timeout: 10000
+
+- tapOn:
+    text: "Remix"
+
+# Wait for the mode picker helper prompt to render.
+- extendedWaitUntil:
+    visible:
+      text: ".*How do you want to shake it up.*"
+    timeout: 10000
+
+# All four mode labels visible => 2x2 grid rendered.
+- assertVisible:
+    text: "Surprise me"
+- assertVisible:
+    text: "Swap protein"
+- assertVisible:
+    text: "Swap veggies"
+- assertVisible:
+    text: "Make it quicker"
+
+- takeScreenshot: quick-3-a-remix-mode-picker
+
+# ===== SHOT B: variation card (pill More actions + 2-line description) =====
+#
+# Tap "Surprise me" — server roundtrip typically ~3-15s for a fresh remix.
+# After variations load, we expect:
+#   - 2-line description clamp (visual check via screenshot)
+#   - "More actions" pill button (assertVisible + screenshot)
+#   - "Cook now" primary CTA still present
+- tapOn:
+    text: "Surprise me"
+
+# Variations take a while; wait for the "More actions" pill to appear.
+- extendedWaitUntil:
+    visible:
+      text: "More actions"
+    timeout: 60000
+
+# Cook now button still present in the card.
+- assertVisible:
+    text: "Cook now"
+
+- takeScreenshot: quick-3-b-remix-variation-card
+
+# Close the remix sheet via swipe-down (page sheet pattern).
+- swipe:
+    start: "50%,10%"
+    end: "50%,90%"
+# Second swipe if the first caught the results scroll.
+- swipe:
+    start: "50%,10%"
+    end: "50%,90%"
+    optional: true
+
+# Return to Kitchen tab for the Something New shot.
+- tapOn:
+    text: "Kitchen"
+    optional: true
+
+# ===== SHOT C: Something New append (>6 cards after Show me more) =====
+#
+# Land on Kitchen → Something New segment. Search for "dinner" or similar
+# generic query to populate, then tap "Show me more ideas" to prove append.
+- extendedWaitUntil:
+    visible:
+      text: ".*What should we cook tonight.*"
+    timeout: 20000
+
+- tapOn:
+    text: ".*Search dinner ideas.*"
+
+- extendedWaitUntil:
+    visible:
+      text: ".*What are you craving.*"
+    timeout: 10000
+
+- tapOn:
+    text: ".*What are you craving.*"
+- inputText: "quick weeknight dinners"
+- pressKey: enter
+
+# Wait for results grid to load.
+- extendedWaitUntil:
+    visible:
+      text: ".*Show me more ideas.*"
+    timeout: 60000
+
+- takeScreenshot: quick-3-c-something-new-before-append
+
+# Tap the append button.
+- tapOn:
+    text: ".*Show me more ideas.*"
+
+# Give the server a moment; append is ~3-10s.
+- extendedWaitUntil:
+    visible:
+      text: ".*Show me more ideas.*"
+    timeout: 60000
+
+# Scroll down to reveal appended cards.
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+
+- takeScreenshot: quick-3-c-something-new-append

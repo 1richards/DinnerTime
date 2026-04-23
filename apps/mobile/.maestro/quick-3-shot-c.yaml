@@ -1,0 +1,68 @@
+appId: com.dinnertime.app
+name: "quick-3 shot C — Something New append"
+tags:
+  - quick-3
+# Clean launch → Kitchen (Something New by default) → search → wait for
+# results → "Show me more ideas" → screenshot showing appended cards.
+---
+- launchApp:
+    clearState: true
+
+- runFlow: _ensure-logged-in.yaml
+
+# Already on Kitchen > Something New by default.
+- tapOn:
+    text: ".*Search dinner ideas.*"
+
+- extendedWaitUntil:
+    visible:
+      text: ".*What are you craving.*"
+    timeout: 10000
+
+- tapOn:
+    text: ".*What are you craving.*"
+- inputText: "quick weeknight dinners"
+- pressKey: enter
+
+# Dismiss-first: the search modal closes and the segment shows loading,
+# then results. Wait for the new "Show me more ideas" button to appear.
+- extendedWaitUntil:
+    visible:
+      text: ".*Show me more ideas.*"
+    timeout: 90000
+
+- takeScreenshot: quick-3-c-before-append
+
+# Scroll to bottom so Show me more ideas is tappable, then tap.
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+
+- tapOn:
+    text: ".*Show me more ideas.*"
+
+# Wait for append to complete — button returns from "Finding more..." to
+# the normal label. Allow up to 90s.
+- extendedWaitUntil:
+    visible:
+      text: ".*Show me more ideas.*"
+    timeout: 90000
+
+# Scroll down through the list to reveal the appended cards at the bottom.
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+
+- takeScreenshot: quick-3-c-after-append

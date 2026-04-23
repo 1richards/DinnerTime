@@ -1,0 +1,20 @@
+appId: com.dinnertime.app
+name: "quick-3 shot B — variation card polish"
+tags:
+  - quick-3
+# Assumes app is on RemixSheet mode picker (shot A leaves us here).
+# Taps Surprise me → waits for results → screenshots.
+---
+- tapOn: ".*Surprise me.*"
+
+# Variations roundtrip is 3-15s typically.
+- extendedWaitUntil:
+    visible:
+      text: "More actions"
+    timeout: 90000
+
+# Screenshot the first variation card region.
+- takeScreenshot: quick-3-b-remix-variation-card
+
+- assertVisible: "More actions"
+- assertVisible: "Cook now"

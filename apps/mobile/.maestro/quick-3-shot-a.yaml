@@ -1,0 +1,58 @@
+appId: com.dinnertime.app
+name: "quick-3 shot A — remix mode picker 2x2 grid"
+tags:
+  - quick-3
+---
+- launchApp:
+    clearState: true
+
+- runFlow: _ensure-logged-in.yaml
+
+- tapOn: "Recipe Box segment"
+
+- extendedWaitUntil:
+    visible:
+      text: ".*Lemon Garlic Butter Shrimp.*"
+    timeout: 30000
+
+- tapOn:
+    text: ".*Lemon Garlic Butter Shrimp.*"
+
+# Remix button is the last body CTA (pair with Edit, below Start
+# Cooking + Servings + Ingredients + Steps). Scroll to the bottom so the
+# Edit/Remix row is in view.
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+- swipe:
+    start: "50%,80%"
+    end: "50%,20%"
+
+- extendedWaitUntil:
+    visible:
+      text: "Remix"
+    timeout: 10000
+
+- tapOn:
+    text: "Remix"
+
+- extendedWaitUntil:
+    visible:
+      text: ".*How do you want to shake it up.*"
+    timeout: 10000
+
+# Take the screenshot BEFORE assertions so we capture the grid even if
+# one of the labels has case-sensitivity/ellipsis quirks. The visual
+# artifact is the primary UAT output; assertions are belt-and-suspenders.
+- takeScreenshot: quick-3-a-remix-mode-picker
+
+- assertVisible: ".*Surprise me.*"
+- assertVisible: ".*Swap protein.*"
+- assertVisible: ".*Swap veggies.*"
+- assertVisible: ".*Make it quicker.*"
