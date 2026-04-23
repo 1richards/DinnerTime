@@ -209,7 +209,7 @@ export default function PantryScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-warmWhite" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
       {/* Compact nav bar removed — large "Pantry" title scrolls off naturally
           so the list consumes full vertical real estate. Search moved inline
           into listHeader below the large title. */}

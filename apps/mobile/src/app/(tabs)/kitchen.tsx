@@ -492,7 +492,7 @@ export default function KitchenScreen() {
 
   // ---------- render ----------
   return (
-    <SafeAreaView className="flex-1 bg-bg" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-bg" edges={['bottom']}>
       {/* Compact nav bar removed — large "Kitchen" / "Hey, {name}!" title
           scrolls off naturally to maximize vertical real estate. */}
 

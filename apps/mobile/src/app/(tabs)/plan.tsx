@@ -656,33 +656,32 @@ export default function PlanScreen() {
     </View>
   );
 
-  // Inline Plan actions — shopping list + week-level ellipsis (regenerate,
-  // shift, duplicate). Sits below the Week/Month segmented control so the
-  // "Get this week's groceries" and "Week actions" affordances are visible
-  // on the page, matching the Kitchen toolbar pattern.
+  // Inline Plan actions — shopping list + week-level ellipsis. Icon-only
+  // 38pt circular affordances to match the Kitchen + Recipe Box toolbar
+  // buttons. Sits below the FocusBanner (see listHeader order).
   const planActionsRow = (
     <View style={styles.planActionsRow}>
       <Pressable
         onPress={handleShoppingHandoff}
         accessibilityLabel="Shopping list for week"
+        hitSlop={8}
         style={({ pressed }) => [
-          styles.planActionBtn,
+          styles.planActionIconBtn,
           pressed && styles.planActionBtnPressed,
         ]}
       >
-        <SymbolIcon name="cart" size={18} weight="semibold" tintColor={colors.brand} />
-        <Text style={styles.planActionBtnText}>Shopping list</Text>
+        <SymbolIcon name="cart" size={20} weight="semibold" tintColor={colors.brand} />
       </Pressable>
       <Pressable
         onPress={handleOpenWeekSheet}
         accessibilityLabel="Week actions"
+        hitSlop={8}
         style={({ pressed }) => [
-          styles.planActionBtn,
+          styles.planActionIconBtn,
           pressed && styles.planActionBtnPressed,
         ]}
       >
-        <SymbolIcon name="ellipsis" size={18} weight="semibold" tintColor={colors.brand} />
-        <Text style={styles.planActionBtnText}>Week actions</Text>
+        <SymbolIcon name="ellipsis" size={20} weight="semibold" tintColor={colors.brand} />
       </Pressable>
     </View>
   );
@@ -702,8 +701,8 @@ export default function PlanScreen() {
       </Animated.View>
       <InlineSearchPill placeholder="Search recipes to add" context="library" />
       {scaleSegmentedControl}
-      {planActionsRow}
       {planFocusBannerEnabled && <FocusBanner />}
+      {planActionsRow}
     </View>
   );
 
@@ -905,32 +904,26 @@ const styles = StyleSheet.create({
   segmentLabelActive: {
     color: '#FFFFFF',
   },
-  // Inline Plan actions — shopping list + week actions. Lives below the
-  // Week/Month segment for parity with Kitchen's inline toolbar pattern.
+  // Inline Plan actions — icon-only shopping list + week actions. Right-
+  // aligned below the FocusBanner to match Kitchen's toolbar rhythm.
   planActionsRow: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     marginHorizontal: 16,
     marginBottom: 12,
     gap: 8,
   },
-  planActionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 20,
+  planActionIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   planActionBtnPressed: {
     opacity: 0.6,
-  },
-  planActionBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.brand,
   },
 });
