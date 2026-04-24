@@ -33,6 +33,12 @@ export const env = {
   get GOOGLE_API_KEY() {
     return requireEnv('GOOGLE_API_KEY');
   },
+  get ELEVENLABS_API_KEY() {
+    return requireEnv('ELEVENLABS_API_KEY');
+  },
+  get ELEVENLABS_VOICE_ID() {
+    return optionalEnv('ELEVENLABS_VOICE_ID', 'nPczCjzI2devNBz1zQrb');
+  },
   get PORT() {
     return parseInt(optionalEnv('PORT', '3000'), 10);
   },
