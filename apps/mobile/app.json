@@ -70,7 +70,8 @@
       ],
       "@react-native-community/datetimepicker",
       "@sentry/react-native",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true,
