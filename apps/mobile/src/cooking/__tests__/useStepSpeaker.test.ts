@@ -7,64 +7,158 @@ import { runStepSpeakerEffect } from '../useStepSpeaker';
 // wrapper: `useEffect(() => runStepSpeakerEffect(text, enabled), [text, enabled])`.
 // Simulating mount/rerender/unmount means calling the function and invoking
 // the returned cleanup in the same order React would.
+//
+// Phase quick-5 (ElevenLabs): the effect now posts to the backend, writes
+// MP3 bytes to expo-file-system cache, and plays via expo-audio on the
+// happy path — falling back to Speech.speak only when anything on the
+// ElevenLabs path fails. We mock all three surfaces so the same pure
+// effect body exercises both paths deterministically.
+
+vi.mock('expo-audio', () => ({
+  createAudioPlayer: vi.fn(() => ({
+    play: vi.fn(),
+    pause: vi.fn(),
+    release: vi.fn(),
+  })),
+}));
+vi.mock('expo-file-system', () => ({
+  cacheDirectory: 'file:///tmp/',
+  writeAsStringAsync: vi.fn(async () => {}),
+  EncodingType: { Base64: 'base64' },
+}));
+vi.mock('../../lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn(async () => ({
+        data: { session: { access_token: 'test-token' } },
+      })),
+    },
+  },
+}));
+
+import { createAudioPlayer } from 'expo-audio';
 
 const speakMock = vi.mocked(Speech.speak);
 const stopMock = vi.mocked(Speech.stop);
+const createAudioPlayerMock = vi.mocked(createAudioPlayer);
+
+// Two microtask ticks drains: (1) supabase.auth.getSession, (2) fetch.
+// A third tick covers FileSystem.writeAsStringAsync before the player
+// materializes. Use four to stay on the safe side of await scheduling.
+async function flushMicrotasks(): Promise<void> {
+  for (let i = 0; i < 6; i++) {
+    await Promise.resolve();
+  }
+}
 
 describe('useStepSpeaker (runStepSpeakerEffect)', () => {
   beforeEach(() => {
     speakMock.mockClear();
     stopMock.mockClear();
+    createAudioPlayerMock.mockClear();
+    // Default fetch: 200 with MP3 bytes. Individual tests override for failures.
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => new ArrayBuffer(10),
+    })) as unknown as typeof fetch;
   });
 
-  it('calls Speech.speak once with cooking options when mounted enabled', () => {
+  it('plays ElevenLabs MP3 via expo-audio on successful fetch (no Speech.speak fallback)', async () => {
     runStepSpeakerEffect('Chop onions', true);
+    await flushMicrotasks();
 
+    expect(createAudioPlayerMock).toHaveBeenCalledTimes(1);
+    const playerResult = createAudioPlayerMock.mock.results[0];
+    expect(playerResult?.value).toBeDefined();
+    const player = playerResult?.value as { play: ReturnType<typeof vi.fn> };
+    expect(player.play).toHaveBeenCalledTimes(1);
+    expect(speakMock).not.toHaveBeenCalled();
+  });
+
+  it('releases prior player on cleanup when text changes (overlap prevention)', async () => {
+    const cleanup1 = runStepSpeakerEffect('Chop onions', true);
+    await flushMicrotasks();
+
+    const firstPlayer = createAudioPlayerMock.mock.results[0]?.value as {
+      pause: ReturnType<typeof vi.fn>;
+      release: ReturnType<typeof vi.fn>;
+    };
+
+    // React runs cleanup BEFORE the next effect when deps change.
+    cleanup1?.();
+    expect(firstPlayer.pause).toHaveBeenCalled();
+    expect(firstPlayer.release).toHaveBeenCalled();
+
+    runStepSpeakerEffect('Heat pan', true);
+    await flushMicrotasks();
+
+    // Two player creations total; one fetch per text.
+    expect(createAudioPlayerMock).toHaveBeenCalledTimes(2);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('never fetches, plays, or speaks when enabled=false', async () => {
+    runStepSpeakerEffect('Chop onions', false);
+    await flushMicrotasks();
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(createAudioPlayerMock).not.toHaveBeenCalled();
+    expect(speakMock).not.toHaveBeenCalled();
+  });
+
+  it('invokes player.pause + player.release AND Speech.stop on cleanup', async () => {
+    const cleanup = runStepSpeakerEffect('Chop onions', true);
+    await flushMicrotasks();
+    const player = createAudioPlayerMock.mock.results[0]?.value as {
+      pause: ReturnType<typeof vi.fn>;
+      release: ReturnType<typeof vi.fn>;
+    };
+
+    cleanup?.();
+
+    expect(player.pause).toHaveBeenCalledTimes(1);
+    expect(player.release).toHaveBeenCalledTimes(1);
+    expect(stopMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('is a no-op when text is undefined', async () => {
+    runStepSpeakerEffect(undefined, true);
+    await flushMicrotasks();
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(createAudioPlayerMock).not.toHaveBeenCalled();
+    expect(speakMock).not.toHaveBeenCalled();
+    expect(stopMock).not.toHaveBeenCalled();
+  });
+
+  it('on fetch success → player.play called, Speech.speak NOT called', async () => {
+    runStepSpeakerEffect('Season the chicken', true);
+    await flushMicrotasks();
+
+    const player = createAudioPlayerMock.mock.results[0]?.value as {
+      play: ReturnType<typeof vi.fn>;
+    };
+    expect(player.play).toHaveBeenCalledTimes(1);
+    expect(speakMock).not.toHaveBeenCalled();
+  });
+
+  it('on fetch failure (502) → Speech.speak IS called with en-US options', async () => {
+    global.fetch = vi.fn(async () => ({
+      ok: false,
+      status: 502,
+      arrayBuffer: async () => new ArrayBuffer(0),
+    })) as unknown as typeof fetch;
+
+    runStepSpeakerEffect('Heat the pan over medium heat.', true);
+    await flushMicrotasks();
+
+    expect(createAudioPlayerMock).not.toHaveBeenCalled();
     expect(speakMock).toHaveBeenCalledTimes(1);
     expect(speakMock).toHaveBeenCalledWith(
-      'Chop onions',
+      'Heat the pan over medium heat.',
       expect.objectContaining({
         language: 'en-US',
         rate: 0.95,
-        pitch: 1.0,
-        onError: expect.any(Function),
       }),
     );
-  });
-
-  it('calls Speech.stop before the next Speech.speak on text change (overlap prevention)', () => {
-    const cleanup1 = runStepSpeakerEffect('Chop onions', true);
-    // React runs cleanup BEFORE the next effect when deps change.
-    cleanup1?.();
-    runStepSpeakerEffect('Heat pan', true);
-
-    // Two speak calls total, one stop in between.
-    expect(speakMock).toHaveBeenCalledTimes(2);
-    expect(stopMock).toHaveBeenCalledTimes(1);
-
-    // Order: speak, stop, speak
-    const speakOrders = speakMock.mock.invocationCallOrder;
-    const stopOrders = stopMock.mock.invocationCallOrder;
-    expect(speakOrders[0]).toBeLessThan(stopOrders[0]);
-    expect(stopOrders[0]).toBeLessThan(speakOrders[1]);
-    expect(speakMock.mock.calls[1][0]).toBe('Heat pan');
-  });
-
-  it('never calls Speech.speak when enabled=false', () => {
-    runStepSpeakerEffect('Chop onions', false);
-    expect(speakMock).not.toHaveBeenCalled();
-  });
-
-  it('invokes Speech.stop on cleanup (unmount)', () => {
-    const cleanup = runStepSpeakerEffect('Chop onions', true);
-    expect(stopMock).not.toHaveBeenCalled();
-    cleanup?.();
-    expect(stopMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('is a no-op when text is undefined', () => {
-    runStepSpeakerEffect(undefined, true);
-    expect(speakMock).not.toHaveBeenCalled();
-    expect(stopMock).not.toHaveBeenCalled();
   });
 });
