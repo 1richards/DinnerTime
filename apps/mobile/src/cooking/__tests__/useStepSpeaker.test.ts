@@ -21,7 +21,7 @@ vi.mock('expo-audio', () => ({
     release: vi.fn(),
   })),
 }));
-vi.mock('expo-file-system', () => ({
+vi.mock('expo-file-system/legacy', () => ({
   cacheDirectory: 'file:///tmp/',
   writeAsStringAsync: vi.fn(async () => {}),
   EncodingType: { Base64: 'base64' },
@@ -77,7 +77,10 @@ describe('useStepSpeaker (runStepSpeakerEffect)', () => {
   });
 
   it('releases prior player on cleanup when text changes (overlap prevention)', async () => {
-    const cleanup1 = runStepSpeakerEffect('Chop onions', true);
+    // Use distinct text not reused by other tests — the LRU cache is module-
+    // scope and persists across tests in this file, so reusing "Chop onions"
+    // would hit the cache from Test 1 and suppress the second fetch.
+    const cleanup1 = runStepSpeakerEffect('Mince the garlic', true);
     await flushMicrotasks();
 
     const firstPlayer = createAudioPlayerMock.mock.results[0]?.value as {
@@ -90,10 +93,10 @@ describe('useStepSpeaker (runStepSpeakerEffect)', () => {
     expect(firstPlayer.pause).toHaveBeenCalled();
     expect(firstPlayer.release).toHaveBeenCalled();
 
-    runStepSpeakerEffect('Heat pan', true);
+    runStepSpeakerEffect('Dice the shallots', true);
     await flushMicrotasks();
 
-    // Two player creations total; one fetch per text.
+    // Two player creations total; one fetch per fresh-cache-miss text.
     expect(createAudioPlayerMock).toHaveBeenCalledTimes(2);
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
