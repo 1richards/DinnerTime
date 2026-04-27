@@ -8,7 +8,7 @@ import type {
   AmbitionSuggestion,
 } from '../types/progression';
 
-export type RemixMode = 'surprise' | 'protein' | 'veggies' | 'quicker';
+export type RemixMode = 'surprise' | 'protein' | 'veggies' | 'quicker' | 'healthier';
 
 export interface RemixVariation {
   title: string;

@@ -24,7 +24,10 @@ import { useRecipeStore } from '../../stores/recipeStore';
 import { supabase } from '../../lib/supabase';
 import { PreviewSheet, type DiscoveredRecipe } from '../../app/recipes/discover';
 import { getRecipeImage } from '../../constants/foodImages';
-import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
+import {
+  prefetchGeneratedRecipeImage,
+  useGeneratedRecipeImage,
+} from '../../hooks/useGeneratedRecipeImage';
 import type { ParsedRecipe } from '../../types/recipe';
 import { colors } from '../../design/tokens';
 
@@ -83,6 +86,7 @@ const MODES: ModeOption[] = [
   { mode: 'protein', label: 'Swap protein', sub: 'Keep the dish, change the star', symbol: 'flame.fill', tint: colors.brand },
   { mode: 'veggies', label: 'Swap veggies', sub: 'Different flavor profile', symbol: 'leaf.fill', tint: colors.success },
   { mode: 'quicker', label: 'Make it quicker', sub: 'Shortcut the cook time', symbol: 'bolt.fill', tint: colors.brand },
+  { mode: 'healthier', label: 'Make it healthier', sub: 'Lighter, leaner, more veg', symbol: 'heart.fill', tint: colors.success },
 ];
 
 const getApiBaseUrl = (): string =>
@@ -215,6 +219,31 @@ export function RemixSheet({
       return;
     }
     setVariations(result);
+
+    // Pre-warm Gemini image generation for each variation as soon as titles
+    // arrive — overlaps the round-trip with the variations-fetch wait so
+    // cards mount with the inflight promise already in cache. Uses base
+    // recipe ingredients as visual anchors (same shape VariationCard uses).
+    const baseIngredientsForPrefetch = baseForSave?.ingredients ?? null;
+    const normalized =
+      baseIngredientsForPrefetch && baseIngredientsForPrefetch.length > 0
+        ? baseIngredientsForPrefetch.map((i) =>
+            typeof i === 'string'
+              ? { name: i, quantity: null, unit: null, notes: null }
+              : {
+                  name: i.name,
+                  quantity: i.quantity ?? null,
+                  unit: i.unit ?? null,
+                  notes: i.notes ?? null,
+                },
+          )
+        : null;
+    for (const v of result) {
+      prefetchGeneratedRecipeImage(v.title, {
+        description: v.description,
+        ingredients: normalized,
+      });
+    }
   };
 
   const handleTryAnother = () => {
@@ -389,27 +418,34 @@ export function RemixSheet({
               How do you want to shake it up?
             </Text>
             <View style={styles.modeGrid}>
-              {MODES.map((m) => (
-                <Pressable
-                  key={m.mode}
-                  onPress={() => handleMode(m.mode)}
-                  style={({ pressed }) => [
-                    styles.modeCard,
-                    pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
-                  ]}
-                >
-                  <View style={[styles.modeChip, { backgroundColor: `${m.tint}1A` }]}>
-                    <SymbolIcon
-                      name={m.symbol as never}
-                      size={26}
-                      tintColor={m.tint}
-                      weight="semibold"
-                    />
-                  </View>
-                  <Text style={styles.modeLabel}>{m.label}</Text>
-                  <Text style={styles.modeSub}>{m.sub}</Text>
-                </Pressable>
-              ))}
+              {MODES.map((m, i) => {
+                // Odd-numbered final card spans full width so it doesn't sit
+                // alone at 48% with empty space to the right.
+                const isLoneTrailing =
+                  i === MODES.length - 1 && MODES.length % 2 === 1;
+                return (
+                  <Pressable
+                    key={m.mode}
+                    onPress={() => handleMode(m.mode)}
+                    style={({ pressed }) => [
+                      styles.modeCard,
+                      isLoneTrailing && styles.modeCardFull,
+                      pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+                    ]}
+                  >
+                    <View style={[styles.modeChip, { backgroundColor: `${m.tint}1A` }]}>
+                      <SymbolIcon
+                        name={m.symbol as never}
+                        size={26}
+                        tintColor={m.tint}
+                        weight="semibold"
+                      />
+                    </View>
+                    <Text style={styles.modeLabel}>{m.label}</Text>
+                    <Text style={styles.modeSub}>{m.sub}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </ScrollView>
         )}
@@ -836,6 +872,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 2,
+  },
+  modeCardFull: {
+    width: '100%',
+    minHeight: 110,
   },
   modeChip: {
     width: 48,

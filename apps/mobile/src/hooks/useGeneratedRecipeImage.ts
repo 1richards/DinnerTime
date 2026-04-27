@@ -262,3 +262,34 @@ export function useGeneratedRecipeImage(
 
   return result;
 }
+
+/**
+ * Fire-and-forget prefetch — call this BEFORE the consuming card mounts so
+ * the Gemini round-trip is in flight by the time `useGeneratedRecipeImage`
+ * runs. The hook's session cache holds the inflight promise, so the card's
+ * effect picks it up on first render rather than starting a fresh request.
+ *
+ * Use case: in RemixSheet, kick this off the moment variations resolve so
+ * the existing "Brewing ideas..." spinner overlaps the image generation.
+ * No-op when title is empty or already cached.
+ */
+export function prefetchGeneratedRecipeImage(
+  title: string | null | undefined,
+  options: HookOptions = {},
+): void {
+  const { skip, description, ingredients } = options;
+  if (!title || skip) return;
+  const key = cacheKeyFor(title, ingredients);
+  // Already in cache (resolved, in-flight, or attempted+failed) — no-op.
+  if (cache.has(key)) return;
+  const inflight = fetchGeneratedUrl({
+    title,
+    description: description ?? null,
+    ingredients: ingredients ?? null,
+  });
+  cache.set(key, { url: null, inflight, attempted: false });
+  inflight.then((u) => {
+    cache.set(key, { url: u, inflight: null, attempted: true });
+    if (u !== null) persistToStorage();
+  });
+}

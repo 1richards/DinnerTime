@@ -312,7 +312,7 @@ export interface RecipeContext {
  * Remix modes — each produces a different kind of variation. The mode
  * controls the prompt steering, not the tool schema.
  */
-export type RemixMode = 'surprise' | 'protein' | 'veggies' | 'quicker';
+export type RemixMode = 'surprise' | 'protein' | 'veggies' | 'quicker' | 'healthier';
 
 const REMIX_PROMPTS: Record<RemixMode, string> = {
   surprise:
@@ -323,6 +323,8 @@ const REMIX_PROMPTS: Record<RemixMode, string> = {
     'Suggest 3 variations that keep the protein and technique but SWAP OR ADD VEGETABLES/AROMATICS/NON-PROTEIN INGREDIENTS to change the flavor profile (e.g., swap spinach for kale, add roasted peppers, substitute sweet potato for regular potato).',
   quicker:
     'Suggest 3 variations that deliver the same dish in LESS TIME. Shortcut techniques, pre-made ingredients, smaller cuts, or skipping non-essential steps. Each variation must explain what time-saver it uses.',
+  healthier:
+    'Suggest 3 variations that meaningfully UPGRADE THE NUTRITIONAL PROFILE while keeping the dish recognizable and satisfying. Levers: swap refined grains for whole grains, reduce added sugar/oil/butter, increase vegetable volume, lean-up the protein (e.g., ground beef → ground turkey or lean turkey + lentils), boost fiber, swap heavy cream for Greek yogurt or evaporated milk, bake/air-fry instead of deep-fry. Each variation must call out the specific health upgrade made.',
 };
 
 function contextIngredientList(context: RecipeContext): string {

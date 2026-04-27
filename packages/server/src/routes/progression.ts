@@ -105,10 +105,10 @@ progression.get('/suggestions', async (c) => {
 /**
  * GET /variations/:recipeId — 3 creative variations for a recipe.
  * Always available (no cook-count gate). Optional `?mode=surprise|protein|
- * veggies|quicker` steers the kind of remix produced. Returns 404 if the
- * recipe isn't owned by the profile.
+ * veggies|quicker|healthier` steers the kind of remix produced. Returns 404
+ * if the recipe isn't owned by the profile.
  */
-const VALID_MODES = ['surprise', 'protein', 'veggies', 'quicker'] as const;
+const VALID_MODES = ['surprise', 'protein', 'veggies', 'quicker', 'healthier'] as const;
 type RemixMode = (typeof VALID_MODES)[number];
 
 progression.get('/variations/:recipeId', async (c) => {
