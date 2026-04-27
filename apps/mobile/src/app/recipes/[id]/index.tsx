@@ -92,7 +92,7 @@ export default function RecipeDetailScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 180 }}
       >
         {/* Hero image with title overlay — NYT Cooking style */}
         <View style={{ position: 'relative' }}>
@@ -179,18 +179,17 @@ export default function RecipeDetailScreen() {
           ))}
         </View>
 
-        {/* CTAs */}
-        <View className="px-4 mt-4">
-          <Button
-            title="Start Cooking"
-            onPress={() => router.push(`/recipes/${recipe.id}/cook`)}
-          />
-        </View>
+      </ScrollView>
 
-        {/* Edit + Remix as body CTAs. Remix hoisted out of the overflow
-            menu so Recipe Box has parity with Something New's remix entry
-            point — the interaction set matches across surfaces. */}
-        <View className="px-4 mt-3 flex-row" style={{ gap: 8 }}>
+      {/* Sticky footer CTAs — always visible regardless of scroll position so
+          Start Cooking + Edit + Remix are one-tap from anywhere on the recipe.
+          Mirrors the Something New PreviewSheet's fixed action bar. */}
+      <View style={styles.stickyFooter}>
+        <Button
+          title="Start Cooking"
+          onPress={() => router.push(`/recipes/${recipe.id}/cook`)}
+        />
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
           <View style={{ flex: 1 }}>
             <Button
               title="Edit"
@@ -206,7 +205,7 @@ export default function RecipeDetailScreen() {
             />
           </View>
         </View>
-      </ScrollView>
+      </View>
 
       {/* Remix sheet — 4 modes + inline results. Passing the full recipe
           as `baseForSave` lets "Save as new recipe" AI-expand a variation
@@ -235,6 +234,18 @@ export default function RecipeDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  stickyFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    backgroundColor: '#FFFBF5',
+    borderTopWidth: 1,
+    borderTopColor: '#F1EAE0',
+  },
   heroBack: {
     position: 'absolute',
     left: 12,

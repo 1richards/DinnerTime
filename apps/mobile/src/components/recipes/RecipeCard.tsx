@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import type { Recipe } from '../../types/recipe';
 import { getRecipeImage } from '../../constants/foodImages';
+import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
 import { useRecipeStore } from '../../stores/recipeStore';
 import { colors } from '../../design/tokens';
 import { resolveCardClasses, type RecipeCardMode } from './recipeCardStyles';
@@ -69,7 +70,24 @@ export function RecipeCard({
     recipe.total_time_minutes ??
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
 
-  const imageUri = getRecipeImage(recipe.id, recipe.image_url, recipe.title);
+  // When the saved recipe has no persisted image_url (common for AI recipes
+  // saved before Gemini resolved, or pre-quick-3 saves), fall through to
+  // useGeneratedRecipeImage so Recipe Box converges on the same Gemini photo
+  // Something New shows. Hook is a no-op for cache hits / when image_url is
+  // already set, so this is free for the common path.
+  const { url: generatedUri } = useGeneratedRecipeImage(
+    recipe.image_url ? null : recipe.title,
+    {
+      skip: !!recipe.image_url,
+      description: recipe.description,
+      ingredients: recipe.ingredients,
+    },
+  );
+  const imageUri = getRecipeImage(
+    recipe.id,
+    recipe.image_url ?? generatedUri,
+    recipe.title,
+  );
 
   return (
     <>
