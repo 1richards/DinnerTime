@@ -633,14 +633,17 @@ function VariationCard({
   // Hero image uses base-recipe ingredients as visual anchors so Gemini
   // renders the actual dish family (e.g. tacos for a taco remix), not just
   // the variation's title keyword.
-  const { url: generatedUri } = useGeneratedRecipeImage(variation.title, {
-    description: variation.description,
-    ingredients: normalizedBaseIngredients,
-  });
-  const heroUri = getRecipeImage(
-    `remix-card-${index}-${variation.title}`,
-    generatedUri,
+  //
+  // We DO NOT fall back to getRecipeImage's keyword-stock pool while loading
+  // or on failure — that pool's hash-based picks (e.g. shrimp variation →
+  // cutting board, chorizo variation → bread) mislead more than they help.
+  // Show a skeleton until Gemini definitively resolves.
+  const { url: generatedUri, status: imageStatus } = useGeneratedRecipeImage(
     variation.title,
+    {
+      description: variation.description,
+      ingredients: normalizedBaseIngredients,
+    },
   );
 
   // ActionSheetIOS-driven overflow menu. Options order is stable:
@@ -667,13 +670,24 @@ function VariationCard({
 
   return (
     <View style={styles.variationCard}>
-      <Image
-        source={{ uri: heroUri }}
-        style={styles.variationHero}
-        contentFit="cover"
-        transition={200}
-        cachePolicy="memory-disk"
-      />
+      {generatedUri ? (
+        <Image
+          source={{ uri: generatedUri }}
+          style={styles.variationHero}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
+        />
+      ) : (
+        // Skeleton while Gemini resolves OR if it failed. Subtle pulse via
+        // the warm beige #F1EAE0 placeholder — same tone the rest of the
+        // app uses for image placeholders. Better than misleading stock.
+        <View style={[styles.variationHero, styles.variationHeroSkeleton]}>
+          {imageStatus === 'failed' && (
+            <SymbolIcon name="photo" size={32} tintColor="#C9B89E" />
+          )}
+        </View>
+      )}
       <View style={styles.variationBody}>
         <View style={styles.variationHeader}>
           <View style={styles.variationNum}>
@@ -891,6 +905,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 170,
     backgroundColor: '#F1EAE0',
+  },
+  variationHeroSkeleton: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   variationBody: {
     padding: 16,
