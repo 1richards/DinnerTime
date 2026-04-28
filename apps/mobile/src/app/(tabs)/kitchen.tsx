@@ -27,6 +27,7 @@ import { HeaderEllipsis } from '../../components/ui/HeaderEllipsis';
 import { Button } from '../../components/ui/Button';
 import { PreviewSheet } from '../recipes/discover';
 import { getRecipeImage } from '../../constants/foodImages';
+import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
 import {
   RecipeFilterSheet,
   EMPTY_FILTERS,
@@ -318,6 +319,20 @@ export default function KitchenScreen() {
   const [previewRecipe, setPreviewRecipe] = useState<ParsedRecipe | null>(null);
   const [savingPreview, setSavingPreview] = useState(false);
   const [cookingPreview, setCookingPreview] = useState(false);
+
+  // Mirror the same Gemini hook the Something New card uses so the preview
+  // sheet hits the shared session+AsyncStorage cache and displays the EXACT
+  // image the listing card is showing. Without this, the sheet falls through
+  // to getRecipeImage's keyword stock and shows a different photo for the
+  // same recipe.
+  const { url: previewGeneratedUri } = useGeneratedRecipeImage(
+    previewRecipe?.title ?? null,
+    {
+      skip: !!previewRecipe?.image_url,
+      description: previewRecipe?.description ?? null,
+      ingredients: previewRecipe?.ingredients ?? null,
+    },
+  );
 
   const hasResults = searchResults.length > 0;
   const hasHistory = recentQueries.length > 0;
@@ -614,7 +629,7 @@ export default function KitchenScreen() {
             recipe={{ ...previewRecipe, _saved: false }}
             heroUri={getRecipeImage(
               `something-new-${previewRecipe.title}`,
-              previewRecipe.image_url,
+              previewRecipe.image_url ?? previewGeneratedUri,
               previewRecipe.title,
             )}
             onClose={() => setPreviewRecipe(null)}
