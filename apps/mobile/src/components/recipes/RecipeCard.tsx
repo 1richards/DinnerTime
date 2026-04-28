@@ -46,6 +46,13 @@ interface RecipeCardProps {
    * over the hero. Only honored when `preview` is true.
    */
   previewActions?: PreviewActions;
+  /**
+   * Optional Cook now handler for saved recipes (non-preview mode). When
+   * provided, a flame badge is added to the action cluster alongside the
+   * remix sparkle and favorite heart — matching the Something New layout
+   * so the affordance reads identically across both surfaces.
+   */
+  onCookNow?: (recipe: Recipe) => void;
   onPress?: (recipe: Recipe) => void;
 }
 
@@ -61,6 +68,7 @@ export function RecipeCard({
   mode = 'grid',
   preview = false,
   previewActions,
+  onCookNow,
   onPress,
 }: RecipeCardProps) {
   const toggleFavorite = useRecipeStore((s) => s.toggleFavorite);
@@ -219,6 +227,22 @@ export function RecipeCard({
               to favorite or remix-against. */}
           {!preview && (
             <View style={styles.actionCluster}>
+              {onCookNow && (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    onCookNow(recipe);
+                  }}
+                  hitSlop={10}
+                  style={({ pressed }) => [
+                    styles.actionBadge,
+                    pressed && { opacity: 0.6 },
+                  ]}
+                  accessibilityLabel="Cook this recipe now"
+                >
+                  <SymbolIcon name="flame.fill" size={24} tintColor="#FFE4B5" />
+                </Pressable>
+              )}
               <Pressable
                 onPress={(e) => {
                   e.stopPropagation();

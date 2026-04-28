@@ -451,7 +451,7 @@ export default function KitchenScreen() {
           >
             <SymbolIcon
               name="line.3.horizontal.decrease"
-              size={20}
+              size={26}
               weight="semibold"
               tintColor={activeFilterCount > 0 ? '#FFFFFF' : colors.brand}
             />
@@ -581,7 +581,11 @@ export default function KitchenScreen() {
           keyExtractor={(item: Recipe) => item.id}
           ListHeaderComponent={libraryListHeader}
           renderItem={({ item }: { item: Recipe }) => (
-            <RecipeCard recipe={item} onPress={handleCardPress} />
+            <RecipeCard
+              recipe={item}
+              onPress={handleCardPress}
+              onCookNow={(r) => router.push(`/recipes/${r.id}/cook`)}
+            />
           )}
           ListEmptyComponent={
             <View className="items-center mt-12 px-6">
@@ -772,9 +776,9 @@ const styles = StyleSheet.create({
   // used in nav action rows elsewhere. No label text because the 3-lines
   // glyph is a well-known UI-design standard for "filter".
   filterIconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
