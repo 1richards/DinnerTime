@@ -442,21 +442,42 @@ export function RemixSheet({
                 onChangeText={setCustomInstructions}
                 placeholder="Custom instructions (optional)"
                 placeholderTextColor={colors.textTertiary}
-                returnKeyType="done"
+                returnKeyType="go"
+                onSubmitEditing={() => {
+                  if (customInstructions.trim().length > 0) handleMode('surprise');
+                }}
                 multiline={false}
               />
               {customInstructions.length > 0 && (
-                <Pressable
-                  onPress={() => setCustomInstructions('')}
-                  hitSlop={8}
-                  accessibilityLabel="Clear custom instructions"
-                >
-                  <SymbolIcon
-                    name="xmark.circle.fill"
-                    size={18}
-                    tintColor={colors.textTertiary}
-                  />
-                </Pressable>
+                <>
+                  <Pressable
+                    onPress={() => setCustomInstructions('')}
+                    hitSlop={8}
+                    accessibilityLabel="Clear custom instructions"
+                  >
+                    <SymbolIcon
+                      name="xmark.circle.fill"
+                      size={18}
+                      tintColor={colors.textTertiary}
+                    />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleMode('surprise')}
+                    hitSlop={8}
+                    accessibilityLabel="Generate variations from custom instructions"
+                    style={({ pressed }) => [
+                      styles.customSubmitBtn,
+                      pressed && { opacity: 0.85 },
+                    ]}
+                  >
+                    <SymbolIcon
+                      name="arrow.up"
+                      size={16}
+                      tintColor="#FFFFFF"
+                      weight="bold"
+                    />
+                  </Pressable>
+                </>
               )}
             </View>
 
@@ -484,11 +505,6 @@ export function RemixSheet({
                     <Text style={styles.modeLabel}>{m.label}</Text>
                     <Text style={styles.modeSub}>{m.sub}</Text>
                   </View>
-                  <SymbolIcon
-                    name="chevron.right"
-                    size={16}
-                    tintColor={colors.textTertiary}
-                  />
                 </Pressable>
               ))}
             </View>
@@ -914,6 +930,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textPrimary,
     paddingVertical: 0,
+  },
+  customSubmitBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modeList: {
     gap: 10,
