@@ -347,15 +347,25 @@ function contextIngredientList(context: RecipeContext): string {
 export async function generateVariationsForContext(
   context: RecipeContext,
   mode: RemixMode = 'surprise',
+  customInstructions?: string,
 ): Promise<RemixVariation[]> {
   const ingredientList = contextIngredientList(context);
   const steering = REMIX_PROMPTS[mode] ?? REMIX_PROMPTS.surprise;
+  const trimmedCustom = customInstructions?.trim();
+  // Custom instructions are layered ON TOP of the mode steering — they
+  // refine direction without overriding the mode's intent. Quoted so the
+  // model treats them as a directive from the cook, not free-floating
+  // context.
+  const customClause =
+    trimmedCustom && trimmedCustom.length > 0
+      ? `\n\nADDITIONAL COOK INSTRUCTIONS (must honor): "${trimmedCustom}"`
+      : '';
   const prompt = `Recipe: "${context.title}"
 ${context.description ? `Description: ${context.description}` : ''}
 Current ingredients: ${ingredientList || '(unknown)'}
 ${context.total_time_minutes ? `Current total time: ${context.total_time_minutes} minutes` : ''}
 
-${steering}
+${steering}${customClause}
 
 Each variation must have:
 - A SHORT title (2-5 words, title case) naming the defining change — e.g., "Sautéed Shrimp", "Weeknight Shortcut", "Coconut Curry Twist"
@@ -385,6 +395,7 @@ export async function getRecipeVariations(
   profileId: string,
   recipeId: string,
   mode: RemixMode = 'surprise',
+  customInstructions?: string,
 ): Promise<RemixVariation[]> {
   const { data: recipeData, error: recipeError } = await supabase
     .from('recipes')
@@ -408,5 +419,6 @@ export async function getRecipeVariations(
       total_time_minutes: recipe.total_time_minutes ?? null,
     },
     mode,
+    customInstructions,
   );
 }

@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Alert,
   ActionSheetIOS,
+  TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
@@ -139,6 +140,10 @@ export function RemixSheet({
   const [variations, setVariations] = useState<RemixVariation[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Free-form steering — user types something like "add Mediterranean spices"
+  // or "swap dairy for plant-based" and it's forwarded to the variation
+  // generator alongside the chosen mode.
+  const [customInstructions, setCustomInstructions] = useState('');
 
   // Per-variation state
   const [fullByIdx, setFullByIdx] = useState<Record<number, ParsedRecipe>>({});
@@ -163,6 +168,7 @@ export function RemixSheet({
       setWorkingAction(null);
       setSavedIdxs(new Set());
       setModifiedIdxs(new Set());
+      setCustomInstructions('');
     }
   }, [visible]);
 
@@ -208,10 +214,11 @@ export function RemixSheet({
     setModifiedIdxs(new Set());
     setFullByIdx({});
 
+    const trimmedCustom = customInstructions.trim();
     const result =
       source.kind === 'saved'
-        ? await fetchVariations(source.recipeId, mode)
-        : await fetchVariationsForContext(source.context, mode);
+        ? await fetchVariations(source.recipeId, mode, trimmedCustom)
+        : await fetchVariationsForContext(source.context, mode, trimmedCustom);
 
     setLoading(false);
     if (result === null) {
@@ -417,35 +424,73 @@ export function RemixSheet({
             <Text style={styles.helperText}>
               How do you want to shake it up?
             </Text>
-            <View style={styles.modeGrid}>
-              {MODES.map((m, i) => {
-                // Odd-numbered final card spans full width so it doesn't sit
-                // alone at 48% with empty space to the right.
-                const isLoneTrailing =
-                  i === MODES.length - 1 && MODES.length % 2 === 1;
-                return (
-                  <Pressable
-                    key={m.mode}
-                    onPress={() => handleMode(m.mode)}
-                    style={({ pressed }) => [
-                      styles.modeCard,
-                      isLoneTrailing && styles.modeCardFull,
-                      pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
-                    ]}
+
+            {/* Free-form steering. Anything typed here is forwarded to the
+                variation generator alongside the selected mode — e.g. user
+                taps "Swap protein" with "use only what's in my pantry"
+                typed and the prompt steering picks up both signals. */}
+            <View style={styles.customInputRow}>
+              <SymbolIcon
+                name="wand.and.stars"
+                size={18}
+                tintColor={colors.textSecondary}
+                weight="semibold"
+              />
+              <TextInput
+                style={styles.customInput}
+                value={customInstructions}
+                onChangeText={setCustomInstructions}
+                placeholder="Custom instructions (optional)"
+                placeholderTextColor={colors.textTertiary}
+                returnKeyType="done"
+                multiline={false}
+              />
+              {customInstructions.length > 0 && (
+                <Pressable
+                  onPress={() => setCustomInstructions('')}
+                  hitSlop={8}
+                  accessibilityLabel="Clear custom instructions"
+                >
+                  <SymbolIcon
+                    name="xmark.circle.fill"
+                    size={18}
+                    tintColor={colors.textTertiary}
+                  />
+                </Pressable>
+              )}
+            </View>
+
+            <View style={styles.modeList}>
+              {MODES.map((m) => (
+                <Pressable
+                  key={m.mode}
+                  onPress={() => handleMode(m.mode)}
+                  style={({ pressed }) => [
+                    styles.modeRow,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                >
+                  <View
+                    style={[styles.modeChip, { backgroundColor: `${m.tint}1A` }]}
                   >
-                    <View style={[styles.modeChip, { backgroundColor: `${m.tint}1A` }]}>
-                      <SymbolIcon
-                        name={m.symbol as never}
-                        size={26}
-                        tintColor={m.tint}
-                        weight="semibold"
-                      />
-                    </View>
+                    <SymbolIcon
+                      name={m.symbol as never}
+                      size={24}
+                      tintColor={m.tint}
+                      weight="semibold"
+                    />
+                  </View>
+                  <View style={styles.modeRowText}>
                     <Text style={styles.modeLabel}>{m.label}</Text>
                     <Text style={styles.modeSub}>{m.sub}</Text>
-                  </Pressable>
-                );
-              })}
+                  </View>
+                  <SymbolIcon
+                    name="chevron.right"
+                    size={16}
+                    tintColor={colors.textTertiary}
+                  />
+                </Pressable>
+              ))}
             </View>
           </ScrollView>
         )}
@@ -852,50 +897,60 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
-  modeGrid: {
+  customInputRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  modeCard: {
-    width: '48%',
-    minHeight: 160,
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 12,
-    marginBottom: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 16,
+  },
+  customInput: {
+    flex: 1,
+    fontSize: 15,
+    color: colors.textPrimary,
+    paddingVertical: 0,
+  },
+  modeList: {
+    gap: 10,
+  },
+  modeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
     shadowColor: '#7A6651',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 6,
-    elevation: 2,
-  },
-  modeCardFull: {
-    width: '100%',
-    minHeight: 110,
+    elevation: 1,
   },
   modeChip: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+  },
+  modeRowText: {
+    flex: 1,
   },
   modeLabel: {
     fontSize: 16,
     fontWeight: '800',
     color: colors.textPrimary,
-    textAlign: 'center',
     marginBottom: 2,
   },
   modeSub: {
     fontSize: 13,
     color: colors.textSecondary,
-    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,

@@ -38,11 +38,13 @@ interface ProgressionState {
   fetchVariations: (
     recipeId: string,
     mode?: RemixMode,
+    customInstructions?: string,
   ) => Promise<RemixVariation[] | null>;
   /** Fetch variations for an unsaved context (Home suggestion, Discover). */
   fetchVariationsForContext: (
     context: VariationContext,
     mode?: RemixMode,
+    customInstructions?: string,
   ) => Promise<RemixVariation[] | null>;
   fetchTip: (
     recipeId: string,
@@ -156,11 +158,19 @@ export const useProgressionStore = create<ProgressionState>()(
         }
       },
 
-      fetchVariations: async (recipeId: string, mode: RemixMode = 'surprise') => {
+      fetchVariations: async (
+        recipeId: string,
+        mode: RemixMode = 'surprise',
+        customInstructions?: string,
+      ) => {
         if (!useNetworkStore.getState().isOnline) return null;
         try {
+          const params = new URLSearchParams({ mode });
+          if (customInstructions && customInstructions.trim().length > 0) {
+            params.set('custom', customInstructions.trim());
+          }
           const response = await authedFetch(
-            `/progression/variations/${recipeId}?mode=${mode}`,
+            `/progression/variations/${recipeId}?${params.toString()}`,
             { method: 'GET' }
           );
           if (!response.ok) return null;
@@ -177,13 +187,21 @@ export const useProgressionStore = create<ProgressionState>()(
       fetchVariationsForContext: async (
         context: VariationContext,
         mode: RemixMode = 'surprise',
+        customInstructions?: string,
       ) => {
         if (!useNetworkStore.getState().isOnline) return null;
         try {
+          const trimmed = customInstructions?.trim();
           const response = await authedFetch(`/progression/variations`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...context, mode }),
+            body: JSON.stringify({
+              ...context,
+              mode,
+              ...(trimmed && trimmed.length > 0
+                ? { custom_instructions: trimmed }
+                : {}),
+            }),
           });
           if (!response.ok) return null;
           const body = await response.json();

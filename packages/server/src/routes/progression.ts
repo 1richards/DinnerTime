@@ -119,9 +119,18 @@ progression.get('/variations/:recipeId', async (c) => {
   const mode: RemixMode = (VALID_MODES as readonly string[]).includes(modeParam ?? '')
     ? (modeParam as RemixMode)
     : 'surprise';
+  // Free-form steering forwarded by the mobile remix sheet. Capped server-side
+  // to bound prompt size.
+  const customInstructions = (c.req.query('custom') ?? '').slice(0, 500);
 
   try {
-    const variations = await getRecipeVariations(supabase, user.id, recipeId, mode);
+    const variations = await getRecipeVariations(
+      supabase,
+      user.id,
+      recipeId,
+      mode,
+      customInstructions || undefined,
+    );
     return c.json({ data: variations, mode });
   } catch (error) {
     const err = error as Error & { code?: string };
@@ -146,6 +155,7 @@ progression.post('/variations', async (c) => {
     ingredients?: Array<string | { name: string }>;
     total_time_minutes?: number | null;
     mode?: string;
+    custom_instructions?: string;
   };
   try {
     body = await c.req.json();
@@ -158,6 +168,10 @@ progression.post('/variations', async (c) => {
   const mode: RemixMode = (VALID_MODES as readonly string[]).includes(body.mode ?? '')
     ? (body.mode as RemixMode)
     : 'surprise';
+  const customInstructions =
+    typeof body.custom_instructions === 'string'
+      ? body.custom_instructions.slice(0, 500)
+      : '';
 
   try {
     const variations = await generateVariationsForContext(
@@ -168,6 +182,7 @@ progression.post('/variations', async (c) => {
         total_time_minutes: body.total_time_minutes ?? null,
       },
       mode,
+      customInstructions || undefined,
     );
     return c.json({ data: variations, mode });
   } catch (error) {
