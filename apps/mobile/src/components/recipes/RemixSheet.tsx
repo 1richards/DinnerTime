@@ -775,7 +775,7 @@ function VariationCard({
   saved,
   modified,
   isWorking,
-  isExpanding: _isExpanding,
+  isExpanding,
   isSaving,
   isModifying: _isModifying,
   isCooking,
@@ -959,6 +959,16 @@ function VariationCard({
           </View>
         )}
       </View>
+
+      {/* Loading veil — shown while we fetch the expanded ParsedRecipe in
+          response to a card-body tap. The /recipes/remix call can take
+          several seconds; without this the user gets no feedback that
+          their tap registered until the modal slides in. */}
+      {isExpanding && (
+        <View style={styles.expandingOverlay} pointerEvents="none">
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -1162,6 +1172,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  expandingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
   },
   variationBody: {
     padding: 16,
