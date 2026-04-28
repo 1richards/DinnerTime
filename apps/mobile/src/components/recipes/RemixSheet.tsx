@@ -471,10 +471,9 @@ export function RemixSheet({
                     ]}
                   >
                     <SymbolIcon
-                      name="arrow.up"
-                      size={16}
-                      tintColor="#FFFFFF"
-                      weight="bold"
+                      name="arrow.up.circle.fill"
+                      size={28}
+                      tintColor={colors.brand}
                     />
                   </Pressable>
                 </>
@@ -932,12 +931,11 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   customSubmitBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.brand,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   modeList: {
     gap: 10,
