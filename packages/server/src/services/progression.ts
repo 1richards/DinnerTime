@@ -352,20 +352,28 @@ export async function generateVariationsForContext(
   const ingredientList = contextIngredientList(context);
   const steering = REMIX_PROMPTS[mode] ?? REMIX_PROMPTS.surprise;
   const trimmedCustom = customInstructions?.trim();
-  // Custom instructions are layered ON TOP of the mode steering — they
-  // refine direction without overriding the mode's intent. Quoted so the
-  // model treats them as a directive from the cook, not free-floating
-  // context.
-  const customClause =
-    trimmedCustom && trimmedCustom.length > 0
-      ? `\n\nADDITIONAL COOK INSTRUCTIONS (must honor): "${trimmedCustom}"`
-      : '';
+  const hasCustom = trimmedCustom && trimmedCustom.length > 0;
+
+  // When the cook types custom instructions, that becomes the PRIMARY
+  // directive. The mode steering downgrades to a hint. Without this
+  // ordering the model treated mode as primary and let custom drift —
+  // e.g. "use hard shell tacos" on a salmon-tacos surprise remix
+  // produced salmon glazes / air-fryer cubes, dropping the taco format
+  // entirely.
+  const directive = hasCustom
+    ? `PRIMARY DIRECTIVE — every variation MUST honor this exactly: "${trimmedCustom}"\n\nCREATIVE DIRECTION (secondary, only where it doesn't conflict with the primary directive): ${steering}`
+    : steering;
+
   const prompt = `Recipe: "${context.title}"
 ${context.description ? `Description: ${context.description}` : ''}
 Current ingredients: ${ingredientList || '(unknown)'}
 ${context.total_time_minutes ? `Current total time: ${context.total_time_minutes} minutes` : ''}
 
-${steering}${customClause}
+${directive}
+
+HARD CONSTRAINTS for every variation:
+- Preserve the fundamental dish identity. If the recipe is tacos, every variation stays tacos; if it's pasta, every variation stays pasta; if it's a soup, every variation stays a soup. Don't pivot to a different dish format.
+- Keep the recipe recognizable as a remix of the original, not a different recipe entirely.
 
 Each variation must have:
 - A SHORT title (2-5 words, title case) naming the defining change — e.g., "Sautéed Shrimp", "Weeknight Shortcut", "Coconut Curry Twist"
