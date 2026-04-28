@@ -3,7 +3,8 @@ import { View, StyleSheet, type ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 
 interface HeroImageProps {
-  uri: string;
+  /** When null, renders a beige skeleton instead of the Image. */
+  uri: string | null;
   /** Height of the hero container. Defaults to 220. */
   height?: number;
   /** Optional overlay content rendered on top of the gradient. */
@@ -36,14 +37,23 @@ export function HeroImage({
     <View
       style={[styles.container, { height, borderRadius, overflow: 'hidden' }, style]}
     >
-      <Image
-        source={{ uri }}
-        style={StyleSheet.absoluteFillObject}
-        contentFit="cover"
-        transition={400}
-        placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
-        cachePolicy="memory-disk"
-      />
+      {uri ? (
+        <Image
+          source={{ uri }}
+          style={StyleSheet.absoluteFillObject}
+          contentFit="cover"
+          transition={400}
+          placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
+          cachePolicy="memory-disk"
+        />
+      ) : (
+        <View
+          style={[
+            StyleSheet.absoluteFillObject,
+            { backgroundColor: '#F1EAE0' },
+          ]}
+        />
+      )}
 
       {/* Simulate gradient with a subtle overall darkening + strong bottom strip */}
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15,10,5,0.25)' }]} />

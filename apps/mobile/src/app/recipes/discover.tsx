@@ -194,8 +194,11 @@ export default function DiscoverScreen() {
                 style={styles.card}
               >
                 <Image
-                  source={{ uri: heroUri }}
-                  style={styles.cardImage}
+                  source={heroUri ? { uri: heroUri } : null}
+                  style={[
+                    styles.cardImage,
+                    !heroUri && { backgroundColor: '#F1EAE0' },
+                  ]}
                   contentFit="cover"
                   transition={300}
                   placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
@@ -285,7 +288,8 @@ export function PreviewSheet({
   modifiedLabel = 'Recipe updated',
 }: {
   recipe: DiscoveredRecipe;
-  heroUri: string;
+  /** Null renders a beige skeleton — no keyword-stock fallback exists anymore. */
+  heroUri: string | null;
   onClose: () => void;
   onSave: () => Promise<void>;
   saving: boolean;
@@ -332,13 +336,17 @@ export function PreviewSheet({
     <View style={styles.sheet}>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={{ position: 'relative' }}>
-          <Image
-            source={{ uri: heroUri }}
-            style={styles.sheetHero}
-            contentFit="cover"
-            transition={300}
-            placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
-          />
+          {heroUri ? (
+            <Image
+              source={{ uri: heroUri }}
+              style={styles.sheetHero}
+              contentFit="cover"
+              transition={300}
+              placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
+            />
+          ) : (
+            <View style={[styles.sheetHero, { backgroundColor: '#F1EAE0' }]} />
+          )}
           <View style={styles.sheetHeroOverlay} />
           <Pressable onPress={onClose} style={styles.sheetClose} hitSlop={12} accessibilityLabel="Close">
             <SymbolIcon name="xmark" size={22} tintColor="#FFFFFF" />

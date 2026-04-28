@@ -111,8 +111,11 @@ export function RecipeCard({
         {/* Food photo */}
         <View className={c.imageContainer}>
           <Image
-            source={{ uri: imageUri }}
-            style={StyleSheet.absoluteFillObject}
+            source={imageUri ? { uri: imageUri } : null}
+            style={[
+              StyleSheet.absoluteFillObject,
+              !imageUri && { backgroundColor: '#F1EAE0' },
+            ]}
             contentFit="cover"
             transition={300}
             placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"

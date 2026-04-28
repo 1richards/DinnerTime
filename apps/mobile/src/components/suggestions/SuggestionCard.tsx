@@ -127,15 +127,11 @@ export function SuggestionCard({ suggestion, onPress }: SuggestionCardProps) {
       : `sc-${Date.now()}`,
   );
 
-  // Title-aware keyword fallback (shown while Gemini image generates).
-  const fallbackUri = getRecipeImage(
-    `suggestion-${suggestion.title}-${suggestion.cuisine_type ?? ''}`,
-    null,
-    suggestion.title,
-  );
   // Async Gemini nano-banana hero, cached server-side by title hash +
   // ingredient fingerprint. Forwarding description + ingredients_used gives
   // Gemini the context to render the specific dish instead of generic food.
+  // No keyword-stock fallback anymore — getRecipeImage returns null when
+  // Gemini hasn't resolved, and the Image renders a beige skeleton.
   const { url: generatedUri } = useGeneratedRecipeImage(suggestion.title, {
     description: suggestion.description,
     ingredients: (suggestion.ingredients_used ?? []).map((name) => ({
@@ -145,7 +141,7 @@ export function SuggestionCard({ suggestion, onPress }: SuggestionCardProps) {
       notes: null,
     })),
   });
-  const heroUri = generatedUri ?? fallbackUri;
+  const heroUri = generatedUri;
   // Suppress unused-warning on FOOD_IMAGES if it's no longer referenced.
   void FOOD_IMAGES;
 
@@ -160,8 +156,11 @@ export function SuggestionCard({ suggestion, onPress }: SuggestionCardProps) {
         {/* Food photo hero */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: heroUri }}
-            style={StyleSheet.absoluteFillObject}
+            source={heroUri ? { uri: heroUri } : null}
+            style={[
+              StyleSheet.absoluteFillObject,
+              !heroUri && { backgroundColor: '#F1EAE0' },
+            ]}
             contentFit="cover"
             transition={300}
             placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"

@@ -21,6 +21,7 @@ import { AddToPlanSheet } from '../../../components/recipes/AddToPlanSheet';
 import { Button } from '../../../components/ui/Button';
 import { HeroImage } from '../../../components/ui/HeroImage';
 import { getRecipeImage } from '../../../constants/foodImages';
+import { useGeneratedRecipeImage } from '../../../hooks/useGeneratedRecipeImage';
 import { colors } from '../../../design/tokens';
 
 export default function RecipeDetailScreen() {
@@ -60,7 +61,22 @@ export default function RecipeDetailScreen() {
 
   const baseServings = recipe.servings ?? 1;
   const multiplier = baseServings > 0 ? servings / baseServings : 1;
-  const heroUri = getRecipeImage(recipe.id, recipe.image_url, recipe.title);
+  // Same Gemini fallback the listing card uses when image_url is null —
+  // hits the shared session+AsyncStorage cache so legacy recipes converge
+  // on the same image both surfaces show.
+  const { url: generatedHeroUri } = useGeneratedRecipeImage(
+    recipe.image_url ? null : recipe.title,
+    {
+      skip: !!recipe.image_url,
+      description: recipe.description,
+      ingredients: recipe.ingredients,
+    },
+  );
+  const heroUri = getRecipeImage(
+    recipe.id,
+    recipe.image_url ?? generatedHeroUri,
+    recipe.title,
+  );
 
   const totalTime =
     recipe.total_time_minutes ??

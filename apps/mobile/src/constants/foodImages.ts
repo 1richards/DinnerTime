@@ -172,25 +172,19 @@ function categoryForTitle(title: string | undefined): keyof typeof FOOD_IMAGES |
  *      from that category's image pool.
  *   3. Otherwise, hash `recipeId` into the full pool (legacy behavior).
  *
- * Same recipe always gets the same image — no randomness at render time.
+ * As of 2026-04-28, this returns the supplied imageUrl or null — the
+ * keyword-matched Unsplash fallback has been dropped because its hash-based
+ * picks too often misled the user (e.g. a "Spicy Mexican Chorizo" remix
+ * variation grabbing a sourdough loaf, a "Lemon Parmesan Shrimp Pasta"
+ * recipe rendering as penne marinara). Callers must handle null by
+ * rendering a skeleton placeholder.
  *
- * `title` is optional to preserve the two-arg callsites that existed before
- * the title-aware matcher landed. New callers should pass `title` so meals
- * at least loosely visually match what they are.
+ * Signature kept stable so existing call sites compile without churn.
  */
 export function getRecipeImage(
-  recipeId: string,
+  _recipeId: string,
   imageUrl?: string | null,
-  title?: string | null,
-): string {
-  if (imageUrl) return imageUrl;
-  const category = categoryForTitle(title ?? undefined);
-  if (category) {
-    const pool = FOOD_IMAGES[category];
-    // Use the title (not id) as the hash seed so renaming a recipe via edit
-    // doesn't change the image within the same category.
-    const seed = title ?? recipeId;
-    return pool[hash32(seed) % pool.length];
-  }
-  return ALL_FOOD_IMAGES[hash32(recipeId) % ALL_FOOD_IMAGES.length];
+  _title?: string | null,
+): string | null {
+  return imageUrl ?? null;
 }
