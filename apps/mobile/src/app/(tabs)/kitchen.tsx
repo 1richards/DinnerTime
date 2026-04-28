@@ -32,6 +32,7 @@ import {
   RecipeFilterSheet,
   EMPTY_FILTERS,
   countActiveFilters,
+  matchesCuisineFilter,
   type RecipeFilterState,
   type TimeFilter,
 } from '../../components/recipes/RecipeFilterSheet';
@@ -375,7 +376,7 @@ export default function KitchenScreen() {
     const q = normalize(deferredQuery);
     return recipes.filter((r) => {
       if (filters.favoritesOnly && !r.is_favorite) return false;
-      if (filters.source !== 'all' && r.source_type !== filters.source) return false;
+      if (!matchesCuisineFilter(r, filters.cuisine)) return false;
       if (!matchesTimeFilter(r, filters.time)) return false;
       if (filters.pantryOnly && !matchesPantryOnly(r, pantryNames)) return false;
       if (q) {

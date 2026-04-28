@@ -11,20 +11,31 @@ import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 import { colors } from '../../design/tokens';
 
-export type SourceFilter = 'all' | 'url' | 'photo' | 'manual' | 'ai';
+export type CuisineFilter =
+  | 'all'
+  | 'italian'
+  | 'mexican'
+  | 'chinese'
+  | 'japanese'
+  | 'indian'
+  | 'thai'
+  | 'mediterranean'
+  | 'american'
+  | 'korean'
+  | 'french';
 export type TimeFilter = 'any' | 'quick' | 'medium' | 'long';
 
 export interface RecipeFilterState {
   favoritesOnly: boolean;
   pantryOnly: boolean;
-  source: SourceFilter;
+  cuisine: CuisineFilter;
   time: TimeFilter;
 }
 
 export const EMPTY_FILTERS: RecipeFilterState = {
   favoritesOnly: false,
   pantryOnly: false,
-  source: 'all',
+  cuisine: 'all',
   time: 'any',
 };
 
@@ -32,18 +43,106 @@ export function countActiveFilters(s: RecipeFilterState): number {
   return (
     (s.favoritesOnly ? 1 : 0) +
     (s.pantryOnly ? 1 : 0) +
-    (s.source !== 'all' ? 1 : 0) +
+    (s.cuisine !== 'all' ? 1 : 0) +
     (s.time !== 'any' ? 1 : 0)
   );
 }
 
-const SOURCE_OPTIONS: Array<{ key: SourceFilter; label: string; emoji: string }> = [
+const CUISINE_OPTIONS: Array<{ key: CuisineFilter; label: string; emoji: string }> = [
   { key: 'all', label: 'Any', emoji: '✨' },
-  { key: 'url', label: 'URL', emoji: '🔗' },
-  { key: 'photo', label: 'Photo', emoji: '📷' },
-  { key: 'manual', label: 'Typed', emoji: '⌨️' },
-  { key: 'ai', label: 'AI', emoji: '🤖' },
+  { key: 'italian', label: 'Italian', emoji: '🇮🇹' },
+  { key: 'mexican', label: 'Mexican', emoji: '🇲🇽' },
+  { key: 'chinese', label: 'Chinese', emoji: '🥡' },
+  { key: 'japanese', label: 'Japanese', emoji: '🍱' },
+  { key: 'indian', label: 'Indian', emoji: '🍛' },
+  { key: 'thai', label: 'Thai', emoji: '🌶️' },
+  { key: 'mediterranean', label: 'Mediterranean', emoji: '🫒' },
+  { key: 'american', label: 'American', emoji: '🍔' },
+  { key: 'korean', label: 'Korean', emoji: '🥢' },
+  { key: 'french', label: 'French', emoji: '🥖' },
 ];
+
+/**
+ * Heuristic cuisine match — Recipe rows don't carry a normalized
+ * cuisine_type field yet, so we keyword-search the title, description,
+ * and ingredient names. False negatives are expected (a "Carne Asada"
+ * recipe with no mexican-specific tokens won't match) but false
+ * positives are rare — the keyword sets are dish/aromatic-specific.
+ *
+ * Exported alongside the type so the consumer (Recipe Box) can keep
+ * the matcher and filter state in one place.
+ */
+const CUISINE_KEYWORDS: Record<Exclude<CuisineFilter, 'all'>, string[]> = {
+  italian: [
+    'pasta', 'pizza', 'lasagna', 'risotto', 'marinara', 'parmesan',
+    'mozzarella', 'ricotta', 'pesto', 'gnocchi', 'alfredo', 'carbonara',
+    'prosciutto', 'bolognese', 'focaccia', 'bruschetta', 'tiramisu',
+    'spaghetti', 'penne', 'linguine', 'fettuccine', 'ravioli', 'calzone',
+    'italian',
+  ],
+  mexican: [
+    'taco', 'burrito', 'enchilada', 'quesadilla', 'tamale', 'salsa',
+    'guacamole', 'tortilla', 'fajita', 'mole', 'chipotle', 'jalapeño',
+    'jalapeno', 'cilantro', 'queso', 'carne asada', 'al pastor',
+    'pozole', 'mexican',
+  ],
+  chinese: [
+    'stir-fry', 'stir fry', 'lo mein', 'fried rice', 'kung pao',
+    'szechuan', 'sichuan', 'dim sum', 'sweet and sour', 'dumpling',
+    'wonton', 'hoisin', 'soy sauce', 'bok choy', 'mapo', 'chow mein',
+    'general tso', 'orange chicken', 'chinese',
+  ],
+  japanese: [
+    'sushi', 'ramen', 'tempura', 'teriyaki', 'miso', 'udon', 'soba',
+    'donburi', 'katsu', 'yakitori', 'edamame', 'wasabi', 'nori',
+    'tonkatsu', 'gyoza', 'onigiri', 'okonomiyaki', 'japanese',
+  ],
+  indian: [
+    'curry', 'masala', 'tikka', 'biryani', 'naan', 'samosa', 'tandoori',
+    'paneer', 'garam', 'vindaloo', 'dal', 'chutney', 'korma', 'raita',
+    'saag', 'pakora', 'chana', 'indian',
+  ],
+  thai: [
+    'pad thai', 'tom yum', 'tom kha', 'green curry', 'red curry',
+    'massaman', 'satay', 'larb', 'som tam', 'panang', 'lemongrass',
+    'fish sauce', 'thai basil', 'galangal', 'thai',
+  ],
+  mediterranean: [
+    'hummus', 'falafel', 'tzatziki', 'kebab', 'gyro', 'tahini', 'feta',
+    'olive', 'pita', 'dolma', 'shawarma', 'tabbouleh', 'baba ganoush',
+    'mediterranean', 'greek',
+  ],
+  american: [
+    'burger', 'hot dog', 'mac and cheese', 'meatloaf', 'bbq', 'barbecue',
+    'fried chicken', 'cornbread', 'biscuit', 'pulled pork', 'sloppy joe',
+    'meatballs', 'ribs', 'wings', 'american',
+  ],
+  korean: [
+    'kimchi', 'bulgogi', 'bibimbap', 'gochujang', 'japchae',
+    'korean bbq', 'tteokbokki', 'galbi', 'banchan', 'kimchee', 'korean',
+  ],
+  french: [
+    'croissant', 'baguette', 'ratatouille', 'coq au vin', 'bouillabaisse',
+    'beurre', 'crepe', 'crêpe', 'soufflé', 'souffle', 'brie', 'dijon',
+    'cassoulet', 'beef bourguignon', 'au gratin', 'french',
+  ],
+};
+
+export function matchesCuisineFilter(
+  recipe: { title: string; description: string | null; ingredients?: Array<{ name?: string }> | null },
+  cuisine: CuisineFilter,
+): boolean {
+  if (cuisine === 'all') return true;
+  const keywords = CUISINE_KEYWORDS[cuisine];
+  const haystack = [
+    recipe.title,
+    recipe.description ?? '',
+    ...(recipe.ingredients ?? []).map((i) => i.name ?? ''),
+  ]
+    .join(' ')
+    .toLowerCase();
+  return keywords.some((kw) => haystack.includes(kw));
+}
 
 const TIME_OPTIONS: Array<{ key: TimeFilter; label: string; sub: string }> = [
   { key: 'any', label: 'Any', sub: '' },
@@ -156,15 +255,17 @@ export function RecipeFilterSheet({ visible, initial, onClose, onApply }: Props)
             </Pressable>
           </View>
 
-          {/* Source segmented */}
-          <Text style={styles.sectionHeading}>Source</Text>
+          {/* Cuisine segmented — heuristic match against title /
+              description / ingredient names. See matchesCuisineFilter
+              above for the keyword tables. */}
+          <Text style={styles.sectionHeading}>Cuisine</Text>
           <View style={styles.segmentedRow}>
-            {SOURCE_OPTIONS.map((opt) => {
-              const selected = state.source === opt.key;
+            {CUISINE_OPTIONS.map((opt) => {
+              const selected = state.cuisine === opt.key;
               return (
                 <Pressable
                   key={opt.key}
-                  onPress={() => setState((s) => ({ ...s, source: opt.key }))}
+                  onPress={() => setState((s) => ({ ...s, cuisine: opt.key }))}
                   style={[
                     styles.segmentChip,
                     selected && styles.segmentChipSelected,
