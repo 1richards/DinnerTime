@@ -35,6 +35,7 @@ import {
 } from '@jamsch/expo-speech-recognition';
 import * as Speech from 'expo-speech';
 import { useEffect, useRef } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import { logCookingEvent, sanitizePayload } from './telemetry';
 import { useCookingStore } from '../stores/cookingStore';
 
@@ -52,9 +53,18 @@ interface SpeechErrorEvent {
   name?: string;
 }
 
-async function startListening(hints: string[]): Promise<void> {
+async function startListening(hints: string[]): Promise<boolean> {
   const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-  if (!granted) return;
+  const store = useCookingStore.getState();
+  if (!granted) {
+    // Surface denial in the store so the cooking UI can show a "Mic
+    // disabled — open Settings" banner instead of looking dead. Without
+    // this, the listener silently no-op'd and users had no idea why
+    // voice mode wasn't responding.
+    store.setMicPermission('denied');
+    return false;
+  }
+  store.setMicPermission('granted');
   ExpoSpeechRecognitionModule.start({
     lang: 'en-US',
     continuous: true,
@@ -62,6 +72,11 @@ async function startListening(hints: string[]): Promise<void> {
     iosTaskHint: 'confirmation',
     contextualStrings: hints,
   });
+  // Eagerly flag listening:true. The native module fires 'audiostart' a
+  // moment later but we don't want a perceptible gap where the UI shows
+  // "off" while the mic is actually warming up.
+  store.setListening(true);
+  return true;
 }
 
 export function useVoiceListener(
@@ -144,6 +159,10 @@ export function useVoiceListener(
   });
 
   useSpeechRecognitionEvent('end', () => {
+    // Reflect the actual mic state in the store so the live indicator
+    // dims for the brief restart window. Without this the UI showed
+    // a permanent "listening" pulse even after iOS had silently stopped.
+    useCookingStore.getState().setListening(false);
     // iOS SFSpeechRecognizer stops after ~1 min silence — auto-restart while
     // cooking mode is still active. The small setTimeout lets the native
     // module fully tear down before we start again.
@@ -160,12 +179,36 @@ export function useVoiceListener(
       void startListening(hints);
       return () => {
         ExpoSpeechRecognitionModule.stop();
+        useCookingStore.getState().setListening(false);
       };
     }
     ExpoSpeechRecognitionModule.stop();
+    useCookingStore.getState().setListening(false);
     return undefined;
     // We intentionally re-run only on enabled flips; hints changes are
     // read via the ref so a dynamic hint list doesn't tear down the session.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
+
+  // App-state lifecycle: iOS suspends speech recognition when the app
+  // backgrounds (lock screen, app switcher, incoming call). Without this
+  // handler, voice mode silently dies on return — the user has to toggle
+  // voice off/on to recover. Restart on foreground when voice is still
+  // intended to be active.
+  useEffect(() => {
+    const handler = (next: AppStateStatus) => {
+      if (next !== 'active') {
+        // Mic loses its hold — reflect that in the UI. We intentionally
+        // don't call stop() here; iOS does that for us and forcing it
+        // races the native module.
+        useCookingStore.getState().setListening(false);
+        return;
+      }
+      if (enabledRef.current) {
+        void startListening(hintsRef.current);
+      }
+    };
+    const sub = AppState.addEventListener('change', handler);
+    return () => sub.remove();
+  }, []);
 }

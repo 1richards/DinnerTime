@@ -39,4 +39,10 @@ export interface CookingState {
   lastCommandToast: CommandToast | null;
   /** Session id for telemetry grouping; regenerated on every enter(), cleared on exit(). */
   currentSessionId: string | null;
+  /**
+   * Mic permission state (mirrored from the OS so the UI can surface a
+   * "denied — open Settings" banner instead of failing silently when
+   * voice mode is enabled but the mic is unavailable).
+   */
+  micPermission: 'unknown' | 'granted' | 'denied';
 }

@@ -14,6 +14,7 @@ interface CookingActions {
   addTimer: (ms: number) => void;
   removeTimer: (id: string) => void;
   setListening: (listening: boolean) => void;
+  setMicPermission: (state: 'unknown' | 'granted' | 'denied') => void;
   setAssistantAnswer: (answer: string | null) => void;
   // Phase 16 additions
   toggleIngredient: (id: string) => void;
@@ -36,6 +37,7 @@ const initialState: CookingState = {
   darkMode: false,
   lastCommandToast: null,
   currentSessionId: null,
+  micPermission: 'unknown',
 };
 
 // RN-safe id generator: crypto.randomUUID is unreliable in RN runtime
@@ -118,6 +120,13 @@ export const useCookingStore = create<CookingState & CookingActions>()(
 
       setListening: (listening) => {
         set({ listening });
+      },
+
+      setMicPermission: (state) => {
+        set({ micPermission: state });
+        // Permission denial implies the listener can't be active. Clear the
+        // listening flag eagerly so the UI doesn't show a stale "live" dot.
+        if (state === 'denied') set({ listening: false });
       },
 
       setAssistantAnswer: (answer) => {

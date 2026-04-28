@@ -49,7 +49,7 @@
  * after being superseded by ScrollableRecipe + StepCard and VoiceWaveform.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Pressable, ActionSheetIOS } from 'react-native';
+import { View, Text, Pressable, ActionSheetIOS, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -126,6 +126,7 @@ export default function CookScreen() {
     ingredientChecks,
     darkMode,
     lastCommandToast,
+    micPermission,
     enter,
     exit,
     next,
@@ -597,37 +598,72 @@ export default function CookScreen() {
 
       {/* Voice-affordance hint. There's no wake word — the STT listener is
           always-on while voiceEnabled. We surface this explicitly so users
-          don't try to invoke a wake phrase. When voice is off, the hint
-          becomes a tappable CTA to turn it on. */}
-      <Pressable
-        onPress={() => {
-          if (!voiceEnabled) {
-            useCookingStore.setState({ voiceEnabled: true });
-          }
-        }}
-        className={`px-4 py-2 flex-row items-center gap-2 border-b ${
-          voiceEnabled ? 'bg-surface border-border' : 'bg-surface-subtle border-border'
-        }`}
-        accessibilityLabel={
-          voiceEnabled
-            ? 'Voice commands are active. Speak naturally — no wake word needed.'
-            : 'Voice is off. Tap to enable hands-free commands.'
-        }
-      >
-        <SymbolIcon
-          name={voiceEnabled ? 'mic.fill' : 'mic.slash.fill'}
-          size={14}
-          tintColor={voiceEnabled ? colors.brand : colors.textTertiary}
-        />
-        <Text
-          className="text-caption text-text-secondary flex-1"
-          numberOfLines={1}
+          don't try to invoke a wake phrase. Three states:
+            1. Voice on + permission granted → show live "Listening" hint
+            2. Voice on + permission denied  → show "Mic blocked → Settings"
+            3. Voice off                     → tappable CTA to turn it on */}
+      {voiceEnabled && micPermission === 'denied' ? (
+        <Pressable
+          onPress={() => {
+            void Linking.openSettings();
+          }}
+          className="px-4 py-2 flex-row items-center gap-2 border-b bg-surface-subtle border-border"
+          accessibilityLabel="Microphone access is blocked. Tap to open Settings and enable it."
         >
-          {voiceEnabled
-            ? 'Hands-free: say "next", "back", "repeat", or ask anything.'
-            : 'Tap to enable hands-free voice commands.'}
-        </Text>
-      </Pressable>
+          <SymbolIcon
+            name="exclamationmark.triangle.fill"
+            size={14}
+            tintColor={colors.destructive}
+          />
+          <Text
+            className="text-caption flex-1"
+            style={{ color: colors.destructive }}
+            numberOfLines={1}
+          >
+            Mic access is off — tap to enable in Settings.
+          </Text>
+        </Pressable>
+      ) : (
+        <Pressable
+          onPress={() => {
+            if (!voiceEnabled) {
+              useCookingStore.setState({ voiceEnabled: true });
+            }
+          }}
+          className={`px-4 py-2 flex-row items-center gap-2 border-b ${
+            voiceEnabled ? 'bg-surface border-border' : 'bg-surface-subtle border-border'
+          }`}
+          accessibilityLabel={
+            voiceEnabled
+              ? listening
+                ? 'Voice is listening. Speak naturally — no wake word needed.'
+                : 'Voice is enabled but the mic is starting. One moment.'
+              : 'Voice is off. Tap to enable hands-free commands.'
+          }
+        >
+          <SymbolIcon
+            name={voiceEnabled ? 'mic.fill' : 'mic.slash.fill'}
+            size={14}
+            tintColor={
+              voiceEnabled
+                ? listening
+                  ? colors.brand
+                  : colors.textTertiary
+                : colors.textTertiary
+            }
+          />
+          <Text
+            className="text-caption text-text-secondary flex-1"
+            numberOfLines={1}
+          >
+            {voiceEnabled
+              ? listening
+                ? 'Listening — say "next", "back", "repeat", or ask anything.'
+                : 'Starting the mic…'
+              : 'Tap to enable hands-free voice commands.'}
+          </Text>
+        </Pressable>
+      )}
 
       {/* Scrollable Claude.ai-artifact recipe layout. The imperative ref
           exposes scrollToIngredients() for the voice show_ingredients
