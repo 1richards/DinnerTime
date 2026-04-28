@@ -153,6 +153,11 @@ export function RemixSheet({
   >(null);
   const [savedIdxs, setSavedIdxs] = useState<Set<number>>(new Set());
   const [modifiedIdxs, setModifiedIdxs] = useState<Set<number>>(new Set());
+  // Nested remix — when a user taps the sparkle icon on a variation card we
+  // expand that variation to a full ParsedRecipe (so the nested sheet has
+  // ingredients to anchor against), then mount another RemixSheet inline.
+  const [nestedRemixContext, setNestedRemixContext] =
+    useState<VariationContext | null>(null);
 
   useEffect(() => {
     if (!visible) {
@@ -168,6 +173,7 @@ export function RemixSheet({
       setSavedIdxs(new Set());
       setModifiedIdxs(new Set());
       setCustomInstructions('');
+      setNestedRemixContext(null);
     }
   }, [visible]);
 
@@ -316,6 +322,32 @@ export function RemixSheet({
         return;
       }
       setModifiedIdxs((prev) => new Set([...prev, idx]));
+    } finally {
+      setWorkingIdx(null);
+      setWorkingAction(null);
+    }
+  };
+
+  // Nested remix — expand the tapped variation into a full ParsedRecipe so
+  // the inner RemixSheet has ingredients to anchor variations against, then
+  // open a nested sheet using that as inline context. Reuses the cached
+  // expansion when available so this is free for variations the user has
+  // already previewed.
+  const handleRemixVariation = async (
+    idx: number,
+    variation: RemixVariation,
+  ) => {
+    setWorkingIdx(idx);
+    setWorkingAction('expand');
+    try {
+      const full = await ensureFull(idx, variation);
+      if (!full) return;
+      setNestedRemixContext({
+        title: full.title,
+        description: full.description ?? null,
+        ingredients: full.ingredients,
+        total_time_minutes: full.total_time_minutes ?? null,
+      });
     } finally {
       setWorkingIdx(null);
       setWorkingAction(null);
@@ -552,6 +584,7 @@ export function RemixSheet({
                 onCook={() => handleCookNow(i, v)}
                 onSaveAsNew={() => handleSaveAsNew(i, v)}
                 onModifyExisting={() => handleModifyExisting(i, v)}
+                onRemix={() => handleRemixVariation(i, v)}
                 onOpenSaved={handleOpenSaved}
                 onOpenModified={handleOpenModified}
               />
@@ -591,6 +624,24 @@ export function RemixSheet({
           />
         )}
       </Modal>
+
+      {/* Nested remix — generated when the user taps the sparkle on a
+          variation card. Source is `inline` because we have a freshly
+          expanded ParsedRecipe (no persistent id yet) to anchor against. */}
+      {nestedRemixContext && (
+        <RemixSheet
+          visible={nestedRemixContext !== null}
+          recipeTitle={nestedRemixContext.title}
+          source={{ kind: 'inline', context: nestedRemixContext }}
+          baseForSave={{
+            title: nestedRemixContext.title,
+            description: nestedRemixContext.description ?? null,
+            ingredients: nestedRemixContext.ingredients,
+            total_time_minutes: nestedRemixContext.total_time_minutes ?? null,
+          }}
+          onClose={() => setNestedRemixContext(null)}
+        />
+      )}
     </Modal>
   );
 }
@@ -684,6 +735,7 @@ interface VariationCardProps {
   onCook: () => void;
   onSaveAsNew: () => void;
   onModifyExisting: () => void;
+  onRemix: () => void;
   onOpenSaved: () => void;
   onOpenModified: () => void;
 }
@@ -694,17 +746,18 @@ function VariationCard({
   saved,
   modified,
   isWorking,
-  isExpanding: _isExpanding,
+  isExpanding,
   isSaving,
-  isModifying,
+  isModifying: _isModifying,
   isCooking,
   disabled,
-  canModifyExisting,
+  canModifyExisting: _canModifyExisting,
   baseIngredients,
   onExpand,
   onCook,
   onSaveAsNew,
-  onModifyExisting,
+  onModifyExisting: _onModifyExisting,
+  onRemix,
   onOpenSaved,
   onOpenModified,
 }: VariationCardProps) {
@@ -759,7 +812,7 @@ function VariationCard({
         pressed && !(disabled || isWorking) ? { opacity: 0.92, transform: [{ scale: 0.99 }] } : null,
       ]}
     >
-      <View>
+      <View style={styles.heroWrap}>
         {generatedUri ? (
           <Image
             source={{ uri: generatedUri }}
@@ -778,33 +831,76 @@ function VariationCard({
             )}
           </View>
         )}
-        {/* Bookmark overlay — same pattern as RecipeCard preview-mode save.
-            Disappears once saved (the body collapses to the saved status row
-            which itself navigates to the saved recipe). */}
-        <Pressable
-          onPress={(e) => {
-            e.stopPropagation();
-            if (saved || disabled || isWorking) return;
-            onSaveAsNew();
-          }}
-          hitSlop={10}
-          disabled={saved || disabled || isWorking}
-          style={({ pressed }) => [
-            styles.bookmarkBadge,
-            pressed && !(saved || disabled || isWorking) ? { opacity: 0.6 } : null,
-          ]}
-          accessibilityLabel={saved ? 'Saved to library' : 'Save to library'}
-        >
-          {isSaving ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <SymbolIcon
-              name={saved ? 'checkmark.circle.fill' : 'bookmark'}
-              size={26}
-              tintColor={saved ? '#10B981' : '#FFFFFF'}
-            />
-          )}
-        </Pressable>
+        {/* Hero action cluster — Cook / Remix / Save. Mirrors the
+            Something New RecipeCard preview pattern (cluster top-right,
+            dark circular badges over hero) so the affordances read
+            identically across remix variations and discovery results. */}
+        <View style={styles.heroActions}>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              if (disabled || isWorking) return;
+              onCook();
+            }}
+            hitSlop={8}
+            disabled={disabled || isWorking}
+            style={({ pressed }) => [
+              styles.actionBadge,
+              pressed && !(disabled || isWorking) ? { opacity: 0.6 } : null,
+            ]}
+            accessibilityLabel="Cook this variation now"
+          >
+            {isCooking ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <SymbolIcon name="flame.fill" size={24} tintColor="#FFE4B5" />
+            )}
+          </Pressable>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              if (disabled || isWorking) return;
+              onRemix();
+            }}
+            hitSlop={8}
+            disabled={disabled || isWorking}
+            style={({ pressed }) => [
+              styles.actionBadge,
+              pressed && !(disabled || isWorking) ? { opacity: 0.6 } : null,
+            ]}
+            accessibilityLabel="Remix this variation further"
+          >
+            {isExpanding ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <SymbolIcon name="sparkles" size={24} tintColor="#FFE4B5" />
+            )}
+          </Pressable>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              if (saved || disabled || isWorking) return;
+              onSaveAsNew();
+            }}
+            hitSlop={8}
+            disabled={saved || disabled || isWorking}
+            style={({ pressed }) => [
+              styles.actionBadge,
+              pressed && !(saved || disabled || isWorking) ? { opacity: 0.6 } : null,
+            ]}
+            accessibilityLabel={saved ? 'Saved to library' : 'Save to library'}
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <SymbolIcon
+                name={saved ? 'checkmark.circle.fill' : 'bookmark'}
+                size={26}
+                tintColor={saved ? '#10B981' : '#FFFFFF'}
+              />
+            )}
+          </Pressable>
+        </View>
       </View>
       <View style={styles.variationBody}>
         <View style={styles.variationHeader}>
@@ -830,56 +926,6 @@ function VariationCard({
             <SymbolIcon name="checkmark.circle.fill" size={16} tintColor="#047857" />
             <Text style={styles.savedText}>Existing recipe updated</Text>
             <SymbolIcon name="chevron.forward" size={14} tintColor="#047857" />
-          </View>
-        )}
-
-        {!saved && !modified && (
-          <View>
-            <View style={styles.actionBtnCookFull}>
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
-                  onCook();
-                }}
-                disabled={disabled || isWorking}
-                hitSlop={8}
-                style={({ pressed }) => [
-                  styles.actionBtnCookFullInner,
-                  pressed && !(disabled || isWorking) ? { opacity: 0.85 } : null,
-                  (disabled || isWorking) && !isCooking ? { opacity: 0.5 } : null,
-                ]}
-              >
-                {isCooking ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <SymbolIcon name="flame.fill" size={16} tintColor="#FFFFFF" />
-                    <Text style={styles.actionBtnCookFullText}>Cook now</Text>
-                  </>
-                )}
-              </Pressable>
-            </View>
-            {canModifyExisting && (
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
-                  onModifyExisting();
-                }}
-                disabled={disabled || isWorking}
-                hitSlop={8}
-                style={({ pressed }) => [
-                  styles.modifyOriginalLink,
-                  pressed && !(disabled || isWorking) ? { opacity: 0.6 } : null,
-                  (disabled || isWorking) && !isModifying ? { opacity: 0.5 } : null,
-                ]}
-              >
-                {isModifying ? (
-                  <ActivityIndicator size="small" color={colors.textPrimary} />
-                ) : (
-                  <Text style={styles.modifyOriginalText}>Update original instead</Text>
-                )}
-              </Pressable>
-            )}
           </View>
         )}
       </View>
@@ -1040,12 +1086,37 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
+  heroWrap: {
+    // Explicit relative positioning anchor for the heroActions cluster.
+    // RN treats Views as position:'relative' by default, but spelling it
+    // out makes the absolute child unambiguous and survives any future
+    // refactors that wrap this in a flex container.
+    position: 'relative',
+  },
   variationHero: {
     width: '100%',
     height: 170,
     backgroundColor: '#F1EAE0',
   },
   variationHeroSkeleton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroActions: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionBadge: {
+    // 52pt mirrors RecipeCard's hero overlay buttons exactly so the
+    // affordance is visually identical across Something New, Recipe Box,
+    // and Remix surfaces.
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1083,50 +1154,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: '#3E332A',
     marginBottom: 12,
-  },
-  actionBtnCookFull: {
-    backgroundColor: '#B85C2E',
-    height: 50,
-    borderRadius: 12,
-    width: '100%',
-    overflow: 'hidden',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionBtnCookFullInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  actionBtnCookFullText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  bookmarkBadge: {
-    // Matches RecipeCard's actionBadge — same overlay-on-hero pattern, so
-    // the bookmark reads identically across Something New and Remix.
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modifyOriginalLink: {
-    marginTop: 12,
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  modifyOriginalText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#7A6651',
-    textDecorationLine: 'underline',
   },
   statusRow: {
     flexDirection: 'row',
