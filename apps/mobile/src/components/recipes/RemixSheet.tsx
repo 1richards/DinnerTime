@@ -1095,7 +1095,8 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 22,
     backgroundColor: '#F1EAE0',
-    marginTop: 10,
+    marginTop: 14,
+    marginBottom: 4,
   },
   moreActionsText: {
     fontSize: 15,
