@@ -466,6 +466,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
+    // Pressable in a flex-column ScrollView contentContainer doesn't
+    // reliably honor alignItems:'stretch' on iOS — content-sized boxes
+    // can collapse to the left. Force full width minus side padding via
+    // alignSelf so the visible pill spans the screen and the hit area
+    // matches what the user sees.
+    alignSelf: 'stretch',
     marginHorizontal: 20,
     marginTop: 8,
     marginBottom: 16,
