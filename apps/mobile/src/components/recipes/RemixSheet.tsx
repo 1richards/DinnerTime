@@ -849,13 +849,14 @@ function VariationCard({
                 (disabled || isWorking) ? { opacity: 0.5 } : null,
               ]}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <SymbolIcon
-                  name="ellipsis"
-                  size={16}
-                  tintColor={colors.textSecondary}
+                  name="ellipsis.circle"
+                  size={18}
+                  tintColor={colors.textPrimary}
+                  weight="semibold"
                 />
-                <Text style={styles.moreActionsText}>More actions</Text>
+                <Text style={styles.moreActionsText}>More options</Text>
               </View>
             </Pressable>
           </View>
@@ -1086,19 +1087,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    height: 40,
+    gap: 8,
+    // 44pt is Apple HIG min tap target; previous 40pt felt cramped + had
+    // an invisible border (warm-white on warm-white) so it didn't read as
+    // tappable. Bumped height + visible bg + darker text = obvious button.
+    height: 44,
     width: '100%',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#F1EAE0',
-    backgroundColor: 'transparent',
-    marginTop: 12,
+    borderRadius: 22,
+    backgroundColor: '#F1EAE0',
+    marginTop: 10,
   },
   moreActionsText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    color: colors.textSecondary,
+    color: colors.textPrimary,
   },
   statusRow: {
     flexDirection: 'row',
