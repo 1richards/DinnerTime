@@ -182,21 +182,23 @@ export function SomethingNewResults({ onRequestPreview }: SomethingNewResultsPro
         <View style={styles.loadMoreWrap}>
           <Pressable
             onPress={() => {
-              const hasContext = (lastQuery ?? '').trim().length > 0 || pantryOnly;
-              if (!hasContext) return;
-              void appendSearchResults(lastQuery ?? '', { pantryOnly });
+              // Fall back to pantry-only when we have no query context.
+              // The store could legitimately end up with lastQuery='' AND
+              // pantryOnly=false (stale persisted state, or a search that
+              // returned results without seeding either flag), and rather
+              // than dead-ending we default to the most useful behavior:
+              // pull more pantry-grounded ideas.
+              const trimmed = (lastQuery ?? '').trim();
+              const effectivePantryOnly = pantryOnly || trimmed.length === 0;
+              void appendSearchResults(lastQuery ?? '', {
+                pantryOnly: effectivePantryOnly,
+              });
             }}
-            disabled={
-              isAppending ||
-              ((lastQuery ?? '').trim().length === 0 && !pantryOnly)
-            }
+            disabled={isAppending}
             style={({ pressed }) => [
               styles.loadMoreBtn,
               pressed && !isAppending ? { opacity: 0.85 } : null,
-              isAppending ||
-              ((lastQuery ?? '').trim().length === 0 && !pantryOnly)
-                ? { opacity: 0.5 }
-                : null,
+              isAppending ? { opacity: 0.6 } : null,
             ]}
             accessibilityLabel="Show me more ideas"
           >
