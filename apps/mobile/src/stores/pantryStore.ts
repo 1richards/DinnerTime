@@ -646,11 +646,13 @@ export const usePantryStore = create<PantryState>()(
   markItemDepleted: async (itemId: string) => {
     const previousItems = get().items;
 
-    // Optimistic update
+    // Optimistic update — REMOVE the item from local state. loadItems
+    // already filters by status='available', so depleted items would
+    // disappear on next refresh anyway; removing locally makes the
+    // swipe-to-delete row vanish immediately rather than persisting
+    // visually until a reload.
     set((state) => ({
-      items: state.items.map((item) =>
-        item.id === itemId ? { ...item, status: 'depleted' as const } : item
-      ),
+      items: state.items.filter((item) => item.id !== itemId),
     }));
 
     if (!useNetworkStore.getState().isOnline) {
