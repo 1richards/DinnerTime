@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
-  ActionSheetIOS,
   TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -696,8 +695,8 @@ function VariationCard({
   modified,
   isWorking,
   isExpanding: _isExpanding,
-  isSaving: _isSaving,
-  isModifying: _isModifying,
+  isSaving,
+  isModifying,
   isCooking,
   disabled,
   canModifyExisting,
@@ -742,48 +741,71 @@ function VariationCard({
     },
   );
 
-  // ActionSheetIOS-driven overflow menu. Options order is stable:
-  //   [0] Expand preview
-  //   [1] Save as new recipe
-  //   [2] Modify existing (only when source.kind === 'saved')
-  //   [last] Cancel (cancelButtonIndex === options.length - 1)
-  // No destructiveButtonIndex — none of the overflow actions are destructive.
-  const openOverflow = () => {
-    const options: string[] = ['Expand preview', 'Save as new recipe'];
-    if (canModifyExisting) options.push('Modify existing');
-    options.push('Cancel');
-    const cancelButtonIndex = options.length - 1;
-    ActionSheetIOS.showActionSheetWithOptions(
-      { options, cancelButtonIndex },
-      (buttonIndex: number) => {
-        if (buttonIndex === 0) onExpand();
-        else if (buttonIndex === 1) onSaveAsNew();
-        else if (canModifyExisting && buttonIndex === 2) onModifyExisting();
-        // last index is Cancel → no-op
-      },
-    );
+  // Card-level tap routes by state: saved → open the saved recipe, modified
+  // → open the modified one, otherwise expand the preview. Mirrors the
+  // RecipeCard pattern in Something New (preview-mode tap = expand).
+  const handleCardPress = () => {
+    if (saved) onOpenSaved();
+    else if (modified) onOpenModified();
+    else onExpand();
   };
 
   return (
-    <View style={styles.variationCard}>
-      {generatedUri ? (
-        <Image
-          source={{ uri: generatedUri }}
-          style={styles.variationHero}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
-        />
-      ) : (
-        // Skeleton while Gemini resolves OR if it failed. Subtle pulse via
-        // the warm beige #F1EAE0 placeholder — same tone the rest of the
-        // app uses for image placeholders. Better than misleading stock.
-        <View style={[styles.variationHero, styles.variationHeroSkeleton]}>
-          {imageStatus === 'failed' && (
-            <SymbolIcon name="photo" size={32} tintColor="#C9B89E" />
+    <Pressable
+      onPress={handleCardPress}
+      disabled={disabled || isWorking}
+      style={({ pressed }) => [
+        styles.variationCard,
+        pressed && !(disabled || isWorking) ? { opacity: 0.92, transform: [{ scale: 0.99 }] } : null,
+      ]}
+    >
+      <View>
+        {generatedUri ? (
+          <Image
+            source={{ uri: generatedUri }}
+            style={styles.variationHero}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+          />
+        ) : (
+          // Skeleton while Gemini resolves OR if it failed. Subtle pulse via
+          // the warm beige #F1EAE0 placeholder — same tone the rest of the
+          // app uses for image placeholders. Better than misleading stock.
+          <View style={[styles.variationHero, styles.variationHeroSkeleton]}>
+            {imageStatus === 'failed' && (
+              <SymbolIcon name="photo" size={32} tintColor="#C9B89E" />
+            )}
+          </View>
+        )}
+        {/* Bookmark overlay — same pattern as RecipeCard preview-mode save.
+            Disappears once saved (the body collapses to the saved status row
+            which itself navigates to the saved recipe). */}
+        <Pressable
+          onPress={(e) => {
+            e.stopPropagation();
+            if (saved || disabled || isWorking) return;
+            onSaveAsNew();
+          }}
+          hitSlop={10}
+          disabled={saved || disabled || isWorking}
+          style={({ pressed }) => [
+            styles.bookmarkBadge,
+            pressed && !(saved || disabled || isWorking) ? { opacity: 0.6 } : null,
+          ]}
+          accessibilityLabel={saved ? 'Saved to library' : 'Save to library'}
+        >
+          {isSaving ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <SymbolIcon
+              name={saved ? 'checkmark.circle.fill' : 'bookmark'}
+              size={26}
+              tintColor={saved ? '#10B981' : '#FFFFFF'}
+            />
           )}
-        </View>
-      )}
+        </Pressable>
+      </View>
       <View style={styles.variationBody}>
         <View style={styles.variationHeader}>
           <View style={styles.variationNum}>
@@ -796,34 +818,31 @@ function VariationCard({
         </Text>
 
         {saved && (
-          <Pressable
-            onPress={onOpenSaved}
-            style={[styles.statusRow, styles.savedRow]}
-          >
+          <View style={[styles.statusRow, styles.savedRow]}>
             <SymbolIcon name="checkmark.circle.fill" size={16} tintColor="#047857" />
             <Text style={styles.savedText}>Saved to library</Text>
             <SymbolIcon name="chevron.forward" size={14} tintColor="#047857" />
-          </Pressable>
+          </View>
         )}
 
         {modified && (
-          <Pressable
-            onPress={onOpenModified}
-            style={[styles.statusRow, styles.modifiedRow]}
-          >
+          <View style={[styles.statusRow, styles.modifiedRow]}>
             <SymbolIcon name="checkmark.circle.fill" size={16} tintColor="#047857" />
             <Text style={styles.savedText}>Existing recipe updated</Text>
             <SymbolIcon name="chevron.forward" size={14} tintColor="#047857" />
-          </Pressable>
+          </View>
         )}
 
         {!saved && !modified && (
           <View>
             <View style={styles.actionBtnCookFull}>
               <Pressable
-                onPress={onCook}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onCook();
+                }}
                 disabled={disabled || isWorking}
-                hitSlop={{ top: 14, bottom: 14, left: 140, right: 140 }}
+                hitSlop={8}
                 style={({ pressed }) => [
                   styles.actionBtnCookFullInner,
                   pressed && !(disabled || isWorking) ? { opacity: 0.85 } : null,
@@ -840,29 +859,31 @@ function VariationCard({
                 )}
               </Pressable>
             </View>
-            <Pressable
-              onPress={openOverflow}
-              disabled={disabled || isWorking}
-              style={({ pressed }) => [
-                styles.moreActionsPill,
-                pressed && !(disabled || isWorking) ? { opacity: 0.7 } : null,
-                (disabled || isWorking) ? { opacity: 0.5 } : null,
-              ]}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <SymbolIcon
-                  name="ellipsis.circle"
-                  size={18}
-                  tintColor={colors.textPrimary}
-                  weight="semibold"
-                />
-                <Text style={styles.moreActionsText}>More options</Text>
-              </View>
-            </Pressable>
+            {canModifyExisting && (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onModifyExisting();
+                }}
+                disabled={disabled || isWorking}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.modifyOriginalLink,
+                  pressed && !(disabled || isWorking) ? { opacity: 0.6 } : null,
+                  (disabled || isWorking) && !isModifying ? { opacity: 0.5 } : null,
+                ]}
+              >
+                {isModifying ? (
+                  <ActivityIndicator size="small" color={colors.textPrimary} />
+                ) : (
+                  <Text style={styles.modifyOriginalText}>Update original instead</Text>
+                )}
+              </Pressable>
+            )}
           </View>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -1083,25 +1104,29 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
   },
-  moreActionsPill: {
-    flexDirection: 'row',
+  bookmarkBadge: {
+    // Matches RecipeCard's actionBadge — same overlay-on-hero pattern, so
+    // the bookmark reads identically across Something New and Remix.
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    // 44pt is Apple HIG min tap target; previous 40pt felt cramped + had
-    // an invisible border (warm-white on warm-white) so it didn't read as
-    // tappable. Bumped height + visible bg + darker text = obvious button.
-    height: 44,
-    width: '100%',
-    borderRadius: 22,
-    backgroundColor: '#F1EAE0',
-    marginTop: 14,
-    marginBottom: 4,
   },
-  moreActionsText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
+  modifyOriginalLink: {
+    marginTop: 12,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  modifyOriginalText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7A6651',
+    textDecorationLine: 'underline',
   },
   statusRow: {
     flexDirection: 'row',
