@@ -1115,11 +1115,24 @@ const styles = StyleSheet.create({
     // out makes the absolute child unambiguous and survives any future
     // refactors that wrap this in a flex container.
     position: 'relative',
+    // Belt-and-suspenders: clip independently of the variationCard's
+    // overflow:'hidden'. iOS Pressable + overflow + shadow can race in
+    // some renderers and leave the inner Image rendering past the
+    // rounded corners; clipping the wrapper makes it deterministic.
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    overflow: 'hidden',
   },
   variationHero: {
     width: '100%',
     height: 170,
     backgroundColor: '#F1EAE0',
+    // Mirror the wrapper's top radius directly on the image so even if
+    // a child stylesheet later overrides overflow on heroWrap, the image
+    // still presents with rounded top corners — matches the look of
+    // RecipeCard hero photos in Something New / Recipe Box.
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   variationHeroSkeleton: {
     alignItems: 'center',
