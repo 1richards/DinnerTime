@@ -149,7 +149,7 @@ export function RemixSheet({
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [workingIdx, setWorkingIdx] = useState<number | null>(null);
   const [workingAction, setWorkingAction] = useState<
-    'expand' | 'save' | 'modify' | 'cook' | null
+    'expand' | 'save' | 'modify' | 'cook' | 'remix' | null
   >(null);
   const [savedIdxs, setSavedIdxs] = useState<Set<number>>(new Set());
   const [modifiedIdxs, setModifiedIdxs] = useState<Set<number>>(new Set());
@@ -338,7 +338,7 @@ export function RemixSheet({
     variation: RemixVariation,
   ) => {
     setWorkingIdx(idx);
-    setWorkingAction('expand');
+    setWorkingAction('remix');
     try {
       const full = await ensureFull(idx, variation);
       if (!full) return;
@@ -577,6 +577,7 @@ export function RemixSheet({
                 isSaving={workingIdx === i && workingAction === 'save'}
                 isModifying={workingIdx === i && workingAction === 'modify'}
                 isCooking={workingIdx === i && workingAction === 'cook'}
+                isRemixing={workingIdx === i && workingAction === 'remix'}
                 disabled={workingIdx !== null && workingIdx !== i}
                 canModifyExisting={source.kind === 'saved'}
                 baseIngredients={baseForSave?.ingredients}
@@ -611,6 +612,7 @@ export function RemixSheet({
           <RemixVariationPreview
             idx={expandedIdx}
             full={expandedFull}
+            variation={expandedVariation}
             baseIngredients={baseForSave?.ingredients}
             saved={savedIdxs.has(expandedIdx)}
             modified={modifiedIdxs.has(expandedIdx)}
@@ -652,6 +654,7 @@ export function RemixSheet({
 function RemixVariationPreview({
   idx,
   full,
+  variation,
   baseIngredients,
   saved,
   modified,
@@ -666,6 +669,7 @@ function RemixVariationPreview({
 }: {
   idx: number;
   full: ParsedRecipe;
+  variation: RemixVariation;
   baseIngredients?: Array<string | BaseIngredient>;
   saved: boolean;
   modified: boolean;
@@ -678,12 +682,13 @@ function RemixVariationPreview({
   onModify: () => Promise<void>;
   onCook: () => Promise<void>;
 }) {
-  // CRITICAL: must use the SAME (title, ingredients) cache key as the
-  // VariationCard upstream — otherwise the hook re-fetches a fresh
-  // Gemini image even though the card already resolved one. Cards key
-  // their image by (variation.title, baseRecipe.ingredients) because
-  // the variation hasn't been expanded yet, so we mirror that here
-  // even though `full.ingredients` is technically more accurate.
+  // CRITICAL: cache key must match VariationCard exactly — same title,
+  // same description, same normalized ingredients tuple. The expanded
+  // ParsedRecipe carries a longer/different title (e.g. variation
+  // "Mediterranean Dill And Cucumber" → full "Mediterranean Dill and
+  // Cucumber Salmon Tacos") so we anchor on the variation row, not the
+  // expansion. Without this, every tap-to-expand kicks off a fresh
+  // Gemini round-trip even though the card already resolved.
   const normalizedBase = useMemo(() => {
     if (!baseIngredients || baseIngredients.length === 0) return null;
     return baseIngredients.map((i) =>
@@ -698,9 +703,9 @@ function RemixVariationPreview({
     );
   }, [baseIngredients]);
 
-  const { url: generatedUri } = useGeneratedRecipeImage(full.title, {
+  const { url: generatedUri } = useGeneratedRecipeImage(variation.title, {
     skip: !!full.image_url,
-    description: full.description,
+    description: variation.description,
     ingredients: normalizedBase,
   });
   const heroUri = getRecipeImage(
@@ -751,6 +756,7 @@ interface VariationCardProps {
   isSaving: boolean;
   isModifying: boolean;
   isCooking: boolean;
+  isRemixing: boolean;
   disabled: boolean;
   canModifyExisting: boolean;
   baseIngredients?: Array<string | BaseIngredient>;
@@ -769,10 +775,11 @@ function VariationCard({
   saved,
   modified,
   isWorking,
-  isExpanding,
+  isExpanding: _isExpanding,
   isSaving,
   isModifying: _isModifying,
   isCooking,
+  isRemixing,
   disabled,
   canModifyExisting: _canModifyExisting,
   baseIngredients,
@@ -893,7 +900,7 @@ function VariationCard({
             ]}
             accessibilityLabel="Remix this variation further"
           >
-            {isExpanding ? (
+            {isRemixing ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <SymbolIcon name="sparkles" size={24} tintColor="#FFE4B5" />
