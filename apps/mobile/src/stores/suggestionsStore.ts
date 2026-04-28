@@ -165,10 +165,12 @@ export const useSuggestionsStore = create<SuggestionsState>()(
       },
 
       appendSearchResults: async (query, options) => {
-        // Guard: no base query to append against. /api/v1/recipes/search needs
-        // a non-empty query string — without it the endpoint returns nothing
-        // useful, so we short-circuit.
-        if (!query || query.trim().length === 0) return;
+        // Pantry-only searches legitimately run with an empty query (the
+        // endpoint uses pantry contents as the seed). Only short-circuit
+        // when there's NEITHER a query NOR a pantry-scope to ground the
+        // request.
+        const trimmed = (query ?? '').trim();
+        if (trimmed.length === 0 && !options.pantryOnly) return;
 
         // NOTE: do NOT set isLoading here. The SomethingNewResults skeleton
         // branch is keyed on isLoading; flipping it would replace the current

@@ -179,36 +179,45 @@ export function SomethingNewResults({ onRequestPreview }: SomethingNewResultsPro
       ))}
 
       {searchResults.length > 0 && (
-        <Pressable
-          onPress={() => {
-            if (!lastQuery) return;
-            void appendSearchResults(lastQuery, { pantryOnly });
-          }}
-          disabled={isAppending || !lastQuery}
-          style={({ pressed }) => [
-            styles.loadMoreBtn,
-            pressed && !isAppending ? { opacity: 0.7 } : null,
-            isAppending || !lastQuery ? { opacity: 0.5 } : null,
-          ]}
-          accessibilityLabel="Show me more ideas"
-        >
-          {isAppending ? (
-            <>
-              <ActivityIndicator size="small" color={colors.brand} />
-              <Text style={styles.loadMoreText}>Finding more...</Text>
-            </>
-          ) : (
-            <>
-              <SymbolIcon
-                name="plus.circle"
-                size={18}
-                tintColor={colors.brand}
-                weight="semibold"
-              />
-              <Text style={styles.loadMoreText}>Show me more ideas</Text>
-            </>
-          )}
-        </Pressable>
+        <View style={styles.loadMoreWrap}>
+          <Pressable
+            onPress={() => {
+              const hasContext = (lastQuery ?? '').trim().length > 0 || pantryOnly;
+              if (!hasContext) return;
+              void appendSearchResults(lastQuery ?? '', { pantryOnly });
+            }}
+            disabled={
+              isAppending ||
+              ((lastQuery ?? '').trim().length === 0 && !pantryOnly)
+            }
+            style={({ pressed }) => [
+              styles.loadMoreBtn,
+              pressed && !isAppending ? { opacity: 0.85 } : null,
+              isAppending ||
+              ((lastQuery ?? '').trim().length === 0 && !pantryOnly)
+                ? { opacity: 0.5 }
+                : null,
+            ]}
+            accessibilityLabel="Show me more ideas"
+          >
+            {isAppending ? (
+              <>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text style={styles.loadMoreText}>Finding more...</Text>
+              </>
+            ) : (
+              <>
+                <SymbolIcon
+                  name="plus.circle.fill"
+                  size={20}
+                  tintColor="#FFFFFF"
+                  weight="semibold"
+                />
+                <Text style={styles.loadMoreText}>Show me more ideas</Text>
+              </>
+            )}
+          </Pressable>
+        </View>
       )}
     </ScrollView>
   );
@@ -456,30 +465,35 @@ const styles = StyleSheet.create({
   iconBtnPressed: {
     opacity: 0.6,
   },
+  loadMoreWrap: {
+    paddingHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 24,
+  },
   loadMoreBtn: {
+    // Wrapped in loadMoreWrap (paddingHorizontal:20) so the brand-filled
+    // pill spans the screen with consistent gutters. Previous outline-pill
+    // version relied on alignSelf:'stretch' inside ScrollView which
+    // didn't honor width on iOS — leaving the button collapsed to the
+    // left edge with no visible affordance.
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    // Pressable in a flex-column ScrollView contentContainer doesn't
-    // reliably honor alignItems:'stretch' on iOS — content-sized boxes
-    // can collapse to the left. Force full width minus side padding via
-    // alignSelf so the visible pill spans the screen and the hit area
-    // matches what the user sees.
-    alignSelf: 'stretch',
-    marginHorizontal: 20,
-    marginTop: 8,
-    marginBottom: 16,
+    gap: 10,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: colors.brand,
+    shadowColor: colors.textPrimary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 3,
   },
   loadMoreText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.brand,
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
 });
 
