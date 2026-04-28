@@ -611,6 +611,7 @@ export function RemixSheet({
           <RemixVariationPreview
             idx={expandedIdx}
             full={expandedFull}
+            baseIngredients={baseForSave?.ingredients}
             saved={savedIdxs.has(expandedIdx)}
             modified={modifiedIdxs.has(expandedIdx)}
             saving={workingIdx === expandedIdx && workingAction === 'save'}
@@ -651,6 +652,7 @@ export function RemixSheet({
 function RemixVariationPreview({
   idx,
   full,
+  baseIngredients,
   saved,
   modified,
   saving,
@@ -664,6 +666,7 @@ function RemixVariationPreview({
 }: {
   idx: number;
   full: ParsedRecipe;
+  baseIngredients?: Array<string | BaseIngredient>;
   saved: boolean;
   modified: boolean;
   saving: boolean;
@@ -675,10 +678,30 @@ function RemixVariationPreview({
   onModify: () => Promise<void>;
   onCook: () => Promise<void>;
 }) {
+  // CRITICAL: must use the SAME (title, ingredients) cache key as the
+  // VariationCard upstream — otherwise the hook re-fetches a fresh
+  // Gemini image even though the card already resolved one. Cards key
+  // their image by (variation.title, baseRecipe.ingredients) because
+  // the variation hasn't been expanded yet, so we mirror that here
+  // even though `full.ingredients` is technically more accurate.
+  const normalizedBase = useMemo(() => {
+    if (!baseIngredients || baseIngredients.length === 0) return null;
+    return baseIngredients.map((i) =>
+      typeof i === 'string'
+        ? { name: i, quantity: null, unit: null, notes: null }
+        : {
+            name: i.name,
+            quantity: i.quantity ?? null,
+            unit: i.unit ?? null,
+            notes: i.notes ?? null,
+          },
+    );
+  }, [baseIngredients]);
+
   const { url: generatedUri } = useGeneratedRecipeImage(full.title, {
     skip: !!full.image_url,
     description: full.description,
-    ingredients: full.ingredients,
+    ingredients: normalizedBase,
   });
   const heroUri = getRecipeImage(
     `remix-${idx}-${full.title}`,
