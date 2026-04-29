@@ -285,6 +285,8 @@ export function PreviewSheet({
   cooking = false,
   onCookLater,
   cookingLater = false,
+  onRemove,
+  removing = false,
   hideRemix = false,
   hideSave = false,
   saveLabel = 'Save Recipe',
@@ -311,6 +313,10 @@ export function PreviewSheet({
       mounted inside this component. */
   onCookLater?: (isoDate: string) => Promise<void>;
   cookingLater?: boolean;
+  /** When provided, render a destructive Remove button next to Remix.
+      Used by Recipe Box detail to delete the recipe from the library. */
+  onRemove?: () => Promise<void>;
+  removing?: boolean;
   hideRemix?: boolean;
   /** Suppress the Save Recipe button — used when the recipe is already
       saved (Recipe Box detail) and Save would be a no-op. */
@@ -486,8 +492,23 @@ export function PreviewSheet({
           </View>
         ) : (
           <View style={{ gap: 8 }}>
-            {(!hideSave || !hideRemix) && (
+            {(!hideSave || !hideRemix || onRemove) && (
               <View style={{ flexDirection: 'row', gap: 8 }}>
+                {/* Remix on the LEFT — secondary action that lives next
+                    to the recipe content. */}
+                {!hideRemix && (
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      title="Remix"
+                      variant="outline"
+                      onPress={() => setRemixOpen(true)}
+                      disabled={saving || cooking || cookingLater || removing}
+                    />
+                  </View>
+                )}
+                {/* Save on the RIGHT — primary save affordance for
+                    unsaved previews. Hidden once the recipe is in the
+                    library (use Remove there instead). */}
                 {!hideSave && (
                   <View style={{ flex: 1 }}>
                     <Button
@@ -495,16 +516,20 @@ export function PreviewSheet({
                       variant="outline"
                       onPress={onSave}
                       loading={saving}
-                      disabled={cooking || cookingLater}
+                      disabled={cooking || cookingLater || removing}
                     />
                   </View>
                 )}
-                {!hideRemix && (
+                {/* Remove on the RIGHT for already-saved recipes — pairs
+                    with Remix on the left so the row reads as
+                    "rework | delete". */}
+                {onRemove && (
                   <View style={{ flex: 1 }}>
                     <Button
-                      title="Remix"
+                      title="Remove"
                       variant="outline"
-                      onPress={() => setRemixOpen(true)}
+                      onPress={onRemove}
+                      loading={removing}
                       disabled={saving || cooking || cookingLater}
                     />
                   </View>

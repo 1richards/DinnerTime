@@ -7,6 +7,7 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -325,6 +326,8 @@ export default function KitchenScreen() {
   // Recipe Box card tap → modal preview (replaces /recipes/[id] push).
   const [savedDetail, setSavedDetail] = useState<Recipe | null>(null);
   const [savedDetailCookingLater, setSavedDetailCookingLater] = useState(false);
+  const [savedDetailRemoving, setSavedDetailRemoving] = useState(false);
+  const deleteRecipe = useRecipeStore((s) => s.deleteRecipe);
 
   // Mirror the same Gemini hook the Something New card uses so the preview
   // sheet hits the shared session+AsyncStorage cache and displays the EXACT
@@ -684,7 +687,30 @@ export default function KitchenScreen() {
           <SavedRecipeDetail
             recipe={savedDetail}
             cookingLater={savedDetailCookingLater}
+            removing={savedDetailRemoving}
             onClose={() => setSavedDetail(null)}
+            onRemove={async () => {
+              // Confirm before destructive — easy to accidentally delete a
+              // recipe with the Cook Now button right next to Remove.
+              const confirmed = await new Promise<boolean>((resolve) => {
+                Alert.alert(
+                  'Remove from library?',
+                  `"${savedDetail.title}" will be deleted from your Recipe Box.`,
+                  [
+                    { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+                    { text: 'Remove', style: 'destructive', onPress: () => resolve(true) },
+                  ],
+                );
+              });
+              if (!confirmed) return;
+              setSavedDetailRemoving(true);
+              try {
+                await deleteRecipe(savedDetail.id);
+                setSavedDetail(null);
+              } finally {
+                setSavedDetailRemoving(false);
+              }
+            }}
             onCookNow={async () => {
               const id = savedDetail.id;
               setSavedDetail(null);
@@ -734,17 +760,21 @@ export default function KitchenScreen() {
 interface SavedRecipeDetailProps {
   recipe: Recipe;
   cookingLater: boolean;
+  removing: boolean;
   onClose: () => void;
   onCookNow: () => Promise<void>;
   onCookLater: (iso: string) => Promise<void>;
+  onRemove: () => Promise<void>;
 }
 
 function SavedRecipeDetail({
   recipe,
   cookingLater,
+  removing,
   onClose,
   onCookNow,
   onCookLater,
+  onRemove,
 }: SavedRecipeDetailProps) {
   const { url: generatedUri } = useGeneratedRecipeImage(recipe.title, {
     skip: !!recipe.image_url,
@@ -785,6 +815,8 @@ function SavedRecipeDetail({
       cooking={false}
       onCookLater={onCookLater}
       cookingLater={cookingLater}
+      onRemove={onRemove}
+      removing={removing}
     />
   );
 }
