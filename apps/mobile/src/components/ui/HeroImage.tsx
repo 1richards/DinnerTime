@@ -136,10 +136,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
   content: {
+    // Anchor the title block roughly at the vertical midpoint of the
+    // darkest part of the gradient (the bottom ~28% strip) so the text
+    // sits centered within the shading instead of hugging the image
+    // edge. Was bottom:0 padding:16 → text bottom landed at 16pt from
+    // the image edge, well below the deepest band's center.
     position: 'absolute',
-    bottom: 0,
+    bottom: '6%',
     left: 0,
     right: 0,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
   },
 });
