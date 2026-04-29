@@ -80,6 +80,16 @@ function addDaysIso(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** "MON · APR 27" style label for an ISO date. */
+function formatIsoForDayLabel(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const day = DAY_LABELS[(date.getUTCDay() + 6) % 7];
+  const month = MONTH_SHORT[date.getUTCMonth()];
+  return `${day} · ${month} ${date.getUTCDate()}`;
+}
+
 function formatRangeFromWeekStart(weekStart: string): string {
   const [y, m, d] = weekStart.split('-').map(Number);
   if (!y || !m || !d) return '';
@@ -114,8 +124,10 @@ export default function PlanScreen() {
   const [previewSaving, setPreviewSaving] = useState(false);
   const [previewCooking, setPreviewCooking] = useState(false);
   const [previewCookingLater, setPreviewCookingLater] = useState(false);
-  // Empty-day "+ Add a meal" → opens AddMealSheet pre-targeted to that day.
-  const [addMealDay, setAddMealDay] = useState<number | null>(null);
+  const [previewClearing, setPreviewClearing] = useState(false);
+  // Empty-day "+ Add a meal" or month-cell tap → opens AddMealSheet
+  // pre-targeted to that ISO date. Single state covers both surfaces.
+  const [addMealIso, setAddMealIso] = useState<string | null>(null);
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
   const [cookTarget, setCookTarget] = useState<number | null>(null);
   const [cookDelta, setCookDelta] = useState<MealPlanIngredient[] | null>(null);
@@ -494,11 +506,11 @@ export default function PlanScreen() {
     });
   }, [scale, currentPlan]);
 
-  // Phase 22-03: Handler for Month empty-cell pin. Opens DatePickerSheet
-  // pre-filled with the cell date. Parent owns the sheet's visibility; the
-  // sheet's onConfirm POSTs /entries/assign with recipe_id:null (ad-hoc).
+  // Month-cell tap → open the same AddMealSheet recipe picker the
+  // week view's empty-day tap uses. Single picker for both surfaces
+  // keeps the add-to-plan flow consistent.
   const handleMonthPinCell = useCallback((iso: string) => {
-    setMonthPinIso(iso);
+    setAddMealIso(iso);
   }, []);
 
   const handleMonthPinConfirm = useCallback(
@@ -833,7 +845,9 @@ export default function PlanScreen() {
               onPress={() => {
                 if (!item.entry) {
                   // Empty day → open recipe picker scoped to this date.
-                  setAddMealDay(item.day);
+                  if (currentPlan) {
+                    setAddMealIso(addDaysIso(currentPlan.week_start, item.day));
+                  }
                   return;
                 }
                 if (item.entry.recipe_id) {
@@ -898,38 +912,32 @@ export default function PlanScreen() {
       />
 
       <AddMealSheet
-        visible={addMealDay !== null}
-        isoDate={
-          addMealDay != null && currentPlan
-            ? addDaysIso(currentPlan.week_start, addMealDay)
-            : null
-        }
-        dayLabel={
-          addMealDay != null
-            ? `${DAY_LABELS[addMealDay]} ${formatRangeFromWeekStart(currentPlan?.week_start ?? '').split('–')[0]?.trim().split(' ').slice(1).join(' ') ?? ''}`.trim()
-            : null
-        }
+        visible={addMealIso !== null}
+        isoDate={addMealIso}
+        dayLabel={addMealIso ? formatIsoForDayLabel(addMealIso) : null}
         onSelect={async (recipe) => {
-          if (addMealDay == null || !currentPlan) return;
-          const iso = addDaysIso(currentPlan.week_start, addMealDay);
-          await applySwap(addMealDay, {
-            title: recipe.title,
-            description: recipe.description,
-            ingredients: recipe.ingredients,
-            steps: recipe.steps,
-            prep_time_minutes: recipe.prep_time_minutes,
-            cook_time_minutes: recipe.cook_time_minutes,
-            total_time_minutes: recipe.total_time_minutes,
-            servings: recipe.servings,
-            source_url: recipe.source_url,
-            source_type: recipe.source_type,
-            image_url: recipe.image_url,
-          });
-          // Suppress unused-var warning — applySwap used the day,
-          // iso is computed for telemetry consistency.
-          void iso;
+          if (!addMealIso) return;
+          // addToPlan upserts on (week, date) — handles both same-week
+          // (week-view tap) and other-week (month-view tap) cases.
+          await useMealPlanStore.getState().addToPlan(
+            addMealIso,
+            {
+              title: recipe.title,
+              description: recipe.description,
+              ingredients: recipe.ingredients,
+              steps: recipe.steps,
+              prep_time_minutes: recipe.prep_time_minutes,
+              cook_time_minutes: recipe.cook_time_minutes,
+              total_time_minutes: recipe.total_time_minutes,
+              servings: recipe.servings,
+              source_url: recipe.source_url,
+              source_type: recipe.source_type,
+              image_url: recipe.image_url,
+            },
+            recipe.id,
+          );
         }}
-        onClose={() => setAddMealDay(null)}
+        onClose={() => setAddMealIso(null)}
       />
 
       {/* Ad-hoc plan entry preview — Modal + PreviewSheet so unsaved
@@ -949,6 +957,20 @@ export default function PlanScreen() {
             saving={previewSaving}
             cooking={previewCooking}
             cookingLater={previewCookingLater}
+            clearing={previewClearing}
+            onClear={async () => {
+              if (!previewEntry) return;
+              setPreviewClearing(true);
+              try {
+                await useMealPlanStore.getState().skipDay(
+                  previewEntry.day_of_week,
+                  null,
+                );
+                setPreviewEntry(null);
+              } finally {
+                setPreviewClearing(false);
+              }
+            }}
             onClose={() => setPreviewEntry(null)}
             onSave={async () => {
               setPreviewSaving(true);
@@ -1003,18 +1025,6 @@ export default function PlanScreen() {
         onShoppingList={handleShoppingHandoff}
       />
 
-      {/* Phase 22-03: Month empty-cell pin sheet. Parent owns visibility —
-          sheet stays mounted, re-renders when monthPinIso flips. */}
-      <DatePickerSheet
-        visible={monthPinIso !== null}
-        initialDate={
-          monthPinIso ? new Date(`${monthPinIso}T00:00:00Z`) : undefined
-        }
-        title="Pin to day"
-        confirmLabel="Pin"
-        onConfirm={handleMonthPinConfirm}
-        onDismiss={() => setMonthPinIso(null)}
-      />
     </SafeAreaView>
   );
 }
@@ -1032,10 +1042,12 @@ interface PlanEntryPreviewProps {
   saving: boolean;
   cooking: boolean;
   cookingLater: boolean;
+  clearing: boolean;
   onClose: () => void;
   onSave: () => Promise<void>;
   onCookNow: () => Promise<void>;
   onCookLater: (iso: string) => Promise<void>;
+  onClear: () => Promise<void>;
 }
 
 function PlanEntryPreview({
@@ -1044,10 +1056,12 @@ function PlanEntryPreview({
   saving,
   cooking,
   cookingLater,
+  clearing,
   onClose,
   onSave,
   onCookNow,
   onCookLater,
+  onClear,
 }: PlanEntryPreviewProps) {
   const { url: generatedUri } = useGeneratedRecipeImage(entry.title, {
     description: entry.description ?? null,
@@ -1069,6 +1083,9 @@ function PlanEntryPreview({
       cooking={cooking}
       onCookLater={onCookLater}
       cookingLater={cookingLater}
+      onRemove={onClear}
+      removing={clearing}
+      removeLabel="Clear"
       hideRemix
     />
   );

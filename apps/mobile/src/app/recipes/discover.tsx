@@ -287,6 +287,7 @@ export function PreviewSheet({
   cookingLater = false,
   onRemove,
   removing = false,
+  removeLabel = 'Remove',
   hideRemix = false,
   hideSave = false,
   saveLabel = 'Save Recipe',
@@ -317,6 +318,9 @@ export function PreviewSheet({
       Used by Recipe Box detail to delete the recipe from the library. */
   onRemove?: () => Promise<void>;
   removing?: boolean;
+  /** Label override for the remove button — Recipe Box uses "Remove",
+      Plan uses "Clear", etc. */
+  removeLabel?: string;
   hideRemix?: boolean;
   /** Suppress the Save Recipe button — used when the recipe is already
       saved (Recipe Box detail) and Save would be a no-op. */
@@ -522,11 +526,12 @@ export function PreviewSheet({
                 )}
                 {/* Remove on the RIGHT for already-saved recipes — pairs
                     with Remix on the left so the row reads as
-                    "rework | delete". */}
+                    "rework | delete". Label is overridable so Plan
+                    uses "Clear" while Recipe Box uses "Remove". */}
                 {onRemove && (
                   <View style={{ flex: 1 }}>
                     <Button
-                      title="Remove"
+                      title={removeLabel}
                       variant="outline"
                       onPress={onRemove}
                       loading={removing}

@@ -19,11 +19,10 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { colors } from '../../design/tokens';
 import { useRecipeStore } from '../../stores/recipeStore';
-import { getRecipeImage } from '../../constants/foodImages';
+import { AddMealRow } from './AddMealRow';
 import type { Recipe } from '../../types/recipe';
 
 export interface AddMealSheetProps {
@@ -118,55 +117,14 @@ export function AddMealSheet({
             data={filtered}
             keyExtractor={(r) => r.id}
             contentContainerStyle={styles.list}
-            renderItem={({ item }) => {
-              const heroUri = getRecipeImage(
-                `recipe-box-${item.id}`,
-                item.image_url,
-                item.title,
-              );
-              const isCommitting = committingId === item.id;
-              const isDisabled = committingId !== null && !isCommitting;
-              return (
-                <Pressable
-                  onPress={() => void handlePick(item)}
-                  disabled={committingId !== null}
-                  style={({ pressed }) => [
-                    styles.row,
-                    pressed && !isDisabled ? { opacity: 0.85 } : null,
-                    isDisabled ? { opacity: 0.4 } : null,
-                  ]}
-                  accessibilityLabel={`Add ${item.title}`}
-                >
-                  <View style={styles.thumbWrap}>
-                    {heroUri ? (
-                      <Image
-                        source={{ uri: heroUri }}
-                        style={styles.thumb}
-                        contentFit="cover"
-                        cachePolicy="memory-disk"
-                      />
-                    ) : (
-                      <View style={[styles.thumb, { backgroundColor: '#F1EAE0' }]} />
-                    )}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.rowTitle} numberOfLines={2}>{item.title}</Text>
-                    {item.total_time_minutes != null && (
-                      <Text style={styles.rowMeta}>{item.total_time_minutes} min</Text>
-                    )}
-                  </View>
-                  {isCommitting ? (
-                    <ActivityIndicator size="small" color={colors.brand} />
-                  ) : (
-                    <SymbolIcon
-                      name="plus.circle.fill"
-                      size="action"
-                      tintColor={colors.brand}
-                    />
-                  )}
-                </Pressable>
-              );
-            }}
+            renderItem={({ item }) => (
+              <AddMealRow
+                recipe={item}
+                committing={committingId === item.id}
+                disabled={committingId !== null && committingId !== item.id}
+                onPick={() => void handlePick(item)}
+              />
+            )}
           />
         )}
       </View>
