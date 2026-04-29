@@ -48,7 +48,7 @@ export function IngredientSearch({
         />
         {query.length > 0 && (
           <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityLabel="Clear search">
-            <SymbolIcon name="xmark.circle.fill" size={18} tintColor="#9CA3AF" />
+            <SymbolIcon name="xmark.circle.fill" size="action" tintColor="#9CA3AF" />
           </Pressable>
         )}
       </View>

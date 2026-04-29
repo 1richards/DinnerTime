@@ -62,7 +62,7 @@ export function HeaderEllipsis({
 
   return (
     <Pressable onPress={showSheet} hitSlop={12} accessibilityLabel={accessibilityLabel}>
-      <SymbolIcon name="ellipsis" size="body" weight="medium" tintColor={tintColor} />
+      <SymbolIcon name="ellipsis" size="action" weight="semibold" tintColor={tintColor} />
     </Pressable>
   );
 }

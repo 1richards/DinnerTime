@@ -109,7 +109,7 @@ export function ShoppingItemRow({
           onSubmitEditing={commit}
         />
         <Pressable onPress={cancelEdit} hitSlop={8} className="ml-3" accessibilityLabel="Cancel edit">
-          <SymbolIcon name="xmark" size={20} tintColor={colors.textTertiary} />
+          <SymbolIcon name="xmark" size="action" tintColor={colors.textTertiary} />
         </Pressable>
       </View>
     );

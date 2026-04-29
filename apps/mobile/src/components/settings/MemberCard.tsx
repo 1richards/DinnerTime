@@ -74,7 +74,7 @@ export function MemberCard({ member, onPress, onDelete }: MemberCardProps) {
         hitSlop={8}
         accessibilityLabel="Delete member"
       >
-        <SymbolIcon name="trash" size={20} tintColor="#9CA3AF" />
+        <SymbolIcon name="trash" size="action" tintColor="#9CA3AF" />
       </Pressable>
     </Pressable>
   );

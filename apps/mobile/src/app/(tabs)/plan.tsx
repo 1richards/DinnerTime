@@ -670,7 +670,7 @@ export default function PlanScreen() {
           pressed && styles.planActionBtnPressed,
         ]}
       >
-        <SymbolIcon name="cart" size={20} weight="semibold" tintColor={colors.brand} />
+        <SymbolIcon name="cart" size="action" weight="semibold" tintColor={colors.brand} />
       </Pressable>
       <Pressable
         onPress={handleOpenWeekSheet}
@@ -681,7 +681,7 @@ export default function PlanScreen() {
           pressed && styles.planActionBtnPressed,
         ]}
       >
-        <SymbolIcon name="ellipsis" size={20} weight="semibold" tintColor={colors.brand} />
+        <SymbolIcon name="ellipsis" size="action" weight="semibold" tintColor={colors.brand} />
       </Pressable>
     </View>
   );
@@ -914,9 +914,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   planActionIconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
