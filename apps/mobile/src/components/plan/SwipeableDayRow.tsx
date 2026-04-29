@@ -47,6 +47,10 @@ export interface SwipeableDayRowProps {
   onCook: () => void;
   onSkip: () => void;
   onPress: () => void;
+  /** Drag-to-reorder handle. When provided, long-press on the row hands
+      control to the parent DraggableFlatList's drag gesture. */
+  onLongPress?: () => void;
+  isDragActive?: boolean;
 }
 
 interface ActionProps {
@@ -136,7 +140,7 @@ export function renderRightActionsFor(props: {
 }
 
 export function SwipeableDayRow(props: SwipeableDayRowProps): React.ReactElement {
-  const { entry, onSwap, onCook, onSkip, ...dayRowProps } = props;
+  const { entry, onSwap, onCook, onSkip, onLongPress, isDragActive, ...dayRowProps } = props;
 
   // Unplanned-day rows don't reveal any actions — the three handlers have
   // nothing to act on, and the visual affordance would be misleading.
@@ -148,6 +152,8 @@ export function SwipeableDayRow(props: SwipeableDayRowProps): React.ReactElement
           {...dayRowProps}
           onSwap={onSwap}
           onCook={onCook}
+          onLongPress={onLongPress}
+          isDragActive={isDragActive}
         />
       </View>
     );
@@ -165,12 +171,17 @@ export function SwipeableDayRow(props: SwipeableDayRowProps): React.ReactElement
         }
         rightThreshold={80}
         overshootRight={false}
+        // Disable swipe while a drag is active so the two gestures
+        // don't fight each other on the same row.
+        enabled={!isDragActive}
       >
         <DayRow
           entry={entry}
           {...dayRowProps}
           onSwap={onSwap}
           onCook={onCook}
+          onLongPress={onLongPress}
+          isDragActive={isDragActive}
         />
       </ReanimatedSwipeable>
     </View>

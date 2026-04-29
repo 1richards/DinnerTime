@@ -47,6 +47,12 @@ interface DayRowProps {
   onSwap: () => void;
   onCook: () => void;
   onPress: () => void;
+  /** Long-press handler for drag-to-reorder. When set, the row long-press
+      hands control to the parent DraggableFlatList's drag gesture. */
+  onLongPress?: () => void;
+  /** True while THIS row is the one being dragged — used to dim the rest
+      of the list and visually anchor the drag. */
+  isDragActive?: boolean;
 }
 
 export function DayRow({
@@ -61,6 +67,8 @@ export function DayRow({
   onSwap: _onSwap,
   onCook: _onCook,
   onPress,
+  onLongPress,
+  isDragActive,
 }: DayRowProps) {
   // Look up the persisted Recipe (if this entry is backed by one) so we
   // can show its real image_url. recipe-by-id selector is memoized in
@@ -131,9 +139,12 @@ export function DayRow({
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={250}
       className={`flex-row items-start bg-surface px-4 py-3 rounded-card border border-border-subtle min-h-[96px] ${
         isCooked ? 'opacity-60' : ''
-      } active:bg-surface-subtle`}
+      } ${isDragActive ? 'shadow-lg' : ''} active:bg-surface-subtle`}
+      style={isDragActive ? { transform: [{ scale: 1.02 }] } : undefined}
     >
       {/* Hero thumbnail — bumped 48pt → 64pt so the meal reads visually
           at glance distance, matching the RecipeCard list mode density. */}

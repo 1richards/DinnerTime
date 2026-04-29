@@ -35,6 +35,15 @@ interface MealPlanState {
    * whatever's currently on that day.
    */
   applySwap: (day: number, recipe: ParsedRecipe) => Promise<void>;
+  /**
+   * Persist a drag-and-drop reorder. `nextDayByEntryId` is the new
+   * day_of_week each affected entry should land on; absent ids keep
+   * their current day. Optimistically updates local state before
+   * firing the assign POSTs in parallel so the UI doesn't flash.
+   */
+  reorderDays: (
+    nextDayByEntryId: Record<string, number>,
+  ) => Promise<void>;
   markCooked: (day: number) => Promise<void>;
   /**
    * Phase 22-02: Shift the current week by ±7 days. Generates a new plan at
@@ -267,6 +276,60 @@ export const useMealPlanStore = create<MealPlanState>()(
       set({
         swappingDay: null,
         error: err instanceof Error ? err.message : 'Failed to apply swap',
+      });
+    }
+  },
+
+  reorderDays: async (nextDayByEntryId) => {
+    const plan = get().currentPlan;
+    if (!plan) return;
+    const snapshot = plan.entries;
+    // Optimistic local rewrite — flip day_of_week values immediately so
+    // the user sees the new order land on release; the real persistence
+    // POSTs in parallel, fetchCurrent reconciles on completion.
+    set({
+      currentPlan: {
+        ...plan,
+        entries: plan.entries.map((e) => {
+          const nextDay = nextDayByEntryId[e.id];
+          return nextDay != null ? { ...e, day_of_week: nextDay } : e;
+        }),
+      },
+    });
+    try {
+      await Promise.all(
+        Object.entries(nextDayByEntryId).map(async ([entryId, nextDay]) => {
+          const original = snapshot.find((e) => e.id === entryId);
+          if (!original) return;
+          const targetIso = addDaysIso(plan.week_start, nextDay);
+          await authedFetch('/meal-plans/entries/assign', {
+            method: 'POST',
+            body: JSON.stringify({
+              date: targetIso,
+              title: original.title,
+              description: original.description ?? null,
+              ingredients: (original.ingredients ?? []).map((i) => ({
+                name: i.name,
+                ...(i.quantity != null ? { quantity: i.quantity } : {}),
+                ...(i.unit ? { unit: i.unit } : {}),
+              })),
+              estimated_time_minutes: original.estimated_time_minutes ?? null,
+              difficulty: original.difficulty ?? null,
+              kid_friendly: original.kid_friendly ?? false,
+              why_suggested: original.why_suggested ?? null,
+              recipe_id: original.recipe_id ?? null,
+            }),
+          });
+        }),
+      );
+      // Refetch so the canonical entry ids / status / pantry_ready
+      // line up with the server state after the parallel writes.
+      await get().fetchCurrent();
+    } catch (err) {
+      // Roll back on failure
+      set({
+        currentPlan: { ...plan, entries: snapshot },
+        error: err instanceof Error ? err.message : 'Failed to reorder',
       });
     }
   },

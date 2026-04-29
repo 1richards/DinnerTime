@@ -8,6 +8,7 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -15,6 +16,14 @@ import * as WebBrowser from 'expo-web-browser';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
 import { useShoppingStore } from '../../stores/shoppingStore';
+import { useRecipeStore } from '../../stores/recipeStore';
+import DraggableFlatList, {
+  type RenderItemParams,
+} from 'react-native-draggable-flatlist';
+import { PreviewSheet } from '../recipes/discover';
+import { getRecipeImage } from '../../constants/foodImages';
+import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
+import type { ParsedRecipe } from '../../types/recipe';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useProgressionStore } from '../../stores/progressionStore';
 import { usePantryStore } from '../../stores/pantryStore';
@@ -91,10 +100,18 @@ export default function PlanScreen() {
     generate,
     swapDay: _swapDay,
     applySwap,
+    reorderDays,
     markCooked,
   } = useMealPlanStore();
 
   const [swapTarget, setSwapTarget] = useState<number | null>(null);
+  // Ad-hoc plan entry the user tapped — opens a shared PreviewSheet so
+  // entries that aren't backed by a saved Recipe still get a real
+  // image-forward detail surface instead of a plain Alert.
+  const [previewEntry, setPreviewEntry] = useState<MealPlanEntry | null>(null);
+  const [previewSaving, setPreviewSaving] = useState(false);
+  const [previewCooking, setPreviewCooking] = useState(false);
+  const saveRecipe = useRecipeStore((s) => s.saveRecipe);
   const [cookTarget, setCookTarget] = useState<number | null>(null);
   const [cookDelta, setCookDelta] = useState<MealPlanIngredient[] | null>(null);
   // Phase 22-06: Day the user is about to skip via swipe. Triggers an
@@ -210,6 +227,32 @@ export default function PlanScreen() {
       }),
     });
   }, [stretchDay, currentPlan?.id, currentPlan?.week_start, currentPlan]);
+
+  // Convert a MealPlanEntry into the ParsedRecipe shape PreviewSheet
+  // expects. Plan entries don't carry steps / source metadata so we
+  // fill those with sensible defaults — the sheet renders gracefully
+  // with empty steps.
+  const previewRecipe: ParsedRecipe | null = useMemo(() => {
+    if (!previewEntry) return null;
+    return {
+      title: previewEntry.title,
+      description: previewEntry.description ?? null,
+      ingredients: (previewEntry.ingredients ?? []).map((i) => ({
+        name: i.name,
+        quantity: i.quantity ?? null,
+        unit: i.unit ?? null,
+        notes: null,
+      })),
+      steps: [],
+      prep_time_minutes: null,
+      cook_time_minutes: null,
+      total_time_minutes: previewEntry.estimated_time_minutes ?? null,
+      servings: null,
+      source_url: null,
+      source_type: 'ai',
+      image_url: null,
+    };
+  }, [previewEntry]);
 
   // Swap commit: SwapSheet hands us the user's chosen ParsedRecipe;
   // applySwap upserts it onto the targeted day via /entries/assign and
@@ -758,11 +801,27 @@ export default function PlanScreen() {
         style={[{ flex: 1 }, scale !== 'week' && { display: 'none' }]}
         pointerEvents={scale === 'week' ? 'auto' : 'none'}
       >
-        <Animated.FlatList
+        <DraggableFlatList
           data={days}
           keyExtractor={(item) => `day-${item.day}`}
           ListHeaderComponent={listHeader}
-          renderItem={({ item }) => (
+          containerStyle={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 140 }}
+          activationDistance={8}
+          onDragEnd={({ data }) => {
+            // Walk the new order and persist any entry whose
+            // day_of_week needs to change. Empty slots are skipped —
+            // they have no entry to assign.
+            const changes: Record<string, number> = {};
+            data.forEach((row, idx) => {
+              if (row.entry && row.entry.day_of_week !== idx) {
+                changes[row.entry.id] = idx;
+              }
+            });
+            if (Object.keys(changes).length === 0) return;
+            void reorderDays(changes);
+          }}
+          renderItem={({ item, drag, isActive }: RenderItemParams<typeof days[number]>) => (
             <SwipeableDayRow
               entry={item.entry}
               dayLabel={DAY_LABELS[item.day]!}
@@ -773,37 +832,16 @@ export default function PlanScreen() {
               onSkip={() => setSkipTarget(item.day)}
               onPress={() => {
                 if (!item.entry) return;
-                // Plan → Recipe Detail (22-01 / PLAN-X-01). When the entry
-                // has a saved recipe, push onto the native stack so back
-                // gesture restores the Plan tab's scroll position
-                // (expo-router native-stack preserves this for free — see
-                // 22-CONTEXT D-28).
                 if (item.entry.recipe_id) {
                   router.push(`/recipes/${item.entry.recipe_id}`);
                   return;
                 }
-                // Ad-hoc entry (AI-generated, no saved recipe) — keep the
-                // existing Alert preview as the detail surface.
-                Alert.alert(
-                  item.entry.title,
-                  [
-                    item.entry.description,
-                    item.entry.why_suggested
-                      ? `\nWhy: ${item.entry.why_suggested}`
-                      : null,
-                    item.entry.ingredients.length
-                      ? `\nIngredients:\n${item.entry.ingredients.map((i) => `• ${i.name}`).join('\n')}`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join('\n') || 'No details available'
-                );
+                setPreviewEntry(item.entry);
               }}
+              onLongPress={item.entry ? drag : undefined}
+              isDragActive={isActive}
             />
           )}
-          contentContainerStyle={{ paddingBottom: 140 }}
-          scrollEventThrottle={16}
-          onScroll={onScroll}
         />
       </View>
 
@@ -855,6 +893,53 @@ export default function PlanScreen() {
         onDismiss={handleHandoffDismiss}
       />
 
+      {/* Ad-hoc plan entry preview — Modal + PreviewSheet so unsaved
+          AI plan entries get the same image-forward detail surface as
+          Something New / Recipe Box previews. Save persists, Cook Now
+          saves and jumps into the cooking flow. */}
+      <Modal
+        visible={previewEntry !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setPreviewEntry(null)}
+      >
+        {previewEntry && previewRecipe && (
+          <PlanEntryPreview
+            entry={previewEntry}
+            recipe={previewRecipe}
+            saving={previewSaving}
+            cooking={previewCooking}
+            onClose={() => setPreviewEntry(null)}
+            onSave={async () => {
+              setPreviewSaving(true);
+              try {
+                await saveRecipe({ ...previewRecipe, source_type: 'ai' });
+                setPreviewEntry(null);
+              } finally {
+                setPreviewSaving(false);
+              }
+            }}
+            onCookNow={async () => {
+              setPreviewCooking(true);
+              try {
+                const beforeIds = new Set(
+                  useRecipeStore.getState().recipes.map((r) => r.id),
+                );
+                await saveRecipe({ ...previewRecipe, source_type: 'ai' });
+                const state = useRecipeStore.getState();
+                if (state.error) return;
+                const created = state.recipes.find((r) => !beforeIds.has(r.id));
+                const cookId = created?.id ?? state.recipes[0]?.id;
+                setPreviewEntry(null);
+                if (cookId) router.push(`/recipes/${cookId}/cook`);
+              } finally {
+                setPreviewCooking(false);
+              }
+            }}
+          />
+        )}
+      </Modal>
+
       <WeekActionSheet
         visible={weekSheetVisible}
         onDismiss={handleWeekSheetDismiss}
@@ -878,6 +963,55 @@ export default function PlanScreen() {
         onDismiss={() => setMonthPinIso(null)}
       />
     </SafeAreaView>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// PlanEntryPreview — wraps the shared PreviewSheet with the Gemini image
+// hook so ad-hoc plan entries get the same generated photo the plan tile
+// shows. Extracted because the hook can't be called inside the parent's
+// onPress / Modal-children render path.
+// ----------------------------------------------------------------------------
+
+interface PlanEntryPreviewProps {
+  entry: MealPlanEntry;
+  recipe: ParsedRecipe;
+  saving: boolean;
+  cooking: boolean;
+  onClose: () => void;
+  onSave: () => Promise<void>;
+  onCookNow: () => Promise<void>;
+}
+
+function PlanEntryPreview({
+  entry,
+  recipe,
+  saving,
+  cooking,
+  onClose,
+  onSave,
+  onCookNow,
+}: PlanEntryPreviewProps) {
+  const { url: generatedUri } = useGeneratedRecipeImage(entry.title, {
+    description: entry.description ?? null,
+    ingredients: recipe.ingredients,
+  });
+  const heroUri = getRecipeImage(
+    `plan-${entry.id}-${entry.title}`,
+    generatedUri,
+    entry.title,
+  );
+  return (
+    <PreviewSheet
+      recipe={{ ...recipe, _saved: false }}
+      heroUri={heroUri}
+      onClose={onClose}
+      onSave={onSave}
+      saving={saving}
+      onCookNow={onCookNow}
+      cooking={cooking}
+      hideRemix
+    />
   );
 }
 
