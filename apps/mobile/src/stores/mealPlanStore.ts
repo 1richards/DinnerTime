@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { offlineQueue, registerExecutor } from '../lib/offlineQueue';
 import { useNetworkStore } from './networkStore';
 import type { MealPlan, MealPlanEntry } from '../types/mealPlan';
+import type { ParsedRecipe } from '../types/recipe';
 
 interface MealPlanState {
   currentPlan: MealPlan | null;
@@ -27,6 +28,13 @@ interface MealPlanState {
   fetchCurrent: () => Promise<void>;
   generate: (weekStart: string) => Promise<void>;
   swapDay: (day: number) => Promise<void>;
+  /**
+   * Replace a specific day's entry with a user-chosen ParsedRecipe
+   * (typically picked from a SwapSheet candidate list). Uses
+   * /entries/assign which upserts on (plan, date), so this overwrites
+   * whatever's currently on that day.
+   */
+  applySwap: (day: number, recipe: ParsedRecipe) => Promise<void>;
   markCooked: (day: number) => Promise<void>;
   /**
    * Phase 22-02: Shift the current week by ±7 days. Generates a new plan at
@@ -219,6 +227,46 @@ export const useMealPlanStore = create<MealPlanState>()(
       set({
         swappingDay: null,
         error: err instanceof Error ? err.message : 'Failed to swap day',
+      });
+    }
+  },
+
+  applySwap: async (day: number, recipe: ParsedRecipe) => {
+    const plan = get().currentPlan;
+    if (!plan) return;
+    set({ swappingDay: day, error: null });
+    try {
+      const targetIso = addDaysIso(plan.week_start, day);
+      const res = await authedFetch('/meal-plans/entries/assign', {
+        method: 'POST',
+        body: JSON.stringify({
+          date: targetIso,
+          title: recipe.title,
+          description: recipe.description ?? null,
+          ingredients: (recipe.ingredients ?? []).map((i) => ({
+            name: i.name,
+            ...(i.quantity != null ? { quantity: i.quantity } : {}),
+            ...(i.unit ? { unit: i.unit } : {}),
+          })),
+          estimated_time_minutes: recipe.total_time_minutes ?? null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        set({
+          swappingDay: null,
+          error: err.error ?? 'Failed to apply swap',
+        });
+        return;
+      }
+      // Refetch the plan so the new entry's server-derived fields
+      // (id, status, pantry_ready) populate without a round-trip dance.
+      await get().fetchCurrent();
+      set({ swappingDay: null, error: null });
+    } catch (err) {
+      set({
+        swappingDay: null,
+        error: err instanceof Error ? err.message : 'Failed to apply swap',
       });
     }
   },

@@ -89,7 +89,8 @@ export default function PlanScreen() {
     cookingDay,
     fetchCurrent,
     generate,
-    swapDay,
+    swapDay: _swapDay,
+    applySwap,
     markCooked,
   } = useMealPlanStore();
 
@@ -210,11 +211,16 @@ export default function PlanScreen() {
     });
   }, [stretchDay, currentPlan?.id, currentPlan?.week_start, currentPlan]);
 
-  const confirmSwap = useCallback(async () => {
-    if (swapTarget == null) return;
-    await swapDay(swapTarget);
-    setSwapTarget(null);
-  }, [swapTarget, swapDay]);
+  // Swap commit: SwapSheet hands us the user's chosen ParsedRecipe;
+  // applySwap upserts it onto the targeted day via /entries/assign and
+  // refetches the plan.
+  const handleSwapSelect = useCallback(
+    async (recipe: import('../../types/recipe').ParsedRecipe) => {
+      if (swapTarget == null) return;
+      await applySwap(swapTarget, recipe);
+    },
+    [swapTarget, applySwap],
+  );
 
   const confirmCook = useCallback(async () => {
     if (cookTarget == null) return;
@@ -828,9 +834,9 @@ export default function PlanScreen() {
       <SwapSheet
         visible={swapTarget != null}
         currentEntry={swapTarget != null ? entriesByDay.get(swapTarget) ?? null : null}
-        loading={swappingDay != null}
-        onConfirm={confirmSwap}
-        onCancel={() => setSwapTarget(null)}
+        day={swapTarget}
+        onSelect={handleSwapSelect}
+        onClose={() => setSwapTarget(null)}
       />
 
       <CookConfirm
