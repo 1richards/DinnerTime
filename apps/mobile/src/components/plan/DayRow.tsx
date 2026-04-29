@@ -143,6 +143,11 @@ export function DayRow({
     status,
     isStretch: entry.is_stretch === true,
     pantryReady: entry.pantry_ready === true,
+    entry: {
+      title: entry.title,
+      description: entry.description ?? null,
+      ingredients: (entry.ingredients ?? []).map((i) => ({ name: i.name })),
+    },
   });
 
   const thumbnailUri = savedRecipe?.image_url ?? generatedUri ?? null;
