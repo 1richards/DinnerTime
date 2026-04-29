@@ -86,22 +86,29 @@ const MODES: ModeOption[] = [
   { mode: 'protein', label: 'Swap protein', sub: 'Change the star', symbol: 'flame.fill', tint: colors.brand },
   { mode: 'add_protein', label: 'Add protein', sub: 'Bulk it up', symbol: 'plus.circle.fill', tint: colors.brand },
   { mode: 'veggies', label: 'Swap veggies', sub: 'Different flavor', symbol: 'leaf.fill', tint: colors.success },
-  { mode: 'vegetarian', label: 'Make vegetarian', sub: 'Drop the meat', symbol: 'carrot.fill', tint: colors.success },
-  { mode: 'quicker', label: 'Make it quicker', sub: 'Shortcut the time', symbol: 'bolt.fill', tint: colors.brand },
-  { mode: 'harder', label: 'More challenging', sub: 'Level up the technique', symbol: 'star.fill', tint: colors.warning },
-  { mode: 'healthier', label: 'Make it healthier', sub: 'Lighter, leaner', symbol: 'heart.fill', tint: colors.success },
-  { mode: 'decadent', label: 'Make it decadent', sub: 'Indulgent, rich', symbol: 'crown.fill', tint: colors.warning },
+  { mode: 'vegetarian', label: 'Vegetarian', sub: 'Drop the meat', symbol: 'carrot.fill', tint: colors.success },
+  { mode: 'quicker', label: 'Quicker', sub: 'Shortcut the time', symbol: 'bolt.fill', tint: colors.brand },
+  { mode: 'harder', label: 'Challenging', sub: 'Level up technique', symbol: 'star.fill', tint: colors.warning },
+  { mode: 'healthier', label: 'Healthier', sub: 'Lighter, leaner', symbol: 'heart.fill', tint: colors.success },
+  { mode: 'decadent', label: 'Decadent', sub: 'Rich, indulgent', symbol: 'crown.fill', tint: colors.warning },
 ];
 
-// Layout grouping — 'surprise' takes a full row at the top, the rest
-// render as 2-column pairs (existing mode + its new partner).
-const SURPRISE_MODE = MODES[0]!;
-const PAIRED_MODES: Array<[ModeOption, ModeOption]> = [
-  [MODES[1]!, MODES[2]!], // Swap protein | Add protein
-  [MODES[3]!, MODES[4]!], // Swap veggies | Make vegetarian
-  [MODES[5]!, MODES[6]!], // Quicker      | More challenging
-  [MODES[7]!, MODES[8]!], // Healthier    | Decadent
+interface PairSection {
+  title: string;
+  tiles: [ModeOption, ModeOption];
+}
+
+// Section-grouped pairs — title sets the lens (Protein, Veggies, Time,
+// Vibe) so the two tiles below read as deliberate counterparts rather
+// than a random 2-col grid.
+const SECTIONS: PairSection[] = [
+  { title: 'Protein', tiles: [MODES[1]!, MODES[2]!] },
+  { title: 'Veggies', tiles: [MODES[3]!, MODES[4]!] },
+  { title: 'Difficulty', tiles: [MODES[5]!, MODES[6]!] },
+  { title: 'Vibe', tiles: [MODES[7]!, MODES[8]!] },
 ];
+
+const SURPRISE_MODE = MODES[0]!;
 
 const getApiBaseUrl = (): string =>
   process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -526,61 +533,69 @@ export function RemixSheet({
             </View>
 
             <View style={styles.modeList}>
-              {/* Surprise me — full-width hero row at the top so the
-                  default play stays the most-prominent affordance. */}
+              {/* Surprise me — full-width hero card. Brand-tinted bg
+                  separates it visually from the section grid below
+                  and signals it's the default / fastest play. */}
               <Pressable
                 key={SURPRISE_MODE.mode}
                 onPress={() => handleMode(SURPRISE_MODE.mode)}
                 style={({ pressed }) => [
-                  styles.modeRow,
-                  pressed && { opacity: 0.85 },
+                  styles.surpriseCard,
+                  pressed && { opacity: 0.92 },
                 ]}
               >
-                <View
-                  style={[styles.modeChip, { backgroundColor: `${SURPRISE_MODE.tint}1A` }]}
-                >
+                <View style={styles.surpriseChip}>
                   <SymbolIcon
                     name={SURPRISE_MODE.symbol as never}
-                    size={24}
-                    tintColor={SURPRISE_MODE.tint}
+                    size={28}
+                    tintColor="#FFFFFF"
                     weight="semibold"
                   />
                 </View>
-                <View style={styles.modeRowText}>
-                  <Text style={styles.modeLabel}>{SURPRISE_MODE.label}</Text>
-                  <Text style={styles.modeSub}>{SURPRISE_MODE.sub}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.surpriseLabel}>{SURPRISE_MODE.label}</Text>
+                  <Text style={styles.surpriseSub}>{SURPRISE_MODE.sub}</Text>
                 </View>
+                <SymbolIcon
+                  name="chevron.forward"
+                  size={18}
+                  tintColor="rgba(255,255,255,0.7)"
+                />
               </Pressable>
 
-              {/* Paired modes — each row is a 2-column grid: the existing
-                  mode (e.g. Swap protein) on the left, the new partner
-                  (e.g. Add protein) on the right. Compact tile shape so
-                  both fit without truncating the label. */}
-              {PAIRED_MODES.map(([left, right]) => (
-                <View key={`pair-${left.mode}-${right.mode}`} style={styles.modePair}>
-                  {[left, right].map((m) => (
-                    <Pressable
-                      key={m.mode}
-                      onPress={() => handleMode(m.mode)}
-                      style={({ pressed }) => [
-                        styles.modeTile,
-                        pressed && { opacity: 0.85 },
-                      ]}
-                    >
-                      <View
-                        style={[styles.modeChip, { backgroundColor: `${m.tint}1A` }]}
+              {/* Section-grouped pairs — each section title sets the
+                  lens (Protein / Veggies / Difficulty / Vibe), the two
+                  tiles below it are the deliberate counterparts. Tiles
+                  use a uniform 120pt min-height so the grid reads as
+                  designed instead of wonky. */}
+              {SECTIONS.map((section) => (
+                <View key={section.title} style={styles.sectionGroup}>
+                  <Text style={styles.sectionTitle}>{section.title}</Text>
+                  <View style={styles.sectionPair}>
+                    {section.tiles.map((m) => (
+                      <Pressable
+                        key={m.mode}
+                        onPress={() => handleMode(m.mode)}
+                        style={({ pressed }) => [
+                          styles.modeTile,
+                          pressed && { opacity: 0.85 },
+                        ]}
                       >
-                        <SymbolIcon
-                          name={m.symbol as never}
-                          size={22}
-                          tintColor={m.tint}
-                          weight="semibold"
-                        />
-                      </View>
-                      <Text style={styles.modeLabelTile} numberOfLines={1}>{m.label}</Text>
-                      <Text style={styles.modeSubTile} numberOfLines={1}>{m.sub}</Text>
-                    </Pressable>
-                  ))}
+                        <View
+                          style={[styles.modeTileChip, { backgroundColor: `${m.tint}1A` }]}
+                        >
+                          <SymbolIcon
+                            name={m.symbol as never}
+                            size={26}
+                            tintColor={m.tint}
+                            weight="semibold"
+                          />
+                        </View>
+                        <Text style={styles.modeLabelTile} numberOfLines={1}>{m.label}</Text>
+                        <Text style={styles.modeSubTile} numberOfLines={1}>{m.sub}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
                 </View>
               ))}
             </View>
@@ -1118,23 +1133,77 @@ const styles = StyleSheet.create({
   modeRowText: {
     flex: 1,
   },
-  modePair: {
+  surpriseCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    borderRadius: 16,
+    backgroundColor: colors.brand,
+    shadowColor: colors.textPrimary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  surpriseChip: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  surpriseLabel: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  surpriseSub: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 2,
+  },
+  sectionGroup: {
+    gap: 8,
+    marginTop: 6,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#7A6651',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    paddingHorizontal: 4,
+  },
+  sectionPair: {
     flexDirection: 'row',
     gap: 10,
   },
   modeTile: {
     flex: 1,
     alignItems: 'flex-start',
-    paddingVertical: 14,
+    justifyContent: 'flex-start',
+    paddingVertical: 16,
     paddingHorizontal: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
     shadowColor: '#7A6651',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 1,
+    minHeight: 120,
     gap: 10,
+  },
+  modeTileChip: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modeLabelTile: {
     fontSize: 15,
