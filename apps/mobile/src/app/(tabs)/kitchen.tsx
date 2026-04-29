@@ -322,6 +322,9 @@ export default function KitchenScreen() {
   const [savingPreview, setSavingPreview] = useState(false);
   const [cookingPreview, setCookingPreview] = useState(false);
   const [cookingLaterPreview, setCookingLaterPreview] = useState(false);
+  // Recipe Box card tap → modal preview (replaces /recipes/[id] push).
+  const [savedDetail, setSavedDetail] = useState<Recipe | null>(null);
+  const [savedDetailCookingLater, setSavedDetailCookingLater] = useState(false);
 
   // Mirror the same Gemini hook the Something New card uses so the preview
   // sheet hits the shared session+AsyncStorage cache and displays the EXACT
@@ -469,8 +472,12 @@ export default function KitchenScreen() {
     </View>
   );
 
+  // Recipe Box card tap opens the saved recipe in the same image-forward
+  // PreviewSheet that Something New uses, instead of pushing to the
+  // separate /recipes/[id] page. Deep links into /recipes/[id] still
+  // work — that route remains for editing and shareable URLs.
   const handleCardPress = (recipe: Recipe) => {
-    router.push(`/recipes/${recipe.id}`);
+    setSavedDetail(recipe);
   };
 
   // ---------- Phase 17 preview handlers ----------
@@ -663,9 +670,122 @@ export default function KitchenScreen() {
         )}
       </Modal>
 
+      {/* Recipe Box detail — saved recipes open as the same image-forward
+          PreviewSheet that Something New uses, with Cook Now / Cook Later
+          on a single row at the bottom. Save is hidden because it's
+          already in the library; Remix opens the existing flow. */}
+      <Modal
+        visible={savedDetail !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSavedDetail(null)}
+      >
+        {savedDetail && (
+          <SavedRecipeDetail
+            recipe={savedDetail}
+            cookingLater={savedDetailCookingLater}
+            onClose={() => setSavedDetail(null)}
+            onCookNow={async () => {
+              const id = savedDetail.id;
+              setSavedDetail(null);
+              router.push(`/recipes/${id}/cook`);
+            }}
+            onCookLater={async (iso) => {
+              setSavedDetailCookingLater(true);
+              try {
+                await useMealPlanStore.getState().addToPlan(
+                  iso,
+                  {
+                    title: savedDetail.title,
+                    description: savedDetail.description,
+                    ingredients: savedDetail.ingredients,
+                    steps: savedDetail.steps,
+                    prep_time_minutes: savedDetail.prep_time_minutes,
+                    cook_time_minutes: savedDetail.cook_time_minutes,
+                    total_time_minutes: savedDetail.total_time_minutes,
+                    servings: savedDetail.servings,
+                    source_url: savedDetail.source_url,
+                    source_type: savedDetail.source_type,
+                    image_url: savedDetail.image_url,
+                  },
+                  savedDetail.id,
+                );
+                setSavedDetail(null);
+              } finally {
+                setSavedDetailCookingLater(false);
+              }
+            }}
+          />
+        )}
+      </Modal>
+
       {/* FABs swap with segment — Something New no longer has a FAB (D-06) */}
       {segment === 'library' && <ImportFab />}
     </SafeAreaView>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SavedRecipeDetail — wraps PreviewSheet for Recipe Box modal entry. Lives
+// in this file so the Gemini hook + recipe→ParsedRecipe shape conversion
+// can be colocated with the kitchen tab's preview state.
+// ---------------------------------------------------------------------------
+
+interface SavedRecipeDetailProps {
+  recipe: Recipe;
+  cookingLater: boolean;
+  onClose: () => void;
+  onCookNow: () => Promise<void>;
+  onCookLater: (iso: string) => Promise<void>;
+}
+
+function SavedRecipeDetail({
+  recipe,
+  cookingLater,
+  onClose,
+  onCookNow,
+  onCookLater,
+}: SavedRecipeDetailProps) {
+  const { url: generatedUri } = useGeneratedRecipeImage(recipe.title, {
+    skip: !!recipe.image_url,
+    description: recipe.description,
+    ingredients: recipe.ingredients,
+  });
+  const heroUri = getRecipeImage(
+    `recipe-box-${recipe.id}`,
+    recipe.image_url ?? generatedUri,
+    recipe.title,
+  );
+  // Parsed shape PreviewSheet expects. _saved=false because the saved-state
+  // path collapses to a "Saved to library + Done" footer with no Cook
+  // actions — the wrong UX for a Recipe Box detail. We hide Save instead.
+  const parsed: ParsedRecipe & { _saved: boolean } = {
+    title: recipe.title,
+    description: recipe.description,
+    ingredients: recipe.ingredients,
+    steps: recipe.steps,
+    prep_time_minutes: recipe.prep_time_minutes,
+    cook_time_minutes: recipe.cook_time_minutes,
+    total_time_minutes: recipe.total_time_minutes,
+    servings: recipe.servings,
+    source_url: recipe.source_url,
+    source_type: recipe.source_type,
+    image_url: recipe.image_url,
+    _saved: false,
+  };
+  return (
+    <PreviewSheet
+      recipe={parsed}
+      heroUri={heroUri}
+      onClose={onClose}
+      onSave={async () => undefined}
+      saving={false}
+      hideSave
+      onCookNow={onCookNow}
+      cooking={false}
+      onCookLater={onCookLater}
+      cookingLater={cookingLater}
+    />
   );
 }
 

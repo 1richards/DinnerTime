@@ -202,7 +202,7 @@ export default function RecipeDetailScreen() {
           Mirrors the Something New PreviewSheet's fixed action bar. */}
       <View style={styles.stickyFooter}>
         <Button
-          title="Start Cooking"
+          title="Cook Now"
           onPress={() => router.push(`/recipes/${recipe.id}/cook`)}
         />
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
