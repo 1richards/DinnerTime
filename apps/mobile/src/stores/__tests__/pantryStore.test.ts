@@ -219,7 +219,7 @@ describe('pantryStore', () => {
   });
 
   describe('markItemDepleted', () => {
-    it('optimistically sets status to depleted', async () => {
+    it('optimistically removes the item from local state (filtered as depleted)', async () => {
       usePantryStore.setState({ items: [mockItem] });
 
       mockFetch.mockResolvedValueOnce({
@@ -230,7 +230,11 @@ describe('pantryStore', () => {
       await usePantryStore.getState().markItemDepleted('item-1');
 
       const state = usePantryStore.getState();
-      expect(state.items[0].status).toBe('depleted');
+      // markItemDepleted now strips the item from local state — loadItems
+      // already filters status='available' so the row would disappear on
+      // reload anyway, and removing locally makes the swipe-delete row
+      // vanish immediately.
+      expect(state.items).toHaveLength(0);
     });
   });
 

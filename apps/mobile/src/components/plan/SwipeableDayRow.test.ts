@@ -159,7 +159,7 @@ describe('SwipeableDayRow', () => {
     const pressables = findPressables(el);
     expect(pressables).toHaveLength(3);
     const labels = pressables.map((p) => p.props.accessibilityLabel);
-    expect(labels).toEqual(['Swap', 'Cooked', 'Skip']);
+    expect(labels).toEqual(['Swap', 'Cooked', 'Clear']);
   });
 
   it('tapping the Swap action fires onSwap and plan.swipe_action{variant:swap}', () => {

@@ -650,7 +650,7 @@ describe('mealPlanStore', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('sets error and leaves currentPlan unchanged on non-2xx', async () => {
+    it('keeps the optimistic focus update on non-2xx (non-blocking)', async () => {
       const plan = makePlan({ focus_theme: null });
       useMealPlanStore.setState({ currentPlan: plan });
 
@@ -663,8 +663,9 @@ describe('mealPlanStore', () => {
       await useMealPlanStore.getState().setFocusTheme('pan sauces');
 
       const state = useMealPlanStore.getState();
-      expect(state.currentPlan?.focus_theme).toBeNull();
-      expect(state.error).toMatch(/focus theme/i);
+      // Optimistic update preserved so the banner still reflects intent.
+      expect(state.currentPlan?.focus_theme).toBe('pan sauces');
+      expect(state.error).toBeNull();
     });
   });
 
@@ -899,7 +900,7 @@ describe('mealPlanStore', () => {
       expect(finalEntry?.status).toBe('skipped');
     });
 
-    it('rolls back the optimistic update on 5xx', async () => {
+    it('keeps the optimistic clear on 5xx (non-blocking — user wanted the row gone)', async () => {
       const plan = makePlan();
       useMealPlanStore.setState({ currentPlan: plan });
 
@@ -915,9 +916,11 @@ describe('mealPlanStore', () => {
       const entry = state.currentPlan?.entries.find(
         (e) => e.day_of_week === 4
       );
-      // Rolled back to original 'planned' status
-      expect(entry?.status).toBe('planned');
-      expect(state.error).toMatch(/skip/i);
+      // Optimistic clear preserved — server failure logs to console but
+      // doesn't trap the UI. Row will reappear on next refetch if the
+      // server never persisted.
+      expect(entry?.status).toBe('skipped');
+      expect(state.error).toBeNull();
     });
 
     it('sends body { reason: null } when reason is omitted', async () => {

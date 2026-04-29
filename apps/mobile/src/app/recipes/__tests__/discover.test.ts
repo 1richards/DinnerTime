@@ -35,10 +35,10 @@ describe('discover.tsx source contract (Phase 17 Wave 0)', () => {
     expect(SOURCE).toMatch(/kind:\s*['"]inline['"]/);
   });
 
-  it('P17-05: PreviewSheet still renders the existing Save to Library button', () => {
-    // CONTEXT D-03 preserves preview-first + Save action; Remix adds to it,
-    // does not replace it.
-    expect(SOURCE).toContain('Save to Library');
+  it('P17-05: PreviewSheet still renders a save action (default label "Save Recipe")', () => {
+    // The default saveLabel was renamed from "Save to Library" → "Save Recipe"
+    // when the bottom-bar layout flipped to Remix-left / Save-right.
+    expect(SOURCE).toMatch(/saveLabel\s*=\s*['"]Save Recipe['"]/);
   });
 
   it('P17-09 (Pitfall 9): saveRecipe is called with source_type: "ai"', () => {
