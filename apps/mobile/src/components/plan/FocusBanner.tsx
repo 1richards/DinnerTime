@@ -23,49 +23,43 @@
  * custom modal wrapping TextInput.
  */
 
-import React from 'react';
-import { View, Text, Pressable, Alert, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { colors } from '../../design/tokens';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
 import { logPlanEvent, sanitizePayload } from '../../plan/telemetry';
+import { FocusPickerSheet } from './FocusPickerSheet';
 
 export function FocusBanner() {
   const currentPlan = useMealPlanStore((s) => s.currentPlan);
   const setFocusTheme = useMealPlanStore((s) => s.setFocusTheme);
+  const [pickerVisible, setPickerVisible] = useState(false);
 
   if (!currentPlan) return null;
 
   const theme = currentPlan.focus_theme ?? null;
 
-  const handleSet = () => {
-    Alert.prompt(
-      'Weekly skill focus',
-      'What do you want to practice this week? (e.g. "knife skills", "pan sauces", "Italian")',
-      async (value) => {
-        const trimmed = (value ?? '').trim();
-        const next = trimmed.length > 0 ? trimmed : null;
-        await setFocusTheme(next);
-        if (next) {
-          const sessionId =
-            typeof globalThis.crypto?.randomUUID === 'function'
-              ? globalThis.crypto.randomUUID()
-              : `fc-${Date.now()}`;
-          logPlanEvent({
-            name: 'plan.focus_theme_set',
-            session_id: sessionId,
-            meal_plan_id: currentPlan.id,
-            payload: sanitizePayload({
-              meal_plan_id: currentPlan.id,
-              week_start: currentPlan.week_start,
-            }),
-          });
-        }
-      },
-      'plain-text',
-      theme ?? ''
-    );
+  const handleSelect = async (next: string | null) => {
+    await setFocusTheme(next);
+    if (next) {
+      const sessionId =
+        typeof globalThis.crypto?.randomUUID === 'function'
+          ? globalThis.crypto.randomUUID()
+          : `fc-${Date.now()}`;
+      logPlanEvent({
+        name: 'plan.focus_theme_set',
+        session_id: sessionId,
+        meal_plan_id: currentPlan.id,
+        payload: sanitizePayload({
+          meal_plan_id: currentPlan.id,
+          week_start: currentPlan.week_start,
+        }),
+      });
+    }
   };
+
+  const handleSet = () => setPickerVisible(true);
 
   return (
     <View style={styles.banner} accessibilityLabel="Weekly skill focus banner">
@@ -88,6 +82,12 @@ export function FocusBanner() {
       >
         <Text style={styles.action}>{theme ? 'Change' : 'Set focus'}</Text>
       </Pressable>
+      <FocusPickerSheet
+        visible={pickerVisible}
+        currentTheme={theme}
+        onSelect={handleSelect}
+        onClose={() => setPickerVisible(false)}
+      />
     </View>
   );
 }
