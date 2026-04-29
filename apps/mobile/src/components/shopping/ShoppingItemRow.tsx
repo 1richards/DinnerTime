@@ -70,8 +70,8 @@ export function ShoppingItemRow({
           justifyContent: 'center',
           alignItems: 'center',
           width: 84,
-          marginVertical: 4,
-          borderRadius: 12,
+          marginVertical: 2,
+          borderRadius: 8,
         }}
       >
         <SymbolIcon name="trash" size={22} tintColor="#FFFFFF" />
@@ -85,7 +85,7 @@ export function ShoppingItemRow({
   // ItemRow's visual language via tokens.
   if (editing) {
     return (
-      <View className="flex-row items-center bg-surface rounded-card px-4 py-3 my-1 border border-brand">
+      <View className="flex-row items-center bg-surface rounded-card px-4 py-2 my-0.5 border border-brand">
         <TextInput
           value={name}
           onChangeText={setName}
@@ -115,14 +115,15 @@ export function ShoppingItemRow({
     );
   }
 
-  const qtySubtitle = [
+  // Per-recipe attribution (item.sources) was previously stuffed into the
+  // subtitle alongside qty/unit, leaving rows wrapped to two lines just to
+  // tell users which recipe asked for the can of tomatoes — noise for a
+  // glance-and-check task. Subtitle is now just qty/unit, leaving the
+  // row at the same compact height as a Reminders item.
+  const trailingMeta =
     item.quantity != null
       ? `${item.quantity}${item.unit ? ` ${item.unit}` : ''}`
-      : item.unit ?? '',
-    item.sources && item.sources.length > 0 ? item.sources.join(', ') : '',
-  ]
-    .filter(Boolean)
-    .join(' \u2022 ');
+      : item.unit ?? undefined;
 
   return (
     <Swipeable
@@ -133,9 +134,10 @@ export function ShoppingItemRow({
       <ItemRow
         leading={{ kind: 'checkbox', checked: !!item.checked, onToggle }}
         title={item.name}
-        subtitle={qtySubtitle || undefined}
+        subtitle={trailingMeta || undefined}
         struck={!!item.checked}
         onLongPress={() => setEditing(true)}
+        size="compact"
       />
     </Swipeable>
   );

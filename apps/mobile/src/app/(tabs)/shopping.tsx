@@ -338,7 +338,7 @@ export default function ShoppingScreen() {
 
       <View className="absolute left-0 right-0 bottom-0 px-4 pb-4 pt-3 bg-warmWhite border-t border-warmGray-100">
         <Button
-          title="Order on Instacart"
+          title="Add to Instacart Order"
           onPress={handleOrder}
           loading={sending}
           disabled={orderDisabled}

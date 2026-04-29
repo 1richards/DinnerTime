@@ -37,8 +37,8 @@ export function CategorySection({
   if (items.length === 0) return null;
 
   return (
-    <View className="mb-3">
-      <View className="flex-row items-center justify-between px-4 py-2">
+    <View className="mb-1">
+      <View className="flex-row items-center justify-between px-4 py-1.5">
         <Text className="text-xs font-bold text-warmGray-500 uppercase tracking-wide">
           {CATEGORY_LABELS[category]}
         </Text>
