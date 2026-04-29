@@ -36,6 +36,14 @@ interface MealPlanState {
    */
   applySwap: (day: number, recipe: ParsedRecipe) => Promise<void>;
   /**
+   * Cook Later flow — assign an arbitrary recipe to any future date
+   * (the user picks the day from a date sheet). Wraps /entries/assign
+   * which upserts on (week, date), creating a meal plan for that
+   * week if one doesn't exist. Refetches the current plan when the
+   * target date falls inside it.
+   */
+  addToPlan: (isoDate: string, recipe: ParsedRecipe, recipeId?: string | null) => Promise<void>;
+  /**
    * Persist a drag-and-drop reorder. `nextDayByEntryId` is the new
    * day_of_week each affected entry should land on; absent ids keep
    * their current day. Optimistically updates local state before
@@ -276,6 +284,45 @@ export const useMealPlanStore = create<MealPlanState>()(
       set({
         swappingDay: null,
         error: err instanceof Error ? err.message : 'Failed to apply swap',
+      });
+    }
+  },
+
+  addToPlan: async (isoDate, recipe, recipeId) => {
+    try {
+      const res = await authedFetch('/meal-plans/entries/assign', {
+        method: 'POST',
+        body: JSON.stringify({
+          date: isoDate,
+          title: recipe.title,
+          description: recipe.description ?? null,
+          ingredients: (recipe.ingredients ?? []).map((i) => ({
+            name: i.name,
+            ...(i.quantity != null ? { quantity: i.quantity } : {}),
+            ...(i.unit ? { unit: i.unit } : {}),
+          })),
+          estimated_time_minutes: recipe.total_time_minutes ?? null,
+          recipe_id: recipeId ?? null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        set({ error: err.error ?? 'Failed to add to plan' });
+        return;
+      }
+      // If the chosen date falls inside the currently-loaded plan,
+      // refetch so the new entry shows up immediately.
+      const plan = get().currentPlan;
+      if (plan) {
+        const planStart = plan.week_start;
+        const planEnd = addDaysIso(planStart, 6);
+        if (isoDate >= planStart && isoDate <= planEnd) {
+          await get().fetchCurrent();
+        }
+      }
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : 'Failed to add to plan',
       });
     }
   },

@@ -111,6 +111,7 @@ export default function PlanScreen() {
   const [previewEntry, setPreviewEntry] = useState<MealPlanEntry | null>(null);
   const [previewSaving, setPreviewSaving] = useState(false);
   const [previewCooking, setPreviewCooking] = useState(false);
+  const [previewCookingLater, setPreviewCookingLater] = useState(false);
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
   const [cookTarget, setCookTarget] = useState<number | null>(null);
   const [cookDelta, setCookDelta] = useState<MealPlanIngredient[] | null>(null);
@@ -909,6 +910,7 @@ export default function PlanScreen() {
             recipe={previewRecipe}
             saving={previewSaving}
             cooking={previewCooking}
+            cookingLater={previewCookingLater}
             onClose={() => setPreviewEntry(null)}
             onSave={async () => {
               setPreviewSaving(true);
@@ -934,6 +936,19 @@ export default function PlanScreen() {
                 if (cookId) router.push(`/recipes/${cookId}/cook`);
               } finally {
                 setPreviewCooking(false);
+              }
+            }}
+            onCookLater={async (iso) => {
+              setPreviewCookingLater(true);
+              try {
+                await useMealPlanStore.getState().addToPlan(
+                  iso,
+                  previewRecipe,
+                  null,
+                );
+                setPreviewEntry(null);
+              } finally {
+                setPreviewCookingLater(false);
               }
             }}
           />
@@ -978,9 +993,11 @@ interface PlanEntryPreviewProps {
   recipe: ParsedRecipe;
   saving: boolean;
   cooking: boolean;
+  cookingLater: boolean;
   onClose: () => void;
   onSave: () => Promise<void>;
   onCookNow: () => Promise<void>;
+  onCookLater: (iso: string) => Promise<void>;
 }
 
 function PlanEntryPreview({
@@ -988,9 +1005,11 @@ function PlanEntryPreview({
   recipe,
   saving,
   cooking,
+  cookingLater,
   onClose,
   onSave,
   onCookNow,
+  onCookLater,
 }: PlanEntryPreviewProps) {
   const { url: generatedUri } = useGeneratedRecipeImage(entry.title, {
     description: entry.description ?? null,
@@ -1010,6 +1029,8 @@ function PlanEntryPreview({
       saving={saving}
       onCookNow={onCookNow}
       cooking={cooking}
+      onCookLater={onCookLater}
+      cookingLater={cookingLater}
       hideRemix
     />
   );

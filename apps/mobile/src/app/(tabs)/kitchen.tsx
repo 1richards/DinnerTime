@@ -17,6 +17,7 @@ import { usePantryStore } from '../../stores/pantryStore';
 import { useRecipeStore } from '../../stores/recipeStore';
 import { useNetworkStore } from '../../stores/networkStore';
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
+import { useMealPlanStore } from '../../stores/mealPlanStore';
 
 import { SuggestionList } from '../../components/suggestions/SuggestionList';
 import { SomethingNewResults } from '../../components/suggestions/SomethingNewResults';
@@ -320,6 +321,7 @@ export default function KitchenScreen() {
   const [previewRecipe, setPreviewRecipe] = useState<ParsedRecipe | null>(null);
   const [savingPreview, setSavingPreview] = useState(false);
   const [cookingPreview, setCookingPreview] = useState(false);
+  const [cookingLaterPreview, setCookingLaterPreview] = useState(false);
 
   // Mirror the same Gemini hook the Something New card uses so the preview
   // sheet hits the shared session+AsyncStorage cache and displays the EXACT
@@ -642,6 +644,21 @@ export default function KitchenScreen() {
             saving={savingPreview}
             onCookNow={handlePreviewCookNow}
             cooking={cookingPreview}
+            onCookLater={async (iso) => {
+              if (!previewRecipe) return;
+              setCookingLaterPreview(true);
+              try {
+                await useMealPlanStore.getState().addToPlan(
+                  iso,
+                  previewRecipe,
+                  null,
+                );
+                setPreviewRecipe(null);
+              } finally {
+                setCookingLaterPreview(false);
+              }
+            }}
+            cookingLater={cookingLaterPreview}
           />
         )}
       </Modal>

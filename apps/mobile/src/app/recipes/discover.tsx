@@ -15,6 +15,7 @@ import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { Image } from 'expo-image';
 import { Button } from '../../components/ui/Button';
 import { RemixSheet, type RemixSource } from '../../components/recipes/RemixSheet';
+import { DatePickerSheet } from '../../components/plan/DatePickerSheet';
 import { ServingSizeStepper } from '../../components/recipes/ServingSizeStepper';
 import { ScaledIngredientList } from '../../components/recipes/ScaledIngredientList';
 import { useRecipeStore } from '../../stores/recipeStore';
@@ -282,7 +283,10 @@ export function PreviewSheet({
   modifying = false,
   onCookNow,
   cooking = false,
+  onCookLater,
+  cookingLater = false,
   hideRemix = false,
+  hideSave = false,
   saveLabel = 'Save Recipe',
   modifyLabel = 'Update existing recipe',
   modifiedLabel = 'Recipe updated',
@@ -302,7 +306,15 @@ export function PreviewSheet({
       navigates into the cooking flow. */
   onCookNow?: () => Promise<void>;
   cooking?: boolean;
+  /** If provided, render a Cook Later CTA next to Cook Now. The callback
+      receives an ISO date (YYYY-MM-DD) the user picked from a sheet
+      mounted inside this component. */
+  onCookLater?: (isoDate: string) => Promise<void>;
+  cookingLater?: boolean;
   hideRemix?: boolean;
+  /** Suppress the Save Recipe button — used when the recipe is already
+      saved (Recipe Box detail) and Save would be a no-op. */
+  hideSave?: boolean;
   saveLabel?: string;
   modifyLabel?: string;
   modifiedLabel?: string;
@@ -312,6 +324,7 @@ export function PreviewSheet({
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
 
   const [remixOpen, setRemixOpen] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   // Servings stepper — initialize from the recipe's own servings (falling
   // back to 1 when absent). Multiplier is applied purely client-side via
   // ScaledIngredientList; the underlying recipe.ingredients data is never
@@ -436,48 +449,86 @@ export function PreviewSheet({
               title={saveLabel}
               onPress={onSave}
               loading={saving}
-              disabled={modifying || cooking}
+              disabled={modifying || cooking || cookingLater}
             />
             <Button
               title={modifyLabel}
               variant="outline"
               onPress={onModifyExisting}
               loading={modifying}
-              disabled={saving || cooking}
+              disabled={saving || cooking || cookingLater}
             />
-            {onCookNow && (
-              <Button
-                title="Cook now"
-                onPress={onCookNow}
-                loading={cooking}
-                disabled={saving || modifying}
-              />
+            {(onCookNow || onCookLater) && (
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {onCookNow && (
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      title="Cook Now"
+                      onPress={onCookNow}
+                      loading={cooking}
+                      disabled={saving || modifying || cookingLater}
+                    />
+                  </View>
+                )}
+                {onCookLater && (
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      title="Cook Later"
+                      variant="outline"
+                      onPress={() => setDatePickerOpen(true)}
+                      loading={cookingLater}
+                      disabled={saving || modifying || cooking}
+                    />
+                  </View>
+                )}
+              </View>
             )}
           </View>
         ) : (
           <View style={{ gap: 8 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1 }}>
-                <Button title={saveLabel} onPress={onSave} loading={saving} disabled={cooking} />
+            {(!hideSave || !hideRemix) && (
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {!hideSave && (
+                  <View style={{ flex: 1 }}>
+                    <Button title={saveLabel} onPress={onSave} loading={saving} disabled={cooking || cookingLater} />
+                  </View>
+                )}
+                {!hideRemix && (
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      title="Remix"
+                      variant="outline"
+                      onPress={() => setRemixOpen(true)}
+                      disabled={saving || cooking || cookingLater}
+                    />
+                  </View>
+                )}
               </View>
-              {!hideRemix && (
-                <View style={{ flex: 1 }}>
-                  <Button
-                    title="Remix"
-                    variant="outline"
-                    onPress={() => setRemixOpen(true)}
-                    disabled={saving || cooking}
-                  />
-                </View>
-              )}
-            </View>
-            {onCookNow && (
-              <Button
-                title="Cook now"
-                onPress={onCookNow}
-                loading={cooking}
-                disabled={saving}
-              />
+            )}
+            {(onCookNow || onCookLater) && (
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {onCookNow && (
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      title="Cook Now"
+                      onPress={onCookNow}
+                      loading={cooking}
+                      disabled={saving || cookingLater}
+                    />
+                  </View>
+                )}
+                {onCookLater && (
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      title="Cook Later"
+                      variant="outline"
+                      onPress={() => setDatePickerOpen(true)}
+                      loading={cookingLater}
+                      disabled={saving || cooking}
+                    />
+                  </View>
+                )}
+              </View>
             )}
           </View>
         )}
@@ -500,6 +551,23 @@ export function PreviewSheet({
             total_time_minutes: recipe.total_time_minutes,
           }}
           onClose={() => setRemixOpen(false)}
+        />
+      )}
+
+      {/* Cook Later → day picker. Mounts the shared DatePickerSheet so
+          the user picks any day in the next 60. Confirm fires onCookLater
+          with the ISO date string; parent owns the actual /entries/assign
+          call so this component stays presentation-only. */}
+      {onCookLater && (
+        <DatePickerSheet
+          visible={datePickerOpen}
+          onConfirm={async (iso) => {
+            setDatePickerOpen(false);
+            await onCookLater(iso);
+          }}
+          onDismiss={() => setDatePickerOpen(false)}
+          title="Cook this on…"
+          confirmLabel="Add to plan"
         />
       )}
     </View>
