@@ -142,36 +142,46 @@ export function SwipeableDayRow(props: SwipeableDayRowProps): React.ReactElement
   // nothing to act on, and the visual affordance would be misleading.
   if (!entry) {
     return (
-      <DayRow
-        entry={null}
-        {...dayRowProps}
-        onSwap={onSwap}
-        onCook={onCook}
-      />
+      <View style={styles.tileWrap}>
+        <DayRow
+          entry={null}
+          {...dayRowProps}
+          onSwap={onSwap}
+          onCook={onCook}
+        />
+      </View>
     );
   }
 
+  // Margins live OUTSIDE the swipeable so the action background aligns
+  // exactly with the tile's visible bounds. Inside the swipeable, the
+  // tile's mx-4 mb-2 would have left the colored action band stretched
+  // edge-to-edge while the tile sat inset — a visual mismatch.
   return (
-    <ReanimatedSwipeable
-      renderRightActions={() =>
-        renderRightActionsFor({ entry, onSwap, onCook, onSkip })
-      }
-      // 64pt row height; each action pill is 72pt wide → reveal at ~210pt
-      // gives all three actions full width without bleed.
-      rightThreshold={80}
-      overshootRight={false}
-    >
-      <DayRow
-        entry={entry}
-        {...dayRowProps}
-        onSwap={onSwap}
-        onCook={onCook}
-      />
-    </ReanimatedSwipeable>
+    <View style={styles.tileWrap}>
+      <ReanimatedSwipeable
+        renderRightActions={() =>
+          renderRightActionsFor({ entry, onSwap, onCook, onSkip })
+        }
+        rightThreshold={80}
+        overshootRight={false}
+      >
+        <DayRow
+          entry={entry}
+          {...dayRowProps}
+          onSwap={onSwap}
+          onCook={onCook}
+        />
+      </ReanimatedSwipeable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  tileWrap: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
   actionGroup: {
     flexDirection: 'row',
   },
