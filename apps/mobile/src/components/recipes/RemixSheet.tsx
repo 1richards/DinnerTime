@@ -98,14 +98,14 @@ interface PairSection {
   tiles: [ModeOption, ModeOption];
 }
 
-// Section-grouped pairs — title sets the lens (Protein, Veggies, Time,
-// Vibe) so the two tiles below read as deliberate counterparts rather
-// than a random 2-col grid.
+// Section-grouped pairs — title sets the lens (Protein, Veggies,
+// Difficulty, Health) so the two tiles below read as deliberate
+// counterparts rather than a random 2-col grid.
 const SECTIONS: PairSection[] = [
   { title: 'Protein', tiles: [MODES[1]!, MODES[2]!] },
   { title: 'Veggies', tiles: [MODES[3]!, MODES[4]!] },
   { title: 'Difficulty', tiles: [MODES[5]!, MODES[6]!] },
-  { title: 'Vibe', tiles: [MODES[7]!, MODES[8]!] },
+  { title: 'Health', tiles: [MODES[7]!, MODES[8]!] },
 ];
 
 const SURPRISE_MODE = MODES[0]!;
@@ -532,42 +532,42 @@ export function RemixSheet({
               )}
             </View>
 
-            <View style={styles.modeList}>
-              {/* Surprise me — full-width hero card. Brand-tinted bg
-                  separates it visually from the section grid below
-                  and signals it's the default / fastest play. */}
-              <Pressable
-                key={SURPRISE_MODE.mode}
-                onPress={() => handleMode(SURPRISE_MODE.mode)}
-                style={({ pressed }) => [
-                  styles.surpriseCard,
-                  pressed && { opacity: 0.92 },
-                ]}
-              >
-                <View style={styles.surpriseChip}>
-                  <SymbolIcon
-                    name={SURPRISE_MODE.symbol as never}
-                    size={28}
-                    tintColor="#FFFFFF"
-                    weight="semibold"
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.surpriseLabel}>{SURPRISE_MODE.label}</Text>
-                  <Text style={styles.surpriseSub}>{SURPRISE_MODE.sub}</Text>
-                </View>
+            {/* Surprise me — full-width hero card. Pulled OUT of the
+                modeList View so its rendering doesn't depend on flex
+                gap behavior between heterogeneous siblings (Pressable
+                followed by section Views was apparently invisible on
+                some renders). Explicit marginBottom guarantees space
+                before the first section. */}
+            <Pressable
+              onPress={() => handleMode('surprise')}
+              style={({ pressed }) => [
+                styles.surpriseCard,
+                pressed && { opacity: 0.92 },
+              ]}
+            >
+              <View style={styles.surpriseChip}>
                 <SymbolIcon
-                  name="chevron.forward"
-                  size={18}
-                  tintColor="rgba(255,255,255,0.7)"
+                  name="sparkles"
+                  size={28}
+                  tintColor="#FFFFFF"
+                  weight="semibold"
                 />
-              </Pressable>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.surpriseLabel}>Surprise me</Text>
+                <Text style={styles.surpriseSub}>A bold creative twist</Text>
+              </View>
+              <SymbolIcon
+                name="chevron.forward"
+                size={18}
+                tintColor="rgba(255,255,255,0.7)"
+              />
+            </Pressable>
 
+            <View style={styles.modeList}>
               {/* Section-grouped pairs — each section title sets the
-                  lens (Protein / Veggies / Difficulty / Vibe), the two
-                  tiles below it are the deliberate counterparts. Tiles
-                  use a uniform 120pt min-height so the grid reads as
-                  designed instead of wonky. */}
+                  lens (Protein / Veggies / Difficulty / Health), the two
+                  tiles below it are the deliberate counterparts. */}
               {SECTIONS.map((section) => (
                 <View key={section.title} style={styles.sectionGroup}>
                   <Text style={styles.sectionTitle}>{section.title}</Text>
@@ -1146,6 +1146,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 4,
+    marginBottom: 16,
   },
   surpriseChip: {
     width: 48,

@@ -538,13 +538,22 @@ export const useMealPlanStore = create<MealPlanState>()(
   setFocusTheme: async (theme: string | null) => {
     const plan = get().currentPlan;
     if (!plan) return;
+    // Optimistic — apply locally so the banner updates instantly.
+    // Server-side persistence may fail (e.g., focus_theme column
+    // missing if migrations haven't been applied) but the user's
+    // intent should land in the UI either way.
+    set({
+      currentPlan: { ...plan, focus_theme: theme },
+      error: null,
+    });
     try {
       const res = await authedFetch(`/meal-plans/${plan.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ focus_theme: theme }),
       });
       if (!res.ok) {
-        set({ error: 'Failed to set focus theme' });
+        const body = await res.json().catch(() => ({}));
+        console.warn('[setFocusTheme] server rejected:', body);
         return;
       }
       const body = await res.json();
@@ -560,19 +569,21 @@ export const useMealPlanStore = create<MealPlanState>()(
         error: null,
       });
     } catch (err) {
-      set({
-        error: err instanceof Error ? err.message : 'Failed to set focus theme',
-      });
+      console.warn('[setFocusTheme] network error:', err);
+      // Optimistic update stays. No user-facing error.
     }
   },
 
   skipDay: async (day: number, reason: string | null = null) => {
     const plan = get().currentPlan;
     if (!plan) return;
-    const snapshot = plan.entries;
 
-    // Optimistic: flip the target entry to status='skipped' + skip_reason
-    // immediately so the DayRow reflects intent before the network trip.
+    // Optimistic clear: mark the entry skipped locally so the UI
+    // instantly reflects the user's intent. We do NOT roll this back
+    // on server failure — the user wanted the row gone, and a stale
+    // server-side status is recoverable on next refetch. Common
+    // server failure path: skip_reason column missing if migrations
+    // haven't been applied — that shouldn't trap the UI.
     set({
       currentPlan: {
         ...plan,
@@ -595,15 +606,11 @@ export const useMealPlanStore = create<MealPlanState>()(
       );
 
       if (!response.ok) {
-        // Drain the body so we don't leak a dangling response, but use a
-        // consistent user-facing message ("Failed to skip day") regardless
-        // of the upstream error text — the user's mental model is about
-        // the skip action, not the transport-layer wording.
-        await response.json().catch(() => ({}));
-        set({
-          currentPlan: { ...plan, entries: snapshot },
-          error: 'Failed to skip day',
-        });
+        // Server failed but the local optimistic clear stays — log the
+        // real error to console for diagnosis and keep the UI clean.
+        const body = await response.json().catch(() => ({}));
+        console.warn('[skipDay] server rejected:', body);
+        set({ error: null });
         return;
       }
 
@@ -629,11 +636,10 @@ export const useMealPlanStore = create<MealPlanState>()(
         error: null,
       }));
     } catch (err) {
-      // Network error — rollback.
-      set({
-        currentPlan: { ...plan, entries: snapshot },
-        error: err instanceof Error ? err.message : 'Failed to skip day',
-      });
+      // Network error — keep the optimistic clear; the row will
+      // reappear on next refetch if the server never persisted.
+      console.warn('[skipDay] network error:', err);
+      set({ error: null });
     }
   },
 
