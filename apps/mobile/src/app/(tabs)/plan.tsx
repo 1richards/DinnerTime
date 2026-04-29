@@ -80,6 +80,14 @@ function addDaysIso(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** "M/D" short date for a day-of-week index against a week_start ISO. */
+function shortDateForDay(weekStartIso: string, dayIdx: number): string {
+  const iso = addDaysIso(weekStartIso, dayIdx);
+  const [, m, d] = iso.split('-').map(Number);
+  if (!m || !d) return '';
+  return `${m}/${d}`;
+}
+
 /** "MON · APR 27" style label for an ISO date. */
 function formatIsoForDayLabel(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
@@ -837,6 +845,7 @@ export default function PlanScreen() {
             <SwipeableDayRow
               entry={item.entry}
               dayLabel={DAY_LABELS[item.day]!}
+              dateLabel={shortDateForDay(currentPlan.week_start, item.day)}
               isSwapping={swappingDay === item.day}
               isCooking={cookingDay === item.day}
               onSwap={() => setSwapTarget(item.day)}

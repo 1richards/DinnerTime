@@ -41,6 +41,7 @@ import type { MealPlanEntry } from '../../types/mealPlan';
 export interface SwipeableDayRowProps {
   entry: MealPlanEntry | null;
   dayLabel: string;
+  dateLabel?: string;
   isSwapping: boolean;
   isCooking: boolean;
   onSwap: () => void;

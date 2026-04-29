@@ -42,6 +42,9 @@ import type { SymbolViewProps } from 'expo-symbols';
 interface DayRowProps {
   entry: MealPlanEntry | null;
   dayLabel: string;
+  /** Short date string like "4/29" displayed next to the day label so
+      users can map a meal to an actual calendar day at a glance. */
+  dateLabel?: string;
   isSwapping: boolean;
   isCooking: boolean;
   onSwap: () => void;
@@ -58,6 +61,7 @@ interface DayRowProps {
 export function DayRow({
   entry,
   dayLabel,
+  dateLabel,
   // isSwapping/isCooking/onSwap/onCook intentionally unused at this
   // layer now — SwipeableDayRow owns those states. Kept in the props
   // contract so the parent's wiring (and the existing test fixtures)
@@ -122,6 +126,7 @@ export function DayRow({
             style={{ color: colors.brand }}
           >
             {dayLabel.toUpperCase()}
+            {dateLabel ? ` · ${dateLabel}` : ''}
           </Text>
           <Text className="text-body font-semibold text-text-secondary">
             Add a meal
@@ -185,6 +190,7 @@ export function DayRow({
             style={{ color: colors.brand }}
           >
             {dayLabel.toUpperCase()}
+            {dateLabel ? ` · ${dateLabel}` : ''}
           </Text>
           {entry.estimated_time_minutes != null && (
             <View className="flex-row items-center">
