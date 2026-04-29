@@ -782,7 +782,7 @@ interface SavedRecipeDetailProps {
 }
 
 function SavedRecipeDetail({
-  recipe,
+  recipe: snapshotRecipe,
   cookingLater,
   removing,
   onClose,
@@ -790,6 +790,15 @@ function SavedRecipeDetail({
   onCookLater,
   onRemove,
 }: SavedRecipeDetailProps) {
+  // Source the LIVE recipe row from the store by id so any field that
+  // mutates (labels, is_favorite, etc.) reflects in the modal without
+  // needing a close + reopen. Falls back to the snapshot the user
+  // tapped in if the store lookup somehow misses (deleted concurrently).
+  const liveRecipe = useRecipeStore((s) =>
+    s.recipes.find((r) => r.id === snapshotRecipe.id),
+  );
+  const recipe = liveRecipe ?? snapshotRecipe;
+
   const { url: generatedUri } = useGeneratedRecipeImage(recipe.title, {
     skip: !!recipe.image_url,
     description: recipe.description,
