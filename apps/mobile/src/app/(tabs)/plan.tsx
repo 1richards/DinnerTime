@@ -33,6 +33,7 @@ import { FocusBanner } from '../../components/plan/FocusBanner';
 import { SwapSheet } from '../../components/plan/SwapSheet';
 import { CookConfirm } from '../../components/plan/CookConfirm';
 import { SwipeableDayRow } from '../../components/plan/SwipeableDayRow';
+import { WeekHealthChip } from '../../components/plan/WeekHealthChip';
 import { computePantryReady } from '../../components/plan/pantryReady';
 import { WeekActionSheet } from '../../components/plan/WeekActionSheet';
 import { MonthGrid } from '../../components/plan/MonthGrid';
@@ -706,11 +707,23 @@ export default function PlanScreen() {
     </View>
   );
 
-  // Inline Plan actions — shopping list + week-level ellipsis. Icon-only
-  // 38pt circular affordances to match the Kitchen + Recipe Box toolbar
-  // buttons. Sits below the FocusBanner (see listHeader order).
+  // At-a-glance health vibe for the current week — slots into the same
+  // row as the shopping cart + ellipsis so users see the vibe without
+  // tapping into details.
+  const weekHealthEntries = useMemo(
+    () => (currentPlan?.entries ?? []).map((e) => ({
+      title: e.title,
+      description: e.description,
+      ingredients: e.ingredients,
+    })),
+    [currentPlan?.entries],
+  );
+
   const planActionsRow = (
     <View style={styles.planActionsRow}>
+      <View style={styles.planActionsLeft}>
+        <WeekHealthChip entries={weekHealthEntries} />
+      </View>
       <Pressable
         onPress={handleShoppingHandoff}
         accessibilityLabel="Shopping list for week"
@@ -1069,10 +1082,15 @@ const styles = StyleSheet.create({
   // aligned below the FocusBanner to match Kitchen's toolbar rhythm.
   planActionsRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
     marginHorizontal: 16,
     marginBottom: 12,
     gap: 8,
+  },
+  planActionsLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   planActionIconBtn: {
     width: 44,
