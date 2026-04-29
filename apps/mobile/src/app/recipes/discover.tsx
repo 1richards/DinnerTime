@@ -490,7 +490,13 @@ export function PreviewSheet({
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {!hideSave && (
                   <View style={{ flex: 1 }}>
-                    <Button title={saveLabel} onPress={onSave} loading={saving} disabled={cooking || cookingLater} />
+                    <Button
+                      title={saveLabel}
+                      variant="outline"
+                      onPress={onSave}
+                      loading={saving}
+                      disabled={cooking || cookingLater}
+                    />
                   </View>
                 )}
                 {!hideRemix && (

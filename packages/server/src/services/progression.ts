@@ -312,19 +312,36 @@ export interface RecipeContext {
  * Remix modes — each produces a different kind of variation. The mode
  * controls the prompt steering, not the tool schema.
  */
-export type RemixMode = 'surprise' | 'protein' | 'veggies' | 'quicker' | 'healthier';
+export type RemixMode =
+  | 'surprise'
+  | 'protein'
+  | 'add_protein'
+  | 'veggies'
+  | 'vegetarian'
+  | 'quicker'
+  | 'harder'
+  | 'healthier'
+  | 'decadent';
 
 const REMIX_PROMPTS: Record<RemixMode, string> = {
   surprise:
     'Surprise the cook with 3 creative variations — ingredient swaps, technique tweaks, or flavor twists that introduce something new without abandoning what works. Mix bold and safe ideas.',
   protein:
     'Suggest 3 variations that keep the base dish and technique but SWAP THE MAIN PROTEIN (e.g., chicken → pork, beef → mushroom, salmon → tofu). Each variation must specify which new protein is being used.',
+  add_protein:
+    'Suggest 3 variations that ADD a substantial protein to the dish without changing what already works. Lean toward additive moves (grilled chicken on top, white beans stirred in, a fried egg, shrimp added at the end) rather than replacements. Each variation must specify which protein is being added and how it integrates.',
   veggies:
     'Suggest 3 variations that keep the protein and technique but SWAP OR ADD VEGETABLES/AROMATICS/NON-PROTEIN INGREDIENTS to change the flavor profile (e.g., swap spinach for kale, add roasted peppers, substitute sweet potato for regular potato).',
+  vegetarian:
+    'Suggest 3 variations that REPLACE the meat/seafood with a satisfying vegetarian alternative while keeping the dish recognizable. Lean on hearty vegetables, legumes, mushrooms, paneer, tofu, tempeh, or cheese — pick what fits the cuisine. Each variation must specify the replacement and any seasoning adjustments needed.',
   quicker:
     'Suggest 3 variations that deliver the same dish in LESS TIME. Shortcut techniques, pre-made ingredients, smaller cuts, or skipping non-essential steps. Each variation must explain what time-saver it uses.',
+  harder:
+    'Suggest 3 variations that LEVEL UP THE TECHNIQUE — make the dish more ambitious for a cook who wants to stretch. Lean on chef-y moves: from-scratch sauces, hand-shaped pastas/breads, advanced techniques (sous vide, confit, fermentation, layered braises), elaborate plating, or extra cooking steps that meaningfully deepen flavor. Each variation must specify what makes it more challenging and the payoff.',
   healthier:
     'Suggest 3 variations that meaningfully UPGRADE THE NUTRITIONAL PROFILE while keeping the dish recognizable and satisfying. Levers: swap refined grains for whole grains, reduce added sugar/oil/butter, increase vegetable volume, lean-up the protein (e.g., ground beef → ground turkey or lean turkey + lentils), boost fiber, swap heavy cream for Greek yogurt or evaporated milk, bake/air-fry instead of deep-fry. Each variation must call out the specific health upgrade made.',
+  decadent:
+    'Suggest 3 variations that LEAN INTO INDULGENCE — richer, more luxurious takes for a special occasion. Levers: brown butter, cream/crème fraîche, more cheese (or higher-grade cheese), bone-in cuts, finishing oils (truffle, chili crisp, infused olive), confit garlic, gold-leaf flourishes, dessert-style sauces, melted/torched toppings. Each variation must specify what makes it more decadent and how it transforms the dish.',
 };
 
 function contextIngredientList(context: RecipeContext): string {

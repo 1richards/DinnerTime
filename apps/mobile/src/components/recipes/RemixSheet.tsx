@@ -83,10 +83,24 @@ interface ModeOption {
 
 const MODES: ModeOption[] = [
   { mode: 'surprise', label: 'Surprise me', sub: 'A bold creative twist', symbol: 'sparkles', tint: colors.brand },
-  { mode: 'protein', label: 'Swap protein', sub: 'Keep the dish, change the star', symbol: 'flame.fill', tint: colors.brand },
-  { mode: 'veggies', label: 'Swap veggies', sub: 'Different flavor profile', symbol: 'leaf.fill', tint: colors.success },
-  { mode: 'quicker', label: 'Make it quicker', sub: 'Shortcut the cook time', symbol: 'bolt.fill', tint: colors.brand },
-  { mode: 'healthier', label: 'Make it healthier', sub: 'Lighter, leaner, more veg', symbol: 'heart.fill', tint: colors.success },
+  { mode: 'protein', label: 'Swap protein', sub: 'Change the star', symbol: 'flame.fill', tint: colors.brand },
+  { mode: 'add_protein', label: 'Add protein', sub: 'Bulk it up', symbol: 'plus.circle.fill', tint: colors.brand },
+  { mode: 'veggies', label: 'Swap veggies', sub: 'Different flavor', symbol: 'leaf.fill', tint: colors.success },
+  { mode: 'vegetarian', label: 'Make vegetarian', sub: 'Drop the meat', symbol: 'carrot.fill', tint: colors.success },
+  { mode: 'quicker', label: 'Make it quicker', sub: 'Shortcut the time', symbol: 'bolt.fill', tint: colors.brand },
+  { mode: 'harder', label: 'More challenging', sub: 'Level up the technique', symbol: 'star.fill', tint: colors.warning },
+  { mode: 'healthier', label: 'Make it healthier', sub: 'Lighter, leaner', symbol: 'heart.fill', tint: colors.success },
+  { mode: 'decadent', label: 'Make it decadent', sub: 'Indulgent, rich', symbol: 'crown.fill', tint: colors.warning },
+];
+
+// Layout grouping — 'surprise' takes a full row at the top, the rest
+// render as 2-column pairs (existing mode + its new partner).
+const SURPRISE_MODE = MODES[0]!;
+const PAIRED_MODES: Array<[ModeOption, ModeOption]> = [
+  [MODES[1]!, MODES[2]!], // Swap protein | Add protein
+  [MODES[3]!, MODES[4]!], // Swap veggies | Make vegetarian
+  [MODES[5]!, MODES[6]!], // Quicker      | More challenging
+  [MODES[7]!, MODES[8]!], // Healthier    | Decadent
 ];
 
 const getApiBaseUrl = (): string =>
@@ -512,30 +526,62 @@ export function RemixSheet({
             </View>
 
             <View style={styles.modeList}>
-              {MODES.map((m) => (
-                <Pressable
-                  key={m.mode}
-                  onPress={() => handleMode(m.mode)}
-                  style={({ pressed }) => [
-                    styles.modeRow,
-                    pressed && { opacity: 0.85 },
-                  ]}
+              {/* Surprise me — full-width hero row at the top so the
+                  default play stays the most-prominent affordance. */}
+              <Pressable
+                key={SURPRISE_MODE.mode}
+                onPress={() => handleMode(SURPRISE_MODE.mode)}
+                style={({ pressed }) => [
+                  styles.modeRow,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <View
+                  style={[styles.modeChip, { backgroundColor: `${SURPRISE_MODE.tint}1A` }]}
                 >
-                  <View
-                    style={[styles.modeChip, { backgroundColor: `${m.tint}1A` }]}
-                  >
-                    <SymbolIcon
-                      name={m.symbol as never}
-                      size={24}
-                      tintColor={m.tint}
-                      weight="semibold"
-                    />
-                  </View>
-                  <View style={styles.modeRowText}>
-                    <Text style={styles.modeLabel}>{m.label}</Text>
-                    <Text style={styles.modeSub}>{m.sub}</Text>
-                  </View>
-                </Pressable>
+                  <SymbolIcon
+                    name={SURPRISE_MODE.symbol as never}
+                    size={24}
+                    tintColor={SURPRISE_MODE.tint}
+                    weight="semibold"
+                  />
+                </View>
+                <View style={styles.modeRowText}>
+                  <Text style={styles.modeLabel}>{SURPRISE_MODE.label}</Text>
+                  <Text style={styles.modeSub}>{SURPRISE_MODE.sub}</Text>
+                </View>
+              </Pressable>
+
+              {/* Paired modes — each row is a 2-column grid: the existing
+                  mode (e.g. Swap protein) on the left, the new partner
+                  (e.g. Add protein) on the right. Compact tile shape so
+                  both fit without truncating the label. */}
+              {PAIRED_MODES.map(([left, right]) => (
+                <View key={`pair-${left.mode}-${right.mode}`} style={styles.modePair}>
+                  {[left, right].map((m) => (
+                    <Pressable
+                      key={m.mode}
+                      onPress={() => handleMode(m.mode)}
+                      style={({ pressed }) => [
+                        styles.modeTile,
+                        pressed && { opacity: 0.85 },
+                      ]}
+                    >
+                      <View
+                        style={[styles.modeChip, { backgroundColor: `${m.tint}1A` }]}
+                      >
+                        <SymbolIcon
+                          name={m.symbol as never}
+                          size={22}
+                          tintColor={m.tint}
+                          weight="semibold"
+                        />
+                      </View>
+                      <Text style={styles.modeLabelTile} numberOfLines={1}>{m.label}</Text>
+                      <Text style={styles.modeSubTile} numberOfLines={1}>{m.sub}</Text>
+                    </Pressable>
+                  ))}
+                </View>
               ))}
             </View>
           </ScrollView>
@@ -1071,6 +1117,36 @@ const styles = StyleSheet.create({
   },
   modeRowText: {
     flex: 1,
+  },
+  modePair: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modeTile: {
+    flex: 1,
+    alignItems: 'flex-start',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#7A6651',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 1,
+    gap: 10,
+  },
+  modeLabelTile: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1A140F',
+    letterSpacing: -0.2,
+    marginTop: 4,
+  },
+  modeSubTile: {
+    fontSize: 12,
+    color: '#7A6651',
+    marginTop: 2,
   },
   modeLabel: {
     fontSize: 16,
