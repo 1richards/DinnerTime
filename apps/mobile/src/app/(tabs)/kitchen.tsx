@@ -28,6 +28,7 @@ import { InlineSearchPill } from '../../components/ui/SearchBar';
 import { HeaderEllipsis } from '../../components/ui/HeaderEllipsis';
 import { Button } from '../../components/ui/Button';
 import { PreviewSheet } from '../recipes/discover';
+import { LabelsEditor } from '../../components/recipes/LabelsEditor';
 import { getRecipeImage } from '../../constants/foodImages';
 import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
 import {
@@ -35,6 +36,7 @@ import {
   EMPTY_FILTERS,
   countActiveFilters,
   matchesCuisineFilter,
+  matchesLabelsFilter,
   type RecipeFilterState,
   type TimeFilter,
 } from '../../components/recipes/RecipeFilterSheet';
@@ -380,11 +382,22 @@ export default function KitchenScreen() {
     [pantryItems],
   );
 
+  // Distinct labels across the user's library — drives the filter
+  // sheet's label chip picker.
+  const availableLabels = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of recipes) {
+      for (const l of r.labels ?? []) set.add(l);
+    }
+    return Array.from(set).sort();
+  }, [recipes]);
+
   const filteredRecipes = useMemo(() => {
     const q = normalize(deferredQuery);
     return recipes.filter((r) => {
       if (filters.favoritesOnly && !r.is_favorite) return false;
       if (!matchesCuisineFilter(r, filters.cuisine)) return false;
+      if (!matchesLabelsFilter(r, filters.labels)) return false;
       if (!matchesTimeFilter(r, filters.time)) return false;
       if (filters.pantryOnly && !matchesPantryOnly(r, pantryNames)) return false;
       if (q) {
@@ -628,6 +641,7 @@ export default function KitchenScreen() {
       <RecipeFilterSheet
         visible={filterSheetOpen}
         initial={filters}
+        availableLabels={availableLabels}
         onClose={() => setFilterSheetOpen(false)}
         onApply={setFilters}
       />
@@ -803,6 +817,16 @@ function SavedRecipeDetail({
     image_url: recipe.image_url,
     _saved: false,
   };
+  const updateRecipe = useRecipeStore((s) => s.updateRecipe);
+  const labelsContent = (
+    <LabelsEditor
+      labels={recipe.labels ?? []}
+      onChange={async (next) => {
+        await updateRecipe(recipe.id, { labels: next });
+      }}
+    />
+  );
+
   return (
     <PreviewSheet
       recipe={parsed}
@@ -817,6 +841,7 @@ function SavedRecipeDetail({
       cookingLater={cookingLater}
       onRemove={onRemove}
       removing={removing}
+      bodyExtra={labelsContent}
     />
   );
 }

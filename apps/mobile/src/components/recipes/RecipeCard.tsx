@@ -313,6 +313,20 @@ export function RecipeCard({
               </View>
             )}
           </View>
+          {recipe.labels && recipe.labels.length > 0 && (
+            <View className="flex-row flex-wrap mt-2 gap-1">
+              {recipe.labels.slice(0, 3).map((label) => (
+                <View
+                  key={label}
+                  className="px-2 py-0.5 rounded-pill bg-warning/15"
+                >
+                  <Text className="text-caption font-semibold" style={{ color: '#C05A00' }}>
+                    {label}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </Pressable>
 

@@ -36,6 +36,8 @@ export interface Recipe {
   source_url: string | null;
   image_url: string | null;
   is_favorite: boolean;
+  /** User-defined free-form labels (e.g. "tacos", "game nights"). */
+  labels?: string[];
   created_at: string;
   updated_at: string;
 }

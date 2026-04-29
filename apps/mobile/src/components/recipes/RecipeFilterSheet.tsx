@@ -30,6 +30,8 @@ export interface RecipeFilterState {
   pantryOnly: boolean;
   cuisine: CuisineFilter;
   time: TimeFilter;
+  /** Selected user labels to filter by — recipe must include ALL of these. */
+  labels: string[];
 }
 
 export const EMPTY_FILTERS: RecipeFilterState = {
@@ -37,6 +39,7 @@ export const EMPTY_FILTERS: RecipeFilterState = {
   pantryOnly: false,
   cuisine: 'all',
   time: 'any',
+  labels: [],
 };
 
 export function countActiveFilters(s: RecipeFilterState): number {
@@ -44,8 +47,18 @@ export function countActiveFilters(s: RecipeFilterState): number {
     (s.favoritesOnly ? 1 : 0) +
     (s.pantryOnly ? 1 : 0) +
     (s.cuisine !== 'all' ? 1 : 0) +
-    (s.time !== 'any' ? 1 : 0)
+    (s.time !== 'any' ? 1 : 0) +
+    s.labels.length
   );
+}
+
+export function matchesLabelsFilter(
+  recipe: { labels?: string[] | null },
+  labels: string[],
+): boolean {
+  if (labels.length === 0) return true;
+  const recipeLabels = recipe.labels ?? [];
+  return labels.every((l) => recipeLabels.includes(l));
 }
 
 const CUISINE_OPTIONS: Array<{ key: CuisineFilter; label: string; emoji: string }> = [
@@ -154,6 +167,9 @@ const TIME_OPTIONS: Array<{ key: TimeFilter; label: string; sub: string }> = [
 interface Props {
   visible: boolean;
   initial: RecipeFilterState;
+  /** All distinct labels across the user's library — used to render
+      the label chip picker. */
+  availableLabels: string[];
   onClose: () => void;
   onApply: (next: RecipeFilterState) => void;
 }
@@ -165,7 +181,7 @@ interface Props {
  * Replaces the previous horizontal-scroll pill rows — hidden
  * off-screen options are a UX anti-pattern.
  */
-export function RecipeFilterSheet({ visible, initial, onClose, onApply }: Props) {
+export function RecipeFilterSheet({ visible, initial, availableLabels, onClose, onApply }: Props) {
   const [state, setState] = useState<RecipeFilterState>(initial);
 
   // Re-sync when the sheet opens so state doesn't leak across opens.
@@ -284,6 +300,44 @@ export function RecipeFilterSheet({ visible, initial, onClose, onApply }: Props)
               );
             })}
           </View>
+
+          {/* Labels */}
+          {availableLabels.length > 0 && (
+            <>
+              <Text style={styles.sectionHeading}>Labels</Text>
+              <View style={styles.segmentedRow}>
+                {availableLabels.map((label) => {
+                  const selected = state.labels.includes(label);
+                  return (
+                    <Pressable
+                      key={label}
+                      onPress={() =>
+                        setState((s) => ({
+                          ...s,
+                          labels: selected
+                            ? s.labels.filter((l) => l !== label)
+                            : [...s.labels, label],
+                        }))
+                      }
+                      style={[
+                        styles.segmentChip,
+                        selected && styles.segmentChipSelected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.segmentLabel,
+                          selected && styles.segmentLabelSelected,
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          )}
 
           {/* Time */}
           <Text style={styles.sectionHeading}>Cook time</Text>

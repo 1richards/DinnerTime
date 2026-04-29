@@ -32,6 +32,7 @@ const PATCHABLE_FIELDS = [
   'servings',
   'is_favorite',
   'image_url',
+  'labels',
 ] as const;
 
 const recipes = new Hono();

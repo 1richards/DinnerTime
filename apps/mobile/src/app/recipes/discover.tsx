@@ -288,6 +288,7 @@ export function PreviewSheet({
   onRemove,
   removing = false,
   removeLabel = 'Remove',
+  bodyExtra,
   hideRemix = false,
   hideSave = false,
   saveLabel = 'Save Recipe',
@@ -321,6 +322,9 @@ export function PreviewSheet({
   /** Label override for the remove button — Recipe Box uses "Remove",
       Plan uses "Clear", etc. */
   removeLabel?: string;
+  /** Optional content rendered below the description (above ingredients).
+      Used by Recipe Box detail to inject the LabelsEditor. */
+  bodyExtra?: React.ReactNode;
   hideRemix?: boolean;
   /** Suppress the Save Recipe button — used when the recipe is already
       saved (Recipe Box detail) and Save would be a no-op. */
@@ -401,6 +405,8 @@ export function PreviewSheet({
             <Text style={styles.sheetDescription}>{recipe.description}</Text>
           </View>
         )}
+
+        {bodyExtra}
 
         <View style={styles.sheetCard}>
           <View style={styles.sheetIngredientHeader}>
