@@ -27,13 +27,14 @@
  * gets two lines, chips scroll horizontally if they overflow.
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { Chip } from '../ui/Chip';
 import { colors } from '../../design/tokens';
-import { getRecipeImage } from '../../constants/foodImages';
+import { useRecipeStore } from '../../stores/recipeStore';
+import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
 import type { MealPlanEntry } from '../../types/mealPlan';
 import { deriveStatusChips, type DayRowStatus } from './dayRowHelpers';
 import type { SymbolViewProps } from 'expo-symbols';
@@ -61,6 +62,40 @@ export function DayRow({
   onCook: _onCook,
   onPress,
 }: DayRowProps) {
+  // Look up the persisted Recipe (if this entry is backed by one) so we
+  // can show its real image_url. recipe-by-id selector is memoized in
+  // the store. Falls through to Gemini when the saved recipe lacks an
+  // image_url (common for AI recipes saved before generation finished).
+  const savedRecipe = useRecipeStore((s) =>
+    entry?.recipe_id ? s.recipes.find((r) => r.id === entry.recipe_id) : null,
+  );
+
+  // Normalize ingredients to the ParsedIngredient shape the cache key
+  // expects so the plan tile shares the same cache entry as Recipe Box
+  // / Something New for the same recipe.
+  const normalizedIngredients = useMemo(() => {
+    const src = savedRecipe?.ingredients ?? entry?.ingredients ?? null;
+    if (!src || src.length === 0) return null;
+    return src.map((i) => {
+      if (typeof i === 'string') {
+        return { name: i, quantity: null, unit: null, notes: null };
+      }
+      const obj = i as { name: string; quantity?: number | null; unit?: string | null; notes?: string | null };
+      return {
+        name: obj.name,
+        quantity: obj.quantity ?? null,
+        unit: obj.unit ?? null,
+        notes: obj.notes ?? null,
+      };
+    });
+  }, [savedRecipe, entry]);
+
+  const { url: generatedUri } = useGeneratedRecipeImage(entry?.title ?? null, {
+    skip: !!savedRecipe?.image_url || !entry,
+    description: savedRecipe?.description ?? entry?.description ?? null,
+    ingredients: normalizedIngredients,
+  });
+
   // Unplanned day — same tile footprint so the column doesn't jank when
   // a day flips between planned/unplanned, but content is muted.
   if (!entry) {
@@ -91,9 +126,7 @@ export function DayRow({
     pantryReady: entry.pantry_ready === true,
   });
 
-  const thumbnailUri = entry.recipe_id
-    ? getRecipeImage(entry.recipe_id, null, entry.title)
-    : null;
+  const thumbnailUri = savedRecipe?.image_url ?? generatedUri ?? null;
 
   return (
     <Pressable
