@@ -33,11 +33,12 @@ export function LabelsEditor({ labels, onChange }: LabelsEditorProps) {
   const commit = async () => {
     const trimmed = draft.trim();
     if (!trimmed) return;
-    if (labels.includes(trimmed)) {
+    const titled = trimmed.replace(/\b\w/g, (c) => c.toUpperCase());
+    if (labels.some((l) => l.toLowerCase() === titled.toLowerCase())) {
       setDraft('');
       return;
     }
-    await onChange([...labels, trimmed]);
+    await onChange([...labels, titled]);
     setDraft('');
   };
 
