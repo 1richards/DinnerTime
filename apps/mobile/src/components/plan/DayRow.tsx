@@ -104,19 +104,30 @@ export function DayRow({
     ingredients: normalizedIngredients,
   });
 
-  // Unplanned day — same tile footprint so the column doesn't jank when
-  // a day flips between planned/unplanned, but content is muted.
+  // Unplanned day — tap to add a meal. Same tile footprint so the
+  // column doesn't jank when a day flips between planned/unplanned;
+  // dashed border + + icon signals "drop something here."
   if (!entry) {
     return (
-      <View className="flex-row items-center bg-surface px-4 py-3 rounded-card border border-border-subtle min-h-[88px]">
-        <View className="w-16 h-16 rounded-card bg-surface-subtle mr-3" />
+      <Pressable
+        onPress={onPress}
+        className="flex-row items-center bg-surface-subtle px-4 py-3 rounded-card border border-dashed border-border min-h-[88px] active:bg-surface"
+      >
+        <View className="w-16 h-16 rounded-card bg-surface items-center justify-center mr-3">
+          <SymbolIcon name="plus" size="action" tintColor={colors.brand} weight="semibold" />
+        </View>
         <View className="flex-1">
-          <Text className="text-label text-text-tertiary mb-1">{dayLabel}</Text>
-          <Text className="text-body text-text-tertiary italic">
-            No meal planned
+          <Text
+            className="text-label font-bold mb-1"
+            style={{ color: colors.brand }}
+          >
+            {dayLabel.toUpperCase()}
+          </Text>
+          <Text className="text-body font-semibold text-text-secondary">
+            Add a meal
           </Text>
         </View>
-      </View>
+      </Pressable>
     );
   }
 

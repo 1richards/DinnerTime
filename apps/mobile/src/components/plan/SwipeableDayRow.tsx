@@ -130,7 +130,7 @@ export function renderRightActionsFor(props: {
       />
       <Action
         icon="xmark"
-        label="Skip"
+        label="Clear"
         tint={colors.warning}
         onPress={fire('skip', onSkip)}
         testID="swipe-action-skip"

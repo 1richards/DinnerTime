@@ -34,6 +34,7 @@ import { SwapSheet } from '../../components/plan/SwapSheet';
 import { CookConfirm } from '../../components/plan/CookConfirm';
 import { SwipeableDayRow } from '../../components/plan/SwipeableDayRow';
 import { WeekHealthChip } from '../../components/plan/WeekHealthChip';
+import { AddMealSheet } from '../../components/plan/AddMealSheet';
 import { computePantryReady } from '../../components/plan/pantryReady';
 import { WeekActionSheet } from '../../components/plan/WeekActionSheet';
 import { MonthGrid } from '../../components/plan/MonthGrid';
@@ -113,6 +114,8 @@ export default function PlanScreen() {
   const [previewSaving, setPreviewSaving] = useState(false);
   const [previewCooking, setPreviewCooking] = useState(false);
   const [previewCookingLater, setPreviewCookingLater] = useState(false);
+  // Empty-day "+ Add a meal" → opens AddMealSheet pre-targeted to that day.
+  const [addMealDay, setAddMealDay] = useState<number | null>(null);
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
   const [cookTarget, setCookTarget] = useState<number | null>(null);
   const [cookDelta, setCookDelta] = useState<MealPlanIngredient[] | null>(null);
@@ -160,6 +163,10 @@ export default function PlanScreen() {
     const map = new Map<number, MealPlanEntry>();
     if (currentPlan) {
       for (const entry of currentPlan.entries) {
+        // Cleared days (status='skipped') render as empty placeholders
+        // so the user can drop in a different recipe. Without this they
+        // hung around as ghost rows displaying the old meal title.
+        if (entry.status === 'skipped') continue;
         map.set(entry.day_of_week, entry);
       }
     }
@@ -285,35 +292,14 @@ export default function PlanScreen() {
     setCookDelta(null);
   }, []);
 
-  // Phase 22-06: Skip flow. SwipeableDayRow fires onSkip(day) → we stash
-  // the target day and open an iOS Alert.prompt for the free-form reason
-  // (empty string allowed → stored as null). On submit, call the store's
-  // optimistic skipDay. The Alert is opened via a useEffect so the sheet
-  // dismiss animation doesn't clobber the prompt presentation.
+  // Clear flow — formerly "skip" with a free-form reason prompt. The
+  // user just wants the row gone; we fire skipDay (which marks the
+  // entry skipped server-side) without asking why, and filter
+  // skipped entries from the rendered week so the day appears empty.
   useEffect(() => {
     if (skipTarget == null) return;
-    Alert.prompt(
-      'Skip this day?',
-      'Optional reason (e.g., travel, ate out).',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-          onPress: () => setSkipTarget(null),
-        },
-        {
-          text: 'Skip',
-          style: 'destructive',
-          onPress: (text?: string) => {
-            const trimmed = (text ?? '').trim();
-            const reason = trimmed.length > 0 ? trimmed : null;
-            void useMealPlanStore.getState().skipDay(skipTarget, reason);
-            setSkipTarget(null);
-          },
-        },
-      ],
-      'plain-text',
-    );
+    void useMealPlanStore.getState().skipDay(skipTarget, null);
+    setSkipTarget(null);
   }, [skipTarget]);
 
   // Plan → Shopping handoff (22-01 / PLAN-X-03). Mirrors shopping.tsx's
@@ -845,7 +831,11 @@ export default function PlanScreen() {
               onCook={() => setCookTarget(item.day)}
               onSkip={() => setSkipTarget(item.day)}
               onPress={() => {
-                if (!item.entry) return;
+                if (!item.entry) {
+                  // Empty day → open recipe picker scoped to this date.
+                  setAddMealDay(item.day);
+                  return;
+                }
                 if (item.entry.recipe_id) {
                   router.push(`/recipes/${item.entry.recipe_id}`);
                   return;
@@ -905,6 +895,41 @@ export default function PlanScreen() {
         onOpenCart={handleOpenCart}
         onRetry={handleHandoffRetry}
         onDismiss={handleHandoffDismiss}
+      />
+
+      <AddMealSheet
+        visible={addMealDay !== null}
+        isoDate={
+          addMealDay != null && currentPlan
+            ? addDaysIso(currentPlan.week_start, addMealDay)
+            : null
+        }
+        dayLabel={
+          addMealDay != null
+            ? `${DAY_LABELS[addMealDay]} ${formatRangeFromWeekStart(currentPlan?.week_start ?? '').split('–')[0]?.trim().split(' ').slice(1).join(' ') ?? ''}`.trim()
+            : null
+        }
+        onSelect={async (recipe) => {
+          if (addMealDay == null || !currentPlan) return;
+          const iso = addDaysIso(currentPlan.week_start, addMealDay);
+          await applySwap(addMealDay, {
+            title: recipe.title,
+            description: recipe.description,
+            ingredients: recipe.ingredients,
+            steps: recipe.steps,
+            prep_time_minutes: recipe.prep_time_minutes,
+            cook_time_minutes: recipe.cook_time_minutes,
+            total_time_minutes: recipe.total_time_minutes,
+            servings: recipe.servings,
+            source_url: recipe.source_url,
+            source_type: recipe.source_type,
+            image_url: recipe.image_url,
+          });
+          // Suppress unused-var warning — applySwap used the day,
+          // iso is computed for telemetry consistency.
+          void iso;
+        }}
+        onClose={() => setAddMealDay(null)}
       />
 
       {/* Ad-hoc plan entry preview — Modal + PreviewSheet so unsaved
