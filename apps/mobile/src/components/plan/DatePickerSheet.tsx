@@ -149,6 +149,7 @@ export function DatePickerSheet({
                 value={selected}
                 mode="date"
                 display="inline"
+                themeVariant="light"
                 minimumDate={resolvedMin}
                 maximumDate={resolvedMax}
                 onChange={(_: unknown, d?: Date) => {
