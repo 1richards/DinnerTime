@@ -288,18 +288,25 @@ const styles = StyleSheet.create({
     gap: 14,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    marginBottom: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    // Larger inter-card gap + a soft border so each option reads as a
+    // distinct row even when none is selected (mirrors DayRow tiles in
+    // the weekly Plan view). Previous 10pt gap + 6% shadow blended the
+    // cards into one visual blob.
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#F1EAE0',
     shadowColor: '#7A6651',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardSelected: {
     borderWidth: 2,
     borderColor: colors.brand,
+    backgroundColor: '#FFF4E6',
   },
   cardCustom: {
     borderWidth: 1,

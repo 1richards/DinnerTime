@@ -24,7 +24,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { colors } from '../../design/tokens';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
@@ -56,6 +56,25 @@ export function FocusBanner() {
           week_start: currentPlan.week_start,
         }),
       });
+      // The user just told us what they want to practice this week —
+      // ask if they want to regenerate the plan to actually steer
+      // toward it. Otherwise the focus only affects future weeks.
+      Alert.alert(
+        'Regenerate this week?',
+        `Rebuild the week's meals to lean into "${next}"?`,
+        [
+          { text: 'Not now', style: 'cancel' },
+          {
+            text: 'Regenerate',
+            style: 'default',
+            onPress: () => {
+              void useMealPlanStore
+                .getState()
+                .generate(currentPlan.week_start);
+            },
+          },
+        ],
+      );
     }
   };
 
