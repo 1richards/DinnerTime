@@ -276,7 +276,7 @@ describe('shoppingStore', () => {
       expect(final[0].id).toBe('server-1');
     });
 
-    it('rolls back on failure', async () => {
+    it('rolls back AND throws on server failure so callers can show errors', async () => {
       useShoppingStore.setState({
         currentList: makeList(),
         items: [makeItem('existing')],
@@ -288,14 +288,33 @@ describe('shoppingStore', () => {
         json: () => Promise.resolve({ error: 'nope' }),
       });
 
-      await useShoppingStore
-        .getState()
-        .addItem({ name: 'butter', quantity: 1, unit: null });
+      await expect(
+        useShoppingStore
+          .getState()
+          .addItem({ name: 'butter', quantity: 1, unit: null }),
+      ).rejects.toThrow('nope');
 
       const state = useShoppingStore.getState();
       expect(state.items).toHaveLength(1);
       expect(state.items[0].id).toBe('existing');
       expect(state.error).toBe('nope');
+    });
+
+    it('throws when there is no active shopping list (Bug 2 — silent no-op)', async () => {
+      // Pre-fix this path silently set `error` and returned, so PantryItemCard's
+      // Get-more swipe couldn't surface a user-visible Alert. Now it throws so
+      // the caller's catch can show the message.
+      useShoppingStore.setState({ currentList: null, items: [] });
+
+      await expect(
+        useShoppingStore
+          .getState()
+          .addItem({ name: 'butter', quantity: 1, unit: null }),
+      ).rejects.toThrow('No active shopping list');
+
+      const state = useShoppingStore.getState();
+      expect(state.items).toHaveLength(0);
+      expect(state.error).toBe('No active shopping list');
     });
   });
 

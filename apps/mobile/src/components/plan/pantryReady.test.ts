@@ -108,4 +108,29 @@ describe('computePantryReady', () => {
     const ingredients = [ing(''), ing('chicken'), ing('   ')];
     expect(computePantryReady(ingredients, pantry(['chicken']))).toBe(true);
   });
+
+  // ── pantry-trifecta regression: Bug 3 ────────────────────────────────────
+  // The bug: plan.tsx fed the full pantryStore.items (including status='used'
+  // rows that markItemUsed leaves behind) into computePantryReady, so the
+  // chip stayed green after the user marked an ingredient as used.  Fix is
+  // in plan.tsx: filter to status==='available' before passing in.  This
+  // regression test pins the contract: the helper itself remains pure and
+  // the caller is responsible for status filtering, so we assert the
+  // *expected* shape — only available items reach the helper.
+  it('only counts items the caller filtered to status="available" (Bug 3 contract)', () => {
+    const ingredients = [ing('chicken'), ing('rice'), ing('onion')];
+    // Caller's job: pre-filter status='available'. This test simulates what
+    // plan.tsx does after the bugfix — only the chicken row is available.
+    // If chip-staleness regresses (caller forgets to filter), the chip will
+    // wrongly say "ready" because the helper has no way to know status.
+    const onlyAvailable = pantry(['chicken']);
+    expect(computePantryReady(ingredients, onlyAvailable)).toBe(false);
+
+    // For comparison: if caller skipped filtering and passed used+available,
+    // the helper would naively count the used rows. Documents the failure
+    // mode so a future reader understands why filtering must live in the
+    // caller.
+    const allIncludingUsed = pantry(['chicken', 'rice', 'onion']);
+    expect(computePantryReady(ingredients, allIncludingUsed)).toBe(true);
+  });
 });

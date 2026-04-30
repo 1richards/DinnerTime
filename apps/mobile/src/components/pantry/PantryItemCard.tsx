@@ -1,16 +1,20 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
 import ReanimatedSwipeable, {
   type SwipeableMethods,
 } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { SymbolIcon } from '../ui/SymbolIcon';
-import { ItemRow, type ChipTone } from '../ui/ItemRow';
+import { ItemRow } from '../ui/ItemRow';
 import type { EnrichedPantryItem } from '../../hooks/usePantryItems';
 import { usePantryStore } from '../../stores/pantryStore';
 import { useShoppingStore } from '../../stores/shoppingStore';
 import { colors } from '../../design/tokens';
 import { LOCATION_SYMBOLS, FALLBACK_LOCATION_SYMBOL } from './locationSymbols';
-import { resolvePantryItemCardWrapperClasses } from './pantryItemCardHelpers';
+import {
+  deriveTrailingChip,
+  isItemInShoppingCart,
+  resolvePantryItemCardWrapperClasses,
+} from './pantryItemCardHelpers';
 import { formatQuantity } from '../../types/pantry';
 
 interface PantryItemCardProps {
@@ -18,25 +22,23 @@ interface PantryItemCardProps {
   index?: number;
 }
 
-function deriveTrailingChip(
-  item: EnrichedPantryItem
-): { label: string; tone: ChipTone } | undefined {
-  if (item.isUncertain) {
-    const days = Math.floor(
-      (Date.now() - new Date(item.last_seen_at).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    return { label: `${days}d`, tone: 'destructive' };
-  }
-  if (item.effectiveConfidence < 0.6) {
-    return { label: 'Low', tone: 'warning' };
-  }
-  return undefined;
-}
-
 export function PantryItemCard({ item, index }: PantryItemCardProps) {
   const markItemDepleted = usePantryStore((s) => s.markItemDepleted);
   const addToShoppingList = useShoppingStore((s) => s.addItem);
+  // Reactive subscription so the "In cart" chip appears the moment a Get-more
+  // swipe optimistically appends to shoppingStore.items, and disappears when
+  // the user removes the item from the shopping list.
+  const shoppingItems = useShoppingStore((s) => s.items);
   const swipeRef = useRef<SwipeableMethods | null>(null);
+
+  const isInCart = useMemo(
+    () =>
+      isItemInShoppingCart(
+        item.name,
+        shoppingItems.map((s) => s.name),
+      ),
+    [item.name, shoppingItems]
+  );
 
   const handleGetMore = async () => {
     swipeRef.current?.close();
@@ -58,8 +60,15 @@ export function PantryItemCard({ item, index }: PantryItemCardProps) {
     swipeRef.current?.close();
     try {
       await markItemDepleted(item.id);
-    } catch {
-      // Rollback handled by store
+    } catch (err) {
+      // Surface the failure so the user understands the row didn't actually
+      // delete (rolled back by the store on PATCH error). Without this Alert
+      // the pantry just silently reverts and the user reports "delete
+      // doesn't work" — see .planning/debug/resolved/pantry-trifecta.md.
+      Alert.alert(
+        'Could not delete item',
+        err instanceof Error ? err.message : 'Please try again.',
+      );
     }
   };
 
@@ -134,7 +143,7 @@ export function PantryItemCard({ item, index }: PantryItemCardProps) {
             leading={{ kind: 'icon', name: locationIcon, tint: colors.textSecondary }}
             title={item.name}
             subtitle={subtitleParts.join(' • ')}
-            trailingChip={deriveTrailingChip(item)}
+            trailingChip={deriveTrailingChip(item, isInCart)}
           />
         </View>
       </ReanimatedSwipeable>

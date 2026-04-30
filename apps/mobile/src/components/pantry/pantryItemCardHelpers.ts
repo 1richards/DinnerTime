@@ -10,6 +10,12 @@
 
 import type { EnrichedPantryItem } from '../../hooks/usePantryItems';
 
+// Local mirror of ItemRow's ChipTone union — duplicated (instead of imported
+// from '../ui/ItemRow') so this helper module can run under vitest's node env
+// without pulling the RN renderer chain. The compile-time check below catches
+// drift if ItemRow's union changes.
+type ChipTone = 'default' | 'success' | 'warning' | 'destructive';
+
 /**
  * Resolve the outer wrapper's NativeWind className for a PantryItemCard.
  *
@@ -34,4 +40,61 @@ export function resolvePantryItemCardWrapperClasses(
       ? 'opacity-60'
       : '';
   return modifier ? `mb-2 mx-4 ${modifier}` : 'mb-2 mx-4';
+}
+
+/**
+ * Bug 2 (pantry-trifecta) — trailing chip selection.
+ *
+ * Priority (high → low):
+ *   1. Uncertain (item not seen for >7d) — "{n}d" tone='destructive'
+ *   2. Low effective confidence — "Low" tone='warning'
+ *   3. Item is in the user's current shopping list — "In cart" tone='success'
+ *
+ * Uncertain + Low are higher-priority signals because they tell the user the
+ * pantry row is unreliable; "In cart" is reassurance and must not hide a
+ * warning.  Only one chip shows at a time.
+ */
+export function deriveTrailingChip(
+  item: Pick<
+    EnrichedPantryItem,
+    'isUncertain' | 'effectiveConfidence' | 'last_seen_at'
+  >,
+  isInCart: boolean,
+): { label: string; tone: ChipTone } | undefined {
+  if (item.isUncertain) {
+    const days = Math.floor(
+      (Date.now() - new Date(item.last_seen_at).getTime()) /
+        (1000 * 60 * 60 * 24),
+    );
+    return { label: `${days}d`, tone: 'destructive' };
+  }
+  if (item.effectiveConfidence < 0.6) {
+    return { label: 'Low', tone: 'warning' };
+  }
+  if (isInCart) {
+    return { label: 'In cart', tone: 'success' };
+  }
+  return undefined;
+}
+
+/**
+ * Bug 2 (pantry-trifecta) — true iff a pantry item's name matches an item in
+ * the user's current shopping list.  Bidirectional substring + case-insensitive
+ * trim, mirroring the heuristic style used by `computePantryReady` so a
+ * "Sriracha" pantry row matches a "Sriracha Sauce" shopping item and vice-versa.
+ */
+export function isItemInShoppingCart(
+  itemName: string,
+  shoppingNames: readonly string[],
+): boolean {
+  const target = itemName.trim().toLowerCase();
+  if (!target) return false;
+  for (const raw of shoppingNames) {
+    const cand = raw.trim().toLowerCase();
+    if (!cand) continue;
+    if (cand === target || cand.includes(target) || target.includes(cand)) {
+      return true;
+    }
+  }
+  return false;
 }

@@ -1,0 +1,123 @@
+appId: com.dinnertime.app
+name: "99 — pantry: repro Delete + Get more + Pantry-ready chip bugs"
+tags:
+  - debug
+# Repro flow for the three pantry bugs being investigated in
+# .planning/debug/pantry-trifecta.md.
+#
+# Coordinate notes (iPhone 17 Pro, screenshots 1206x2622):
+#  - tab bar at y=95%
+#  - large title "Pantry" + "{n} items" + search pill ~ y=18-30%
+#  - grouping segmented control ("Category | Recent") ~ y=27%
+#  - filter pill row (All / Fridge / Pantry / Freezer / Staples) ~ y=33%
+#  - "{section} {n} items" header ~ y=37-39%
+#  - first list row centered ~ y=42-45% depending on scroll
+# Empirically y=34% lands on the filter pill row (no swipe registered).
+# Use y=42-45% to land cleanly on a row.
+---
+- runFlow: _ensure-logged-in.yaml
+
+# Visit Shopping tab first so shoppingStore.fetchCurrent populates `currentList`
+# AND `items` — without this, "In cart" chips can't compute on the Pantry tab
+# until the user manually navigates there. (Pre-fix this also caused the
+# "Get more" swipe to silently no-op when currentList was null.)
+# Tab pos 4 of 5 = 70% center.
+- tapOn:
+    point: "70%,95%"
+- extendedWaitUntil:
+    visible:
+      text: ".*Shopping.*"
+    timeout: 15000
+- takeScreenshot: 99-00-shopping-warm
+
+# Plan tab is position 3 of 5 in current tab bar order
+# (Kitchen, Pantry, Plan, Shopping, Settings). Tab centers: 10/30/50/70/90%.
+# y=95% lands on the icon row.
+- tapOn:
+    point: "50%,95%"
+- extendedWaitUntil:
+    visible:
+      text: "This Week"
+    timeout: 15000
+- takeScreenshot: 99-01-plan-before
+
+# Pantry tab → snapshot list (pos 2 = 30%). After fix, items whose name
+# matches the shopping list (Tortillas, Avocado, Onion, Cilantro, etc) should
+# render the "In cart" success chip on the trailing edge.
+- tapOn:
+    point: "30%,95%"
+- extendedWaitUntil:
+    visible:
+      text: "Search pantry"
+    timeout: 15000
+- takeScreenshot: 99-02-pantry-initial
+
+# BUG 1 repro: swipe right→left on the first list row "Dijon Mustard"
+# (centered ~y=34% on iPhone 17 Pro at 1206x2622). Empirically y=53% landed
+# between rows.  Use a long, slow swipe (1000ms) — ReanimatedSwipeable's
+# friction:2 means a quick flick can underrun the rightThreshold:64pt.
+- swipe:
+    start: "92%,44%"
+    end:   "5%,44%"
+    duration: 1000
+- takeScreenshot: 99-03-after-delete-swipe
+
+# Wait briefly so optimistic UI + PATCH have time to settle.
+- waitForAnimationToEnd
+- takeScreenshot: 99-03b-after-delete-settled
+
+# NB: an earlier iteration tried tapOn id="pantry-item-delete-0" here as a
+# belt-and-suspenders. iOS XCTest viewHierarchy throws kAXErrorInvalidUIElement
+# during the post-swipe accessibility scan, crashing the run. The swipe-past-
+# threshold path (onSwipeableOpen → handleDelete) commits reliably on the
+# simulator without the extra tap, so we drop it.
+
+# Navigate away (Plan) and back to Pantry — confirms persistence
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    point: "50%,95%"
+- extendedWaitUntil:
+    visible:
+      text: "This Week"
+    timeout: 15000
+- takeScreenshot: 99-04-plan-after-delete
+
+- tapOn:
+    point: "30%,95%"
+- extendedWaitUntil:
+    visible:
+      text: "Search pantry"
+    timeout: 15000
+- takeScreenshot: 99-05-pantry-after-delete-and-return
+
+# BUG 2 repro: swipe LEFT→RIGHT on the first visible row to commit Get more.
+- swipe:
+    start: "5%,44%"
+    end:   "92%,44%"
+    duration: 1000
+- takeScreenshot: 99-06-after-getmore-swipe
+- waitForAnimationToEnd
+- takeScreenshot: 99-06b-after-getmore-settled
+
+# NB: same tapOn-by-id constraint as Delete — relying on the swipe to commit.
+
+# Land on Plan to capture Pantry-ready chip state after both mutations
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    point: "50%,95%"
+- extendedWaitUntil:
+    visible:
+      text: "This Week"
+    timeout: 15000
+- takeScreenshot: 99-07-plan-after-pantry-mutations
+
+# Round-trip back to Pantry once more to see if Get more row is persisted
+- tapOn:
+    point: "30%,95%"
+- extendedWaitUntil:
+    visible:
+      text: "Search pantry"
+    timeout: 15000
+- takeScreenshot: 99-08-pantry-final

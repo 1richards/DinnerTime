@@ -221,8 +221,16 @@ export const useShoppingStore = create<ShoppingState>()(
   addItem: async (input: AddItemInput) => {
     const list = get().currentList;
     if (!list) {
-      set({ error: 'No active shopping list' });
-      return;
+      // Throw so callers (e.g. PantryItemCard "Get more" swipe) can surface
+      // a user-visible error instead of silently no-op'ing. Previously this
+      // path set `error` and returned, but any caller awaiting addItem had
+      // no way to learn the operation failed — pantry rows looked unchanged
+      // and users reported "the swipe does nothing." See debug session
+      // pantry-trifecta. The caller's catch presents this message to the
+      // user via Alert.
+      const message = 'No active shopping list';
+      set({ error: message });
+      throw new Error(message);
     }
     const snapshot = get().items;
 
@@ -255,8 +263,9 @@ export const useShoppingStore = create<ShoppingState>()(
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        set({ items: snapshot, error: err.error ?? 'Failed to add item' });
-        return;
+        const message = err.error ?? 'Failed to add item';
+        set({ items: snapshot, error: message });
+        throw new Error(message);
       }
 
       const body = await response.json();
@@ -268,10 +277,13 @@ export const useShoppingStore = create<ShoppingState>()(
         error: null,
       }));
     } catch (err) {
+      // Rollback + surface. Throwing lets PantryItemCard's swipe handler
+      // present an Alert to the user instead of silently swallowing.
       set({
         items: snapshot,
         error: err instanceof Error ? err.message : 'Failed to add item',
       });
+      throw err;
     }
   },
 
