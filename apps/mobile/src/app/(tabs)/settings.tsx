@@ -110,7 +110,7 @@ export default function SettingsScreen() {
 
         <View className="border-b border-warmGray-100 my-4" />
 
-        {/* Dietary & Allergies */}
+        {/* Dietary Preferences */}
         <DietarySection />
 
         <View className="border-b border-warmGray-100 my-4" />

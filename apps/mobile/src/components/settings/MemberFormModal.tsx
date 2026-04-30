@@ -27,7 +27,6 @@ export function MemberFormModal({
   const [memberType, setMemberType] = useState<MemberType>('adult');
   const [ageRange, setAgeRange] = useState<AgeRange | null>(null);
   const [dietaryRestrictions, setDietaryRestrictions] = useState<DietaryOption[]>([]);
-  const [dietaryAllergies, setDietaryAllergies] = useState<DietaryOption[]>([]);
   const [dislikedIngredients, setDislikedIngredients] = useState<string[]>([]);
 
   const addMember = useAddMember();
@@ -43,7 +42,6 @@ export function MemberFormModal({
       setMemberType(member.member_type);
       setAgeRange(member.age_range);
       setDietaryRestrictions([...member.dietary_restrictions]);
-      setDietaryAllergies([...member.dietary_allergies]);
       setDislikedIngredients([...member.disliked_ingredients]);
     } else {
       resetForm();
@@ -55,20 +53,11 @@ export function MemberFormModal({
     setMemberType('adult');
     setAgeRange(null);
     setDietaryRestrictions([]);
-    setDietaryAllergies([]);
     setDislikedIngredients([]);
   };
 
   const toggleDietary = (option: DietaryOption) => {
     setDietaryRestrictions((prev) =>
-      prev.includes(option)
-        ? prev.filter((d) => d !== option)
-        : [...prev, option]
-    );
-  };
-
-  const toggleAllergy = (option: DietaryOption) => {
-    setDietaryAllergies((prev) =>
       prev.includes(option)
         ? prev.filter((d) => d !== option)
         : [...prev, option]
@@ -85,7 +74,7 @@ export function MemberFormModal({
       member_type: memberType,
       age_range: memberType === 'kid' ? ageRange : null,
       dietary_restrictions: dietaryRestrictions,
-      dietary_allergies: dietaryAllergies,
+      dietary_allergies: [],
       disliked_ingredients: dislikedIngredients,
     };
 
@@ -222,27 +211,6 @@ export function MemberFormModal({
                   label={option.label}
                   selected={dietaryRestrictions.includes(option.value)}
                   onPress={() => toggleDietary(option.value)}
-                />
-              ))}
-            </View>
-          </View>
-
-          {/* Allergies (hard blocks) */}
-          <View className="mb-4">
-            <Text className="text-sm font-medium text-warmGray-700 mb-1">
-              Allergies
-            </Text>
-            <Text className="text-xs text-warmGray-400 mb-2">
-              Hard blocks -- will never suggest recipes with these
-            </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {DIETARY_OPTIONS.map((option) => (
-                <Chip
-                  key={`allergy-${option.value}`}
-                  kind="filter"
-                  label={option.label}
-                  selected={dietaryAllergies.includes(option.value)}
-                  onPress={() => toggleAllergy(option.value)}
                 />
               ))}
             </View>

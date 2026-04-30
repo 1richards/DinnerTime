@@ -25,7 +25,7 @@ function getTypeBadge(member: HouseholdMember) {
 
 export function MemberCard({ member, onPress, onDelete }: MemberCardProps) {
   const badge = getTypeBadge(member);
-  const dietaryCount = member.dietary_restrictions.length + member.dietary_allergies.length;
+  const dietaryCount = member.dietary_restrictions.length;
   const dislikeCount = member.disliked_ingredients.length;
 
   return (
@@ -55,11 +55,6 @@ export function MemberCard({ member, onPress, onDelete }: MemberCardProps) {
           {dislikeCount > 0 && (
             <Text className="text-xs text-warmGray-500">
               {dislikeCount} {dislikeCount === 1 ? 'dislike' : 'dislikes'}
-            </Text>
-          )}
-          {member.dietary_allergies.length > 0 && (
-            <Text className="text-xs text-red-500 font-medium">
-              {member.dietary_allergies.length} {member.dietary_allergies.length === 1 ? 'allergy' : 'allergies'}
             </Text>
           )}
         </View>
