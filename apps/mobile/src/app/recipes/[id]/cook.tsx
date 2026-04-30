@@ -85,8 +85,10 @@ import {
 import StepNavButtons from '../../../components/cooking/StepNavButtons';
 import { CommandToast } from '../../../components/cooking/CommandToast';
 import AskSheet from '../../../components/cooking/AskSheet';
+import { CookingDoneOverlay } from '../../../components/cooking/CookingDoneOverlay';
 
 import { supabase } from '../../../lib/supabase';
+import { useMealPlanStore } from '../../../stores/mealPlanStore';
 import { colors } from '../../../design/tokens';
 
 // ---------------------------------------------------------------------------
@@ -139,6 +141,10 @@ export default function CookScreen() {
     showCommandToast,
     clearCommandToast,
   } = cooking;
+
+  // Cooking-mode finale overlay state. Shown after the user taps Done
+  // on the last step; auto-dismisses after ~1.5s and routes to Plan.
+  const [doneVisible, setDoneVisible] = useState(false);
 
   // ------------------------------------------------------------------- Ask UI
   const [askSheetVisible, setAskSheetVisible] = useState(false);
@@ -715,6 +721,34 @@ export default function CookScreen() {
         }}
         disableBack={stepIndex === 0}
         disableNext={stepIndex >= totalSteps - 1}
+        onDone={() => {
+          void fireCommandHaptic();
+          stepSpeaker.stop();
+          // Mark the day as cooked if this recipe is on the current
+          // plan. Lookup is best-effort — if the user opened cook from
+          // somewhere outside a plan context (Recipe Box detail), no
+          // plan entry exists and we just play the celebration.
+          const { currentPlan, markCooked } = useMealPlanStore.getState();
+          const entry = currentPlan?.entries.find(
+            (e) => e.recipe_id === recipe?.id,
+          );
+          if (entry) {
+            void markCooked(entry.day_of_week);
+          }
+          setDoneVisible(true);
+        }}
+      />
+
+      <CookingDoneOverlay
+        visible={doneVisible}
+        onComplete={() => {
+          setDoneVisible(false);
+          // Replace so the back button doesn't return to a stale
+          // cooking surface that's already been "completed".
+          void flushTelemetry();
+          exit();
+          router.replace('/(tabs)/plan');
+        }}
       />
 
       <AskSheet

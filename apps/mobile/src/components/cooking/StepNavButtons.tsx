@@ -33,6 +33,12 @@ export interface StepNavButtonsProps {
   onNext: () => void;
   disableBack: boolean;
   disableNext: boolean;
+  /** When provided AND disableNext is true (i.e. user is on the last
+      step), the Next button is replaced with a primary brand-colored
+      "Done" button. Tap fires onDone — cook.tsx wires it to markCooked
+      + celebration overlay + nav to Plan. Optional for backward compat
+      with any caller that hasn't migrated. */
+  onDone?: () => void;
 }
 
 interface NavButtonProps {
@@ -42,6 +48,10 @@ interface NavButtonProps {
   onPress: () => void;
   disabled?: boolean;
   testID?: string;
+  /** Render the brand-orange filled variant (white icon + label on
+      brand bg). Used by the Done button on the last step so the
+      finale CTA reads as the primary action. */
+  primary?: boolean;
 }
 
 function NavButton({
@@ -50,7 +60,40 @@ function NavButton({
   onPress,
   disabled = false,
   testID,
+  primary = false,
 }: NavButtonProps) {
+  // Wrap the Pressable in a View when primary so the brand bg paints
+  // reliably on iOS 26 / Fabric (mirrors the Surprise me hero fix in
+  // RemixSheet). Inner Pressable still owns the touch + opacity press
+  // behavior. Plain (non-primary) buttons use the existing inline
+  // surface bg, which paints fine on Pressable.
+  if (primary) {
+    return (
+      <View
+        className="flex-1 rounded-button"
+        style={{ height: 72, backgroundColor: colors.brand }}
+      >
+        <Pressable
+          onPress={disabled ? undefined : onPress}
+          disabled={disabled}
+          testID={testID}
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          accessibilityState={{ disabled }}
+          className={`flex-1 flex-row items-center justify-center gap-2 ${
+            disabled ? 'opacity-40' : ''
+          }`}
+        >
+          <SymbolView
+            name={icon as never}
+            {...iconPropsForText('display')}
+            tintColor="#FFFFFF"
+          />
+          <Text className="text-body font-bold text-white">{label}</Text>
+        </Pressable>
+      </View>
+    );
+  }
   return (
     <Pressable
       onPress={disabled ? undefined : onPress}
@@ -77,6 +120,10 @@ function NavButton({
 
 /**
  * 72pt Back / Repeat / Next bar, bottom-anchored inside cook.tsx.
+ *
+ * On the last step (disableNext=true) AND when an `onDone` is provided,
+ * the Next slot is replaced with a primary "Done" button that closes
+ * the cooking flow. Without onDone the old disabled-Next behavior holds.
  */
 export default function StepNavButtons({
   onBack,
@@ -84,7 +131,9 @@ export default function StepNavButtons({
   onNext,
   disableBack,
   disableNext,
+  onDone,
 }: StepNavButtonsProps) {
+  const showDone = disableNext && typeof onDone === 'function';
   return (
     <View
       className="flex-row items-center justify-between gap-3 px-4 bg-bg border-t border-border"
@@ -104,13 +153,23 @@ export default function StepNavButtons({
         onPress={onRepeat}
         testID="cook-repeat"
       />
-      <NavButton
-        label="Next"
-        icon="arrow.right"
-        onPress={onNext}
-        disabled={disableNext}
-        testID="cook-next"
-      />
+      {showDone ? (
+        <NavButton
+          label="Done"
+          icon="checkmark.circle.fill"
+          onPress={onDone!}
+          testID="cook-done"
+          primary
+        />
+      ) : (
+        <NavButton
+          label="Next"
+          icon="arrow.right"
+          onPress={onNext}
+          disabled={disableNext}
+          testID="cook-next"
+        />
+      )}
     </View>
   );
 }
