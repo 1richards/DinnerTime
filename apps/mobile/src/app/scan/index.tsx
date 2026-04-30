@@ -46,14 +46,20 @@ export default function ScanScreen() {
     usePantryStore.setState({ scanResults: [] });
   }, []);
 
-  // Navigate to review when scan results arrive. Phase 18-04: no more
-  // sourceLocation nav param — each item carries its own source_location
-  // from the AI classifier, and the review screen chip handles overrides.
+  // Navigate to review when scan results FIRST arrive. We watch the
+  // length, not the array reference, so subsequent updateReviewItem
+  // calls (toggle accepted, edit name, location override) inside the
+  // review screen don't keep firing this effect and pushing duplicate
+  // /scan/review routes onto the stack — that bug surfaced as "the
+  // whole page slides in from the right every time I tap an item".
+  // We also `replace` instead of `push` so a stale scan state can't
+  // accumulate a back-stack of review screens.
+  const hasResults = scanResults.length > 0;
   useEffect(() => {
-    if (scanResults.length > 0 && !isScanning) {
-      router.push('/scan/review');
+    if (hasResults && !isScanning) {
+      router.replace('/scan/review');
     }
-  }, [scanResults, isScanning]);
+  }, [hasResults, isScanning]);
 
   const handleTakePhoto = async (): Promise<CapturedPhoto | null> => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -84,25 +90,17 @@ export default function ScanScreen() {
     return photo;
   };
 
-  // Auto-launch the camera on first mount so the user lands directly in the
-  // capture UI instead of having to tap a "Take Photo" button first. Also
-  // auto-submits the scan when the user finishes a single-photo capture,
-  // collapsing the old 5-tap flow (FAB → Take → shutter → Use → Submit) down
-  // to 3 (FAB → shutter → Use). Users who want a multi-photo batch can
-  // cancel the auto-submit by tapping the + thumbnail before it fires.
+  // Auto-launch the camera on first mount so the user lands directly in
+  // the capture UI instead of having to tap a "Take Photo" button first.
+  // We DON'T auto-submit after a single-photo capture anymore — users
+  // told us the immediate jump-to-review felt like the app skipped the
+  // "review your batch / add more photos" step. Now the camera takes a
+  // shot, drops the user back on the multi-photo selection screen, and
+  // they tap "Submit" or "+ Add another" deliberately.
   useEffect(() => {
     if (autoLaunched) return;
     setAutoLaunched(true);
-    void (async () => {
-      const photo = await handleTakePhoto();
-      if (photo) {
-        try {
-          await startBatchScan([photo.base64]);
-        } catch {
-          Alert.alert('Scan Failed', 'Could not analyze the image. Please try again.');
-        }
-      }
-    })();
+    void handleTakePhoto();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoLaunched]);
 
