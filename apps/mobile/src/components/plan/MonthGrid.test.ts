@@ -12,11 +12,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { ReactElement } from 'react';
 
-// Mock expo-router BEFORE importing MonthGrid so router.push is a stub.
-vi.mock('expo-router', () => ({
-  router: { push: vi.fn() },
-}));
-
 import { MonthGrid } from './MonthGrid';
 import type { MealPlanEntry } from '../../types/mealPlan';
 
@@ -144,5 +139,23 @@ describe('MonthGrid', () => {
     // Tap first cell — it's empty; expect onPinCell called with '2026-05-11'.
     pressables[0]!.props.onPress();
     expect(onPinCell).toHaveBeenCalledWith('2026-05-11');
+  });
+
+  it('invokes onEntryPress with the entry when a cell with an entry is tapped', () => {
+    const entry = makeEntry(0, { status: 'planned' });
+    const onEntryPress = vi.fn();
+    const onPinCell = vi.fn();
+    const tree = MonthGrid({
+      fromWeekStart: '2026-05-11',
+      entriesByIso: new Map([['2026-05-11', entry]]),
+      onEntryPress,
+      onPinCell,
+    }) as AnyEl;
+    const pressables = flatten(tree).filter(
+      (el) => el.props.accessibilityRole === 'button'
+    );
+    pressables[0]!.props.onPress();
+    expect(onEntryPress).toHaveBeenCalledWith(entry);
+    expect(onPinCell).not.toHaveBeenCalled();
   });
 });

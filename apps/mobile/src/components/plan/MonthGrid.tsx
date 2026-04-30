@@ -6,8 +6,9 @@
  *   - a single status-dot indicator (bottom)
  *
  * Interactions:
- *   - Tap cell with entry → router.push(`/plan/${iso}`) — day drill-down
- *     (shipped separately in plan 22-04; route is typed through regardless).
+ *   - Tap cell with entry → onEntryPress(entry) — parent opens the shared
+ *     PreviewSheet modal (same one Week-view DayRow uses), so the user can
+ *     dismiss back to the calendar instead of being stuck on a drill-down.
  *   - Tap cell without entry → onPinCell(iso) — parent opens DatePickerSheet.
  *   - Long-press cell → ActionSheetIOS with 'Mark travel day' / 'Mark dinner
  *     party' / 'Cancel'. On select, onMarkSkipped(iso, reason) is invoked
@@ -25,7 +26,6 @@
  */
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, ActionSheetIOS } from 'react-native';
-import { router } from 'expo-router';
 import { buildMonthGrid, type MonthCell, type CellStatus } from './monthHelpers';
 import { colors } from '../../design/tokens';
 import type { MealPlanEntry } from '../../types/mealPlan';
@@ -34,6 +34,9 @@ export interface MonthGridProps {
   fromWeekStart: string;
   entriesByIso: Map<string, MealPlanEntry>;
   loading?: boolean;
+  /** Parent-supplied handler when a cell with an entry is tapped (opens
+      the shared PreviewSheet modal). */
+  onEntryPress?: (entry: MealPlanEntry) => void;
   /** Parent-supplied handler when an empty cell is tapped (opens DatePickerSheet). */
   onPinCell?: (iso: string) => void;
   /** Parent-supplied handler for long-press → mark as skipped with reason. */
@@ -59,6 +62,7 @@ export function MonthGrid({
   fromWeekStart,
   entriesByIso,
   loading = false,
+  onEntryPress,
   onPinCell,
   onMarkSkipped,
 }: MonthGridProps) {
@@ -66,15 +70,7 @@ export function MonthGrid({
 
   const handlePress = (cell: MonthCell): void => {
     if (cell.entry) {
-      // Plan 22-04 ships /plan/[date]. Routing here is safe either way —
-      // if the route hasn't been mounted yet the push becomes a no-op
-      // visually; the existing Alert fallback lives in plan.tsx for week
-      // view and will remain the source of truth until 22-04 lands.
-      // /plan/[date] route ships in plan 22-04. Cast through `as never` so
-      // the typed-routes guard doesn't fail the build before that route is
-      // registered. Safe-fall-through: if the route doesn't exist yet, the
-      // push becomes a visual no-op.
-      router.push(`/plan/${cell.iso}` as never);
+      onEntryPress?.(cell.entry);
       return;
     }
     onPinCell?.(cell.iso);

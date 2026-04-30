@@ -215,7 +215,18 @@ export default function PlanScreen() {
   // `pantry_ready` flag on each entry. Subscribed via selector so changes
   // to the pantry (scan confirm, mark-used, etc.) automatically refresh
   // the Plan tab's chip state without a manual reload.
+  //
+  // BUGFIX (2026-04-29): filter to status='available' before feeding the
+  // matcher. `markItemUsed` flips `status` to 'used' but leaves the row
+  // in the store (deliberately — the pantry tab itself filters by status
+  // for display), and `markItemDepleted` removes the row. Without this
+  // filter the chip stayed green for meals whose key ingredient had
+  // been marked used.
   const pantryItems = usePantryStore((s) => s.items);
+  const availablePantryItems = useMemo(
+    () => pantryItems.filter((p) => p.status === 'available'),
+    [pantryItems],
+  );
 
   const days = useMemo(
     () =>
@@ -227,13 +238,13 @@ export default function PlanScreen() {
               is_stretch: d === stretchDay,
               pantry_ready: computePantryReady(
                 raw.ingredients ?? [],
-                pantryItems,
+                availablePantryItems,
               ),
             }
           : null;
         return { day: d, entry };
       }),
-    [entriesByDay, stretchDay, pantryItems]
+    [entriesByDay, stretchDay, availablePantryItems]
   );
 
   // Phase 22-05: telemetry. plan.stretch_displayed fires once per
@@ -526,8 +537,9 @@ export default function PlanScreen() {
       setMonthPinIso(null);
       if (!currentPlan) return;
       // Empty pin: create a "needs planning" entry marker. The user will
-      // typically navigate from here to /plan/[date] (22-04) to fill it in.
-      // For v1 we POST a stub entry so the cell status flips to planned.
+      // typically tap the cell again to open the PreviewSheet modal and
+      // edit it. For v1 we POST a stub entry so the cell status flips
+      // to planned.
       try {
         const token = (await import('../../lib/supabase')).supabase.auth;
         const { data } = await token.getSession();
@@ -651,6 +663,22 @@ export default function PlanScreen() {
     (s) => s.planFocusBannerEnabled
   );
 
+  // At-a-glance health vibe for the current week — slots into the same
+  // row as the shopping cart + ellipsis so users see the vibe without
+  // tapping into details. MUST live above the early returns below for
+  // the same Rules-of-Hooks reason as planFocusBannerEnabled — when
+  // currentPlan transitions null → populated, the early-return path
+  // doesn't call this hook, so placing it in the post-return body is
+  // a "rendered more hooks than during the previous render" crash.
+  const weekHealthEntries = useMemo(
+    () => (currentPlan?.entries ?? []).map((e) => ({
+      title: e.title,
+      description: e.description,
+      ingredients: e.ingredients,
+    })),
+    [currentPlan?.entries],
+  );
+
   if (loading && !currentPlan) {
     return (
       <SafeAreaView
@@ -711,18 +739,6 @@ export default function PlanScreen() {
         </Text>
       </Pressable>
     </View>
-  );
-
-  // At-a-glance health vibe for the current week — slots into the same
-  // row as the shopping cart + ellipsis so users see the vibe without
-  // tapping into details.
-  const weekHealthEntries = useMemo(
-    () => (currentPlan?.entries ?? []).map((e) => ({
-      title: e.title,
-      description: e.description,
-      ingredients: e.ingredients,
-    })),
-    [currentPlan?.entries],
   );
 
   const planActionsRow = (
@@ -889,6 +905,7 @@ export default function PlanScreen() {
             fromWeekStart={currentPlan.week_start}
             entriesByIso={monthPlans}
             loading={monthLoading && monthPlans.size === 0}
+            onEntryPress={(entry) => setPreviewEntry(entry)}
             onPinCell={handleMonthPinCell}
             onMarkSkipped={handleMonthMarkSkipped}
           />
