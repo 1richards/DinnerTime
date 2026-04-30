@@ -73,8 +73,8 @@ describe('DatePickerSheet — pure helpers', () => {
   });
 
   it('default maximumDate is always > default minimumDate (bounds sane)', () => {
-    const min = todayUtcMidnight();
-    const max = addDays(min, 60);
+    const min = addDays(todayUtcMidnight(), -60);
+    const max = addDays(todayUtcMidnight(), 60);
     expect(max.getTime()).toBeGreaterThan(min.getTime());
   });
 });

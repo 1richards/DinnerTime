@@ -9,7 +9,8 @@
  *
  * Design per 22-RESEARCH.md Pattern 1:
  *   - display="inline" for iOS 14+ calendar grid (not spinner).
- *   - minimumDate defaults to today (UTC midnight) — prevents back-dating.
+ *   - minimumDate defaults to today-60d (UTC midnight) so users can log
+ *     meals they cooked retroactively. Symmetric with the +60d max.
  *   - maximumDate defaults to today+60d — the roadmap cap; aligns with the
  *     server-side 70-day range ceiling (GET /meal-plans from/to).
  *   - Value MUST be initialized to a Date before mount (Pitfall 2: blank
@@ -53,8 +54,8 @@ function getDateTimePicker(): React.ComponentType<Record<string, unknown>> | nul
 
 /**
  * Return today at UTC midnight (a stable "today" that ignores the local
- * time-of-day). Used as the default minimumDate so back-dating is prevented
- * regardless of when the user opens the sheet.
+ * time-of-day). Used as the anchor for default initialDate and for the
+ * default min/max bounds (today ± 60 days).
  */
 export function todayUtcMidnight(): Date {
   const n = new Date();
@@ -107,7 +108,7 @@ export function DatePickerSheet({
     }
   }, [visible, initialDate]);
 
-  const resolvedMin = minimumDate ?? todayUtcMidnight();
+  const resolvedMin = minimumDate ?? addDays(todayUtcMidnight(), -60);
   const resolvedMax = maximumDate ?? addDays(todayUtcMidnight(), 60);
 
   return (
