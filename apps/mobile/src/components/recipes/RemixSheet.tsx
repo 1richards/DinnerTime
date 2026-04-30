@@ -532,37 +532,40 @@ export function RemixSheet({
               )}
             </View>
 
-            {/* Surprise me — full-width hero card. Pulled OUT of the
-                modeList View so its rendering doesn't depend on flex
-                gap behavior between heterogeneous siblings (Pressable
-                followed by section Views was apparently invisible on
-                some renders). Explicit marginBottom guarantees space
-                before the first section. */}
-            <Pressable
-              onPress={() => handleMode('surprise')}
-              style={({ pressed }) => [
-                styles.surpriseCard,
-                pressed && { opacity: 0.92 },
-              ]}
-            >
-              <View style={styles.surpriseChip}>
+            {/* Surprise me — full-width hero card. The orange background
+                lives on a wrapping View, not the Pressable, because iOS 26
+                under New Architecture (Fabric) intermittently fails to
+                paint a Pressable's `backgroundColor` when shadow props
+                are also set, leaving white text on cream and the whole
+                card invisible. The View+inner-Pressable pattern paints
+                reliably. */}
+            <View style={styles.surpriseCard}>
+              <Pressable
+                onPress={() => handleMode('surprise')}
+                style={({ pressed }) => [
+                  styles.surpriseCardInner,
+                  pressed && { opacity: 0.92 },
+                ]}
+              >
+                <View style={styles.surpriseChip}>
+                  <SymbolIcon
+                    name="sparkles"
+                    size={28}
+                    tintColor="#FFFFFF"
+                    weight="semibold"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.surpriseLabel}>Surprise me</Text>
+                  <Text style={styles.surpriseSub}>A bold creative twist</Text>
+                </View>
                 <SymbolIcon
-                  name="sparkles"
-                  size={28}
-                  tintColor="#FFFFFF"
-                  weight="semibold"
+                  name="chevron.forward"
+                  size={18}
+                  tintColor="rgba(255,255,255,0.7)"
                 />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.surpriseLabel}>Surprise me</Text>
-                <Text style={styles.surpriseSub}>A bold creative twist</Text>
-              </View>
-              <SymbolIcon
-                name="chevron.forward"
-                size={18}
-                tintColor="rgba(255,255,255,0.7)"
-              />
-            </Pressable>
+              </Pressable>
+            </View>
 
             <View style={styles.modeList}>
               {/* Section-grouped pairs — each section title sets the
@@ -1134,19 +1137,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   surpriseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    borderRadius: 16,
+    // Wrapper View owns the orange fill + shadow. See render-site comment
+    // about the iOS 26 / Fabric Pressable+shadow paint quirk.
     backgroundColor: colors.brand,
-    shadowColor: colors.textPrimary,
+    borderRadius: 16,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 4,
     marginBottom: 16,
+  },
+  surpriseCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
   },
   surpriseChip: {
     width: 48,
