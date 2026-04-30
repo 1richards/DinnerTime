@@ -185,11 +185,11 @@ export function HandoffSheet({
                 <Pressable
                   onPress={handleDismiss}
                   accessibilityRole="button"
-                  accessibilityLabel="View shopping list"
+                  accessibilityLabel="View shopping cart"
                   className={variantStyles.ghost.container}
                 >
                   <Text className={variantStyles.ghost.text}>
-                    View shopping list
+                    View shopping cart
                   </Text>
                 </Pressable>
               </View>

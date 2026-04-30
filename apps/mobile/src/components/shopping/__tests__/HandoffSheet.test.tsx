@@ -6,7 +6,7 @@
  *
  *   - kind='sending' → spinner + "Sending to Instacart cart"
  *   - kind='success' → "{n} items added to cart" + "Open in Instacart" primary CTA
- *                      + "View shopping list" secondary + onOpenCart plumbing
+ *                      + "View shopping cart" secondary + onOpenCart plumbing
  *   - kind='error'   → variant-specific copy + "Try again" retry CTA
  *
  * Uses the Phase 16 / Phase 19 static-inspection pattern (flatten React tree,
@@ -93,7 +93,7 @@ describe('HandoffSheet', () => {
       expect(findText(tree, /Open in Instacart/i)).toBeDefined();
     });
 
-    it('renders a secondary CTA labeled "View shopping list"', () => {
+    it('renders a secondary CTA labeled "View shopping cart"', () => {
       const tree = HandoffSheet({
         state: {
           kind: 'success',
@@ -102,7 +102,7 @@ describe('HandoffSheet', () => {
           appInstalled: false,
         },
       }) as AnyEl;
-      expect(findText(tree, /View shopping list/i)).toBeDefined();
+      expect(findText(tree, /View shopping cart/i)).toBeDefined();
     });
 
     it('primary CTA press invokes onOpenCart prop', () => {
