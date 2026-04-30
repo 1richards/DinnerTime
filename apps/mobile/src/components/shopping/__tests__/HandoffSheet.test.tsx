@@ -5,7 +5,7 @@
  * <Text>stub</Text>. Wave 3 (plan 20-03) ships the real three-state sheet:
  *
  *   - kind='sending' → spinner + "Sending to Instacart cart"
- *   - kind='success' → "{n} items ready" + "Open in Instacart" primary CTA
+ *   - kind='success' → "{n} items added to cart" + "Open in Instacart" primary CTA
  *                      + "View shopping list" secondary + onOpenCart plumbing
  *   - kind='error'   → variant-specific copy + "Try again" retry CTA
  *
@@ -69,7 +69,7 @@ describe('HandoffSheet', () => {
   });
 
   describe('kind=success', () => {
-    it('renders "{itemCount} items ready" for itemCount=4', () => {
+    it('renders "{itemCount} items added to cart" for itemCount=4', () => {
       const tree = HandoffSheet({
         state: {
           kind: 'success',
@@ -78,7 +78,7 @@ describe('HandoffSheet', () => {
           appInstalled: false,
         },
       }) as AnyEl;
-      expect(findText(tree, /4 items ready/i)).toBeDefined();
+      expect(findText(tree, /4 items added to cart/i)).toBeDefined();
     });
 
     it('renders a primary CTA labeled "Open in Instacart"', () => {

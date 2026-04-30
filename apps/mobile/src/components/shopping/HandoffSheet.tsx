@@ -8,9 +8,10 @@
  *                 Backdrop tap is a no-op while in-flight (see 20-RESEARCH
  *                 Pattern 1) so users can't dismiss before we know the
  *                 outcome.
- *   - 'success' → checkmark.circle.fill + "{n} items ready" + primary
- *                 "Open in Instacart" CTA (parent calls openInstacartCart)
- *                 + secondary "View shopping list" CTA (dismisses sheet).
+ *   - 'success' → checkmark.circle.fill + "{n} items added to cart" +
+ *                 pantry-skip subtitle + primary "Open in Instacart" CTA
+ *                 (parent calls openInstacartCart) + secondary "View
+ *                 shopping list" CTA (dismisses sheet).
  *   - 'error'   → exclamation-triangle + variant-specific copy
  *                 (network | instacart_api | auth) + "Try again" retry CTA
  *                 + "Cancel" dismiss CTA.
@@ -164,10 +165,10 @@ export function HandoffSheet({
                 tintColor={colors.brand}
               />
               <Text style={styles.title} className="text-warmGray-900">
-                {`${state.itemCount} items ready`}
+                {`${state.itemCount} items added to cart`}
               </Text>
               <Text style={styles.subtitle} className="text-warmGray-500">
-                Continue in Instacart to pick a delivery window and check out.
+                Items already in your pantry were skipped. Continue in Instacart to pick a delivery window and check out.
               </Text>
               <View style={styles.actions}>
                 <Pressable
