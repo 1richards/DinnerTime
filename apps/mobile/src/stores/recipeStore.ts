@@ -213,14 +213,20 @@ export const useRecipeStore = create<RecipeState>()(
 
       const body = await response.json();
       const saved: Recipe = body.data;
-      set((state) => ({
-        recipes: [saved, ...state.recipes],
-        importedRecipe: null,
-        isDuplicate: false,
-        existingRecipe: null,
-        isLoading: false,
-        error: null,
-      }));
+      const isDuplicate = body.duplicate === true;
+      set((state) => {
+        // Server-side dedup may return an existing row; don't unshift
+        // another copy if we already have it locally.
+        const alreadyHave = state.recipes.some((r) => r.id === saved.id);
+        return {
+          recipes: alreadyHave ? state.recipes : [saved, ...state.recipes],
+          importedRecipe: null,
+          isDuplicate,
+          existingRecipe: isDuplicate ? saved : null,
+          isLoading: false,
+          error: null,
+        };
+      });
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : 'Failed to save recipe',

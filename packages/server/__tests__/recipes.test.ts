@@ -94,6 +94,31 @@ describe('POST /recipes (save)', () => {
     });
     expect(res.status).toBe(401);
   });
+
+  it('dedupes by normalized title — second save returns existing row + duplicate flag, no second insert', async () => {
+    // Seed a recipe.
+    const first = await fetch(base, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ...FIXTURE_RECIPE, title: 'Dedup Lasagna' }),
+    });
+    expect(first.status).toBe(201);
+    const firstBody = (await first.json()) as { data: { id: string } };
+
+    // Re-save with same title (different case + whitespace) → expect dedup.
+    const second = await fetch(base, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ ...FIXTURE_RECIPE, title: '  dedup LASAGNA  ' }),
+    });
+    expect(second.status).toBe(200); // not 201 — no insert happened
+    const secondBody = (await second.json()) as {
+      data: { id: string };
+      duplicate?: boolean;
+    };
+    expect(secondBody.duplicate).toBe(true);
+    expect(secondBody.data.id).toBe(firstBody.data.id);
+  });
 });
 
 describe('GET /recipes/:id', () => {

@@ -11,6 +11,7 @@ import {
   getRecipes,
   getRecipeById,
   findRecipeBySourceUrl,
+  findRecipeByNormalizedTitle,
   updateRecipe,
   deleteRecipe,
 } from '../services/recipeStore.js';
@@ -347,6 +348,20 @@ recipes.post('/', async (c) => {
   }
 
   try {
+    // Dedup: if the user already has a recipe with this title (case-
+    // insensitive, trimmed), return that row with `duplicate: true`
+    // instead of inserting a second copy. Catches both rapid double-
+    // taps and AI re-surfacing the same suggestion in a later Discover
+    // fetch.
+    const existing = await findRecipeByNormalizedTitle(
+      supabase,
+      user.id,
+      body.title,
+    );
+    if (existing) {
+      return c.json({ data: existing, duplicate: true });
+    }
+
     const data = await saveRecipe(supabase, user.id, body);
     return c.json({ data }, 201);
   } catch (error) {

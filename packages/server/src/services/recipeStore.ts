@@ -24,6 +24,32 @@ export interface RecipeRow {
 // ---------- Public API ----------
 
 /**
+ * Look up an existing recipe owned by the user whose title matches `title`
+ * after case-insensitive trimming. Returns null if no match. Used by the
+ * POST /recipes route to avoid creating duplicate library rows when the
+ * AI surfaces the same suggestion twice or the user double-saves.
+ */
+export async function findRecipeByNormalizedTitle(
+  supabase: SupabaseClient,
+  profileId: string,
+  title: string
+): Promise<RecipeRow | null> {
+  const normalized = title.trim();
+  if (!normalized) return null;
+  const { data, error } = await supabase
+    .from('recipes')
+    .select()
+    .eq('profile_id', profileId)
+    .ilike('title', normalized)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`Failed to look up recipe by title: ${error.message}`);
+  }
+  return (data as RecipeRow | null) ?? null;
+}
+
+/**
  * Save a parsed recipe to the database.
  */
 export async function saveRecipe(

@@ -41,8 +41,18 @@ export type DiscoveredRecipe = ParsedRecipe & {
   _modified?: boolean;
 };
 
+/** Normalize a title for cross-checking against the user's library. */
+const normalizeTitle = (t: string): string => t.trim().toLowerCase();
+
 export default function DiscoverScreen() {
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
+  // Reactive set of normalized titles already in the library. Keeps the
+  // "Saved" badge correct across re-fetches and after deletes — the
+  // ephemeral `_saved` flag we used to seed at fetch time would lie on
+  // the second fetch if Claude re-surfaced the same suggestion.
+  const savedTitles = useRecipeStore((s) =>
+    new Set(s.recipes.map((r) => normalizeTitle(r.title))),
+  );
 
   const [recipes, setRecipes] = useState<DiscoveredRecipe[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -81,7 +91,9 @@ export default function DiscoverScreen() {
 
         const json = await response.json();
         const list: ParsedRecipe[] = json.data ?? [];
-        setRecipes(list.map((r) => ({ ...r, _saved: false })));
+        // Don't seed _saved here — it's derived reactively below from
+        // useRecipeStore so re-fetches and concurrent saves stay in sync.
+        setRecipes(list as DiscoveredRecipe[]);
         setIsLoading(false);
       } catch (err) {
         setError(
@@ -96,6 +108,13 @@ export default function DiscoverScreen() {
   useEffect(() => {
     fetchDiscover();
   }, [fetchDiscover]);
+
+  // Reactive enrichment: a card is "saved" iff its title matches a recipe
+  // already in the user's library (or it was just saved this session).
+  const enrichedRecipes: DiscoveredRecipe[] = recipes.map((r) => ({
+    ...r,
+    _saved: r._saved === true || savedTitles.has(normalizeTitle(r.title)),
+  }));
 
   const handleSave = async (idx: number, recipe: DiscoveredRecipe) => {
     setSavingIdx(idx);
@@ -178,7 +197,7 @@ export default function DiscoverScreen() {
         )}
 
         {!isLoading &&
-          recipes.map((recipe, idx) => {
+          enrichedRecipes.map((recipe, idx) => {
             const totalTime =
               recipe.total_time_minutes ??
               (recipe.prep_time_minutes ?? 0) +
@@ -251,17 +270,17 @@ export default function DiscoverScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setPreviewIdx(null)}
       >
-        {previewIdx !== null && recipes[previewIdx] && (
+        {previewIdx !== null && enrichedRecipes[previewIdx] && (
           <PreviewSheet
-            recipe={recipes[previewIdx]}
+            recipe={enrichedRecipes[previewIdx]}
             heroUri={getRecipeImage(
-              `discover-${recipes[previewIdx].title}-${previewIdx}`,
-              recipes[previewIdx].image_url,
-              recipes[previewIdx].title,
+              `discover-${enrichedRecipes[previewIdx].title}-${previewIdx}`,
+              enrichedRecipes[previewIdx].image_url,
+              enrichedRecipes[previewIdx].title,
             )}
             onClose={() => setPreviewIdx(null)}
             onSave={async () => {
-              await handleSave(previewIdx, recipes[previewIdx]);
+              await handleSave(previewIdx, enrichedRecipes[previewIdx]);
             }}
             saving={savingIdx === previewIdx}
           />
