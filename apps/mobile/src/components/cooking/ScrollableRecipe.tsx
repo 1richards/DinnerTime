@@ -119,6 +119,13 @@ export function scrollableRecipeRender(
   const scrollRef = useRef<ScrollView>(null);
   const stepYs = useRef<number[]>([]);
   const ingredientsY = useRef<number | null>(null);
+  // Y of the STEPS section's containing View, absolute within the
+  // ScrollView contentContainer. Per-step onLayout reports y relative
+  // to this container, so we add stepsBaseY to get the absolute target
+  // y the ScrollView's scrollTo expects. Without this offset the
+  // auto-scroll on currentStepIndex change lands far above the active
+  // step (UAT report: "directions don't scroll past step 1").
+  const stepsBaseY = useRef<number>(0);
 
   useImperativeHandle(
     ref,
@@ -204,14 +211,20 @@ export function scrollableRecipeRender(
       {/* STEPS section — each step wrapped in a y-capturing View for scroll.
           When onStepTap is provided, the card is pressable so the user can
           jump directly to any step without using the back/next controls. */}
-      <View className="px-4 pt-6 bg-bg">
+      <View
+        className="px-4 pt-6 bg-bg"
+        onLayout={(e: LayoutChangeEvent) => {
+          stepsBaseY.current = e.nativeEvent.layout.y;
+        }}
+      >
         <Text className="text-label text-text-secondary mb-4">STEPS</Text>
         {recipe.steps.map((step, i) => (
           <View
             key={i}
             className="mb-4"
             onLayout={(e: LayoutChangeEvent) => {
-              stepYs.current[i] = e.nativeEvent.layout.y;
+              // Absolute y within scroll content = section base + step relative.
+              stepYs.current[i] = stepsBaseY.current + e.nativeEvent.layout.y;
             }}
           >
             {onStepTap ? (
