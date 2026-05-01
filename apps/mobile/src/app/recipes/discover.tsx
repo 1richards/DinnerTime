@@ -442,6 +442,38 @@ export function PreviewSheet({
           </View>
         )}
 
+        {(recipe.calories_per_serving != null ||
+          recipe.protein_grams_per_serving != null ||
+          recipe.fat_grams_per_serving != null) && (
+          <View style={styles.nutritionRow}>
+            {recipe.calories_per_serving != null && (
+              <View style={styles.nutritionBadge}>
+                <Text style={styles.nutritionValue}>
+                  {Math.round(recipe.calories_per_serving)}
+                </Text>
+                <Text style={styles.nutritionLabel}>kcal</Text>
+              </View>
+            )}
+            {recipe.protein_grams_per_serving != null && (
+              <View style={styles.nutritionBadge}>
+                <Text style={styles.nutritionValue}>
+                  {Math.round(recipe.protein_grams_per_serving)}g
+                </Text>
+                <Text style={styles.nutritionLabel}>Protein</Text>
+              </View>
+            )}
+            {recipe.fat_grams_per_serving != null && (
+              <View style={styles.nutritionBadge}>
+                <Text style={styles.nutritionValue}>
+                  {Math.round(recipe.fat_grams_per_serving)}g
+                </Text>
+                <Text style={styles.nutritionLabel}>Fat</Text>
+              </View>
+            )}
+            <Text style={styles.nutritionPerServing}>per serving</Text>
+          </View>
+        )}
+
         {bodyExtra}
 
         <View style={styles.sheetCard}>
@@ -797,6 +829,44 @@ const styles = StyleSheet.create({
   sheetSection: {
     paddingHorizontal: 20,
     paddingTop: 18,
+  },
+  nutritionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    flexWrap: 'wrap',
+  },
+  nutritionBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#FFF4E6',
+    borderWidth: 1,
+    borderColor: 'rgba(192,90,0,0.18)',
+    alignItems: 'center',
+    minWidth: 64,
+  },
+  nutritionValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1A140F',
+    letterSpacing: -0.2,
+  },
+  nutritionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#7A6651',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  nutritionPerServing: {
+    fontSize: 11,
+    color: '#7A6651',
+    fontStyle: 'italic',
+    marginLeft: 4,
   },
   sheetDescription: {
     fontSize: 15,

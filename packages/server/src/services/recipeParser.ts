@@ -23,6 +23,11 @@ export interface ParsedRecipe {
   source_url: string | null;
   source_type: 'url' | 'photo' | 'manual' | 'ai';
   image_url: string | null;
+  /** Per-serving nutrition estimates from Claude. Null for legacy rows
+      and when the AI couldn't estimate confidently. */
+  calories_per_serving: number | null;
+  protein_grams_per_serving: number | null;
+  fat_grams_per_serving: number | null;
 }
 
 // ---------- Tool Definition ----------
@@ -62,6 +67,9 @@ const parseRecipeSchema: JsonSchema = {
     servings: { type: 'number', description: 'Number of servings' },
     source_url: { type: 'string', description: 'Original recipe URL if imported from web' },
     image_url: { type: 'string', description: 'URL of recipe hero image' },
+    calories_per_serving: { type: 'number', description: 'Estimated kcal per serving. Best-effort from ingredient list and quantities — omit if uncertain.' },
+    protein_grams_per_serving: { type: 'number', description: 'Estimated grams of protein per serving (whole or 1-decimal). Omit if uncertain.' },
+    fat_grams_per_serving: { type: 'number', description: 'Estimated grams of total fat per serving (whole or 1-decimal). Omit if uncertain.' },
   },
   required: ['title', 'ingredients', 'steps'],
 };
@@ -213,6 +221,14 @@ export function mapJsonLdToRecipe(
     source_url: sourceUrl,
     source_type: 'url',
     image_url: imageUrl,
+    // JSON-LD's nutrition object isn't normalized across sites and the
+    // shape varies (calories sometimes string "210 calories", sometimes
+    // numeric, sometimes a NutritionInformation @type object). Skip the
+    // parsing here; null is fine and Discover/text/photo paths still
+    // populate via Claude.
+    calories_per_serving: null,
+    protein_grams_per_serving: null,
+    fat_grams_per_serving: null,
   };
 }
 
@@ -249,7 +265,7 @@ async function callAIParseRecipePhoto(
  */
 function toolOutputToRecipe(
   input: Record<string, unknown>,
-  sourceType: 'url' | 'photo' | 'manual',
+  sourceType: 'url' | 'photo' | 'manual' | 'ai',
   sourceUrl: string | null = null
 ): ParsedRecipe {
   const rawIngredients = (input.ingredients as Partial<ParsedIngredient>[]) || [];
@@ -273,6 +289,9 @@ function toolOutputToRecipe(
     source_url: sourceUrl,
     source_type: sourceType,
     image_url: (input.image_url as string) || null,
+    calories_per_serving: (input.calories_per_serving as number) ?? null,
+    protein_grams_per_serving: (input.protein_grams_per_serving as number) ?? null,
+    fat_grams_per_serving: (input.fat_grams_per_serving as number) ?? null,
   };
 }
 

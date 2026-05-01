@@ -17,6 +17,9 @@ export interface RecipeRow {
   source_type: 'url' | 'photo' | 'manual';
   source_url: string | null;
   image_url: string | null;
+  calories_per_serving: number | null;
+  protein_grams_per_serving: number | null;
+  fat_grams_per_serving: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -57,6 +60,15 @@ export async function saveRecipe(
   profileId: string,
   recipe: ParsedRecipe
 ): Promise<RecipeRow> {
+  // Only spread nutrition fields when at least one is populated so the
+  // insert keeps working against databases that haven't applied
+  // migration 00033 yet. Once the migration ships everywhere, this can
+  // be inlined unconditionally.
+  const hasNutrition =
+    recipe.calories_per_serving != null ||
+    recipe.protein_grams_per_serving != null ||
+    recipe.fat_grams_per_serving != null;
+
   const { data, error } = await supabase
     .from('recipes')
     .insert({
@@ -72,6 +84,13 @@ export async function saveRecipe(
       source_type: recipe.source_type,
       source_url: recipe.source_url,
       image_url: recipe.image_url,
+      ...(hasNutrition
+        ? {
+            calories_per_serving: recipe.calories_per_serving ?? null,
+            protein_grams_per_serving: recipe.protein_grams_per_serving ?? null,
+            fat_grams_per_serving: recipe.fat_grams_per_serving ?? null,
+          }
+        : {}),
     })
     .select()
     .single();
