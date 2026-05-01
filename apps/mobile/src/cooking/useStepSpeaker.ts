@@ -51,6 +51,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Speech from 'expo-speech';
 import { useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
+import { useSettingsStore } from '../stores/settingsStore';
 
 /**
  * Imperative TTS control returned by `useStepSpeaker`. Consumers (cook.tsx)
@@ -143,7 +144,24 @@ function baseSpeakOptions(): Speech.SpeechOptions {
 
 type LRUEntry = { uri: string };
 const LRU_MAX = 20;
-const lruCache = new Map<string, LRUEntry>(); // trimmed text → entry
+// Key is `${voiceId ?? 'default'}::${trimmedText}` so swapping voices
+// in Settings doesn't replay cached audio in the previous voice.
+const lruCache = new Map<string, LRUEntry>();
+
+function cacheKey(text: string, voiceId: string | null): string {
+  return `${voiceId ?? 'default'}::${text}`;
+}
+
+function getSelectedVoiceId(): string | null {
+  // Read on every speak() — Zustand's getState is synchronous and cheap.
+  // Picking up a Settings change without a remount is the whole point of
+  // this hook reaching into the store directly instead of taking a prop.
+  try {
+    return useSettingsStore.getState().cookingVoiceId;
+  } catch {
+    return null;
+  }
+}
 
 let currentPlayer: AudioPlayer | null = null;
 // Monotonic id bumped on every new speak() or cleanup so stale inflight
@@ -241,8 +259,11 @@ async function speakViaElevenLabs(
   text: string,
   myFetchId: number,
 ): Promise<boolean> {
+  const voiceId = getSelectedVoiceId();
+  const key = cacheKey(text, voiceId);
+
   // Cache hit — replay the already-downloaded file.
-  const cached = lruGet(text);
+  const cached = lruGet(key);
   if (cached) {
     try {
       if (fetchCounter !== myFetchId) return true; // stale — caller moved on
@@ -267,19 +288,21 @@ async function speakViaElevenLabs(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify(voiceId ? { text, voiceId } : { text }),
     });
     if (!res.ok) return false;
     const arr = await res.arrayBuffer();
     if (fetchCounter !== myFetchId) return true; // stale, don't fall back
 
     const b64 = arrayBufferToBase64(arr);
-    const filename = `tts-${simpleHash(text)}.mp3`;
+    // Filename includes voice slug so different voices for the same text
+    // don't overwrite each other on disk.
+    const filename = `tts-${simpleHash(key)}.mp3`;
     const uri = `${FileSystem.cacheDirectory}${filename}`;
     await FileSystem.writeAsStringAsync(uri, b64, {
       encoding: FileSystem.EncodingType.Base64,
     });
-    lruSet(text, { uri });
+    lruSet(key, { uri });
 
     if (fetchCounter !== myFetchId) return true; // stale post-write
     releaseCurrentPlayer();

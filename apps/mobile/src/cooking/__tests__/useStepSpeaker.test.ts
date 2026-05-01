@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as Speech from 'expo-speech';
 import { runStepSpeakerEffect } from '../useStepSpeaker';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 // We can't mount React hooks in a node environment without a renderer, so
 // we exercise the pure effect body directly. useStepSpeaker is a one-line
@@ -142,6 +143,50 @@ describe('useStepSpeaker (runStepSpeakerEffect)', () => {
     };
     expect(player.play).toHaveBeenCalledTimes(1);
     expect(speakMock).not.toHaveBeenCalled();
+  });
+
+  it('forwards persisted voiceId in POST body when settingsStore has one set', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => new ArrayBuffer(10),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    useSettingsStore.setState({ cookingVoiceId: 'XB0fDUnXU5powFXDhCwa' });
+
+    runStepSpeakerEffect('Whisk the dressing.', true);
+    await flushMicrotasks();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(init.body as string);
+    expect(body).toEqual({
+      text: 'Whisk the dressing.',
+      voiceId: 'XB0fDUnXU5powFXDhCwa',
+    });
+
+    // Reset for other tests in this file.
+    useSettingsStore.setState({ cookingVoiceId: null });
+  });
+
+  it('omits voiceId from POST body when settingsStore.cookingVoiceId is null', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ({
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => new ArrayBuffer(10),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    useSettingsStore.setState({ cookingVoiceId: null });
+
+    runStepSpeakerEffect('Toast the spices briefly.', true);
+    await flushMicrotasks();
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(init.body as string);
+    expect(body).toEqual({ text: 'Toast the spices briefly.' });
+    expect(body).not.toHaveProperty('voiceId');
   });
 
   it('on fetch failure (502) → Speech.speak IS called with en-US options', async () => {

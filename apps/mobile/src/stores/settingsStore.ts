@@ -44,6 +44,15 @@ interface SettingsState {
    */
   biometricUnlockEnabled: boolean;
   setBiometricUnlockEnabled: (enabled: boolean) => void;
+  /**
+   * v1.0.2 — selected ElevenLabs voice for cooking-mode read-aloud.
+   * `null` means "use the server-side default" (Daniel, British male).
+   * The picker writes a voice ID from `apps/mobile/src/cooking/voices.ts`
+   * here; `useStepSpeaker` reads it on each fetch and forwards it to
+   * `/api/v1/voice/tts` as the `voiceId` body field.
+   */
+  cookingVoiceId: string | null;
+  setCookingVoiceId: (voiceId: string | null) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -56,6 +65,8 @@ export const useSettingsStore = create<SettingsState>()(
       biometricUnlockEnabled: false,
       setBiometricUnlockEnabled: (enabled) =>
         set({ biometricUnlockEnabled: enabled }),
+      cookingVoiceId: null,
+      setCookingVoiceId: (voiceId) => set({ cookingVoiceId: voiceId }),
     }),
     {
       name: 'dinnertime-settings',

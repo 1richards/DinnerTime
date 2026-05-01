@@ -16,6 +16,7 @@ import { CuisineSection } from '../../components/settings/CuisineSection';
 import { DislikesSection } from '../../components/settings/DislikesSection';
 import { SkillLevelSection } from '../../components/settings/SkillLevelSection';
 import { ShoppingHandoffSection } from '../../components/settings/ShoppingHandoffSection';
+import { CookingVoiceSection } from '../../components/settings/CookingVoiceSection';
 import { BiometricUnlockSection } from '../../components/settings/BiometricUnlockSection';
 import { AccountSection } from '../../components/settings/AccountSection';
 import { ConnectedServicesSection } from '../../components/settings/ConnectedServicesSection';
@@ -179,6 +180,14 @@ export default function SettingsScreen() {
               </Text>
             </View>
             <Switch value={darkMode} onValueChange={setDarkMode} />
+          </View>
+
+          {/* v1.0.2: Cooking voice picker — choose the ElevenLabs voice
+              for step read-aloud. Persists in settingsStore; useStepSpeaker
+              reads it at TTS-fetch time so changes apply on the next step
+              without a remount. */}
+          <View className="mt-4">
+            <CookingVoiceSection />
           </View>
         </View>
 

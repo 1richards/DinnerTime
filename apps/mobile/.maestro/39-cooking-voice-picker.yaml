@@ -1,0 +1,32 @@
+appId: com.dinnertime.app
+name: "39 — settings: cooking voice picker (v1.0.2)"
+---
+# Smoke check: settings deep-link loads with the new voice picker mounted
+# in the page. NOT scroll-asserted because Maestro's swipe/scroll on
+# iOS 26 + this Settings page intermittently fails to advance the
+# ScrollView (verified manually 2026-05-01). The voiceId-in-body wiring
+# is covered by `src/cooking/__tests__/useStepSpeaker.test.ts`. Run this
+# flow plus open the screenshot to manually verify the picker renders.
+- runFlow: _ensure-logged-in.yaml
+
+- tapOn:
+    text: "Cancel"
+    optional: true
+- tapOn:
+    text: ".*Go home.*"
+    optional: true
+
+- openLink: "dinnertime:///settings"
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
+
+- extendedWaitUntil:
+    visible:
+      text: ".*Family Members.*"
+    timeout: 15000
+
+- takeScreenshot: 01-settings-loaded
