@@ -4,10 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed quick/1-build-reusable-pantry-seed-test-recipe-g/1-PLAN.md — pantry seed fixture extracted, test-user clear command added, generate-test-recipes.ts script landed. All three scripts typecheck clean; E2E deferred until dev server is running.
-last_updated: "2026-04-23T14:39:15.780Z"
-last_activity: 2026-04-22
+stopped_at: Completed 01-missing-ingredient-indicators-on-recipe-ingredient-lists/01-PLAN.md — isIngredientInPantry helper + ScaledIngredientList trailing indicator (PreviewSheet covers Recipe Box detail / Discover preview / Plan day modal in one diff) + cooking IngredientRow + ScrollableRecipe outer-wrapper wiring; 29/29 tests green; 1 Rule 3 deviation (ScrollableRecipe outer/inner split for vitest-node + supabase CJS chain compatibility).
+last_updated: "2026-05-01T02:11:58.803Z"
+last_activity: "2026-04-24 - Completed quick task 5: ElevenLabs TTS integration — backend proxy + cooking-mode playback with expo-speech fallback"
 progress:
+  total_phases: 1
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
   percent: 97
 ---
 
@@ -170,6 +174,7 @@ Progress: [██████████] 97%
 | Phase 25 P00 | 4min | 3 tasks | 6 files |
 | Phase 25 P02 | 6min | 3 tasks | 3 files |
 | Phase 25 P01 | 10min | 2 tasks | 7 files |
+| Phase 01-missing-ingredient-indicators-on-recipe-ingredient-lists P01 | 8min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -189,6 +194,7 @@ Progress: [██████████] 97%
 - Phase 23 added: Settings, auth, and non-functional requirements — account management, auth lifecycle, error handling, observability, performance, security, App Store readiness
 - Phase 24 added: AI vision & pantry data-model deep refactor — prompt eval harness, multi-pass reasoning, canonical ingredient table, identity-based dedup, quantity+unit semantics, immutable scan events
 - Phase 25 added: Private beta launch — dogfooding with real kitchen data, family/friends invites, TestFlight distribution, App Store submission (TestFlight-only vs. unlisted vs. public decision deferred to phase)
+- Phase 1 (v1.1) added: Missing-ingredient indicators on recipe ingredient lists — flag ingredients not in pantry/fridge/freezer when viewing/remixing/exploring recipes
 
 ### Decisions
 
@@ -575,6 +581,7 @@ Recent decisions affecting current work:
 - [Phase 25]: 25-01 outer/inner-split + module-level-latch pattern applied to AboutSection so useState-free outer component remains vitest-node testable (clones ReAuthModal pattern)
 - [Phase quick/1-build-reusable-pantry-seed-test-recipe-g]: Extracted pantry seed into scripts/fixtures/seed-pantry.ts (42 items, 7 categories) and added test-user.ts clear subcommand that wipes ONLY recipes + pantry_items so JWT/profile/household survive the regenerate-and-eyeball loop.
 - [Phase quick/1-build-reusable-pantry-seed-test-recipe-g]: generate-test-recipes.ts runs image generation sequentially and forwards title+description+ingredients to /recipes/generate-image per the recipeImageGen service docstring.
+- [Phase 01-missing-ingredient-indicators-on-recipe-ingredient-lists]: isIngredientInPantry pure helper extracted from computePantryReady — same matcher (PANTRY_STAPLES skip + bidirectional substring), per-row aggregation; back-compat opt-in pattern (indicatorEnabled = pantryNames !== undefined) on ScaledIngredientList; ScrollableRecipe split into outer-with-stores + inner-presentational to keep static-walk tests viable
 
 ### Pending Todos
 
@@ -595,6 +602,19 @@ Recent decisions affecting current work:
 | 3 | RemixSheet mode picker 2x2 SF Symbol grid + variation polish + Something New append/parity | 2026-04-23 | 0f78fe7 | [3-remixsheet-mode-picker-redesign-variatio](./quick/3-remixsheet-mode-picker-redesign-variatio/) |
 | 4 | RemixSheet button layout fix + Something New image-flash fix (skeleton + AsyncStorage) | 2026-04-23 | 13ec221 | [4-remixsheet-button-layout-something-new-i](./quick/4-remixsheet-button-layout-something-new-i/) |
 | 5 | ElevenLabs TTS integration — backend proxy + cooking-mode playback with expo-speech fallback | 2026-04-24 | b68c01f | [5-elevenlabs-tts-integration-backend-proxy](./quick/5-elevenlabs-tts-integration-backend-proxy/) |
+| 6 | Title-case recipe labels on save + case-insensitive dedup | 2026-04-29 | ac6a967 | _fast (inline)_ |
+| 7 | Pin DatePickerSheet to light theme so calendar text stays readable in dark mode | 2026-04-30 | 0dbe7cb | _fast (inline)_ |
+| 8 | Allow back-dating in DatePickerSheet — symmetric ±60d default window | 2026-04-30 | bbf1091 | _fast (inline)_ |
+| 9 | Surface pantry-skip context in Instacart handoff success copy | 2026-04-30 | 58b7820 | _fast (inline)_ |
+| 10 | Relabel handoff secondary CTA "shopping list" → "shopping cart" | 2026-04-30 | eadfe50 | _fast (inline)_ |
+| 11 | Remove Allergies UI from Settings (duplicated Dietary Preferences) | 2026-04-30 | c301276 | _fast (inline)_ |
+| 12 | Month-cell tap opens PreviewSheet modal (fixes dead-end drill-down) | 2026-04-30 | 18c5340 | _fast (inline)_ |
+| 13 | Recipe save dedup + Discover bookmark stays synced across re-fetches | 2026-04-30 | cba8990 | _fast (inline)_ |
+| 14 | Restore Surprise me hero on Remix (iOS 26 Pressable+shadow paint quirk) | 2026-04-30 | 29ad9e7 | _fast (inline)_ |
+| 15 | Pantry trifecta — Delete error Alert, In-cart chip, used-item filter | 2026-04-30 | 4a61494 | [.planning/debug/pantry-trifecta.resolved.md](./debug/pantry-trifecta.resolved.md) |
+| 16 | Cooking-mode Done finale — celebration → Plan day marked cooked | 2026-04-30 | 4db1b1f | _fast (inline)_ |
+| 17 | Skill focus picker visual separation + offer to regenerate this week | 2026-04-30 | 31c330e | _fast (inline)_ |
+| 18 | Scan flow — stop stacking review routes; no auto-submit on first photo | 2026-04-30 | 36e95b3 | _fast (inline)_ |
 
 ## Post-v1 Polish (out-of-band, not GSD-planned)
 
@@ -628,6 +648,7 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-04-23T14:39:08.937Z
-Stopped at: Completed quick/1-build-reusable-pantry-seed-test-recipe-g/1-PLAN.md — pantry seed fixture extracted, test-user clear command added, generate-test-recipes.ts script landed. All three scripts typecheck clean; E2E deferred until dev server is running.
+Last session: 2026-05-01T02:11:58.800Z
+Stopped at: Completed 01-missing-ingredient-indicators-on-recipe-ingredient-lists/01-PLAN.md — isIngredientInPantry helper + ScaledIngredientList trailing indicator (PreviewSheet covers Recipe Box detail / Discover preview / Plan day modal in one diff) + cooking IngredientRow + ScrollableRecipe outer-wrapper wiring; 29/29 tests green; 1 Rule 3 deviation (ScrollableRecipe outer/inner split for vitest-node + supabase CJS chain compatibility).
 Resume file: None
+| 2026-04-28 | fast | More options pill padding | done |
