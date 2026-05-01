@@ -53,40 +53,57 @@ describe('IngredientRow', () => {
     unit: 'cup',
   };
 
-  it('fires onToggle(id) on press', () => {
-    const onToggle = vi.fn();
+  // UAT pivot — cooking-mode ingredients are now a non-interactive bullet
+  // list (matches the recipe-detail rendering). The checkable prop
+  // contract (`checked` + `onToggle`) stays for back-compat with the
+  // cookingStore wiring and any external callers, but the row no longer
+  // exposes a checkbox accessibilityRole and ignores `checked` visually.
+
+  it('renders as a non-interactive bullet line (no checkbox role)', () => {
     const tree = IngredientRow({
       ...base,
       checked: false,
-      onToggle,
+      onToggle: vi.fn(),
     });
-    const pressable = flatten(tree).find(
+    const checkbox = flatten(tree).find(
       (el) => el.props.accessibilityRole === 'checkbox'
     );
-    expect(pressable).toBeDefined();
-    pressable!.props.onPress();
-    expect(onToggle).toHaveBeenCalledWith('rice-0');
+    expect(checkbox).toBeUndefined();
   });
 
-  it('applies strike-through class when checked', () => {
+  it('does NOT apply strike-through when checked (bullet list, no completion state)', () => {
     const checkedTree = IngredientRow({
       ...base,
       checked: true,
       onToggle: vi.fn(),
     });
     const classes = collectClassNames(checkedTree);
-    expect(classes).toMatch(/line-through/);
+    expect(classes).not.toMatch(/line-through/);
   });
 
-  it('uses success tone on the check icon and Phase 19 tokens only', () => {
-    const checkedTree = IngredientRow({
+  it('uses Phase 19 token classes only (no raw hex)', () => {
+    const tree = IngredientRow({
       ...base,
-      checked: true,
+      checked: false,
       onToggle: vi.fn(),
     });
-    const classes = collectClassNames(checkedTree);
-    expect(classes).toMatch(/\btext-success\b/);
+    const classes = collectClassNames(tree);
     expect(classes).not.toMatch(/#[0-9a-fA-F]{3,6}/);
+  });
+
+  it('renders a bullet character so the row reads as a list item', () => {
+    const tree = IngredientRow({
+      ...base,
+      checked: false,
+      onToggle: vi.fn(),
+    });
+    const bulletNode = flatten(tree).find((el) => {
+      const c = el.props?.children;
+      if (typeof c === 'string') return c === '•';
+      if (Array.isArray(c)) return c.some((p) => p === '•');
+      return false;
+    });
+    expect(bulletNode).toBeDefined();
   });
 });
 
@@ -170,21 +187,30 @@ describe('IngredientRow — missing-ingredient indicator (Phase 01-01)', () => {
     expect(onAddToShoppingList).toHaveBeenCalledTimes(1);
   });
 
-  it('regression guard: existing checkbox onToggle behavior still works when new props are passed', () => {
-    const onToggle = vi.fn();
+  it('regression guard: bullet rendering coexists with the cart-add Pressable when new props are passed', () => {
+    const onAddToShoppingList = vi.fn();
     const tree = IngredientRow({
       ...base,
       checked: false,
-      onToggle,
+      onToggle: vi.fn(),
       inPantry: false,
       wasAdded: false,
-      onAddToShoppingList: vi.fn(),
+      onAddToShoppingList,
     });
-    const checkbox = flatten(tree as AnyEl).find(
-      (el) => el.props?.accessibilityRole === 'checkbox',
+    const all = flatten(tree as AnyEl);
+    // No checkbox role anywhere — bullet list is non-interactive.
+    expect(
+      all.find((el) => el.props?.accessibilityRole === 'checkbox'),
+    ).toBeUndefined();
+    // Cart-add Pressable still wired.
+    const addBtn = all.find(
+      (el) =>
+        el.props?.accessibilityRole === 'button' &&
+        typeof el.props?.accessibilityLabel === 'string' &&
+        el.props.accessibilityLabel.includes('Add'),
     );
-    expect(checkbox).toBeDefined();
-    checkbox!.props.onPress();
-    expect(onToggle).toHaveBeenCalledWith('salmon-0');
+    expect(addBtn).toBeDefined();
+    addBtn!.props.onPress();
+    expect(onAddToShoppingList).toHaveBeenCalledTimes(1);
   });
 });

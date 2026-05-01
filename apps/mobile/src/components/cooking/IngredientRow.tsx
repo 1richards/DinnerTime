@@ -79,23 +79,16 @@ export function IngredientRow({
       ? `${formatQuantity(quantity)}${unit ? ` ${unit}` : ''}`
       : unit ?? '';
 
-  // Checked state: strike-through + tertiary color. Tokens only.
-  const textStrikeClass = checked ? 'text-text-tertiary line-through' : 'text-text-primary';
+  // Cooking-mode UAT: ingredients render as a bullet list, not checkboxes
+  // — the recipe pages use the same bullet shape and the checkable
+  // affordance never landed in muscle memory. `checked` and `onToggle`
+  // remain in the public prop contract for backward compat with existing
+  // tests + cookingStore wiring; the row simply ignores them visually.
+  void checked;
+  void onToggle;
+  void fireIngredientHaptic;
 
-  const iconName = checked ? 'checkmark.circle.fill' : 'circle';
-  const iconTint = checked ? colors.success : colors.textTertiary;
-  // Mirror the success / tertiary tone on the icon as a className too — test
-  // asserts `text-success` appears in the className set when checked.
-  const iconClass = checked ? 'text-success' : 'text-text-tertiary';
-
-  const accessibilityLabel = `${qtyLabel ? `${qtyLabel} ` : ''}${name}, ${
-    checked ? 'checked' : 'unchecked'
-  }`;
-
-  const handlePress = () => {
-    void fireIngredientHaptic();
-    onToggle(id);
-  };
+  const accessibilityLabel = `${qtyLabel ? `${qtyLabel} ` : ''}${name}`;
 
   // Phase 01-01 — only consider the indicator active when the parent
   // explicitly passes pantry-aware props. Reading just `inPantry` would
@@ -106,26 +99,24 @@ export function IngredientRow({
   const showAddedMarker = wasAdded === true;
 
   return (
-    <View className="flex-row items-center px-4 py-2 border-b border-border">
-      <Pressable
-        onPress={handlePress}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked }}
-        accessibilityLabel={accessibilityLabel}
-        className="flex-row items-center flex-1"
-      >
-        <View className={iconClass}>
-          <SymbolIcon name={iconName} size={20} tintColor={iconTint} />
+    <View
+      className="flex-row items-center px-4 py-2 border-b border-border"
+      accessibilityLabel={accessibilityLabel}
+    >
+      <View className="flex-row items-center flex-1">
+        <View className="w-5 items-center">
+          {/* Bullet — small filled circle, matches recipe-detail ingredient list */}
+          <Text className="text-body font-bold text-text-tertiary">•</Text>
         </View>
         <View className="flex-1 flex-row ml-3">
           {qtyLabel ? (
-            <Text className={`text-body font-bold mr-2 ${textStrikeClass}`}>
+            <Text className="text-body font-bold mr-2 text-text-primary">
               {qtyLabel}
             </Text>
           ) : null}
-          <Text className={`text-body flex-1 ${textStrikeClass}`}>{name}</Text>
+          <Text className="text-body flex-1 text-text-primary">{name}</Text>
         </View>
-      </Pressable>
+      </View>
 
       {showAddBtn ? (
         <Pressable
