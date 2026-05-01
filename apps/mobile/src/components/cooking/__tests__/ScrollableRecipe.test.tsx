@@ -59,6 +59,22 @@ vi.mock('expo-haptics', () => ({
   NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
 }));
 
+// Phase 01-01 — ScrollableRecipe imports usePantryStore + useShoppingStore
+// for the missing-ingredient indicator wiring. Mock both stores at module
+// boundary so the inner `scrollableRecipeRender` (the only thing these tests
+// invoke) doesn't drag the supabase.ts → react-native-get-random-values CJS
+// import chain into the vitest-node ESM runner. The wrapper component
+// (ScrollableRecipeWithStores) is exercised by integration tests in the
+// outer cooking surface, not here.
+vi.mock('../../../stores/pantryStore', () => ({
+  usePantryStore: ((selector: (s: { items: unknown[] }) => unknown) =>
+    selector({ items: [] })) as unknown,
+}));
+vi.mock('../../../stores/shoppingStore', () => ({
+  useShoppingStore: ((selector: (s: { addItem: () => Promise<void> }) => unknown) =>
+    selector({ addItem: async () => {} })) as unknown,
+}));
+
 import {
   ScrollableRecipe,
   scrollableRecipeRender,

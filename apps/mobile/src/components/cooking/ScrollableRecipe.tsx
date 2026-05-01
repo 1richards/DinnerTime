@@ -15,6 +15,21 @@
  *      dispatcher side (intentRouter + handleTranscript) ships in 16-05;
  *      the wiring (cook.tsx ref) ships in 16-06.
  *
+ * Phase 01-01 — wires per-row missing-ingredient indicators into each
+ * `IngredientRow` so cooking mode shows the same trailing cart-add
+ * affordance as PreviewSheet (Recipe Box detail / Discover preview /
+ * Plan day modal).
+ *
+ * Architecture: store wiring lives in a thin outer wrapper
+ * (`ScrollableRecipe`) so the inner render fn (`scrollableRecipeRender`)
+ * stays presentational and pure — the existing 16-04 ScrollableRecipe
+ * tests invoke `scrollableRecipeRender` directly, and adding store
+ * subscriptions inside it would (a) trip vitest-node import resolution
+ * via the supabase.ts → react-native-get-random-values CJS chain, and
+ * (b) call `useState` outside a renderer ("Invalid hook call"). The
+ * outer wrapper owns the hooks; the inner fn just consumes injected
+ * props. Mirrors the dayRowHelpers / IngredientChecklist pattern.
+ *
  * Tokens only — NativeWind Phase 19 classes. Zero hardcoded hex. Dark-mode
  * flag handling belongs in cook.tsx's root View (16-06), so this component
  * stays theme-agnostic.
@@ -25,18 +40,27 @@
  * can't be called like a normal function, so the Wave-0-style
  * static-inspection pattern needs the raw render function.
  */
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import React, {
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import {
   ScrollView,
   View,
   Text,
   Pressable,
+  Alert,
   type LayoutChangeEvent,
 } from 'react-native';
-import type { Recipe } from '../../types/recipe';
+import type { Recipe, ParsedIngredient } from '../../types/recipe';
 import { IngredientRow } from './IngredientRow';
 import { StepCard } from './StepCard';
 import { useCurrentStepScroll } from '../../cooking/useCurrentStepScroll';
+import { isIngredientInPantry } from '../recipes/ingredientHelpers';
+import { usePantryStore } from '../../stores/pantryStore';
+import { useShoppingStore } from '../../stores/shoppingStore';
 
 /** Imperative handle exposed to cook.tsx (16-06 voice dispatcher wiring). */
 export interface ScrollableRecipeHandle {
@@ -60,11 +84,24 @@ export interface ScrollableRecipeProps {
    * user jump between steps without using the back/next controls.
    */
   onStepTap?: (index: number) => void;
+  /**
+   * Phase 01-01 — pantry/shopping injection for the missing-ingredient
+   * indicator. Optional: omit and the inner render fn renders rows with
+   * no trailing icon column (back-compat for existing tests + any
+   * caller that can't pass these). The production `ScrollableRecipe`
+   * outer wrapper supplies these from `usePantryStore` + `useShoppingStore`.
+   */
+  pantryNames?: readonly string[];
+  /** Trim+lowercased ingredient names already added this session. */
+  addedKeys?: ReadonlySet<string>;
+  /** Tapped on a missing-ingredient row's trailing cart-add icon. */
+  onAddIngredient?: (ing: ParsedIngredient) => void;
 }
 
 /**
  * Internal render function — exported for tests (see module doc). Real
- * consumers should use `ScrollableRecipe` (the forwardRef wrapper below).
+ * consumers should use `ScrollableRecipe` (the forwardRef wrapper below)
+ * which owns the pantry/shopping store wiring.
  */
 export function scrollableRecipeRender(
   {
@@ -73,6 +110,9 @@ export function scrollableRecipeRender(
     ingredientChecks,
     onToggleIngredient,
     onStepTap,
+    pantryNames,
+    addedKeys,
+    onAddIngredient,
   }: ScrollableRecipeProps,
   ref: React.Ref<ScrollableRecipeHandle>,
 ): React.ReactElement {
@@ -100,6 +140,7 @@ export function scrollableRecipeRender(
 
   const checks = ingredientChecks ?? {};
   const onToggle = onToggleIngredient ?? (() => undefined);
+  const indicatorEnabled = pantryNames !== undefined;
 
   return (
     <ScrollView
@@ -128,6 +169,21 @@ export function scrollableRecipeRender(
         <Text className="text-label text-text-secondary mb-4">INGREDIENTS</Text>
         {recipe.ingredients.map((ing, i) => {
           const id = `${ing.name}-${i}`;
+          const key = ing.name.trim().toLowerCase();
+          // Phase 01-01 — only attach pantry-aware props when the parent
+          // has actually injected pantryNames. Omitting them preserves the
+          // pre-Phase-01 IngredientRow render shape exactly (no trailing
+          // icon column).
+          const inPantry = indicatorEnabled
+            ? isIngredientInPantry(ing.name, pantryNames as readonly string[])
+            : undefined;
+          const wasAdded = indicatorEnabled
+            ? (addedKeys?.has(key) ?? false)
+            : undefined;
+          const onAddToShoppingList =
+            indicatorEnabled && onAddIngredient
+              ? () => onAddIngredient(ing)
+              : undefined;
           return (
             <IngredientRow
               key={id}
@@ -137,6 +193,9 @@ export function scrollableRecipeRender(
               unit={ing.unit}
               checked={!!checks[id]}
               onToggle={onToggle}
+              inPantry={inPantry}
+              wasAdded={wasAdded}
+              onAddToShoppingList={onAddToShoppingList}
             />
           );
         })}
@@ -184,15 +243,72 @@ export function scrollableRecipeRender(
 }
 
 /**
- * forwardRef-wrapped production export. Consumed by cook.tsx (16-06):
- *   const recipeRef = useRef<ScrollableRecipeHandle>(null);
- *   <ScrollableRecipe ref={recipeRef} recipe={...} currentStepIndex={...} />
- *   recipeRef.current?.scrollToIngredients();
+ * Phase 01-01 — outer wrapper. Subscribes to pantry + shopping stores
+ * and feeds the missing-ingredient indicator props into
+ * `scrollableRecipeRender`. Owns the per-session optimistic-flip
+ * `addedKeys` set and the try/catch+Alert rollback on
+ * `addItem` failure (mirrors PreviewSheet wiring in
+ * `apps/mobile/src/app/recipes/discover.tsx`).
+ *
+ * Kept as a forwardRef so cook.tsx's existing
+ * `useRef<ScrollableRecipeHandle>` keeps working. The ref is passed
+ * straight through to the inner render fn.
  */
 export const ScrollableRecipe = forwardRef<
   ScrollableRecipeHandle,
   ScrollableRecipeProps
->(scrollableRecipeRender);
+>(function ScrollableRecipeWithStores(props, ref) {
+  // Reactive subscriptions so a pantry edit or shopping-list change
+  // elsewhere repaints the trailing icon without remounting cook view.
+  const pantryItems = usePantryStore((s) => s.items);
+  const addToShoppingList = useShoppingStore((s) => s.addItem);
+  const [addedKeys, setAddedKeys] = useState<Set<string>>(() => new Set());
+
+  // Bug 3 contract per CONTEXT.md — defensive re-filter at the consumer
+  // even though loadItems() already restricts to status === 'available'.
+  const pantryNames = pantryItems
+    .filter((p) => p.status === 'available')
+    .map((p) => p.name);
+
+  const onAddIngredient = async (ing: ParsedIngredient) => {
+    const key = ing.name.trim().toLowerCase();
+    // Optimistic flip — icon goes to cart.fill (success tone) instantly.
+    setAddedKeys((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+    try {
+      await addToShoppingList({
+        name: ing.name,
+        quantity: ing.quantity,
+        unit: ing.unit,
+      });
+    } catch (err) {
+      // Roll back so the icon returns to cart.badge.plus and the user
+      // can retry. Alert mirrors PantryItemCard.handleGetMore.
+      setAddedKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+      Alert.alert(
+        'Could not add to shopping list',
+        err instanceof Error ? err.message : 'Please try again.',
+      );
+    }
+  };
+
+  return scrollableRecipeRender(
+    {
+      ...props,
+      pantryNames,
+      addedKeys,
+      onAddIngredient,
+    },
+    ref,
+  );
+});
 
 ScrollableRecipe.displayName = 'ScrollableRecipe';
 
