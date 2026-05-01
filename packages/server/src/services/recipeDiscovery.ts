@@ -207,5 +207,8 @@ export async function discoverRecipes(
     source_url: null,
     source_type: 'ai' as ParsedRecipe['source_type'],
     image_url: null,
+    calories_per_serving: null,
+    protein_grams_per_serving: null,
+    fat_grams_per_serving: null,
   }));
 }
