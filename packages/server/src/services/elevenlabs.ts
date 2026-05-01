@@ -16,21 +16,36 @@ const BASE = 'https://api.elevenlabs.io/v1/text-to-speech';
 const MODEL = 'eleven_turbo_v2_5';
 
 /**
+ * Default voice — Daniel, a warm British male. UAT pivot 2026-05-01:
+ * an env override had drifted to a female voice the user disliked
+ * ("girl's voice isn't good"). Pinning the code-level default to a
+ * specific British male voice ID keeps the cooking-mode read-aloud
+ * tone consistent regardless of env state. Voice IDs are stable
+ * ElevenLabs handles.
+ */
+const DEFAULT_VOICE_ID = 'onwK4e9ZLuTAKqWW03F9';
+
+/**
  * generateSpeech — POST to ElevenLabs text-to-speech, return MP3 bytes.
  * Graceful degradation: swallows all errors and returns null so callers
  * can surface a 502 without crashing. Mirrors recipeImageGen's pattern.
  *
  * @param text   non-empty, caller-trimmed, bounded to 5000 chars upstream.
- * @param voiceId optional override; falls back to env.ELEVENLABS_VOICE_ID
- *                (default 'nPczCjzI2devNBz1zQrb' — Brian, a warm male voice).
+ * @param voiceId optional override; falls back to env.ELEVENLABS_VOICE_ID,
+ *                then to DEFAULT_VOICE_ID (Daniel, British male).
  */
 export async function generateSpeech(
   text: string,
   voiceId?: string,
 ): Promise<Buffer | null> {
   try {
+    const envVoice = env.ELEVENLABS_VOICE_ID;
     const resolvedVoice =
-      voiceId && voiceId.trim().length > 0 ? voiceId : env.ELEVENLABS_VOICE_ID;
+      voiceId && voiceId.trim().length > 0
+        ? voiceId
+        : envVoice && envVoice.trim().length > 0
+          ? envVoice
+          : DEFAULT_VOICE_ID;
     const res = await fetch(`${BASE}/${resolvedVoice}`, {
       method: 'POST',
       headers: {

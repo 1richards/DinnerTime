@@ -37,7 +37,10 @@ export const env = {
     return requireEnv('ELEVENLABS_API_KEY');
   },
   get ELEVENLABS_VOICE_ID() {
-    return optionalEnv('ELEVENLABS_VOICE_ID', 'nPczCjzI2devNBz1zQrb');
+    // Daniel — British male. Reverted from Brian (American) per UAT
+    // 2026-05-01. The elevenlabs.ts wrapper has the same fallback so
+    // a missing env still lands on the British voice.
+    return optionalEnv('ELEVENLABS_VOICE_ID', 'onwK4e9ZLuTAKqWW03F9');
   },
   get PORT() {
     return parseInt(optionalEnv('PORT', '3000'), 10);
