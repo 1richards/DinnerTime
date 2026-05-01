@@ -22,6 +22,42 @@ const shopping = new Hono();
 
 shopping.use('*', authMiddleware);
 
+/**
+ * True if `name` looks like a spice or seasoning. Used by the Instacart
+ * order builder to skip the per-line measurement for spices — "0.5 tsp
+ * oregano" doesn't map to a retail SKU (you buy a jar). Conservative
+ * keyword set; false-negatives mean we keep the measurement (annoying
+ * but not wrong); false-positives drop measurement on a non-spice
+ * (still fine — Instacart picks a default size).
+ */
+function isSpiceItem(name: string): boolean {
+  const n = name.trim().toLowerCase();
+  if (!n) return false;
+  // Direct names
+  const SPICES: ReadonlySet<string> = new Set([
+    'salt', 'kosher salt', 'sea salt', 'pepper', 'black pepper', 'white pepper',
+    'cumin', 'paprika', 'smoked paprika', 'oregano', 'basil', 'dried basil',
+    'thyme', 'dried thyme', 'rosemary', 'dried rosemary', 'sage', 'dried sage',
+    'bay leaf', 'bay leaves', 'cinnamon', 'nutmeg', 'cloves', 'allspice',
+    'turmeric', 'coriander', 'cardamom', 'fennel seed', 'mustard seed',
+    'crushed red pepper', 'red pepper flakes', 'cayenne', 'chili powder',
+    'curry powder', 'garam masala', 'five spice', 'italian seasoning',
+    'herbs de provence', 'taco seasoning', 'old bay', 'lemon pepper',
+    'garlic powder', 'onion powder', 'ground ginger', 'ground cumin',
+    'ground coriander', 'ground cinnamon',
+  ]);
+  if (SPICES.has(n)) return true;
+  // Substring matches for compound names (e.g. "freshly ground black pepper")
+  const SUBSTRINGS = [
+    'salt', 'pepper', 'cumin', 'paprika', 'oregano', 'basil', 'thyme',
+    'rosemary', 'sage', 'bay leaf', 'cinnamon', 'nutmeg', 'clove',
+    'allspice', 'turmeric', 'coriander', 'cardamom', 'cayenne',
+    'chili powder', 'curry powder', 'garam masala', 'seasoning',
+    'spice blend', 'red pepper flakes', 'garlic powder', 'onion powder',
+  ];
+  return SUBSTRINGS.some((s) => n.includes(s));
+}
+
 const PATCH_ITEM_ALLOWED = ['checked', 'quantity', 'name', 'unit'] as const;
 type PatchItemKey = (typeof PATCH_ITEM_ALLOWED)[number];
 
@@ -376,10 +412,18 @@ shopping.post('/:id/order', async (c) => {
     const unchecked = items.filter((i) => !i.checked);
 
     const lineItems: InstacartLineItem[] = unchecked.map((item) => {
-      const hasMeasurement = item.quantity != null && item.unit != null && item.unit !== '';
+      // Skip the per-line measurement for spices and condiments — pinning
+      // "0.5 tsp oregano" or "2 tbsp dijon" makes Instacart show fractional
+      // quantities that don't map to retail SKUs (you buy a jar of oregano,
+      // not 0.5 tsp), and it inflates the cart math.
+      const isSpiceOrCondiment =
+        item.category === 'condiment' || isSpiceItem(item.name);
+      const hasMeasurement =
+        item.quantity != null && item.unit != null && item.unit !== '';
+      const sendMeasurement = hasMeasurement && !isSpiceOrCondiment;
       return {
         name: item.name,
-        line_item_measurements: hasMeasurement
+        line_item_measurements: sendMeasurement
           ? [{ quantity: item.quantity as number, unit: item.unit as string }]
           : undefined,
       };
