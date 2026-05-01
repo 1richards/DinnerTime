@@ -5,7 +5,7 @@ milestone_name: milestone
 current_plan: Not started
 status: planning
 stopped_at: Completed 01-missing-ingredient-indicators-on-recipe-ingredient-lists/01-PLAN.md — isIngredientInPantry helper + ScaledIngredientList trailing indicator (PreviewSheet covers Recipe Box detail / Discover preview / Plan day modal in one diff) + cooking IngredientRow + ScrollableRecipe outer-wrapper wiring; 29/29 tests green; 1 Rule 3 deviation (ScrollableRecipe outer/inner split for vitest-node + supabase CJS chain compatibility).
-last_updated: "2026-05-01T02:11:58.803Z"
+last_updated: "2026-05-01T02:22:34.321Z"
 last_activity: "2026-04-24 - Completed quick task 5: ElevenLabs TTS integration — backend proxy + cooking-mode playback with expo-speech fallback"
 progress:
   total_phases: 1
