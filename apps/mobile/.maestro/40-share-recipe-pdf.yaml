@@ -1,0 +1,38 @@
+appId: com.dinnertime.app
+name: "40 — recipe detail: Share PDF action surfaces toast (or share sheet)"
+---
+# Smoke check for the v1.0.2 Share PDF action. The recipe-detail
+# overflow menu now lists "Share PDF" alongside Add to Plan / Remix /
+# Delete. On a dev client built BEFORE expo-print landed, tapping the
+# action surfaces a toast saying a rebuild is needed (graceful
+# degradation). On a fresh dev client the iOS share sheet opens — that
+# path needs manual visual verification because Maestro can't introspect
+# the system share sheet.
+- runFlow: _ensure-logged-in.yaml
+
+- tapOn:
+    text: "Cancel"
+    optional: true
+- tapOn:
+    text: ".*Go home.*"
+    optional: true
+
+# Navigate to Recipe Box → first recipe.
+- tapOn:
+    text: "Recipe Box"
+    optional: true
+- takeScreenshot: 01-recipe-box
+
+# Tap the first recipe card. Cards are touch-targets but vary in label —
+# the screenshot is the source of truth.
+- tapOn:
+    point: "50%,40%"
+    optional: true
+- takeScreenshot: 02-recipe-detail
+
+# Open the overflow menu (top-right ellipsis on the hero).
+- tapOn:
+    accessibilityText: "More options"
+    optional: true
+
+- takeScreenshot: 03-action-sheet

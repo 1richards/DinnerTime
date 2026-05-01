@@ -23,6 +23,8 @@ import { HeroImage } from '../../../components/ui/HeroImage';
 import { getRecipeImage } from '../../../constants/foodImages';
 import { useGeneratedRecipeImage } from '../../../hooks/useGeneratedRecipeImage';
 import { colors } from '../../../design/tokens';
+import { shareRecipeAsPdf } from '../../../lib/recipePdf';
+import { useToast } from '../../../components/ui/Toast';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -34,6 +36,7 @@ export default function RecipeDetailScreen() {
 
   const [remixOpen, setRemixOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
+  const { show, ToastComponent } = useToast();
 
   useEffect(() => {
     if (!recipe) {
@@ -82,6 +85,21 @@ export default function RecipeDetailScreen() {
     recipe.total_time_minutes ??
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
 
+  const handleSharePdf = async () => {
+    const result = await shareRecipeAsPdf(recipe);
+    if (!result.ok) {
+      const msg =
+        result.reason === 'print_unavailable' ||
+        result.reason === 'sharing_unavailable' ||
+        result.reason === 'native_module_missing'
+          ? 'Sharing needs a dev-client rebuild to enable PDF export.'
+          : result.reason === 'sharing_disabled'
+            ? 'Sharing isn’t available on this device.'
+            : 'Couldn’t build the PDF — try again.';
+      show(msg, 'error');
+    }
+  };
+
   const handleDelete = () => {
     Alert.alert(
       'Delete Recipe?',
@@ -102,6 +120,7 @@ export default function RecipeDetailScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
+      <ToastComponent />
       {/* Hide the default nav header — it's rendered behind the hero. The
           floating back button below replaces it. Swipe-from-left-edge still
           pops the stack natively. */}
@@ -144,6 +163,7 @@ export default function RecipeDetailScreen() {
                 actions={[
                   { label: 'Add to Plan', onPress: () => setPlanOpen(true) },
                   { label: 'Remix', onPress: () => setRemixOpen(true) },
+                  { label: 'Share PDF', onPress: handleSharePdf },
                   { label: 'Delete', onPress: handleDelete, destructive: true },
                 ]}
               />

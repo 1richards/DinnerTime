@@ -25,6 +25,8 @@ import { supabase } from '../../lib/supabase';
 import { getRecipeImage } from '../../constants/foodImages';
 import type { ParsedRecipe } from '../../types/recipe';
 import { colors } from '../../design/tokens';
+import { shareRecipeAsPdf } from '../../lib/recipePdf';
+import { useToast } from '../../components/ui/Toast';
 
 const getApiBaseUrl = (): string => {
   return process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -360,6 +362,22 @@ export function PreviewSheet({
 
   const [remixOpen, setRemixOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const { show: showToast, ToastComponent } = useToast();
+
+  const handleSharePdf = async () => {
+    const result = await shareRecipeAsPdf(recipe);
+    if (!result.ok) {
+      const msg =
+        result.reason === 'print_unavailable' ||
+        result.reason === 'sharing_unavailable' ||
+        result.reason === 'native_module_missing'
+          ? 'Sharing needs a dev-client rebuild to enable PDF export.'
+          : result.reason === 'sharing_disabled'
+            ? 'Sharing isn’t available on this device.'
+            : 'Couldn’t build the PDF — try again.';
+      showToast(msg, 'error');
+    }
+  };
   // Servings stepper — initialize from the recipe's own servings (falling
   // back to 1 when absent). Multiplier is applied purely client-side via
   // ScaledIngredientList; the underlying recipe.ingredients data is never
@@ -397,6 +415,7 @@ export function PreviewSheet({
 
   return (
     <View style={styles.sheet}>
+      <ToastComponent />
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={{ position: 'relative' }}>
           {heroUri ? (
@@ -413,6 +432,14 @@ export function PreviewSheet({
           <View style={styles.sheetHeroOverlay} />
           <Pressable onPress={onClose} style={styles.sheetClose} hitSlop={12} accessibilityLabel="Close">
             <SymbolIcon name="xmark" size={22} tintColor="#FFFFFF" />
+          </Pressable>
+          <Pressable
+            onPress={handleSharePdf}
+            style={styles.sheetShare}
+            hitSlop={12}
+            accessibilityLabel="Share recipe as PDF"
+          >
+            <SymbolIcon name="square.and.arrow.up" size={22} tintColor="#FFFFFF" />
           </Pressable>
           <View style={styles.sheetHeroText}>
             <Text style={styles.sheetTitle} numberOfLines={3}>
@@ -796,6 +823,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 14,
     right: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetShare: {
+    position: 'absolute',
+    top: 14,
+    right: 58,
     width: 36,
     height: 36,
     borderRadius: 18,
