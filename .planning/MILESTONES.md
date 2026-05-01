@@ -1,6 +1,36 @@
 # Milestones
 
-## v1.0 v1.0 — Private Beta Launch Ready (Shipped: 2026-04-22)
+## v1.0.1 — Post-Launch Patches (Shipped: 2026-05-01)
+
+**Phases:** 1 phase, 1 plan, 3 tasks (Phase 26: missing-ingredient indicators)
+**Archive:** `milestones/v1.0.1-ROADMAP.md`
+**Audit:** `milestones/v1.0.1-MILESTONE-AUDIT.md`
+
+**Key accomplishments:**
+
+- Per-ingredient missing-from-pantry indicators landed across Recipe Box detail, Discover preview, Plan day modal, and Cooking mode (single PreviewSheet wiring covers 3 surfaces; ScrollableRecipe outer/inner split owns the cooking-mode wiring without dragging Supabase into vitest-node)
+- Tap a missing ingredient → optimistic add to shopping list with `Alert` rollback on failure (mirrors the post-trifecta `addItem` throw contract)
+- New pure helper `isIngredientInPantry` reuses `PANTRY_STAPLES` + bidirectional substring matching from `computePantryReady` — no new pantry-matching algorithm
+- 29/29 tests green, zero new TypeScript errors
+
+**Side patches (~18 inline `/gsd:fast` and `/gsd:debug` commits, see STATE.md > Quick Tasks Completed):**
+
+- Pantry trifecta — Delete shows error Alert on failure, "In cart" trailing chip on rows already in shopping list, used items filtered out of pantry-ready check
+- Recipe save dedup (server-side normalized title check) + Discover bookmark stays synced across re-fetches
+- iOS 26 Pressable+shadow paint quirk fixed on Surprise me hero (Remix sheet) and cooking-mode primary "Done" button via View+inner-Pressable wrapper pattern
+- Cooking-mode finale: Done button on last step → celebration overlay → marks day cooked + routes to Plan tab
+- Skill focus picker — visible row separation + offer to regenerate this week with the new focus
+- Settings Allergies UI removed (was duplicating Dietary Preferences)
+- DatePickerSheet — pinned to light theme + allows back-dating (today−60d) for retroactive logging
+- Month-cell tap opens PreviewSheet modal instead of dead-end `/plan/[date]` route (route deleted)
+- Scan flow — stop stacking review routes on every state update; no auto-submit after first photo
+- Title-case recipe labels on save with case-insensitive dedup
+- Handoff success copy surfaces pantry-skip context; secondary CTA "shopping list" → "shopping cart"
+- New `tsx scripts/test-user.ts reseed-pantry` subcommand for surgical UAT pantry refresh
+
+---
+
+## v1.0 — Private Beta Launch Ready (Shipped: 2026-04-22)
 
 **Phases completed:** 25 phases, 122 plans, 269 tasks
 
