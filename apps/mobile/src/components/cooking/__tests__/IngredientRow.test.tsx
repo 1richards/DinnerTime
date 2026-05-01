@@ -1,9 +1,14 @@
 /**
- * Red test stub (Phase 16 Wave 0) — component ships in 16-05.
+ * IngredientRow tests.
  *
- * Imports `../IngredientRow` which DOES NOT YET EXIST.
+ * Phase 16-05: COOK-UX-04 — checkable ingredient row with success tint
+ * on check + Phase 19 token contract.
  *
- * Requirement: COOK-UX-04 (checkable ingredient row — success tint on check).
+ * Phase 01-01: missing-ingredient indicator — optional inPantry /
+ * wasAdded / onAddToShoppingList props that render a trailing
+ * cart.badge.plus Pressable when the ingredient is missing and a
+ * non-pressable cart.fill (success tone) marker once added. Static
+ * tree-walk pattern matching StepNavButtons.test.tsx.
  */
 import { describe, it, expect, vi } from 'vitest';
 import type { ReactElement } from 'react';
@@ -82,5 +87,104 @@ describe('IngredientRow', () => {
     const classes = collectClassNames(checkedTree);
     expect(classes).toMatch(/\btext-success\b/);
     expect(classes).not.toMatch(/#[0-9a-fA-F]{3,6}/);
+  });
+});
+
+describe('IngredientRow — missing-ingredient indicator (Phase 01-01)', () => {
+  const base = {
+    id: 'salmon-0',
+    name: 'salmon fillet',
+    quantity: 2,
+    unit: 'lb',
+  };
+
+  function findByLabelRegex(tree: ReturnType<typeof IngredientRow>, re: RegExp) {
+    return flatten(tree as AnyEl).find(
+      (el) =>
+        typeof el.props?.accessibilityLabel === 'string' &&
+        re.test(el.props.accessibilityLabel),
+    );
+  }
+
+  it('renders a trailing Pressable when inPantry=false and wasAdded=false', () => {
+    const tree = IngredientRow({
+      ...base,
+      checked: false,
+      onToggle: vi.fn(),
+      inPantry: false,
+      wasAdded: false,
+      onAddToShoppingList: vi.fn(),
+    });
+    const btn = findByLabelRegex(tree, /^Add .* to shopping list$/);
+    expect(btn).toBeDefined();
+    expect(btn!.props.accessibilityLabel).toBe(
+      'Add salmon fillet to shopping list',
+    );
+    expect(typeof btn!.props.onPress).toBe('function');
+  });
+
+  it('does NOT render the trailing Pressable when inPantry=true', () => {
+    const tree = IngredientRow({
+      ...base,
+      checked: false,
+      onToggle: vi.fn(),
+      inPantry: true,
+      wasAdded: false,
+      onAddToShoppingList: vi.fn(),
+    });
+    const btn = findByLabelRegex(tree, /^Add .* to shopping list$/);
+    expect(btn).toBeUndefined();
+  });
+
+  it('renders a non-pressable Added marker when wasAdded=true', () => {
+    const tree = IngredientRow({
+      ...base,
+      checked: false,
+      onToggle: vi.fn(),
+      inPantry: false,
+      wasAdded: true,
+      onAddToShoppingList: vi.fn(),
+    });
+    // No "Add ..." Pressable
+    const addBtn = findByLabelRegex(tree, /^Add .* to shopping list$/);
+    expect(addBtn).toBeUndefined();
+    // But an "Added ..." marker (View, no onPress)
+    const addedMarker = findByLabelRegex(tree, /^Added .* to shopping list$/);
+    expect(addedMarker).toBeDefined();
+    expect(addedMarker!.props.onPress).toBeUndefined();
+  });
+
+  it('tapping the trailing Pressable invokes onAddToShoppingList', () => {
+    const onAddToShoppingList = vi.fn();
+    const tree = IngredientRow({
+      ...base,
+      checked: false,
+      onToggle: vi.fn(),
+      inPantry: false,
+      wasAdded: false,
+      onAddToShoppingList,
+    });
+    const btn = findByLabelRegex(tree, /^Add .* to shopping list$/);
+    expect(btn).toBeDefined();
+    btn!.props.onPress();
+    expect(onAddToShoppingList).toHaveBeenCalledTimes(1);
+  });
+
+  it('regression guard: existing checkbox onToggle behavior still works when new props are passed', () => {
+    const onToggle = vi.fn();
+    const tree = IngredientRow({
+      ...base,
+      checked: false,
+      onToggle,
+      inPantry: false,
+      wasAdded: false,
+      onAddToShoppingList: vi.fn(),
+    });
+    const checkbox = flatten(tree as AnyEl).find(
+      (el) => el.props?.accessibilityRole === 'checkbox',
+    );
+    expect(checkbox).toBeDefined();
+    checkbox!.props.onPress();
+    expect(onToggle).toHaveBeenCalledWith('salmon-0');
   });
 });
