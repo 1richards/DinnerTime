@@ -24,12 +24,26 @@ export type CuisineFilter =
   | 'korean'
   | 'french';
 export type TimeFilter = 'any' | 'quick' | 'medium' | 'long';
+export type FoodTypeFilter =
+  | 'all'
+  | 'pasta'
+  | 'pizza'
+  | 'tacos'
+  | 'burgers'
+  | 'soup'
+  | 'salad'
+  | 'curry'
+  | 'stir-fry'
+  | 'sandwich'
+  | 'breakfast'
+  | 'dessert';
 
 export interface RecipeFilterState {
   favoritesOnly: boolean;
   pantryOnly: boolean;
   cuisine: CuisineFilter;
   time: TimeFilter;
+  foodType: FoodTypeFilter;
   /** Selected user labels to filter by — recipe must include ALL of these. */
   labels: string[];
 }
@@ -39,6 +53,7 @@ export const EMPTY_FILTERS: RecipeFilterState = {
   pantryOnly: false,
   cuisine: 'all',
   time: 'any',
+  foodType: 'all',
   labels: [],
 };
 
@@ -48,6 +63,7 @@ export function countActiveFilters(s: RecipeFilterState): number {
     (s.pantryOnly ? 1 : 0) +
     (s.cuisine !== 'all' ? 1 : 0) +
     (s.time !== 'any' ? 1 : 0) +
+    (s.foodType !== 'all' ? 1 : 0) +
     s.labels.length
   );
 }
@@ -147,6 +163,101 @@ export function matchesCuisineFilter(
 ): boolean {
   if (cuisine === 'all') return true;
   const keywords = CUISINE_KEYWORDS[cuisine];
+  const haystack = [
+    recipe.title,
+    recipe.description ?? '',
+    ...(recipe.ingredients ?? []).map((i) => i.name ?? ''),
+  ]
+    .join(' ')
+    .toLowerCase();
+  return keywords.some((kw) => haystack.includes(kw));
+}
+
+const FOOD_TYPE_OPTIONS: Array<{ key: FoodTypeFilter; label: string; emoji: string }> = [
+  { key: 'all', label: 'Any', emoji: '✨' },
+  { key: 'pasta', label: 'Pasta', emoji: '🍝' },
+  { key: 'pizza', label: 'Pizza', emoji: '🍕' },
+  { key: 'tacos', label: 'Tacos', emoji: '🌮' },
+  { key: 'burgers', label: 'Burgers', emoji: '🍔' },
+  { key: 'soup', label: 'Soup', emoji: '🍲' },
+  { key: 'salad', label: 'Salad', emoji: '🥗' },
+  { key: 'curry', label: 'Curry', emoji: '🍛' },
+  { key: 'stir-fry', label: 'Stir-fry', emoji: '🥢' },
+  { key: 'sandwich', label: 'Sandwich', emoji: '🥪' },
+  { key: 'breakfast', label: 'Breakfast', emoji: '🍳' },
+  { key: 'dessert', label: 'Dessert', emoji: '🍰' },
+];
+
+/**
+ * Heuristic dish-shape match — same approach as cuisine but keyed off
+ * the dish format (pasta, pizza, tacos…) rather than national cuisine.
+ * Some overlap with cuisine keywords is fine: "pizza" appears in both
+ * Italian-cuisine and pizza-foodtype matchers and that's intentional —
+ * the two axes are orthogonal so they should each match independently.
+ */
+const FOOD_TYPE_KEYWORDS: Record<Exclude<FoodTypeFilter, 'all'>, string[]> = {
+  pasta: [
+    'pasta', 'spaghetti', 'penne', 'linguine', 'fettuccine', 'ravioli',
+    'lasagna', 'gnocchi', 'tortellini', 'rigatoni', 'orecchiette',
+    'cavatappi', 'bucatini', 'macaroni', 'mac and cheese', 'mac & cheese',
+    'noodle', 'noodles', 'carbonara', 'bolognese', 'alfredo', 'pesto pasta',
+  ],
+  pizza: [
+    'pizza', 'flatbread', 'calzone', 'stromboli', 'focaccia',
+  ],
+  tacos: [
+    'taco', 'tacos', 'burrito', 'quesadilla', 'enchilada', 'fajita',
+    'tostada', 'chimichanga', 'tortilla', 'al pastor', 'carnitas',
+    'carne asada',
+  ],
+  burgers: [
+    'burger', 'burgers', 'cheeseburger', 'sliders', 'patty melt',
+  ],
+  soup: [
+    'soup', 'stew', 'chili', 'chowder', 'bisque', 'broth', 'minestrone',
+    'gazpacho', 'pho', 'ramen', 'miso soup', 'tom yum', 'tom kha',
+    'pozole', 'goulash',
+  ],
+  salad: [
+    'salad', 'caesar', 'cobb', 'caprese', 'tabbouleh', 'slaw', 'coleslaw',
+    'tabouli',
+  ],
+  curry: [
+    'curry', 'tikka masala', 'butter chicken', 'vindaloo', 'korma',
+    'massaman', 'green curry', 'red curry', 'panang', 'thai curry',
+    'indian curry', 'japanese curry',
+  ],
+  'stir-fry': [
+    'stir-fry', 'stir fry', 'kung pao', 'lo mein', 'fried rice',
+    'chow mein', 'pad thai', 'pad see ew', 'general tso',
+    'orange chicken', 'sesame chicken', 'mongolian beef', 'szechuan',
+    'sichuan',
+  ],
+  sandwich: [
+    'sandwich', 'sub', 'panini', 'grilled cheese', 'blt', 'club',
+    'reuben', 'wrap', 'pita', 'gyro', 'shawarma', 'banh mi',
+    'philly cheesesteak', 'pulled pork sandwich', 'meatball sub',
+  ],
+  breakfast: [
+    'pancake', 'pancakes', 'waffle', 'waffles', 'omelet', 'omelette',
+    'frittata', 'french toast', 'oatmeal', 'granola', 'yogurt parfait',
+    'breakfast burrito', 'eggs benedict', 'scrambled eggs',
+    'huevos rancheros', 'shakshuka', 'breakfast',
+  ],
+  dessert: [
+    'cake', 'cookie', 'cookies', 'brownie', 'brownies', 'pie',
+    'cheesecake', 'tiramisu', 'pudding', 'mousse', 'ice cream',
+    'sorbet', 'cobbler', 'crumble', 'tart', 'dessert', 'cupcake',
+    'cupcakes', 'donut', 'doughnut', 'fudge',
+  ],
+};
+
+export function matchesFoodTypeFilter(
+  recipe: { title: string; description: string | null; ingredients?: Array<{ name?: string }> | null },
+  foodType: FoodTypeFilter,
+): boolean {
+  if (foodType === 'all') return true;
+  const keywords = FOOD_TYPE_KEYWORDS[foodType];
   const haystack = [
     recipe.title,
     recipe.description ?? '',
@@ -282,6 +393,38 @@ export function RecipeFilterSheet({ visible, initial, availableLabels, onClose, 
                 <Pressable
                   key={opt.key}
                   onPress={() => setState((s) => ({ ...s, cuisine: opt.key }))}
+                  style={[
+                    styles.segmentChip,
+                    selected && styles.segmentChipSelected,
+                  ]}
+                >
+                  <Text style={styles.segmentEmoji}>{opt.emoji}</Text>
+                  <Text
+                    style={[
+                      styles.segmentLabel,
+                      selected && styles.segmentLabelSelected,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Food type segmented — orthogonal axis to cuisine. A "Pizza
+              Margherita" matches both italian-cuisine and pizza-foodtype;
+              a "Vietnamese pho" matches pho-via-soup but is not pinned
+              to any of the listed cuisines. Same heuristic match against
+              title / description / ingredient names. */}
+          <Text style={styles.sectionHeading}>Food type</Text>
+          <View style={styles.segmentedRow}>
+            {FOOD_TYPE_OPTIONS.map((opt) => {
+              const selected = state.foodType === opt.key;
+              return (
+                <Pressable
+                  key={opt.key}
+                  onPress={() => setState((s) => ({ ...s, foodType: opt.key }))}
                   style={[
                     styles.segmentChip,
                     selected && styles.segmentChipSelected,

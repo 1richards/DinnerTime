@@ -36,6 +36,7 @@ import {
   EMPTY_FILTERS,
   countActiveFilters,
   matchesCuisineFilter,
+  matchesFoodTypeFilter,
   matchesLabelsFilter,
   type RecipeFilterState,
   type TimeFilter,
@@ -400,6 +401,7 @@ export default function KitchenScreen() {
     return recipes.filter((r) => {
       if (filters.favoritesOnly && !r.is_favorite) return false;
       if (!matchesCuisineFilter(r, filters.cuisine)) return false;
+      if (!matchesFoodTypeFilter(r, filters.foodType)) return false;
       if (!matchesLabelsFilter(r, filters.labels)) return false;
       if (!matchesTimeFilter(r, filters.time)) return false;
       if (filters.pantryOnly && !matchesPantryOnly(r, pantryNames)) return false;
