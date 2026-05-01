@@ -1,11 +1,12 @@
 // Provision and reset a deterministic test user for UAT + integration tests.
 //
 // Usage:
-//   tsx scripts/test-user.ts ensure   # create if missing, print id + jwt
-//   tsx scripts/test-user.ts reset    # delete all rows owned by the test user (does NOT delete the user) + re-seed pantry
-//   tsx scripts/test-user.ts clear    # delete recipes + pantry_items for the test user (keeps auth user, profile, household)
-//   tsx scripts/test-user.ts jwt      # print a fresh access token (requires existing user)
-//   tsx scripts/test-user.ts info     # print user id + email + jwt as JSON
+//   tsx scripts/test-user.ts ensure          # create if missing, print id + jwt
+//   tsx scripts/test-user.ts reset           # delete all rows owned by the test user (does NOT delete the user) + re-seed pantry
+//   tsx scripts/test-user.ts clear           # delete recipes + pantry_items for the test user (keeps auth user, profile, household)
+//   tsx scripts/test-user.ts reseed-pantry   # surgical: wipe pantry_items + reload from seed-pantry.ts (keeps recipes/plans/household)
+//   tsx scripts/test-user.ts jwt             # print a fresh access token (requires existing user)
+//   tsx scripts/test-user.ts info            # print user id + email + jwt as JSON
 //
 // Reads SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_ANON_KEY from process.env.
 
@@ -167,6 +168,36 @@ async function clear() {
   return user;
 }
 
+/**
+ * Surgical pantry refresh — wipes the test user's `pantry_items` and
+ * re-inserts the seed fixture. Leaves recipes, meal plans, shopping
+ * lists, and household_members intact. Useful when iterating on the
+ * pantry tab and needing a clean inventory without losing the rest of
+ * the test data.
+ */
+async function reseedPantry() {
+  const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+  if (listErr) throw listErr;
+  const user = list.users.find((u) => u.email === TEST_EMAIL);
+  if (!user) {
+    console.error(`[test-user] no user to reseed pantry for: ${TEST_EMAIL}`);
+    return null;
+  }
+
+  const { error: delErr } = await admin
+    .from('pantry_items')
+    .delete()
+    .eq('profile_id', user.id);
+  if (delErr) console.error(`[test-user] reseed-pantry delete: ${delErr.message}`);
+
+  const seedPantry = buildSeedPantryRows(user.id);
+  const { error: insErr } = await admin.from('pantry_items').insert(seedPantry);
+  if (insErr) console.error(`[test-user] reseed-pantry insert: ${insErr.message}`);
+
+  console.error(`[test-user] pantry reseeded for ${TEST_EMAIL} (${seedPantry.length} items)`);
+  return user;
+}
+
 async function jwt() {
   const { data, error } = await anon.auth.signInWithPassword({
     email: TEST_EMAIL,
@@ -191,6 +222,10 @@ async function main() {
     }
     case 'clear': {
       await clear();
+      break;
+    }
+    case 'reseed-pantry': {
+      await reseedPantry();
       break;
     }
     case 'jwt': {
