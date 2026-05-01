@@ -304,9 +304,12 @@ export default function KitchenScreen() {
   const { recipes, isLoading, fetchRecipes } = useRecipeStore();
   const isOnline = useNetworkStore((s) => s.isOnline);
 
-  // searchQuery retained as dead state for now — StickySearchPill taps out
-  // to /search modal. Phase 17 will wire modal input back to this filter.
-  const [searchQuery] = useState('');
+  // /search?context=library writes to useRecipeStore.searchQuery on submit
+  // and navigates back here. Reading the store value directly keeps the
+  // filter reactive across navigation cycles. The Recipe Box header shows
+  // a "Clear search" affordance when this is non-empty.
+  const searchQuery = useRecipeStore((s) => s.searchQuery);
+  const setSearchQuery = useRecipeStore((s) => s.setSearchQuery);
   const deferredQuery = useDeferredValue(searchQuery);
   const [filters, setFilters] = useState<RecipeFilterState>(EMPTY_FILTERS);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
@@ -440,9 +443,27 @@ export default function KitchenScreen() {
         <Text style={styles.resultsCount}>
           {filteredRecipes.length}{' '}
           {filteredRecipes.length === 1 ? 'recipe' : 'recipes'}
+          {searchQuery.trim() ? ` · "${searchQuery.trim()}"` : ''}
           {activeFilterCount > 0 ? ` · ${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'}` : ''}
         </Text>
         <View style={styles.toolbarActions}>
+          {searchQuery.trim() && (
+            <Pressable
+              onPress={() => setSearchQuery('')}
+              hitSlop={8}
+              accessibilityLabel="Clear search"
+              style={({ pressed }) => [
+                styles.filterIconBtn,
+                pressed && styles.toolbarBtnPressed,
+              ]}
+            >
+              <SymbolIcon
+                name="xmark.circle.fill"
+                size="action"
+                tintColor={colors.textSecondary}
+              />
+            </Pressable>
+          )}
           {activeFilterCount > 0 && (
             <Pressable
               onPress={() => setFilters(EMPTY_FILTERS)}

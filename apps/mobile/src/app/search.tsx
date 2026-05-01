@@ -29,6 +29,7 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 
 import { useSuggestionsStore } from '../stores/suggestionsStore';
+import { useRecipeStore } from '../stores/recipeStore';
 import { Button } from '../components/ui/Button';
 import { colors } from '../design/tokens';
 
@@ -50,8 +51,9 @@ const SUGGESTED_PROMPTS: string[] = [
 export default function SearchModal() {
   const { context } = useLocalSearchParams<{ context?: string }>();
   if (context === 'something-new') return <SomethingNewSearch />;
+  if (context === 'library') return <LibrarySearch />;
 
-  // Pitfall 6 fallback: placeholder echo for 'library' | 'pantry' contexts.
+  // Other contexts (e.g. 'pantry') still placeholder until they get their own surfaces.
   return (
     <View className="flex-1 bg-bg p-4">
       <Text className="text-title text-text-primary">Search</Text>
@@ -246,3 +248,118 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
+// ---- Library search ---------------------------------------------------------
+// Sets recipeStore.searchQuery and dismisses the modal. Kitchen.tsx reads the
+// store value directly and filters the saved-recipe list. When invoked from
+// the Plan tab's AddMealRow (context="library"), submit additionally routes
+// the user to the Kitchen tab so they land on the filtered results — Plan
+// itself doesn't render a recipe list, so dropping back there would feel like
+// nothing happened.
+
+const LIBRARY_PROMPTS: string[] = [
+  'tacos',
+  'pasta',
+  'one-pan',
+  'soup',
+  'salad',
+  'breakfast',
+  'kid favorites',
+  'leftover-friendly',
+];
+
+function LibrarySearch() {
+  const setSearchQuery = useRecipeStore((s) => s.setSearchQuery);
+  const lastQuery = useRecipeStore((s) => s.searchQuery);
+
+  const [query, setQuery] = useState(lastQuery ?? '');
+
+  const submitQuery = (raw: string) => {
+    const trimmed = raw.trim();
+    setSearchQuery(trimmed);
+    // Always close the modal first so the next-frame tab nav has a clean
+    // stack. router.back() resolves the parent screen the user came from
+    // (kitchen.tsx Recipe Box, plan.tsx AddMealRow, etc.). Plan-tab callers
+    // want to land on Kitchen filtered, so additionally push to /kitchen
+    // — expo-router treats that as a tab switch (no stack growth).
+    router.back();
+    router.push('/(tabs)/kitchen' as never);
+  };
+
+  const handleSubmit = () => submitQuery(query);
+  const handleClear = () => {
+    setSearchQuery('');
+    setQuery('');
+    router.back();
+  };
+
+  return (
+    <View style={styles.screen}>
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search saved recipes"
+        placeholderTextColor={colors.textTertiary}
+        autoFocus
+        returnKeyType="search"
+        onSubmitEditing={handleSubmit}
+        style={styles.input}
+        accessibilityLabel="Search saved recipes"
+      />
+      <View style={styles.submit}>
+        <Button
+          title="Search"
+          onPress={handleSubmit}
+          disabled={query.trim().length === 0}
+        />
+      </View>
+
+      {lastQuery ? (
+        <View style={{ marginTop: 12 }}>
+          <Pressable
+            onPress={handleClear}
+            accessibilityRole="button"
+            accessibilityLabel="Clear current search"
+            style={({ pressed }) => [
+              styles.promptChip,
+              { alignSelf: 'flex-start' },
+              pressed && styles.promptChipPressed,
+            ]}
+          >
+            <Text style={styles.promptChipText}>
+              Clear current search ({lastQuery})
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <ScrollView
+        style={styles.promptsScroll}
+        contentContainerStyle={styles.promptsContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.promptsHeading}>BROWSE BY KEYWORD</Text>
+        <View style={styles.promptsWrap}>
+          {LIBRARY_PROMPTS.map((p) => (
+            <Pressable
+              key={p}
+              onPress={() => {
+                setQuery(p);
+                submitQuery(p);
+              }}
+              style={({ pressed }) => [
+                styles.promptChip,
+                pressed && styles.promptChipPressed,
+              ]}
+              accessibilityLabel={`Search saved recipes for ${p}`}
+              accessibilityRole="button"
+            >
+              <Text style={styles.promptChipText}>{p}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
