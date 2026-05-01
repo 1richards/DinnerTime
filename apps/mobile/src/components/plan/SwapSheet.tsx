@@ -201,54 +201,61 @@ function CandidateCard({
     recipe.total_time_minutes ??
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
 
+  // Card chrome (bg + border + shadow) lives on a wrapping View, not the
+  // Pressable, because iOS 26 / Fabric intermittently fails to paint a
+  // Pressable's backgroundColor when shadow props are also set, which left
+  // these tiles looking like content floating on cream (no card outline).
+  // Same fix as the Surprise me hero on RemixSheet and the cooking-mode
+  // Done button. Inner Pressable still owns the touch + opacity-on-press.
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled || committing}
-      style={({ pressed }) => [
-        styles.card,
-        pressed && !disabled ? { opacity: 0.85 } : null,
-        disabled ? { opacity: 0.4 } : null,
-      ]}
-      accessibilityLabel={`Swap to ${recipe.title}`}
-    >
-      <View style={styles.cardThumbWrap}>
-        {heroUri ? (
-          <Image
-            source={{ uri: heroUri }}
-            style={styles.cardThumb}
-            contentFit="cover"
-            transition={200}
-            cachePolicy="memory-disk"
-          />
-        ) : (
-          <View style={[styles.cardThumb, { backgroundColor: '#F1EAE0' }]} />
-        )}
-      </View>
-      <View style={styles.cardBody}>
-        <Text style={styles.cardTitle} numberOfLines={2}>
-          {recipe.title}
-        </Text>
-        {totalTime > 0 && (
-          <View style={styles.cardMeta}>
-            <SymbolIcon name="clock" size={12} tintColor={colors.textSecondary} />
-            <Text style={styles.cardMetaText}>{totalTime}m</Text>
-          </View>
-        )}
-      </View>
-      <View style={styles.cardAction}>
-        {committing ? (
-          <ActivityIndicator size="small" color={colors.brand} />
-        ) : (
-          <SymbolIcon
-            name="arrow.left.arrow.right"
-            size="action"
-            tintColor={colors.brand}
-            weight="semibold"
-          />
-        )}
-      </View>
-    </Pressable>
+    <View style={[styles.card, disabled ? { opacity: 0.4 } : null]}>
+      <Pressable
+        onPress={onPress}
+        disabled={disabled || committing}
+        style={({ pressed }) => [
+          styles.cardInner,
+          pressed && !disabled ? { opacity: 0.85 } : null,
+        ]}
+        accessibilityLabel={`Swap to ${recipe.title}`}
+      >
+        <View style={styles.cardThumbWrap}>
+          {heroUri ? (
+            <Image
+              source={{ uri: heroUri }}
+              style={styles.cardThumb}
+              contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
+            />
+          ) : (
+            <View style={[styles.cardThumb, { backgroundColor: '#F1EAE0' }]} />
+          )}
+        </View>
+        <View style={styles.cardBody}>
+          <Text style={styles.cardTitle} numberOfLines={2}>
+            {recipe.title}
+          </Text>
+          {totalTime > 0 && (
+            <View style={styles.cardMeta}>
+              <SymbolIcon name="clock" size={12} tintColor={colors.textSecondary} />
+              <Text style={styles.cardMetaText}>{totalTime}m</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.cardAction}>
+          {committing ? (
+            <ActivityIndicator size="small" color={colors.brand} />
+          ) : (
+            <SymbolIcon
+              name="arrow.left.arrow.right"
+              size="action"
+              tintColor={colors.brand}
+              weight="semibold"
+            />
+          )}
+        </View>
+      </Pressable>
+    </View>
   );
 }
 
@@ -310,17 +317,24 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    // Wrapper owns chrome — bg + border + shadow paint reliably here on
+    // iOS 26 / Fabric (Pressable does not). Outer paddings stay so the
+    // touch surface fills the visible card.
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 12,
-    marginBottom: 10,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#F1EAE0',
     shadowColor: '#7A6651',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
   },
   cardThumbWrap: {
     width: 72,
