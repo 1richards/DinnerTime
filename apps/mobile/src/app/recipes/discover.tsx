@@ -19,6 +19,8 @@ import { DatePickerSheet } from '../../components/plan/DatePickerSheet';
 import { ServingSizeStepper } from '../../components/recipes/ServingSizeStepper';
 import { ScaledIngredientList } from '../../components/recipes/ScaledIngredientList';
 import { useRecipeStore } from '../../stores/recipeStore';
+import { usePantryStore } from '../../stores/pantryStore';
+import { useShoppingStore } from '../../stores/shoppingStore';
 import { supabase } from '../../lib/supabase';
 import { getRecipeImage } from '../../constants/foodImages';
 import type { ParsedRecipe } from '../../types/recipe';
@@ -366,6 +368,21 @@ export function PreviewSheet({
   const [servings, setServings] = useState<number>(baseServings);
   const multiplier = baseServings > 0 ? servings / baseServings : 1;
 
+  // Phase 01-01: missing-ingredient indicator wiring. Reactive subscriptions
+  // so the cart-add affordance reflects pantry / shopping list edits made
+  // elsewhere while the sheet is open.
+  const pantryItems = usePantryStore((s) => s.items);
+  const addToShoppingList = useShoppingStore((s) => s.addItem);
+  // Per-sheet "added in this session" set so the icon flips to cart.fill
+  // immediately on tap. Lifecycle is intentionally bound to this sheet —
+  // re-opening a recipe re-evaluates from pantryItems alone (no stale flips).
+  const [addedNames, setAddedNames] = useState<Set<string>>(() => new Set());
+  // Bug 3 contract per CONTEXT.md — even though loadItems() filters to
+  // status === 'available' already, defensive re-filter at the consumer.
+  const pantryNames = pantryItems
+    .filter((p) => p.status === 'available')
+    .map((p) => p.name);
+
   // Phase 17 P17-05: inline-source RemixSheet for unsaved discovery results.
   // `kind: 'inline'` avoids requiring recipe.id (which Discover cards don't have).
   const remixSource: RemixSource = {
@@ -438,6 +455,36 @@ export function PreviewSheet({
             <ScaledIngredientList
               ingredients={recipe.ingredients}
               multiplier={multiplier}
+              pantryNames={pantryNames}
+              addedNames={addedNames}
+              onAddIngredient={async (ing) => {
+                const key = ing.name.trim().toLowerCase();
+                // Optimistic flip — icon → cart.fill (success tone) instantly.
+                setAddedNames((prev) => {
+                  const next = new Set(prev);
+                  next.add(key);
+                  return next;
+                });
+                try {
+                  await addToShoppingList({
+                    name: ing.name,
+                    quantity: ing.quantity,
+                    unit: ing.unit,
+                  });
+                } catch (err) {
+                  // Rollback so the icon returns to cart.badge.plus and the
+                  // user can retry. Mirrors PantryItemCard.handleGetMore.
+                  setAddedNames((prev) => {
+                    const next = new Set(prev);
+                    next.delete(key);
+                    return next;
+                  });
+                  Alert.alert(
+                    'Could not add to shopping list',
+                    err instanceof Error ? err.message : 'Please try again.',
+                  );
+                }
+              }}
             />
           )}
         </View>
