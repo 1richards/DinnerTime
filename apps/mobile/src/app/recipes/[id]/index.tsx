@@ -19,6 +19,7 @@ import { FavoriteButton } from '../../../components/recipes/FavoriteButton';
 import { RemixSheet } from '../../../components/recipes/RemixSheet';
 import { AddToPlanSheet } from '../../../components/recipes/AddToPlanSheet';
 import { Button } from '../../../components/ui/Button';
+import { Chip } from '../../../components/ui/Chip';
 import { HeroImage } from '../../../components/ui/HeroImage';
 import { getRecipeImage } from '../../../constants/foodImages';
 import { useGeneratedRecipeImage } from '../../../hooks/useGeneratedRecipeImage';
@@ -184,6 +185,53 @@ export default function RecipeDetailScreen() {
         {recipe.description && (
           <View style={styles.section}>
             <Text style={styles.descriptionText}>{recipe.description}</Text>
+          </View>
+        )}
+
+        {/* Skills practiced card — Quick-task 6.
+            Renders only when at least one of difficulty / practiced_skills /
+            skill_note is set. Legacy recipes (all three null) get NO card,
+            matching the "no fallback badges" rule. */}
+        {(recipe.difficulty ||
+          (recipe.practiced_skills && recipe.practiced_skills.length > 0) ||
+          recipe.skill_note) && (
+          <View style={styles.card}>
+            <Text style={styles.sectionHeading}>Skills practiced</Text>
+            <View style={styles.skillChipRow}>
+              {recipe.difficulty && (
+                <Chip
+                  kind="display"
+                  tone={
+                    recipe.difficulty === 'hard'
+                      ? 'warning'
+                      : recipe.difficulty === 'easy'
+                        ? 'success'
+                        : 'default'
+                  }
+                  label={
+                    recipe.difficulty[0]!.toUpperCase() +
+                    recipe.difficulty.slice(1)
+                  }
+                  leadingIcon="gauge.with.dots.needle.33percent"
+                />
+              )}
+              {(recipe.practiced_skills ?? []).map((skill) => {
+                const lc = skill.toLowerCase();
+                const display = lc[0]!.toUpperCase() + lc.slice(1);
+                return (
+                  <Chip
+                    key={skill}
+                    kind="display"
+                    tone="default"
+                    label={display}
+                    leadingIcon="sparkles"
+                  />
+                );
+              })}
+            </View>
+            {recipe.skill_note && (
+              <Text style={styles.skillNote}>{recipe.skill_note}</Text>
+            )}
           </View>
         )}
 
@@ -385,5 +433,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#2A221A',
     lineHeight: 23,
+  },
+  // Quick-task 6 — Skills practiced card.
+  skillChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  skillNote: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#7A6651',
+    fontStyle: 'italic',
+    lineHeight: 20,
   },
 });
