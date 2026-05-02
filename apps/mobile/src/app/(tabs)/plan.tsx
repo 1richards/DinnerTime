@@ -25,6 +25,7 @@ import { SavedRecipeDetail } from './kitchen';
 import { getRecipeImage } from '../../constants/foodImages';
 import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
 import type { ParsedRecipe, Recipe } from '../../types/recipe';
+import { authedFetch } from '../../lib/authedFetch';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useProgressionStore } from '../../stores/progressionStore';
 import { usePantryStore } from '../../stores/pantryStore';
@@ -277,6 +278,58 @@ export default function PlanScreen() {
       }),
     });
   }, [stretchDay, currentPlan?.id, currentPlan?.week_start, currentPlan]);
+
+  // Expand a lightweight plan entry into a full ParsedRecipe with steps
+  // by hitting POST /recipes/expand-from-plan-entry. The plan generator
+  // intentionally returns step-less sketches (title + ingredients hint
+  // only); without this call, Save / Cook Now would persist a recipe
+  // with `steps: []` and the cook screen would have nothing to read.
+  // On expansion failure we fall back to the in-memory previewRecipe so
+  // the user still gets *something* saved rather than a hard error.
+  const expandPlanEntry = useCallback(
+    async (entry: MealPlanEntry, fallback: ParsedRecipe): Promise<ParsedRecipe> => {
+      try {
+        const response = await authedFetch('/api/v1/recipes/expand-from-plan-entry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: entry.title,
+            description: entry.description,
+            ingredients: (entry.ingredients ?? []).map((i) => ({
+              name: i.name,
+              quantity: i.quantity,
+              unit: i.unit,
+            })),
+            ingredients_needed: (entry.ingredients_needed ?? []).map((i) => ({
+              name: i.name,
+            })),
+            estimated_time_minutes: entry.estimated_time_minutes,
+            kid_friendly: entry.kid_friendly,
+            why_suggested: entry.why_suggested,
+            focus_theme: currentPlan?.focus_theme ?? null,
+          }),
+        });
+        if (!response.ok) return fallback;
+        const body = await response.json();
+        const expanded = body?.data as ParsedRecipe | undefined;
+        if (!expanded || !Array.isArray(expanded.steps) || expanded.steps.length === 0) {
+          return fallback;
+        }
+        // Preserve fields the plan entry was already correct about so the
+        // expanded recipe stays connected to the original suggestion.
+        return {
+          ...expanded,
+          source_type: 'ai',
+          // Hold onto the plan-entry image hint when expand returned no
+          // image (Gemini hero generation runs separately during save).
+          image_url: expanded.image_url ?? fallback.image_url,
+        };
+      } catch {
+        return fallback;
+      }
+    },
+    [currentPlan?.focus_theme],
+  );
 
   // Convert a MealPlanEntry into the ParsedRecipe shape PreviewSheet
   // expects. Plan entries don't carry steps / source metadata so we
@@ -1031,7 +1084,13 @@ export default function PlanScreen() {
             onSave={async () => {
               setPreviewSaving(true);
               try {
-                await saveRecipe({ ...previewRecipe, source_type: 'ai' });
+                // Plan entries are step-less sketches; expand before
+                // persisting so the saved recipe has cookable steps.
+                const expanded = await expandPlanEntry(
+                  previewEntry,
+                  previewRecipe,
+                );
+                await saveRecipe({ ...expanded, source_type: 'ai' });
                 setPreviewEntry(null);
               } finally {
                 setPreviewSaving(false);
@@ -1040,10 +1099,14 @@ export default function PlanScreen() {
             onCookNow={async () => {
               setPreviewCooking(true);
               try {
+                const expanded = await expandPlanEntry(
+                  previewEntry,
+                  previewRecipe,
+                );
                 const beforeIds = new Set(
                   useRecipeStore.getState().recipes.map((r) => r.id),
                 );
-                await saveRecipe({ ...previewRecipe, source_type: 'ai' });
+                await saveRecipe({ ...expanded, source_type: 'ai' });
                 const state = useRecipeStore.getState();
                 if (state.error) return;
                 const created = state.recipes.find((r) => !beforeIds.has(r.id));
