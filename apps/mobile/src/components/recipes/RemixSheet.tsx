@@ -93,20 +93,11 @@ const MODES: ModeOption[] = [
   { mode: 'decadent', label: 'Decadent', sub: 'Rich, indulgent', symbol: 'crown.fill', tint: colors.warning },
 ];
 
-interface PairSection {
-  title: string;
-  tiles: [ModeOption, ModeOption];
-}
-
-// Section-grouped pairs — title sets the lens (Protein, Veggies,
-// Difficulty, Health) so the two tiles below read as deliberate
-// counterparts rather than a random 2-col grid.
-const SECTIONS: PairSection[] = [
-  { title: 'Protein', tiles: [MODES[1]!, MODES[2]!] },
-  { title: 'Veggies', tiles: [MODES[3]!, MODES[4]!] },
-  { title: 'Difficulty', tiles: [MODES[5]!, MODES[6]!] },
-  { title: 'Health', tiles: [MODES[7]!, MODES[8]!] },
-];
+// Non-Surprise modes flow into a flat 3-column grid below the hero
+// card. The earlier 2-col paired sections (Protein / Veggies /
+// Difficulty / Health) put labels on the equator of each section title,
+// which made the page feel taller and choppier than it needed to be.
+const GRID_MODES: ModeOption[] = MODES.slice(1);
 
 const SURPRISE_MODE = MODES[0]!;
 
@@ -565,39 +556,38 @@ export function RemixSheet({
             </Pressable>
 
             <View style={styles.modeList}>
-              {/* Section-grouped pairs — each section title sets the
-                  lens (Protein / Veggies / Difficulty / Health), the two
-                  tiles below it are the deliberate counterparts. */}
-              {SECTIONS.map((section) => (
-                <View key={section.title} style={styles.sectionGroup}>
-                  <Text style={styles.sectionTitle}>{section.title}</Text>
-                  <View style={styles.sectionPair}>
-                    {section.tiles.map((m) => (
-                      <Pressable
-                        key={m.mode}
-                        onPress={() => handleMode(m.mode)}
-                        style={({ pressed }) => [
-                          styles.modeTile,
-                          pressed && { opacity: 0.85 },
-                        ]}
-                      >
-                        <View
-                          style={[styles.modeTileChip, { backgroundColor: `${m.tint}1A` }]}
-                        >
-                          <SymbolIcon
-                            name={m.symbol as never}
-                            size={26}
-                            tintColor={m.tint}
-                            weight="semibold"
-                          />
-                        </View>
-                        <Text style={styles.modeLabelTile} numberOfLines={1}>{m.label}</Text>
-                        <Text style={styles.modeSubTile} numberOfLines={1}>{m.sub}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              ))}
+              {/* Flat 3-column grid of remix modes. Tiles left-align both
+                  the icon chip and the label/sub text so a quick scan
+                  parses the column rather than re-centering on each row. */}
+              <View style={styles.modeGrid}>
+                {GRID_MODES.map((m) => (
+                  <Pressable
+                    key={m.mode}
+                    onPress={() => handleMode(m.mode)}
+                    style={({ pressed }) => [
+                      styles.modeTile,
+                      pressed && { opacity: 0.85 },
+                    ]}
+                  >
+                    <View
+                      style={[styles.modeTileChip, { backgroundColor: `${m.tint}1A` }]}
+                    >
+                      <SymbolIcon
+                        name={m.symbol as never}
+                        size={22}
+                        tintColor={m.tint}
+                        weight="semibold"
+                      />
+                    </View>
+                    <Text style={styles.modeLabelTile} numberOfLines={2}>
+                      {m.label}
+                    </Text>
+                    <Text style={styles.modeSubTile} numberOfLines={2}>
+                      {m.sub}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           </ScrollView>
         )}
@@ -1186,16 +1176,24 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     paddingHorizontal: 4,
   },
-  sectionPair: {
+  // Flat 3-column grid for the non-Surprise remix modes. Width is
+  // expressed as a percentage so the tiles wrap cleanly to the next row
+  // and gap pulls a uniform gutter between them. flex:1 doesn't fit a
+  // wrapping grid because tiles on the trailing partial row would then
+  // expand to fill the row.
+  modeGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   modeTile: {
-    flex: 1,
+    // 3 columns: ~31% leaves headroom for the 10px gap on either side
+    // without collapsing on smaller iPhones.
+    width: '31%',
     alignItems: 'flex-start',
     justifyContent: 'flex-start',
-    paddingVertical: 16,
-    paddingHorizontal: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
     shadowColor: '#7A6651',
@@ -1203,27 +1201,32 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 1,
-    minHeight: 120,
-    gap: 10,
+    minHeight: 116,
+    gap: 8,
   },
   modeTileChip: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modeLabelTile: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: '#1A140F',
     letterSpacing: -0.2,
-    marginTop: 4,
+    marginTop: 2,
+    textAlign: 'left',
+    alignSelf: 'flex-start',
   },
   modeSubTile: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#7A6651',
-    marginTop: 2,
+    marginTop: 1,
+    textAlign: 'left',
+    alignSelf: 'flex-start',
+    lineHeight: 14,
   },
   modeLabel: {
     fontSize: 16,
