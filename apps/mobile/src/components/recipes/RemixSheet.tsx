@@ -532,40 +532,37 @@ export function RemixSheet({
               )}
             </View>
 
-            {/* Surprise me — full-width hero card. The orange background
-                lives on a wrapping View, not the Pressable, because iOS 26
-                under New Architecture (Fabric) intermittently fails to
-                paint a Pressable's `backgroundColor` when shadow props
-                are also set, leaving white text on cream and the whole
-                card invisible. The View+inner-Pressable pattern paints
-                reliably. */}
-            <View style={styles.surpriseCard}>
-              <Pressable
-                onPress={() => handleMode('surprise')}
-                style={({ pressed }) => [
-                  styles.surpriseCardInner,
-                  pressed && { opacity: 0.92 },
-                ]}
-              >
-                <View style={styles.surpriseChip}>
-                  <SymbolIcon
-                    name="sparkles"
-                    size={28}
-                    tintColor="#FFFFFF"
-                    weight="semibold"
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.surpriseLabel}>Surprise me</Text>
-                  <Text style={styles.surpriseSub}>A bold creative twist</Text>
-                </View>
+            {/* Surprise me — full-width hero card. Visual language matches
+                the sectioned mode tiles below (white surface, tinted icon
+                chip, dark text) so the remix grid reads as a coherent
+                family rather than one orange slab on top of a cream
+                page. The brand accent still owns the chip + chevron so
+                this card remains the visual anchor of the page. */}
+            <Pressable
+              onPress={() => handleMode('surprise')}
+              style={({ pressed }) => [
+                styles.surpriseCard,
+                pressed && { opacity: 0.92 },
+              ]}
+            >
+              <View style={styles.surpriseChip}>
                 <SymbolIcon
-                  name="chevron.forward"
-                  size={18}
-                  tintColor="rgba(255,255,255,0.7)"
+                  name="sparkles"
+                  size={26}
+                  tintColor={colors.brand}
+                  weight="semibold"
                 />
-              </Pressable>
-            </View>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.surpriseLabel}>Surprise me</Text>
+                <Text style={styles.surpriseSub}>A bold creative twist</Text>
+              </View>
+              <SymbolIcon
+                name="chevron.forward"
+                size={18}
+                tintColor={colors.brand}
+              />
+            </Pressable>
 
             <View style={styles.modeList}>
               {/* Section-grouped pairs — each section title sets the
@@ -1137,41 +1134,44 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   surpriseCard: {
-    // Wrapper View owns the orange fill + shadow. See render-site comment
-    // about the iOS 26 / Fabric Pressable+shadow paint quirk.
-    backgroundColor: colors.brand,
-    borderRadius: 16,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    elevation: 4,
-    marginBottom: 16,
-  },
-  surpriseCardInner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     paddingVertical: 16,
     paddingHorizontal: 18,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#7A6651',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    marginBottom: 16,
+    // Subtle brand-tinted hairline so the hero card reads as a level above
+    // the plain mode tiles below it without resorting to a saturated fill.
+    borderWidth: 1,
+    borderColor: `${colors.brand}33`,
   },
   surpriseChip: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    // Same 10% brand wash the section tiles use for their icon chips, so
+    // the hero feels like the strongest member of the same family rather
+    // than a one-off block of orange.
+    backgroundColor: `${colors.brand}1A`,
     alignItems: 'center',
     justifyContent: 'center',
   },
   surpriseLabel: {
     fontSize: 17,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: '#1A140F',
     letterSpacing: -0.3,
   },
   surpriseSub: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.85)',
+    color: '#7A6651',
     marginTop: 2,
   },
   sectionGroup: {
