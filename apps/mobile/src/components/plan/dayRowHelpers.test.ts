@@ -69,3 +69,132 @@ describe('deriveStatusChips matrix', () => {
     }
   });
 });
+
+// Quick-task 6 — difficulty + matching-focus chip derivation.
+// The matching-focus chip closes the loop between meal_plans.focus_theme
+// (set via FocusPickerSheet) and per-entry practiced_skills (AI-tagged).
+// The user FEELS the focus week-by-week when their day cards advertise
+// "Pan sauces" alongside the matching-focus banner up top.
+describe('deriveStatusChips: difficulty chip', () => {
+  it('difficulty="easy" → chip { label: "Easy" }', () => {
+    const r = deriveStatusChips({ status: 'planned', difficulty: 'easy' });
+    expect(r.find((c) => c.label === 'Easy')).toBeDefined();
+  });
+
+  it('difficulty="medium" → chip { label: "Medium" }', () => {
+    const r = deriveStatusChips({ status: 'planned', difficulty: 'medium' });
+    expect(r.find((c) => c.label === 'Medium')).toBeDefined();
+  });
+
+  it('difficulty="hard" → chip { label: "Hard" } with warning tone', () => {
+    const r = deriveStatusChips({ status: 'planned', difficulty: 'hard' });
+    const chip = r.find((c) => c.label === 'Hard');
+    expect(chip).toBeDefined();
+    expect(chip!.tone).toBe('warning');
+  });
+
+  it('difficulty=null → NO difficulty chip (legacy rendering)', () => {
+    const r = deriveStatusChips({ status: 'planned', difficulty: null });
+    expect(r.find((c) => ['Easy', 'Medium', 'Hard'].includes(c.label))).toBeUndefined();
+  });
+
+  it('difficulty undefined → NO difficulty chip (legacy rendering)', () => {
+    const r = deriveStatusChips({ status: 'planned' });
+    expect(r.find((c) => ['Easy', 'Medium', 'Hard'].includes(c.label))).toBeUndefined();
+  });
+});
+
+describe('deriveStatusChips: matching-focus chip', () => {
+  it('practiced_skills includes focus_theme → matching chip with warm tone', () => {
+    const r = deriveStatusChips({
+      status: 'planned',
+      practicedSkills: ['pan sauces'],
+      focusTheme: 'pan sauces',
+    });
+    const chip = r.find((c) => c.label.toLowerCase() === 'pan sauces');
+    expect(chip).toBeDefined();
+    expect(chip!.tone).toBe('warning');
+  });
+
+  it('practiced_skills does NOT include focus_theme → no matching chip', () => {
+    const r = deriveStatusChips({
+      status: 'planned',
+      practicedSkills: ['pan sauces'],
+      focusTheme: 'knife skills',
+    });
+    expect(r.find((c) => c.label.toLowerCase() === 'pan sauces')).toBeUndefined();
+    expect(r.find((c) => c.label.toLowerCase() === 'knife skills')).toBeUndefined();
+  });
+
+  it('case-insensitive compare: practiced_skills="Pan Sauces", focus="pan sauces" → match', () => {
+    const r = deriveStatusChips({
+      status: 'planned',
+      practicedSkills: ['Pan Sauces'],
+      focusTheme: 'pan sauces',
+    });
+    expect(r.find((c) => c.label.toLowerCase() === 'pan sauces')).toBeDefined();
+  });
+
+  it('practiced_skills=null → no matching chip even when focus is set', () => {
+    const r = deriveStatusChips({
+      status: 'planned',
+      practicedSkills: null,
+      focusTheme: 'pan sauces',
+    });
+    // Only chips that could appear from other args; no skill chip from null array.
+    expect(r.length).toBe(0);
+  });
+
+  it('practiced_skills=[] (empty) → no matching chip', () => {
+    const r = deriveStatusChips({
+      status: 'planned',
+      practicedSkills: [],
+      focusTheme: 'pan sauces',
+    });
+    expect(r.length).toBe(0);
+  });
+
+  it('focus_theme=null → no matching chip even with practiced_skills', () => {
+    const r = deriveStatusChips({
+      status: 'planned',
+      practicedSkills: ['pan sauces'],
+      focusTheme: null,
+    });
+    expect(r.find((c) => c.label.toLowerCase() === 'pan sauces')).toBeUndefined();
+  });
+
+  it('multiple practiced_skills with focus match → exactly ONE matching chip (the matched one)', () => {
+    const r = deriveStatusChips({
+      status: 'planned',
+      practicedSkills: ['knife skills', 'pan sauces'],
+      focusTheme: 'pan sauces',
+    });
+    // Matched chip present
+    expect(r.find((c) => c.label.toLowerCase() === 'pan sauces')).toBeDefined();
+    // Non-matching skill NOT rendered as a chip
+    expect(r.find((c) => c.label.toLowerCase() === 'knife skills')).toBeUndefined();
+  });
+
+  it('whitespace-padded focus theme still matches (trim before compare)', () => {
+    const r = deriveStatusChips({
+      status: 'planned',
+      practicedSkills: ['pan sauces'],
+      focusTheme: '  pan sauces  ',
+    });
+    expect(r.find((c) => c.label.toLowerCase() === 'pan sauces')).toBeDefined();
+  });
+});
+
+describe('deriveStatusChips: difficulty + focus combined', () => {
+  it('difficulty + matching focus + planned → 2 chips (difficulty + matching)', () => {
+    const r = deriveStatusChips({
+      status: 'planned',
+      difficulty: 'medium',
+      practicedSkills: ['pan sauces'],
+      focusTheme: 'pan sauces',
+    });
+    const labels = r.map((c) => c.label.toLowerCase());
+    expect(labels).toContain('medium');
+    expect(labels).toContain('pan sauces');
+  });
+});
