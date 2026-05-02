@@ -27,12 +27,14 @@ beforeAll(async () => {
   headers = await authHeaders();
 });
 
-// Wipe all rows the suite inserted into the shared UAT account so the
-// user doesn't open the app and find Test Pasta / Dedup Lasagna / etc.
-// staring back. resetTestUser is intentionally idempotent.
-afterAll(async () => {
-  await resetTestUser();
-});
+// NOTE: afterAll(resetTestUser) was previously wired here to keep the
+// UAT account clean of "Test Pasta" / "Dedup Lasagna" pollution. Pulled
+// because the same UAT account is shared with the user's live in-app
+// testing — wiping all owned rows after every test run also wiped the
+// user's actual meal plan / pantry, breaking Set focus + Regenerate.
+// beforeAll(resetTestUser) above still gives each suite a clean
+// starting state. The lasting fix is to spin up a separate
+// uat-tests@dinnertime.test account; tracked separately.
 
 /** Read response body once and return both text and parsed JSON. */
 async function readBody(res: Response): Promise<{ text: string; json: unknown }> {

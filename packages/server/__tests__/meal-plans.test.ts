@@ -65,9 +65,6 @@ beforeAll(async () => {
   if (pantryErr) console.warn('[meal-plans setup] pantry insert error:', pantryErr.message);
 });
 
-afterAll(async () => {
-  await resetTestUser();
-});
 
 describe('GET /meal-plans/current', () => {
   it('returns 404 when no plan exists for current week', async () => {

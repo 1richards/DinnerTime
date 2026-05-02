@@ -554,6 +554,13 @@ export const useMealPlanStore = create<MealPlanState>()(
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         console.warn('[setFocusTheme] server rejected:', body);
+        // 404 means the plan id we have in state no longer exists on
+        // the server (e.g. integration tests wiped the row, the user
+        // is on a brand-new device, etc.). Refetch so subsequent
+        // actions don't keep hitting the dead id.
+        if (res.status === 404) {
+          await get().fetchCurrent();
+        }
         return;
       }
       const body = await res.json();
@@ -610,6 +617,12 @@ export const useMealPlanStore = create<MealPlanState>()(
         // real error to console for diagnosis and keep the UI clean.
         const body = await response.json().catch(() => ({}));
         console.warn('[skipDay] server rejected:', body);
+        if (response.status === 404) {
+          // Plan id is stale (integration tests wiped it, user signed
+          // in on a fresh device, etc.). Refetch so subsequent actions
+          // don't keep hitting a dead id.
+          await get().fetchCurrent();
+        }
         set({ error: null });
         return;
       }

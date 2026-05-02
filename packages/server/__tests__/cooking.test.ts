@@ -61,9 +61,6 @@ beforeAll(async () => {
 
 // Wipe everything this suite seeded into the shared UAT account so
 // "Cooking Test Pasta" doesn't show up in the user's Recipe Box.
-afterAll(async () => {
-  await resetTestUser();
-});
 
 async function readBody(res: Response) {
   const text = await res.text();

@@ -19,9 +19,6 @@ beforeAll(async () => {
   headers = await authHeaders();
 });
 
-afterAll(async () => {
-  await resetTestUser();
-});
 
 async function readBody(res: Response) {
   const text = await res.text();

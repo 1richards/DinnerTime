@@ -115,9 +115,6 @@ beforeAll(async () => {
   }
 });
 
-afterAll(async () => {
-  await resetTestUser();
-});
 
 describe('POST /shopping/generate', () => {
   it('returns 400 when meal_plan_id is missing', async () => {

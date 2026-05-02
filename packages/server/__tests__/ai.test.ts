@@ -45,9 +45,6 @@ beforeAll(async () => {
 });
 
 // Wipe everything this suite seeded into the shared UAT account.
-afterAll(async () => {
-  await resetTestUser();
-});
 
 describe('POST /ai/suggest', () => {
   it('returns 401 without auth', async () => {
