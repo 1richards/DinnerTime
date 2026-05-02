@@ -45,4 +45,13 @@ export interface CookingState {
    * voice mode is enabled but the mic is unavailable).
    */
   micPermission: 'unknown' | 'granted' | 'denied';
+  /**
+   * True after the user has tapped Back/Next or jumpToStep at least once
+   * during the current session. Cooking mode opens at the top (ingredients
+   * visible) and only auto-centers the active step card after the user
+   * navigates — without this gate the auto-scroll would jump past the
+   * ingredients on first layout, hiding what the user actually wants to
+   * read first.
+   */
+  userNavigated: boolean;
 }

@@ -44,13 +44,28 @@ export interface UseCurrentStepScrollArgs {
   scrollRef: ScrollRefLike;
   stepYs: StepYsRefLike;
   currentStepIndex: number;
+  /**
+   * Gate flag: when false, the auto-scroll is suppressed and the
+   * caller's scroll position holds (e.g. at the top, where the
+   * INGREDIENTS section is rendered first). The cooking screen flips
+   * this to true the moment the user taps Back/Next or jumps to a
+   * specific step — without the gate, the first layout pass after
+   * mount would scroll past the ingredients to step 1, hiding what
+   * the user explicitly opened the screen to read first.
+   *
+   * Optional with a `true` default so existing callers/tests that
+   * don't pass it keep their original behavior.
+   */
+  enabled?: boolean;
 }
 
 export function useCurrentStepScroll({
   scrollRef,
   stepYs,
   currentStepIndex,
+  enabled = true,
 }: UseCurrentStepScrollArgs): void {
+  if (!enabled) return;
   const ys = stepYs.current;
   if (!ys) return;
   const y = ys[currentStepIndex];

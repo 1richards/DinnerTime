@@ -129,6 +129,7 @@ export default function CookScreen() {
     darkMode,
     lastCommandToast,
     micPermission,
+    userNavigated,
     enter,
     exit,
     next,
@@ -202,7 +203,15 @@ export default function CookScreen() {
   }, [recipe?.id]);
 
   // --------------------------------------------------- Step TTS + handle
-  const stepSpeaker = useStepSpeaker(currentStepText, ttsEnabled && !!recipe);
+  // Gate auto-speak on userNavigated so the first step is silent on
+  // initial mount, matching the auto-scroll gate. Otherwise the user
+  // would see the ingredients section but hear step 1 read aloud — a
+  // confusing mismatch. Once the user taps Back/Next/jumpToStep, both
+  // gates flip and the active step gets the standard speak-on-change.
+  const stepSpeaker = useStepSpeaker(
+    currentStepText,
+    ttsEnabled && !!recipe && userNavigated,
+  );
 
   // Track whether TTS is currently active to drive StopTTSButton visibility.
   // We can't observe expo-speech state directly, so we poll isSpeakingAsync
@@ -602,12 +611,13 @@ export default function CookScreen() {
         onClear={clearCommandToast}
       />
 
-      {/* Voice-affordance hint. There's no wake word — the STT listener is
-          always-on while voiceEnabled. We surface this explicitly so users
-          don't try to invoke a wake phrase. Three states:
-            1. Voice on + permission granted → show live "Listening" hint
-            2. Voice on + permission denied  → show "Mic blocked → Settings"
-            3. Voice off                     → tappable CTA to turn it on */}
+      {/* Voice-status banner — only renders when the user has opted into
+          voice via the Mic button. Three live states:
+            1. Mic permission denied → "Mic blocked → Settings"
+            2. Listening              → "Listening — say 'next', 'back'…"
+            3. Starting the mic       → transient, while STT spins up
+          When voice is off the bottom-bar Mic button is the entry point;
+          a redundant CTA banner here just consumed vertical real estate. */}
       {voiceEnabled && micPermission === 'denied' ? (
         <Pressable
           onPress={() => {
@@ -629,47 +639,23 @@ export default function CookScreen() {
             Mic access is off — tap to enable in Settings.
           </Text>
         </Pressable>
-      ) : (
-        <Pressable
-          onPress={() => {
-            if (!voiceEnabled) {
-              useCookingStore.setState({ voiceEnabled: true });
-            }
-          }}
-          className={`px-4 py-2 flex-row items-center gap-2 border-b ${
-            voiceEnabled ? 'bg-surface border-border' : 'bg-surface-subtle border-border'
-          }`}
-          accessibilityLabel={
-            voiceEnabled
-              ? listening
-                ? 'Voice is listening. Speak naturally — no wake word needed.'
-                : 'Voice is enabled but the mic is starting. One moment.'
-              : 'Voice is off. Tap to enable hands-free commands.'
-          }
-        >
+      ) : voiceEnabled ? (
+        <View className="px-4 py-2 flex-row items-center gap-2 border-b bg-surface border-border">
           <SymbolIcon
-            name={voiceEnabled ? 'mic.fill' : 'mic.slash.fill'}
+            name="mic.fill"
             size={14}
-            tintColor={
-              voiceEnabled
-                ? listening
-                  ? colors.brand
-                  : colors.textTertiary
-                : colors.textTertiary
-            }
+            tintColor={listening ? colors.brand : colors.textTertiary}
           />
           <Text
             className="text-caption text-text-secondary flex-1"
             numberOfLines={1}
           >
-            {voiceEnabled
-              ? listening
-                ? 'Listening — say "next", "back", "repeat", or ask anything.'
-                : 'Starting the mic…'
-              : 'Tap to enable hands-free voice commands.'}
+            {listening
+              ? 'Listening — say "next", "back", "repeat", or ask anything.'
+              : 'Starting the mic…'}
           </Text>
-        </Pressable>
-      )}
+        </View>
+      ) : null}
 
       {/* Scrollable Claude.ai-artifact recipe layout. The imperative ref
           exposes scrollToIngredients() for the voice show_ingredients
@@ -681,6 +667,7 @@ export default function CookScreen() {
           currentStepIndex={stepIndex}
           ingredientChecks={ingredientChecks}
           onToggleIngredient={toggleIngredient}
+          autoScrollEnabled={userNavigated}
           onStepTap={(i) => {
             void fireCommandHaptic();
             stepSpeaker.stop();
@@ -719,6 +706,11 @@ export default function CookScreen() {
           stepSpeaker.stop();
           next();
         }}
+        onToggleVoice={() => {
+          void fireCommandHaptic();
+          useCookingStore.setState({ voiceEnabled: !voiceEnabled });
+        }}
+        voiceEnabled={voiceEnabled}
         disableBack={stepIndex === 0}
         disableNext={stepIndex >= totalSteps - 1}
         onDone={() => {

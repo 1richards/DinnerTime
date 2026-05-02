@@ -44,14 +44,12 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useRef,
-  useState,
 } from 'react';
 import {
   ScrollView,
   View,
   Text,
   Pressable,
-  Alert,
   type LayoutChangeEvent,
 } from 'react-native';
 import type { Recipe, ParsedIngredient } from '../../types/recipe';
@@ -59,8 +57,6 @@ import { IngredientRow } from './IngredientRow';
 import { StepCard } from './StepCard';
 import { useCurrentStepScroll } from '../../cooking/useCurrentStepScroll';
 import { isIngredientInPantry } from '../recipes/ingredientHelpers';
-import { usePantryStore } from '../../stores/pantryStore';
-import { useShoppingStore } from '../../stores/shoppingStore';
 
 /** Imperative handle exposed to cook.tsx (16-06 voice dispatcher wiring). */
 export interface ScrollableRecipeHandle {
@@ -96,6 +92,14 @@ export interface ScrollableRecipeProps {
   addedKeys?: ReadonlySet<string>;
   /** Tapped on a missing-ingredient row's trailing cart-add icon. */
   onAddIngredient?: (ing: ParsedIngredient) => void;
+  /**
+   * Gate the active-step auto-centering. When false, the recipe stays
+   * scrolled to the top so the INGREDIENTS section is visible on first
+   * mount; the cooking screen flips this to true once the user has
+   * tapped Back/Next at least once. Defaults to true so existing
+   * callers/tests render unchanged.
+   */
+  autoScrollEnabled?: boolean;
 }
 
 /**
@@ -113,6 +117,7 @@ export function scrollableRecipeRender(
     pantryNames,
     addedKeys,
     onAddIngredient,
+    autoScrollEnabled = true,
   }: ScrollableRecipeProps,
   ref: React.Ref<ScrollableRecipeHandle>,
 ): React.ReactElement {
@@ -143,7 +148,15 @@ export function scrollableRecipeRender(
 
   // Center the current step card on index change. See useCurrentStepScroll
   // for why this is a sync function call (vitest node env / Wave 0 test).
-  useCurrentStepScroll({ scrollRef, stepYs, currentStepIndex });
+  // `autoScrollEnabled` is false on initial mount in cooking mode so the
+  // ingredients section stays visible; flips true after the first user
+  // navigation (Back/Next/jumpToStep).
+  useCurrentStepScroll({
+    scrollRef,
+    stepYs,
+    currentStepIndex,
+    enabled: autoScrollEnabled,
+  });
 
   const checks = ingredientChecks ?? {};
   const onToggle = onToggleIngredient ?? (() => undefined);
@@ -256,71 +269,23 @@ export function scrollableRecipeRender(
 }
 
 /**
- * Phase 01-01 — outer wrapper. Subscribes to pantry + shopping stores
- * and feeds the missing-ingredient indicator props into
- * `scrollableRecipeRender`. Owns the per-session optimistic-flip
- * `addedKeys` set and the try/catch+Alert rollback on
- * `addItem` failure (mirrors PreviewSheet wiring in
- * `apps/mobile/src/app/recipes/discover.tsx`).
- *
- * Kept as a forwardRef so cook.tsx's existing
+ * Outer wrapper — kept as a forwardRef so cook.tsx's existing
  * `useRef<ScrollableRecipeHandle>` keeps working. The ref is passed
  * straight through to the inner render fn.
+ *
+ * The earlier Phase 01-01 missing-ingredient cart-add affordance was
+ * intentionally removed from cooking mode: by the time the user is
+ * actively cooking, ordering missing ingredients no longer helps, and
+ * the trailing icon column added visual noise to the ingredient list
+ * the user is reading from. The cart-add affordance still lives in the
+ * recipe-detail PreviewSheet (Discover, Recipe Box, Plan) where the
+ * user is choosing what to make.
  */
 export const ScrollableRecipe = forwardRef<
   ScrollableRecipeHandle,
   ScrollableRecipeProps
 >(function ScrollableRecipeWithStores(props, ref) {
-  // Reactive subscriptions so a pantry edit or shopping-list change
-  // elsewhere repaints the trailing icon without remounting cook view.
-  const pantryItems = usePantryStore((s) => s.items);
-  const addToShoppingList = useShoppingStore((s) => s.addItem);
-  const [addedKeys, setAddedKeys] = useState<Set<string>>(() => new Set());
-
-  // Bug 3 contract per CONTEXT.md — defensive re-filter at the consumer
-  // even though loadItems() already restricts to status === 'available'.
-  const pantryNames = pantryItems
-    .filter((p) => p.status === 'available')
-    .map((p) => p.name);
-
-  const onAddIngredient = async (ing: ParsedIngredient) => {
-    const key = ing.name.trim().toLowerCase();
-    // Optimistic flip — icon goes to cart.fill (success tone) instantly.
-    setAddedKeys((prev) => {
-      const next = new Set(prev);
-      next.add(key);
-      return next;
-    });
-    try {
-      await addToShoppingList({
-        name: ing.name,
-        quantity: ing.quantity,
-        unit: ing.unit,
-      });
-    } catch (err) {
-      // Roll back so the icon returns to cart.badge.plus and the user
-      // can retry. Alert mirrors PantryItemCard.handleGetMore.
-      setAddedKeys((prev) => {
-        const next = new Set(prev);
-        next.delete(key);
-        return next;
-      });
-      Alert.alert(
-        'Could not add to shopping list',
-        err instanceof Error ? err.message : 'Please try again.',
-      );
-    }
-  };
-
-  return scrollableRecipeRender(
-    {
-      ...props,
-      pantryNames,
-      addedKeys,
-      onAddIngredient,
-    },
-    ref,
-  );
+  return scrollableRecipeRender(props, ref);
 });
 
 ScrollableRecipe.displayName = 'ScrollableRecipe';

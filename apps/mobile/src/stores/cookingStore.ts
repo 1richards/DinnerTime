@@ -28,7 +28,7 @@ interface CookingActions {
 const initialState: CookingState = {
   recipe: null,
   stepIndex: 0,
-  voiceEnabled: true,
+  voiceEnabled: false,
   ttsEnabled: true,
   listening: false,
   timers: [],
@@ -38,6 +38,7 @@ const initialState: CookingState = {
   lastCommandToast: null,
   currentSessionId: null,
   micPermission: 'unknown',
+  userNavigated: false,
 };
 
 // RN-safe id generator: crypto.randomUUID is unreliable in RN runtime
@@ -56,11 +57,18 @@ export const useCookingStore = create<CookingState & CookingActions>()(
 
       enter: (recipe) => {
         // Reset per-session ephemeral state and mint a fresh telemetry session id.
+        // voiceEnabled resets to false every session so users opt in explicitly
+        // each time — a persisted "on" state would silently re-enable the mic
+        // on a subsequent recipe even after the user had turned it off.
+        // userNavigated also resets so the initial scroll position holds at
+        // the top (ingredients visible) until the user taps Back/Next.
         set({
           recipe,
           stepIndex: 0,
           ingredientChecks: {},
           currentSessionId: genSessionId(),
+          voiceEnabled: false,
+          userNavigated: false,
         });
       },
 
@@ -80,12 +88,15 @@ export const useCookingStore = create<CookingState & CookingActions>()(
         const { recipe, stepIndex } = get();
         if (!recipe) return;
         const maxIndex = Math.max(0, recipe.steps.length - 1);
-        set({ stepIndex: Math.min(stepIndex + 1, maxIndex) });
+        set({
+          stepIndex: Math.min(stepIndex + 1, maxIndex),
+          userNavigated: true,
+        });
       },
 
       back: () => {
         const { stepIndex } = get();
-        set({ stepIndex: Math.max(0, stepIndex - 1) });
+        set({ stepIndex: Math.max(0, stepIndex - 1), userNavigated: true });
       },
 
       jumpToStep: (index) => {
@@ -93,7 +104,7 @@ export const useCookingStore = create<CookingState & CookingActions>()(
         if (!recipe) return;
         const maxIndex = Math.max(0, recipe.steps.length - 1);
         const clamped = Math.min(Math.max(0, index), maxIndex);
-        set({ stepIndex: clamped });
+        set({ stepIndex: clamped, userNavigated: true });
       },
 
       repeat: () => {
