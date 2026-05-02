@@ -73,10 +73,14 @@ export async function saveRecipe(
       prep_time_minutes: recipe.prep_time_minutes,
       cook_time_minutes: recipe.cook_time_minutes,
       total_time_minutes: recipe.total_time_minutes,
-      // Floor every saved recipe at MIN_SERVINGS so household-sized
-      // cooking is the default. Single-serving imports get scaled up
-      // implicitly; user can dial the serving stepper down per-cook.
-      servings: normalizeServings(recipe.servings),
+      // Imported recipes (url/photo/manual) keep whatever serving count
+      // the source specified — a 2-serving site recipe stays a 2-serving
+      // recipe in the user's library, with the in-app stepper letting
+      // them scale up at cook time. Only AI-generated recipes (Discover,
+      // Plan generate) are floored at MIN_SERVINGS, and that clamp is
+      // applied at the AI pipeline layer (discoverRecipes / mealPlanner)
+      // before the row reaches saveRecipe.
+      servings: recipe.servings,
       source_type: recipe.source_type,
       source_url: recipe.source_url,
       image_url: recipe.image_url,
