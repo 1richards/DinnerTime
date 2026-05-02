@@ -135,6 +135,13 @@ export default function PlanScreen() {
   const [previewCooking, setPreviewCooking] = useState(false);
   const [previewCookingLater, setPreviewCookingLater] = useState(false);
   const [previewClearing, setPreviewClearing] = useState(false);
+  // Cached server-expanded recipe per plan entry id, so opening the
+  // preview shows real steps instead of "No steps listed." while the
+  // expansion runs once and is reused across Save / Cook Now / re-opens.
+  const [expandedByEntry, setExpandedByEntry] = useState<
+    Record<string, ParsedRecipe>
+  >({});
+  const [expandingEntry, setExpandingEntry] = useState<string | null>(null);
   // Saved-recipe detail when the user taps a plan row whose entry is
   // backed by a Recipe from the library. Opens the same image-forward
   // PreviewSheet (via SavedRecipeDetail) used by Recipe Box, instead of
@@ -333,9 +340,11 @@ export default function PlanScreen() {
 
   // Convert a MealPlanEntry into the ParsedRecipe shape PreviewSheet
   // expects. Plan entries don't carry steps / source metadata so we
-  // fill those with sensible defaults — the sheet renders gracefully
-  // with empty steps.
-  const previewRecipe: ParsedRecipe | null = useMemo(() => {
+  // start with a sketch and then merge in the server-expanded recipe
+  // (with real steps + quantities) once that round-trip resolves. The
+  // expansion is fired eagerly on modal open via the effect below so
+  // users see actual steps rather than "No steps listed."
+  const previewSketch: ParsedRecipe | null = useMemo(() => {
     if (!previewEntry) return null;
     return {
       title: previewEntry.title,
@@ -356,6 +365,41 @@ export default function PlanScreen() {
       image_url: null,
     };
   }, [previewEntry]);
+
+  const previewRecipe: ParsedRecipe | null = useMemo(() => {
+    if (!previewEntry || !previewSketch) return null;
+    const cached = expandedByEntry[previewEntry.id];
+    return cached ?? previewSketch;
+  }, [previewEntry, previewSketch, expandedByEntry]);
+
+  // Eagerly expand the plan entry into a full recipe (with steps) the
+  // moment the preview opens. Caches per entry id so re-opens, Save,
+  // and Cook Now all reuse the same fetched recipe instead of firing
+  // another Claude call.
+  useEffect(() => {
+    if (!previewEntry || !previewSketch) return;
+    if (expandedByEntry[previewEntry.id]) return;
+    if (expandingEntry === previewEntry.id) return;
+    let cancelled = false;
+    setExpandingEntry(previewEntry.id);
+    (async () => {
+      const expanded = await expandPlanEntry(previewEntry, previewSketch);
+      if (cancelled) return;
+      // Only cache when expansion actually produced steps — otherwise
+      // we'd lock the preview into the empty-step fallback and a
+      // subsequent retry would never run.
+      if (expanded.steps.length > 0) {
+        setExpandedByEntry((prev) => ({
+          ...prev,
+          [previewEntry.id]: expanded,
+        }));
+      }
+      setExpandingEntry((cur) => (cur === previewEntry.id ? null : cur));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [previewEntry, previewSketch, expandedByEntry, expandingEntry, expandPlanEntry]);
 
   // Swap commit: SwapSheet hands us the user's chosen ParsedRecipe;
   // applySwap upserts it onto the targeted day via /entries/assign and
@@ -1090,6 +1134,10 @@ export default function PlanScreen() {
             cooking={previewCooking}
             cookingLater={previewCookingLater}
             clearing={previewClearing}
+            stepsLoading={
+              expandingEntry === previewEntry.id &&
+              !expandedByEntry[previewEntry.id]
+            }
             onClear={async () => {
               if (!previewEntry) return;
               setPreviewClearing(true);
@@ -1107,12 +1155,14 @@ export default function PlanScreen() {
             onSave={async () => {
               setPreviewSaving(true);
               try {
-                // Plan entries are step-less sketches; expand before
-                // persisting so the saved recipe has cookable steps.
-                const expanded = await expandPlanEntry(
-                  previewEntry,
-                  previewRecipe,
-                );
+                // Use the eagerly-expanded recipe if the preview's
+                // open-time fetch already populated it. Otherwise fall
+                // back to running the expansion now (covers the rare
+                // race where the user taps Save before the eager
+                // fetch returns).
+                const cached = expandedByEntry[previewEntry.id];
+                const expanded =
+                  cached ?? (await expandPlanEntry(previewEntry, previewRecipe));
                 await saveRecipe({ ...expanded, source_type: 'ai' });
                 setPreviewEntry(null);
               } finally {
@@ -1122,10 +1172,9 @@ export default function PlanScreen() {
             onCookNow={async () => {
               setPreviewCooking(true);
               try {
-                const expanded = await expandPlanEntry(
-                  previewEntry,
-                  previewRecipe,
-                );
+                const cached = expandedByEntry[previewEntry.id];
+                const expanded =
+                  cached ?? (await expandPlanEntry(previewEntry, previewRecipe));
                 const beforeIds = new Set(
                   useRecipeStore.getState().recipes.map((r) => r.id),
                 );
@@ -1255,6 +1304,9 @@ interface PlanEntryPreviewProps {
   cooking: boolean;
   cookingLater: boolean;
   clearing: boolean;
+  /** True while the eager AI expansion is in flight; lets PreviewSheet
+      show "Generating steps…" instead of "No steps listed." */
+  stepsLoading: boolean;
   onClose: () => void;
   onSave: () => Promise<void>;
   onCookNow: () => Promise<void>;
@@ -1269,6 +1321,7 @@ function PlanEntryPreview({
   cooking,
   cookingLater,
   clearing,
+  stepsLoading,
   onClose,
   onSave,
   onCookNow,
@@ -1299,6 +1352,7 @@ function PlanEntryPreview({
       removing={clearing}
       removeLabel="Clear"
       hideRemix
+      stepsLoading={stepsLoading}
     />
   );
 }

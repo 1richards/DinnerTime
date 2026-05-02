@@ -317,6 +317,7 @@ export function PreviewSheet({
   saveLabel = 'Save Recipe',
   modifyLabel = 'Update existing recipe',
   modifiedLabel = 'Recipe updated',
+  stepsLoading = false,
 }: {
   recipe: DiscoveredRecipe;
   /** Null renders a beige skeleton — no keyword-stock fallback exists anymore. */
@@ -355,6 +356,11 @@ export function PreviewSheet({
   saveLabel?: string;
   modifyLabel?: string;
   modifiedLabel?: string;
+  /** When true, the Steps section renders a "Generating steps…"
+      placeholder + spinner instead of the empty-state copy. Used by
+      the Plan tab while it fetches the AI-expanded recipe in the
+      background, so users don't see "No steps listed." flash. */
+  stepsLoading?: boolean;
 }) {
   const totalTime =
     recipe.total_time_minutes ??
@@ -554,7 +560,14 @@ export function PreviewSheet({
         <View style={styles.sheetCard}>
           <Text style={styles.sheetSectionHeading}>Steps</Text>
           {recipe.steps.length === 0 ? (
-            <Text style={styles.sheetEmpty}>No steps listed.</Text>
+            stepsLoading ? (
+              <View style={styles.sheetStepsLoading}>
+                <ActivityIndicator size="small" color={colors.brand} />
+                <Text style={styles.sheetEmpty}>Generating steps…</Text>
+              </View>
+            ) : (
+              <Text style={styles.sheetEmpty}>No steps listed.</Text>
+            )
           ) : (
             recipe.steps.map((step, i) => (
               <View key={i} style={styles.sheetStep}>
@@ -946,6 +959,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#A89178',
     fontStyle: 'italic',
+  },
+  // Spinner + label combo shown in the Steps section while the Plan
+  // tab is fetching the AI-expanded recipe behind the scenes.
+  sheetStepsLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   sheetIngredient: {
     flexDirection: 'row',
