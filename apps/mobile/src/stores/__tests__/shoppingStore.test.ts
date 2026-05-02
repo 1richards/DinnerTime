@@ -99,7 +99,10 @@ describe('shoppingStore', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: () => Promise.resolve({ data: { list, items } }),
+        // Server response shape: `data` carries the list fields flat with
+        // `items` merged in (see packages/server/src/routes/shopping.ts
+        // `return c.json({ data: { ...list, items: insertedItems } }`).
+        json: () => Promise.resolve({ data: { ...list, items } }),
       });
 
       await useShoppingStore.getState().generateList('plan-1');
@@ -161,7 +164,9 @@ describe('shoppingStore', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: () => Promise.resolve({ data: { list, items } }),
+        // Server response shape: list fields are spread flat alongside `items`
+        // (see packages/server/src/routes/shopping.ts GET /current).
+        json: () => Promise.resolve({ data: { ...list, items } }),
       });
 
       await useShoppingStore.getState().fetchCurrent();

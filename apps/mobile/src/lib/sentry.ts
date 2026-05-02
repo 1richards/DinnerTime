@@ -16,24 +16,11 @@
  * keep the `@sentry/react-native` native bridge out of the cold-start module
  * graph. First use pays the init cost; subsequent calls are free.
  */
-// Lazy-load the native module so the app still boots on dev clients that
-// haven't been rebuilt since @sentry/react-native was added to package.json.
-// If the native bridge is missing, every function below no-ops instead of
-// throwing at module load. First successful resolve is cached.
-let _Sentry: typeof import('@sentry/react-native') | null = null;
-let _sentryLoadFailed = false;
-
-function getSentry(): typeof import('@sentry/react-native') | null {
-  if (_Sentry) return _Sentry;
-  if (_sentryLoadFailed) return null;
-  try {
-    _Sentry = require('@sentry/react-native');
-    return _Sentry;
-  } catch {
-    _sentryLoadFailed = true;
-    return null;
-  }
-}
+// @sentry/react-native is a hard dep of the mobile app; the earlier
+// lazy-require shim was a hold-over from a dev client that predated
+// the native bridge. Import normally so vi.mock() can substitute the
+// module in unit tests.
+import * as Sentry from '@sentry/react-native';
 
 // ---------------------------------------------------------------------------
 // PII hygiene
@@ -92,9 +79,6 @@ export function initSentry(dsn: string | undefined): void {
       ? (globalThis as { __DEV__?: boolean }).__DEV__
       : true;
 
-  const Sentry = getSentry();
-  if (!Sentry) return;
-
   Sentry.init({
     dsn,
     tracesSampleRate: devFlag ? 0.1 : 0.2,
@@ -119,8 +103,6 @@ export function initSentry(dsn: string | undefined): void {
  * Passing `null` clears the user (e.g. after sign-out).
  */
 export function setSentryUser(userId: string | null): void {
-  const Sentry = getSentry();
-  if (!Sentry) return;
   Sentry.setUser(userId ? { id: userId } : null);
 }
 
@@ -136,8 +118,6 @@ export function captureBreadcrumb(
   message: string,
   data?: Record<string, unknown>,
 ): void {
-  const Sentry = getSentry();
-  if (!Sentry) return;
   Sentry.addBreadcrumb({
     category,
     message,
@@ -155,7 +135,5 @@ export function captureException(
   err: unknown,
   options?: { tags?: Record<string, string> },
 ): void {
-  const Sentry = getSentry();
-  if (!Sentry) return;
   Sentry.captureException(err, options);
 }

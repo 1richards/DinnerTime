@@ -102,8 +102,13 @@ describe('progressionStore', () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status: 200,
+      // Server response shape: { data: variations[], mode }. The store
+      // unwraps `body.data` and asserts Array.isArray, so the test
+      // payload mirrors the real route in packages/server/src/routes/
+      // progression.ts (`return c.json({ data: variations, mode })`).
       json: async () => ({
-        data: { variations: ['Add saffron', 'Try with shrimp'] },
+        data: ['Add saffron', 'Try with shrimp'],
+        mode: 'surprise',
       }),
     });
 

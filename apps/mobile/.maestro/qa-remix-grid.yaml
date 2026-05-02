@@ -1,0 +1,29 @@
+appId: com.dinnertime.app
+name: "QA — remix sheet visual smoke"
+tags:
+  - qa
+  - remix
+# Visual smoke for the redesigned remix sheet. Assumes the app is
+# already running and logged in (use simctl launch + simctl openurl
+# beforehand if needed).
+---
+- launchApp
+- assertVisible:
+    text: ".*What should we cook tonight.*"
+- tapOn:
+    text: ".*Recipe Box.*"
+- takeScreenshot: 01-recipe-box
+- tapOn:
+    point: "50%,45%"
+- takeScreenshot: 02-recipe-detail
+- extendedWaitUntil:
+    visible:
+      text: "Remix"
+    timeout: 10000
+- tapOn:
+    text: "Remix"
+- extendedWaitUntil:
+    visible:
+      text: "Surprise me"
+    timeout: 10000
+- takeScreenshot: 03-remix-grid

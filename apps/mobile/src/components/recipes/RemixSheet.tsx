@@ -555,39 +555,49 @@ export function RemixSheet({
               />
             </Pressable>
 
+            {/* Vertical list of remix modes — Apple Settings / Linear
+                command-palette pattern. Single left edge for the icon
+                chip aligns every label and sub text on the same axis,
+                so the eye scans straight down. Trades horizontal density
+                (vs the earlier 3-col grid) for legibility and tap target
+                size; the dropped pixels are well-spent in a sheet that
+                only ever shows nine choices. */}
             <View style={styles.modeList}>
-              {/* Flat 3-column grid of remix modes. Tiles left-align both
-                  the icon chip and the label/sub text so a quick scan
-                  parses the column rather than re-centering on each row. */}
-              <View style={styles.modeGrid}>
-                {GRID_MODES.map((m) => (
-                  <Pressable
-                    key={m.mode}
-                    onPress={() => handleMode(m.mode)}
-                    style={({ pressed }) => [
-                      styles.modeTile,
-                      pressed && { opacity: 0.85 },
-                    ]}
+              {GRID_MODES.map((m, i) => (
+                <Pressable
+                  key={m.mode}
+                  onPress={() => handleMode(m.mode)}
+                  style={({ pressed }) => [
+                    styles.modeRowList,
+                    i === 0 && styles.modeRowListFirst,
+                    pressed && { backgroundColor: '#F7F0E5' },
+                  ]}
+                >
+                  <View
+                    style={[styles.modeRowChip, { backgroundColor: `${m.tint}1A` }]}
                   >
-                    <View
-                      style={[styles.modeTileChip, { backgroundColor: `${m.tint}1A` }]}
-                    >
-                      <SymbolIcon
-                        name={m.symbol as never}
-                        size={22}
-                        tintColor={m.tint}
-                        weight="semibold"
-                      />
-                    </View>
-                    <Text style={styles.modeLabelTile} numberOfLines={2}>
+                    <SymbolIcon
+                      name={m.symbol as never}
+                      size={22}
+                      tintColor={m.tint}
+                      weight="semibold"
+                    />
+                  </View>
+                  <View style={styles.modeRowContent}>
+                    <Text style={styles.modeRowLabel} numberOfLines={1}>
                       {m.label}
                     </Text>
-                    <Text style={styles.modeSubTile} numberOfLines={2}>
+                    <Text style={styles.modeRowSub} numberOfLines={1}>
                       {m.sub}
                     </Text>
-                  </Pressable>
-                ))}
-              </View>
+                  </View>
+                  <SymbolIcon
+                    name="chevron.forward"
+                    size={14}
+                    tintColor="#A89478"
+                  />
+                </Pressable>
+              ))}
             </View>
           </ScrollView>
         )}
@@ -1097,7 +1107,52 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   modeList: {
-    gap: 10,
+    // Card surface that wraps the eight mode rows. Hairline borders
+    // between rows give the list a clean alignment edge without a
+    // 1pt gap collecting dust between cards.
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#7A6651',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  modeRowList: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    minHeight: 64,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#EBE2D2',
+  },
+  modeRowListFirst: {
+    // First row has no top divider — the card border serves as the cap.
+    borderTopWidth: 0,
+  },
+  modeRowChip: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  modeRowContent: {
+    flex: 1,
+  },
+  modeRowLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A140F',
+    letterSpacing: -0.2,
+  },
+  modeRowSub: {
+    fontSize: 13,
+    color: '#7A6651',
+    marginTop: 1,
   },
   modeRow: {
     flexDirection: 'row',
@@ -1163,70 +1218,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#7A6651',
     marginTop: 2,
-  },
-  sectionGroup: {
-    gap: 8,
-    marginTop: 6,
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#7A6651',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    paddingHorizontal: 4,
-  },
-  // Flat 3-column grid for the non-Surprise remix modes. Width is
-  // expressed as a percentage so the tiles wrap cleanly to the next row
-  // and gap pulls a uniform gutter between them. flex:1 doesn't fit a
-  // wrapping grid because tiles on the trailing partial row would then
-  // expand to fill the row.
-  modeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  modeTile: {
-    // 3 columns: ~31% leaves headroom for the 10px gap on either side
-    // without collapsing on smaller iPhones.
-    width: '31%',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#7A6651',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 1,
-    minHeight: 116,
-    gap: 8,
-  },
-  modeTileChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modeLabelTile: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#1A140F',
-    letterSpacing: -0.2,
-    marginTop: 2,
-    textAlign: 'left',
-    alignSelf: 'flex-start',
-  },
-  modeSubTile: {
-    fontSize: 11,
-    color: '#7A6651',
-    marginTop: 1,
-    textAlign: 'left',
-    alignSelf: 'flex-start',
-    lineHeight: 14,
   },
   modeLabel: {
     fontSize: 16,

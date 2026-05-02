@@ -130,6 +130,12 @@ describe('Auth Store', () => {
 
       await authCallback!('SIGNED_IN', mockSession);
 
+      // The store defers the profile fetch via setTimeout(0) so the
+      // Supabase auth lock is released before any further supabase.*
+      // call — otherwise the .from('profiles') request deadlocks. Yield
+      // a microtask so that deferred work fires before we assert.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
       expect(useAuthStore.getState().isOnboarded).toBe(true);
     });
 
