@@ -219,19 +219,56 @@ export const useShoppingStore = create<ShoppingState>()(
   },
 
   addItem: async (input: AddItemInput) => {
-    const list = get().currentList;
+    let list = get().currentList;
     if (!list) {
-      // Throw so callers (e.g. PantryItemCard "Get more" swipe) can surface
-      // a user-visible error instead of silently no-op'ing. Previously this
-      // path set `error` and returned, but any caller awaiting addItem had
-      // no way to learn the operation failed — pantry rows looked unchanged
-      // and users reported "the swipe does nothing." See debug session
-      // pantry-trifecta. The caller's catch presents this message to the
-      // user via Alert.
-      const message = 'No active shopping list';
-      set({ error: message });
-      throw new Error(message);
+      // No persisted list. Refresh from server in case one exists but the
+      // local cache is stale (e.g. user signed in on a new device). If the
+      // server agrees there's no list, lazy-create a blank one so the
+      // recipe cart-add and pantry "Get more" flows work without requiring
+      // the user to first build a meal plan.
+      try {
+        const refreshResponse = await authedFetch('/shopping/current', {
+          method: 'GET',
+        });
+        if (refreshResponse.ok) {
+          const refreshBody = await refreshResponse.json();
+          const refreshed = refreshBody.data;
+          if (refreshed) {
+            const { items: refreshedItems, ...refreshedFields } = refreshed;
+            set({
+              currentList: refreshedFields as ShoppingList,
+              items: refreshedItems ?? [],
+            });
+            list = refreshedFields as ShoppingList;
+          }
+        }
+      } catch {
+        // Fall through to create-on-server below; surface that error instead.
+      }
     }
+
+    if (!list) {
+      const createResponse = await authedFetch('/shopping/lists', {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      if (!createResponse.ok) {
+        const err = await createResponse.json().catch(() => ({}));
+        const message = err.error ?? 'Failed to create shopping list';
+        set({ error: message });
+        throw new Error(message);
+      }
+      const createBody = await createResponse.json();
+      const created = createBody.data;
+      const { items: createdItems, ...createdFields } = created;
+      list = createdFields as ShoppingList;
+      set({
+        currentList: list,
+        items: createdItems ?? [],
+        error: null,
+      });
+    }
+
     const snapshot = get().items;
 
     const optimistic: ShoppingListItem = {

@@ -300,21 +300,119 @@ describe('shoppingStore', () => {
       expect(state.error).toBe('nope');
     });
 
-    it('throws when there is no active shopping list (Bug 2 — silent no-op)', async () => {
-      // Pre-fix this path silently set `error` and returned, so PantryItemCard's
-      // Get-more swipe couldn't surface a user-visible Alert. Now it throws so
-      // the caller's catch can show the message.
+    it('lazy-creates a blank list when none exists, then adds the item', async () => {
+      // Recipe cart-add and pantry "Get more" both surfaced "No active
+      // shopping list" before this fix. Now addItem refreshes from /current,
+      // creates a blank list via POST /lists if still empty, and proceeds.
       useShoppingStore.setState({ currentList: null, items: [] });
+
+      const blankList = makeList({ id: 'list-blank', meal_plan_id: null });
+      const serverItem = makeItem('server-1', {
+        shopping_list_id: 'list-blank',
+        name: 'butter',
+      });
+
+      // 1) GET /current — server confirms no list exists yet.
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: null }),
+      });
+      // 2) POST /lists — server returns the new blank list.
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: () => Promise.resolve({ data: { ...blankList, items: [] } }),
+      });
+      // 3) POST /items — server confirms the add.
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: () => Promise.resolve({ data: serverItem }),
+      });
+
+      await useShoppingStore
+        .getState()
+        .addItem({ name: 'butter', quantity: 1, unit: null });
+
+      const state = useShoppingStore.getState();
+      expect(state.currentList?.id).toBe('list-blank');
+      expect(state.items).toHaveLength(1);
+      expect(state.items[0].id).toBe('server-1');
+      expect(state.error).toBeNull();
+
+      const calls = mockFetch.mock.calls;
+      expect(calls[0][0]).toContain('/api/v1/shopping/current');
+      expect(calls[1][0]).toContain('/api/v1/shopping/lists');
+      expect(calls[1][1]).toMatchObject({ method: 'POST' });
+      expect(calls[2][0]).toContain('/api/v1/shopping/items');
+    });
+
+    it('adopts an existing server-side list discovered via /current', async () => {
+      // Stale local cache: persisted state has no list, but the server does.
+      // addItem should pick it up rather than creating a duplicate.
+      useShoppingStore.setState({ currentList: null, items: [] });
+
+      const existing = makeList({ id: 'list-existing' });
+      const serverItem = makeItem('server-2', {
+        shopping_list_id: 'list-existing',
+        name: 'flour',
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({ data: { ...existing, items: [] } }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: () => Promise.resolve({ data: serverItem }),
+      });
+
+      await useShoppingStore
+        .getState()
+        .addItem({ name: 'flour', quantity: 2, unit: 'cups' });
+
+      const state = useShoppingStore.getState();
+      expect(state.currentList?.id).toBe('list-existing');
+      expect(state.items).toHaveLength(1);
+
+      const calls = mockFetch.mock.calls;
+      expect(calls[0][0]).toContain('/api/v1/shopping/current');
+      // Should NOT have called POST /lists when the server already had one.
+      expect(calls.some((c) => String(c[0]).includes('/shopping/lists'))).toBe(
+        false,
+      );
+      expect(calls[1][0]).toContain('/api/v1/shopping/items');
+    });
+
+    it('surfaces error when blank-list creation fails', async () => {
+      useShoppingStore.setState({ currentList: null, items: [] });
+
+      // GET /current → no list
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: null }),
+      });
+      // POST /lists → 500
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: 'list create failed' }),
+      });
 
       await expect(
         useShoppingStore
           .getState()
           .addItem({ name: 'butter', quantity: 1, unit: null }),
-      ).rejects.toThrow('No active shopping list');
+      ).rejects.toThrow('list create failed');
 
       const state = useShoppingStore.getState();
-      expect(state.items).toHaveLength(0);
-      expect(state.error).toBe('No active shopping list');
+      expect(state.currentList).toBeNull();
+      expect(state.error).toBe('list create failed');
     });
   });
 

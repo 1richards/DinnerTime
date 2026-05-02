@@ -76,6 +76,51 @@ function errorWithCode(code: string, message: string): Error & { code: string } 
 }
 
 /**
+ * POST /lists — create a blank, ad-hoc shopping list (no meal plan).
+ *
+ * Lets the mobile app lazily create a list the first time the user adds
+ * an item from a non-meal-plan flow (e.g. cart-add icon on a recipe
+ * preview, "Get more" pantry swipe). Previously these flows threw
+ * "No active shopping list" because the only way to create a list was
+ * `/generate` from a meal plan, leaving cart-adds dead-ended for users
+ * who hadn't planned a week yet.
+ */
+shopping.post('/lists', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+
+  let body: { title?: string };
+  try {
+    body = await c.req.json().catch(() => ({}));
+  } catch {
+    body = {};
+  }
+  const title =
+    typeof body.title === 'string' && body.title.trim().length > 0
+      ? body.title.trim()
+      : 'My shopping list';
+
+  try {
+    const { data: listRow, error: listErr } = await supabase
+      .from('shopping_lists')
+      .insert({
+        profile_id: user.id,
+        meal_plan_id: null,
+        title,
+      })
+      .select()
+      .single();
+    if (listErr) return c.json({ error: listErr.message }, 500);
+    const list = listRow as ShoppingList;
+    return c.json({ data: { ...list, items: [] } }, 201);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to create shopping list';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
  * POST /generate — build a fresh shopping list from a meal plan.
  * Consolidates, subtracts pantry, classifies categories, persists.
  */

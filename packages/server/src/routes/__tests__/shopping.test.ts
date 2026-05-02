@@ -149,6 +149,62 @@ describe('shopping routes', () => {
     expect(res.status).toBe(401);
   });
 
+  it('POST /lists creates a blank shopping list with no meal plan', async () => {
+    setTable('shopping_lists', {
+      singleResult: {
+        data: {
+          id: 'list-blank',
+          profile_id: 'user-1',
+          meal_plan_id: null,
+          title: 'My shopping list',
+          generated_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        error: null,
+      },
+    });
+
+    const app = makeApp();
+    const res = await app.request('/shopping/lists', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.data.id).toBe('list-blank');
+    expect(body.data.meal_plan_id).toBeNull();
+    expect(body.data.items).toEqual([]);
+  });
+
+  it('POST /lists honors caller-supplied title when present', async () => {
+    setTable('shopping_lists', {
+      singleResult: {
+        data: {
+          id: 'list-named',
+          profile_id: 'user-1',
+          meal_plan_id: null,
+          title: 'Recipe ingredients',
+          generated_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        error: null,
+      },
+    });
+
+    const app = makeApp();
+    const res = await app.request('/shopping/lists', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer t', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Recipe ingredients' }),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.data.title).toBe('Recipe ingredients');
+  });
+
   it('Test 2: POST /generate happy path → 201 with list and items', async () => {
     setTable('meal_plans', {
       maybeSingleResult: {
