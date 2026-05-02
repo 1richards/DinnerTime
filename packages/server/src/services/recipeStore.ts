@@ -22,6 +22,11 @@ export interface RecipeRow {
   calories_per_serving: number | null;
   protein_grams_per_serving: number | null;
   fat_grams_per_serving: number | null;
+  /** Quick-task 6 — per-recipe skill scaffolding. NULL on legacy rows.
+      AI-generated recipes (Discover + meal-plan) populate these. */
+  difficulty: 'easy' | 'medium' | 'hard' | null;
+  practiced_skills: string[] | null;
+  skill_note: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -87,6 +92,11 @@ export async function saveRecipe(
       calories_per_serving: recipe.calories_per_serving,
       protein_grams_per_serving: recipe.protein_grams_per_serving,
       fat_grams_per_serving: recipe.fat_grams_per_serving,
+      // Quick-task 6 — skill scaffolding. Discover + mealPlanner populate
+      // these from the AI tool output; legacy / imported rows pass null.
+      difficulty: recipe.difficulty ?? null,
+      practiced_skills: recipe.practiced_skills ?? null,
+      skill_note: recipe.skill_note ?? null,
     })
     .select()
     .single();

@@ -3,6 +3,51 @@ import type { JsonSchema, StructuredTool } from '../ai/types.js';
 import type { ParsedIngredient, ParsedRecipe } from './recipeParser.js';
 import { normalizeServings } from './recipeServings.js';
 
+// Quick-task 6 — Canonical 8-key practiced-skill taxonomy.
+//
+// MUST stay byte-identical to apps/mobile/src/components/plan/FocusPickerSheet.tsx
+// FOCUS_OPTIONS keys. The matching-focus chip on Plan day cards compares
+// entry.practiced_skills against meal_plans.focus_theme using lowercase
+// equality, so any drift between server allowlist and mobile picker would
+// silently break the chip.
+export const PRACTICED_SKILLS = [
+  'knife skills',
+  'pan sauces',
+  'braising',
+  'stir-frying',
+  'plant-forward',
+  'pasta from scratch',
+  'global flavors',
+  'baking & breads',
+] as const;
+export type PracticedSkill = (typeof PRACTICED_SKILLS)[number];
+
+/**
+ * Filter an unknown input to the 8-key allowlist. Drops invalid keys
+ * silently (don't fail the whole recipe — Claude occasionally invents
+ * "wok / stir-fry" when the canonical key is "stir-frying"). Returns
+ * null when nothing survives the filter (so DB stores a clean null
+ * instead of an empty array, matching legacy-row rendering).
+ */
+export function validatePracticedSkills(
+  input: unknown,
+): PracticedSkill[] | null {
+  if (!Array.isArray(input)) return null;
+  const allow = new Set<string>(PRACTICED_SKILLS);
+  const seen = new Set<string>();
+  const out: PracticedSkill[] = [];
+  for (const raw of input) {
+    if (typeof raw !== 'string') continue;
+    const lc = raw.trim().toLowerCase();
+    if (!allow.has(lc)) continue;
+    if (seen.has(lc)) continue;
+    seen.add(lc);
+    out.push(lc as PracticedSkill);
+    if (out.length === 3) break; // cap at 3 — matches schema.maxItems
+  }
+  return out.length > 0 ? out : null;
+}
+
 // ---------- Types ----------
 
 /**
@@ -37,7 +82,15 @@ export interface DiscoverRecipesOptions {
 // ---------- Tool Definition ----------
 
 interface SuggestRecipesOutput {
-  recipes: Array<Partial<ParsedRecipe> & { ingredients?: ParsedIngredient[]; steps?: string[] }>;
+  recipes: Array<
+    Partial<ParsedRecipe> & {
+      ingredients?: ParsedIngredient[];
+      steps?: string[];
+      difficulty?: 'easy' | 'medium' | 'hard';
+      practiced_skills?: string[];
+      skill_note?: string;
+    }
+  >;
 }
 
 const suggestRecipesSchema: JsonSchema = {
@@ -75,8 +128,39 @@ const suggestRecipesSchema: JsonSchema = {
           cook_time_minutes: { type: 'number' },
           total_time_minutes: { type: 'number' },
           servings: { type: 'number' },
+          difficulty: {
+            type: 'string',
+            enum: ['easy', 'medium', 'hard'],
+            description:
+              "Tier based on technique count + active cook time + ingredient count. easy=≤30min, basic technique. medium=30-60min OR one new technique. hard=>60min OR multiple advanced techniques (braise, lamination, fermentation).",
+          },
+          practiced_skills: {
+            type: 'array',
+            items: {
+              type: 'string',
+              enum: [
+                'knife skills',
+                'pan sauces',
+                'braising',
+                'stir-frying',
+                'plant-forward',
+                'pasta from scratch',
+                'global flavors',
+                'baking & breads',
+              ],
+            },
+            minItems: 1,
+            maxItems: 3,
+            description:
+              "1-3 skills this recipe genuinely exercises. Pick from the EXACT 8-key list — do not invent new keys.",
+          },
+          skill_note: {
+            type: 'string',
+            description:
+              "One short line (≤120 chars) explaining the technique payoff, e.g. 'Practices fond → reduction → mounted butter'. Optional — omit when there's no specific technique to call out.",
+          },
         },
-        required: ['title', 'ingredients', 'steps'],
+        required: ['title', 'ingredients', 'steps', 'difficulty', 'practiced_skills'],
       },
     },
   },
@@ -162,6 +246,23 @@ export function buildDiscoveryPrompt(
     );
   }
 
+  // Quick-task 6 — Skill scaffolding. Every recipe is tagged with a
+  // difficulty tier, 1-3 practiced skills (taxonomy-bound to the same
+  // 8-key set the FocusPickerSheet uses), and an optional one-line
+  // technique note. The mobile UI consumes these for chip rendering on
+  // Plan day cards + Recipe detail.
+  lines.push('');
+  lines.push('SKILL TAGGING (every recipe MUST tag these):');
+  lines.push(
+    '- difficulty: pick "easy" | "medium" | "hard". easy = ≤30min, basic technique. medium = 30-60min OR one new technique. hard = >60min OR advanced technique (braise, fresh pasta, lamination).'
+  );
+  lines.push(
+    '- practiced_skills: 1-3 keys from EXACTLY this set: knife skills, pan sauces, braising, stir-frying, plant-forward, pasta from scratch, global flavors, baking & breads. Match what the recipe genuinely exercises — don\'t tag "knife skills" on something that\'s just chop-and-toss.'
+  );
+  lines.push(
+    '- skill_note: optional one-line explanation of the technique payoff (e.g. "Practices fond → reduction → mounted butter"). Omit when there\'s no specific technique to call out.'
+  );
+
   lines.push('');
   lines.push(
     'Return full recipes with structured ingredients (name, quantity, unit, notes) and ordered steps. Convert fractions to decimals for quantities. Each recipe MUST have servings >= 4 — DinnerTime is built for households, scale ingredient quantities accordingly.'
@@ -196,20 +297,43 @@ export async function discoverRecipes(
     maxTokens: 4096,
   });
 
-  return (recipes ?? []).map((r) => ({
-    title: (r.title as string) || 'Untitled Recipe',
-    description: (r.description as string | null | undefined) ?? null,
-    ingredients: (r.ingredients as ParsedIngredient[]) ?? [],
-    steps: (r.steps as string[]) ?? [],
-    prep_time_minutes: (r.prep_time_minutes as number | null | undefined) ?? null,
-    cook_time_minutes: (r.cook_time_minutes as number | null | undefined) ?? null,
-    total_time_minutes: (r.total_time_minutes as number | null | undefined) ?? null,
-    servings: normalizeServings(r.servings as number | null | undefined),
-    source_url: null,
-    source_type: 'ai' as ParsedRecipe['source_type'],
-    image_url: null,
-    calories_per_serving: null,
-    protein_grams_per_serving: null,
-    fat_grams_per_serving: null,
-  }));
+  return (recipes ?? []).map((r) => {
+    // Quick-task 6 — pass skill fields through. validatePracticedSkills
+    // drops anything outside the 8-key allowlist (silent — don't fail
+    // the whole recipe over a single bad key); skill_note is capped at
+    // 200 chars defensively.
+    const rawDifficulty = r.difficulty as unknown;
+    const difficulty: 'easy' | 'medium' | 'hard' | null =
+      rawDifficulty === 'easy' || rawDifficulty === 'medium' || rawDifficulty === 'hard'
+        ? rawDifficulty
+        : null;
+    const practicedSkills = validatePracticedSkills(
+      (r as { practiced_skills?: unknown }).practiced_skills,
+    );
+    const rawSkillNote = (r as { skill_note?: unknown }).skill_note;
+    const skillNote =
+      typeof rawSkillNote === 'string' && rawSkillNote.trim().length > 0
+        ? rawSkillNote.slice(0, 200)
+        : null;
+
+    return {
+      title: (r.title as string) || 'Untitled Recipe',
+      description: (r.description as string | null | undefined) ?? null,
+      ingredients: (r.ingredients as ParsedIngredient[]) ?? [],
+      steps: (r.steps as string[]) ?? [],
+      prep_time_minutes: (r.prep_time_minutes as number | null | undefined) ?? null,
+      cook_time_minutes: (r.cook_time_minutes as number | null | undefined) ?? null,
+      total_time_minutes: (r.total_time_minutes as number | null | undefined) ?? null,
+      servings: normalizeServings(r.servings as number | null | undefined),
+      source_url: null,
+      source_type: 'ai' as ParsedRecipe['source_type'],
+      image_url: null,
+      calories_per_serving: null,
+      protein_grams_per_serving: null,
+      fat_grams_per_serving: null,
+      difficulty,
+      practiced_skills: practicedSkills,
+      skill_note: skillNote,
+    };
+  });
 }

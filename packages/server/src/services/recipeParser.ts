@@ -28,6 +28,12 @@ export interface ParsedRecipe {
   calories_per_serving: number | null;
   protein_grams_per_serving: number | null;
   fat_grams_per_serving: number | null;
+  /** Quick-task 6 — skill scaffolding. AI-generated recipes (Discover +
+      meal-plan generation) populate these; legacy / imported rows leave
+      them null and the UI hides their chips. */
+  difficulty?: 'easy' | 'medium' | 'hard' | null;
+  practiced_skills?: string[] | null;
+  skill_note?: string | null;
 }
 
 // ---------- Tool Definition ----------
@@ -229,6 +235,12 @@ export function mapJsonLdToRecipe(
     calories_per_serving: null,
     protein_grams_per_serving: null,
     fat_grams_per_serving: null,
+    // Quick-task 6 — JSON-LD doesn't carry skill metadata; null is fine.
+    // Imported URL/photo recipes get no skill chips by design (only AI
+    // generation populates these).
+    difficulty: null,
+    practiced_skills: null,
+    skill_note: null,
   };
 }
 
@@ -296,6 +308,12 @@ function toolOutputToRecipe(
     calories_per_serving: (input.calories_per_serving as number) ?? null,
     protein_grams_per_serving: (input.protein_grams_per_serving as number) ?? null,
     fat_grams_per_serving: (input.fat_grams_per_serving as number) ?? null,
+    // Quick-task 6 — only Discover / mealPlanner populate these via their
+    // own tools (suggestRecipesTool / generateMealPlanTool). Generic
+    // url/photo/text imports don't tag — null is correct.
+    difficulty: null,
+    practiced_skills: null,
+    skill_note: null,
   };
 }
 

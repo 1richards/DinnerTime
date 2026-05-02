@@ -34,6 +34,11 @@ const PATCHABLE_FIELDS = [
   'is_favorite',
   'image_url',
   'labels',
+  // Quick-task 6 — symmetric PATCH support for skill scaffolding so users
+  // can hand-edit difficulty + skills + skill_note on saved recipes.
+  'difficulty',
+  'practiced_skills',
+  'skill_note',
 ] as const;
 
 const recipes = new Hono();

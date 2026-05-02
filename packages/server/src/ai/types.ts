@@ -28,6 +28,10 @@ export interface JsonSchema {
   required?: string[];
   enum?: string[];
   description?: string;
+  /** Array-only: minimum item count. Anthropic + Gemini both honor this. */
+  minItems?: number;
+  /** Array-only: maximum item count. */
+  maxItems?: number;
 }
 
 export interface StructuredTool<T> {

@@ -5,6 +5,10 @@ import type { Difficulty, MealPlan, MealPlanEntry, MealPlanIngredient } from '..
 import { matchIngredientsToPantry } from './ingredientMatching.js';
 import type { PantryItem } from './pantry.js';
 import { getCookStats, logRecipeCook } from './progression.js';
+import {
+  PRACTICED_SKILLS,
+  validatePracticedSkills,
+} from './recipeDiscovery.js';
 import { normalizeServings } from './recipeServings.js';
 
 // ---------- Context Types ----------
@@ -130,6 +134,19 @@ export function buildMealPlanPrompt(context: MealPlanContext): string {
   //   2. Examples baked in so the model has a shape to imitate.
   //   3. Repeat the OUTPUT CONTRACT title rule so the theme block can't
   //      override it.
+  //
+  // Quick-task 6 — when focusTheme matches one of the 8-key taxonomy keys,
+  // additionally require ≥2 themed recipes to include that key in their
+  // practiced_skills array, so the matching-focus chip on Plan day cards
+  // actually fires for the user's chosen focus.
+  const themeKeyLc =
+    typeof focusTheme === 'string' ? focusTheme.trim().toLowerCase() : '';
+  const themeMatchesTaxonomy = (PRACTICED_SKILLS as readonly string[]).includes(
+    themeKeyLc,
+  );
+  const themeTaggingHint = themeMatchesTaxonomy
+    ? `\n- At least 2 themed recipes MUST include "${themeKeyLc}" in their practiced_skills array so the user can see the theme practiced day-by-day.`
+    : '';
   const focusBlock =
     typeof focusTheme === 'string' && focusTheme.length > 0
       ? `
@@ -137,8 +154,19 @@ export function buildMealPlanPrompt(context: MealPlanContext): string {
 THIS WEEK'S THEME: ${focusTheme}.
 - Include at least 2 dinner recipes that genuinely exercise this skill.
 - Mention the theme in each themed recipe's why_suggested ("Practices ${focusTheme} via …").
-- TITLES MUST BE REAL DISHES. Never name a recipe "${focusTheme}", "Recipe 1", "Test Pasta", "${focusTheme} Practice", or any placeholder. Use a specific dish name a person could Google (e.g. "Beef Bourguignon", "Cacio e Pepe", "Sheet-pan Harissa Salmon").`
+- TITLES MUST BE REAL DISHES. Never name a recipe "${focusTheme}", "Recipe 1", "Test Pasta", "${focusTheme} Practice", or any placeholder. Use a specific dish name a person could Google (e.g. "Beef Bourguignon", "Cacio e Pepe", "Sheet-pan Harissa Salmon").${themeTaggingHint}`
       : '';
+
+  // Quick-task 6 — Skill scaffolding block (mirrors recipeDiscovery's
+  // SKILL TAGGING copy). Surfaces difficulty + practiced_skills + skill_note
+  // on every plan-entry recipe so the Plan day card can show difficulty
+  // chips and matching-focus chips, and Recipe detail can show the
+  // "Skills practiced" card after the user opens an entry.
+  const skillTaggingBlock = `
+SKILL TAGGING (every recipe MUST tag these):
+- difficulty: pick "easy" | "medium" | "hard". easy = ≤30min, basic technique. medium = 30-60min OR one new technique. hard = >60min OR advanced technique (braise, fresh pasta, lamination).
+- practiced_skills: 1-3 keys from EXACTLY this set: knife skills, pan sauces, braising, stir-frying, plant-forward, pasta from scratch, global flavors, baking & breads. Match what the recipe genuinely exercises — don't tag "knife skills" on something that's just chop-and-toss.
+- skill_note: optional one-line explanation of the technique payoff (e.g. "Practices fond → reduction → mounted butter"). Omit when there's no specific technique to call out.`;
 
   return `Generate a 7-day dinner meal plan for the week starting ${weekStart}.
 
@@ -166,6 +194,7 @@ WEEK STRUCTURE:
 ${kidRule}
 
 ${skillBlock}${focusBlock}
+${skillTaggingBlock}
 
 OUTPUT CONTRACT:
 - Return EXACTLY 7 days, one per day_of_week (0..6, 0=Monday, 6=Sunday)
@@ -247,6 +276,34 @@ const generateMealPlanSchema: JsonSchema = {
           },
           kid_friendly: { type: 'boolean' },
           why_suggested: { type: 'string' },
+          // Quick-task 6 — skill scaffolding. Bound to the same 8-key
+          // taxonomy as FocusPickerSheet so the matching-focus chip on
+          // Plan day cards can render reliably.
+          practiced_skills: {
+            type: 'array',
+            items: {
+              type: 'string',
+              enum: [
+                'knife skills',
+                'pan sauces',
+                'braising',
+                'stir-frying',
+                'plant-forward',
+                'pasta from scratch',
+                'global flavors',
+                'baking & breads',
+              ],
+            },
+            minItems: 1,
+            maxItems: 3,
+            description:
+              "1-3 skills this recipe genuinely exercises. Pick from the EXACT 8-key list — do not invent new keys.",
+          },
+          skill_note: {
+            type: 'string',
+            description:
+              "Optional one-line technique payoff (≤120 chars). Omit when there's no specific technique to call out.",
+          },
         },
         required: [
           'day_of_week',
@@ -259,6 +316,7 @@ const generateMealPlanSchema: JsonSchema = {
           'complexity_target',
           'kid_friendly',
           'why_suggested',
+          'practiced_skills',
         ],
       },
     },
@@ -321,6 +379,9 @@ interface ClaudeMealDay {
   complexity_target: 'weeknight' | 'weekend';
   kid_friendly: boolean;
   why_suggested: string;
+  // Quick-task 6 — skill scaffolding (taxonomy-bound 1-3 skills + optional note).
+  practiced_skills?: string[];
+  skill_note?: string;
 }
 
 const DAY_STRING_TO_INDEX: Record<ClaudeMealDay['day_of_week'], number> = {
@@ -568,6 +629,14 @@ export async function generateMealPlan(
     estimated_time_minutes: d.estimated_time_minutes,
     servings: normalizeServings(d.servings),
     difficulty: d.difficulty,
+    // Quick-task 6 — skill scaffolding. validatePracticedSkills filters
+    // to the 8-key allowlist (silent drop for "wok / stir-fry" → null
+    // when nothing survives), skill_note clamped to 200 chars.
+    practiced_skills: validatePracticedSkills(d.practiced_skills),
+    skill_note:
+      typeof d.skill_note === 'string' && d.skill_note.trim().length > 0
+        ? d.skill_note.slice(0, 200)
+        : null,
     kid_friendly: d.kid_friendly,
     why_suggested: d.why_suggested,
     status: 'planned' as const,
@@ -740,6 +809,14 @@ REGENERATION CONTEXT:
     estimated_time_minutes: replacement.estimated_time_minutes,
     servings: normalizeServings(replacement.servings),
     difficulty: replacement.difficulty,
+    // Quick-task 6 — mirror the entryRows skill-tag mapping for single-
+    // day regen so swapped days keep their difficulty + skill chips.
+    practiced_skills: validatePracticedSkills(replacement.practiced_skills),
+    skill_note:
+      typeof replacement.skill_note === 'string' &&
+      replacement.skill_note.trim().length > 0
+        ? replacement.skill_note.slice(0, 200)
+        : null,
     kid_friendly: replacement.kid_friendly,
     why_suggested: replacement.why_suggested,
   };
