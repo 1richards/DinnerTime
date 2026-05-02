@@ -52,6 +52,20 @@ export interface MealPlanEntry {
    * is pantry-ready. Absent on fresh-fetch.
    */
   pantry_ready?: boolean;
+
+  // ---- Quick-task 6 extensions ----
+  /**
+   * 1-3 practiced skills from the 8-key taxonomy (FocusPickerSheet keys).
+   * The Plan day card emits a matching-focus chip when this array contains
+   * the active meal_plans.focus_theme (case-insensitive). NULL on legacy
+   * entries generated before the planner started tagging.
+   */
+  practiced_skills?: string[] | null;
+  /**
+   * Optional one-line technique payoff (≤120 chars) — e.g. "Practices
+   * fond → reduction → mounted butter". Surfaced on Recipe detail.
+   */
+  skill_note?: string | null;
 }
 
 export interface MealPlan {

@@ -56,6 +56,10 @@ interface DayRowProps {
   /** True while THIS row is the one being dragged — used to dim the rest
       of the list and visually anchor the drag. */
   isDragActive?: boolean;
+  /** Quick-task 6 — active weekly focus theme (meal_plans.focus_theme).
+      Plumbed through to deriveStatusChips so the matching-focus chip can
+      fire when this entry's practiced_skills includes the theme. */
+  focusTheme?: string | null;
 }
 
 export function DayRow({
@@ -73,6 +77,7 @@ export function DayRow({
   onPress,
   onLongPress,
   isDragActive,
+  focusTheme,
 }: DayRowProps) {
   // Look up the persisted Recipe (if this entry is backed by one) so we
   // can show its real image_url. recipe-by-id selector is memoized in
@@ -153,6 +158,12 @@ export function DayRow({
       description: entry.description ?? null,
       ingredients: (entry.ingredients ?? []).map((i) => ({ name: i.name })),
     },
+    // Quick-task 6 — surface skill scaffolding chips (difficulty +
+    // matching-focus). Both render only when the corresponding fields
+    // are non-null on the entry.
+    difficulty: entry.difficulty ?? null,
+    practicedSkills: entry.practiced_skills ?? null,
+    focusTheme: focusTheme ?? null,
   });
 
   const thumbnailUri = savedRecipe?.image_url ?? generatedUri ?? null;

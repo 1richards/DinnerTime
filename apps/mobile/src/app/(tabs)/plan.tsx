@@ -903,6 +903,7 @@ export default function PlanScreen() {
               dateLabel={shortDateForDay(currentPlan.week_start, item.day)}
               isSwapping={swappingDay === item.day}
               isCooking={cookingDay === item.day}
+              focusTheme={currentPlan.focus_theme ?? null}
               onSwap={() => setSwapTarget(item.day)}
               onCook={() => setCookTarget(item.day)}
               onSkip={() => setSkipTarget(item.day)}

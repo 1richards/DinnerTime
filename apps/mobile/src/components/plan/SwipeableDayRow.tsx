@@ -52,6 +52,10 @@ export interface SwipeableDayRowProps {
       control to the parent DraggableFlatList's drag gesture. */
   onLongPress?: () => void;
   isDragActive?: boolean;
+  /** Quick-task 6 — active weekly focus theme (meal_plans.focus_theme).
+      Forwarded into DayRow via the existing rest-spread so the
+      matching-focus chip can fire when this entry practices the theme. */
+  focusTheme?: string | null;
 }
 
 interface ActionProps {

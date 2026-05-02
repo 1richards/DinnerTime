@@ -40,6 +40,27 @@ export interface DeriveArgs {
    * one row will be tagged "High fat" or similar.
    */
   entry?: ScoredEntry | null;
+
+  // ---- Quick-task 6 — skill scaffolding chips ----
+  /**
+   * Difficulty tier. When set, emits a chip labeled "Easy" | "Medium" |
+   * "Hard" with tone scaling by tier (easy=success, medium=default,
+   * hard=warning). Null/undefined → no chip (legacy rows).
+   */
+  difficulty?: 'easy' | 'medium' | 'hard' | null;
+  /**
+   * Practiced skills tagged on this entry by the AI. Used for the
+   * matching-focus chip — when an entry exercises the week's focus
+   * theme, we surface that fact on the day card.
+   */
+  practicedSkills?: string[] | null;
+  /**
+   * Active weekly focus theme (free-form string from
+   * meal_plans.focus_theme). When `practicedSkills` contains a key
+   * case-insensitively equal to this, emit a single matching-focus
+   * chip with warm tone.
+   */
+  focusTheme?: string | null;
 }
 
 /**
@@ -75,6 +96,52 @@ export function deriveStatusChips(args: DeriveArgs): StatusChipDescriptor[] {
   }
   if (args.pantryReady) {
     out.push({ label: 'Pantry ready', tone: 'default' });
+  }
+
+  // Quick-task 6 — Difficulty chip. Always render when set so users get a
+  // glanceable read on each day's effort. Tone scales: easy=success
+  // (green = low risk), medium=default (neutral), hard=warning (amber =
+  // bring focus). null/undefined → no chip (legacy rows).
+  if (args.difficulty) {
+    const label =
+      args.difficulty[0]!.toUpperCase() + args.difficulty.slice(1);
+    const tone: ChipTone =
+      args.difficulty === 'hard'
+        ? 'warning'
+        : args.difficulty === 'easy'
+          ? 'success'
+          : 'default';
+    out.push({
+      label,
+      tone,
+      leadingIcon: 'gauge.with.dots.needle.33percent',
+    });
+  }
+
+  // Quick-task 6 — Matching-focus chip. Only fires when the day's recipe
+  // practices the active weekly focus theme. Case-insensitive compare
+  // (with whitespace trim on the theme — users sometimes paste themes
+  // with stray spaces from picker labels). Emits exactly ONE chip even
+  // when practicedSkills has multiple entries — only the matched skill
+  // is shown, so the day card stays scannable.
+  if (
+    args.practicedSkills &&
+    args.practicedSkills.length > 0 &&
+    typeof args.focusTheme === 'string' &&
+    args.focusTheme.trim().length > 0
+  ) {
+    const themeLc = args.focusTheme.trim().toLowerCase();
+    const match = args.practicedSkills.find(
+      (s) => s.toLowerCase() === themeLc,
+    );
+    if (match) {
+      // Lowercase first then capitalize first letter — keeps multi-word
+      // entries like "pan sauces" → "Pan sauces" (single capital, sentence
+      // case) so the chip doesn't look shouty next to the difficulty chip.
+      const lc = match.toLowerCase();
+      const display = lc[0]!.toUpperCase() + lc.slice(1);
+      out.push({ label: display, tone: 'warning', leadingIcon: 'sparkles' });
+    }
   }
 
   // Per-entry health hint. Skip on cooked/skipped rows — the user has
