@@ -138,6 +138,20 @@ export function ShoppingItemRow({
         struck={!!item.checked}
         onLongPress={() => setEditing(true)}
         size="compact"
+        // Once an item is checked off the user has bought it; surfacing an
+        // explicit "Remove" affordance lets them clear the row without
+        // discovering the swipe gesture. The destructive swipe action stays
+        // on as the power-user path for both checked and unchecked rows.
+        trailingAction={
+          item.checked
+            ? {
+                label: 'Remove',
+                symbol: 'trash',
+                tone: 'destructive',
+                onPress: onDelete,
+              }
+            : undefined
+        }
       />
     </Swipeable>
   );

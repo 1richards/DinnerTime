@@ -17,10 +17,20 @@
 
 export interface TitleClassArgs {
   struck?: boolean;
+  /**
+   * Density axis for the title. Compact rows shrink the title to a
+   * Reminders-style 15pt — body (17pt) is too heavy for a long
+   * shopping/pantry list the user is glancing at, not reading.
+   */
+  size?: ItemRowSize;
 }
 
-export function resolveTitleClasses({ struck }: TitleClassArgs): string {
-  return `text-body text-text-primary${struck ? ' line-through opacity-50' : ''}`;
+export function resolveTitleClasses({ struck, size }: TitleClassArgs): string {
+  const sizeCls =
+    size === 'compact'
+      ? 'text-[15px] leading-[20px] text-text-primary'
+      : 'text-body text-text-primary';
+  return `${sizeCls}${struck ? ' line-through opacity-50' : ''}`;
 }
 
 export interface CheckboxBoxArgs {

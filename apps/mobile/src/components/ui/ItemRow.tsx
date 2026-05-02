@@ -48,6 +48,17 @@ interface ItemRowProps {
   title: string;
   subtitle?: string;
   trailingChip?: { label: string; tone: ChipTone };
+  /**
+   * Optional pressable trailing affordance — e.g. a "Remove" action
+   * that surfaces only after a shopping item is checked off, so the
+   * user can clear bought items without learning the swipe gesture.
+   */
+  trailingAction?: {
+    label: string;
+    symbol: SymbolViewProps['name'];
+    tone?: 'default' | 'destructive';
+    onPress: () => void;
+  };
   onPress?: () => void;
   onLongPress?: () => void;
   /** Shopping checked state — applies line-through + 50% opacity to title. */
@@ -84,12 +95,13 @@ export function ItemRow({
   title,
   subtitle,
   trailingChip,
+  trailingAction,
   onPress,
   onLongPress,
   struck,
   size,
 }: ItemRowProps) {
-  const titleCls = resolveTitleClasses({ struck });
+  const titleCls = resolveTitleClasses({ struck, size });
   const containerCls = resolveContainerClasses(size);
   const isInteractive = !!(onPress || onLongPress);
   const Container: React.ComponentType<any> = isInteractive ? Pressable : View;
@@ -170,6 +182,40 @@ export function ItemRow({
       {/* Trailing chip (inline until Plan 19-02 lands Chip.tsx) */}
       {trailingChip ? (
         <InlineTrailingChip label={trailingChip.label} tone={trailingChip.tone} />
+      ) : null}
+
+      {/* Trailing pressable action (e.g. "Remove" on a checked-off
+          shopping row). Renders only when consumers explicitly opt in. */}
+      {trailingAction ? (
+        <Pressable
+          onPress={trailingAction.onPress}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={trailingAction.label}
+          className="ml-2 px-3 h-8 rounded-pill flex-row items-center justify-center bg-surface-subtle"
+        >
+          <SymbolView
+            name={trailingAction.symbol}
+            size={14}
+            weight="semibold"
+            tintColor={
+              trailingAction.tone === 'destructive'
+                ? colors.destructive
+                : colors.textSecondary
+            }
+          />
+          <Text
+            className="ml-1.5 text-caption font-semibold"
+            style={{
+              color:
+                trailingAction.tone === 'destructive'
+                  ? colors.destructive
+                  : colors.textSecondary,
+            }}
+          >
+            {trailingAction.label}
+          </Text>
+        </Pressable>
       ) : null}
     </Container>
   );
