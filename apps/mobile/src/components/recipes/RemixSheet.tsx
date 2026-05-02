@@ -555,26 +555,23 @@ export function RemixSheet({
               />
             </Pressable>
 
-            {/* Vertical list of remix modes — Apple Settings / Linear
-                command-palette pattern. Single left edge for the icon
-                chip aligns every label and sub text on the same axis,
-                so the eye scans straight down. Trades horizontal density
-                (vs the earlier 3-col grid) for legibility and tap target
-                size; the dropped pixels are well-spent in a sheet that
-                only ever shows nine choices. */}
-            <View style={styles.modeList}>
-              {GRID_MODES.map((m, i) => (
+            {/* 3-column grid of remix modes. Each tile is a self-contained
+                card (white surface + soft shadow + tinted-icon chip) so the
+                eye registers eight distinct choices rather than a single
+                wall of text. No chevrons — the entire tile is the affordance
+                and the lift on press communicates tappability. */}
+            <View style={styles.modeGrid}>
+              {GRID_MODES.map((m) => (
                 <Pressable
                   key={m.mode}
                   onPress={() => handleMode(m.mode)}
                   style={({ pressed }) => [
-                    styles.modeRowList,
-                    i === 0 && styles.modeRowListFirst,
-                    pressed && { backgroundColor: '#F7F0E5' },
+                    styles.modeTile,
+                    pressed && { transform: [{ scale: 0.97 }], opacity: 0.92 },
                   ]}
                 >
                   <View
-                    style={[styles.modeRowChip, { backgroundColor: `${m.tint}1A` }]}
+                    style={[styles.modeTileChip, { backgroundColor: `${m.tint}1A` }]}
                   >
                     <SymbolIcon
                       name={m.symbol as never}
@@ -583,19 +580,17 @@ export function RemixSheet({
                       weight="semibold"
                     />
                   </View>
-                  <View style={styles.modeRowContent}>
-                    <Text style={styles.modeRowLabel} numberOfLines={1}>
-                      {m.label}
-                    </Text>
-                    <Text style={styles.modeRowSub} numberOfLines={1}>
-                      {m.sub}
-                    </Text>
-                  </View>
-                  <SymbolIcon
-                    name="chevron.forward"
-                    size={14}
-                    tintColor="#A89478"
-                  />
+                  <Text
+                    style={styles.modeTileLabel}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                  >
+                    {m.label}
+                  </Text>
+                  <Text style={styles.modeTileSub} numberOfLines={2}>
+                    {m.sub}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -1106,53 +1101,55 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  modeList: {
-    // Card surface that wraps the eight mode rows. Hairline borders
-    // between rows give the list a clean alignment edge without a
-    // 1pt gap collecting dust between cards.
+  modeGrid: {
+    // 3-column flex grid. Tiles use ~31% width with 1.5% gaps left/right
+    // (rendered as marginHorizontal) so the row sums to ~99% with breathing
+    // room at the edges. Each tile is a complete card — distinct shadow +
+    // border so adjacent tiles read as separate choices, not a continuous
+    // surface.
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 12,
+  },
+  modeTile: {
+    width: '31.5%',
+    minHeight: 116,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 14,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#EBE2D2',
     shadowColor: '#7A6651',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
     elevation: 1,
   },
-  modeRowList: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    minHeight: 64,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#EBE2D2',
-  },
-  modeRowListFirst: {
-    // First row has no top divider — the card border serves as the cap.
-    borderTopWidth: 0,
-  },
-  modeRowChip: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  modeTileChip: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginBottom: 8,
   },
-  modeRowContent: {
-    flex: 1,
-  },
-  modeRowLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A140F',
-    letterSpacing: -0.2,
-  },
-  modeRowSub: {
+  modeTileLabel: {
     fontSize: 13,
+    fontWeight: '800',
+    color: '#1A140F',
+    letterSpacing: -0.1,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  modeTileSub: {
+    fontSize: 11,
     color: '#7A6651',
-    marginTop: 1,
+    textAlign: 'center',
+    lineHeight: 14,
   },
   modeRow: {
     flexDirection: 'row',
