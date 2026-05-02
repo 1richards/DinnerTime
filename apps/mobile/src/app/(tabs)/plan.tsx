@@ -889,6 +889,29 @@ export default function PlanScreen() {
         </View>
       )}
 
+      {/* Regenerate-in-flight overlay — covers the whole plan surface
+          when the user kicks off /meal-plans/generate (Set focus →
+          Regenerate, week shift, etc.) so they aren't staring at the
+          stale week with no signal anything is happening. The first-
+          generate path renders a separate full-screen spinner above
+          (loading && !currentPlan); this branch is the regenerate
+          case where currentPlan still resolves to the OLD plan. */}
+      {loading && currentPlan && (
+        <View pointerEvents="auto" style={styles.regeneratingOverlay}>
+          <View style={styles.regeneratingCard}>
+            <ActivityIndicator size="large" color={colors.brand} />
+            <Text style={styles.regeneratingTitle}>
+              Rebuilding your week…
+            </Text>
+            <Text style={styles.regeneratingSub}>
+              {currentPlan.focus_theme
+                ? `Leaning into “${currentPlan.focus_theme}”. Takes ~10–20 seconds.`
+                : 'Takes about 10–20 seconds.'}
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* Phase 22-03: Week | Month segmented control now lives inside each
           list's header (scaleSegmentedControl above), below the large "This
           Week" title — matches the Kitchen tab's segment-under-header rhythm. */}
@@ -1282,6 +1305,47 @@ function PlanEntryPreview({
 
 const styles = StyleSheet.create({
   ...collapsingHeaderStyles,
+  regeneratingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 251, 245, 0.94)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+    paddingHorizontal: 32,
+  },
+  regeneratingCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+    paddingVertical: 28,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#7A6651',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 6,
+    maxWidth: 320,
+    gap: 12,
+  },
+  regeneratingTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#1A140F',
+    letterSpacing: -0.2,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  regeneratingSub: {
+    fontSize: 13,
+    color: '#7A6651',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
   // Phase 22-03: Week | Month segmented control (mirrors kitchen.tsx).
   segmentWrap: {
     flexDirection: 'row',

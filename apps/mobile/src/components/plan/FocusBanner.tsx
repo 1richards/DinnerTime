@@ -24,7 +24,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { colors } from '../../design/tokens';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
@@ -34,14 +34,27 @@ import { FocusPickerSheet } from './FocusPickerSheet';
 export function FocusBanner() {
   const currentPlan = useMealPlanStore((s) => s.currentPlan);
   const setFocusTheme = useMealPlanStore((s) => s.setFocusTheme);
+  const planLoading = useMealPlanStore((s) => s.loading);
   const [pickerVisible, setPickerVisible] = useState(false);
+  // Local progress flag — covers the PATCH window between the user
+  // tapping a focus card and the regenerate Alert appearing. The plan
+  // store's `loading` only flips during regenerate itself, so we add
+  // this so the banner shows "Saving focus…" through the full lifecycle.
+  const [savingFocus, setSavingFocus] = useState(false);
 
   if (!currentPlan) return null;
 
   const theme = currentPlan.focus_theme ?? null;
+  const planId = currentPlan.id;
+  const weekStart = currentPlan.week_start;
 
   const handleSelect = async (next: string | null) => {
-    await setFocusTheme(next);
+    setSavingFocus(true);
+    try {
+      await setFocusTheme(next);
+    } finally {
+      setSavingFocus(false);
+    }
     if (next) {
       const sessionId =
         typeof globalThis.crypto?.randomUUID === 'function'
@@ -50,40 +63,52 @@ export function FocusBanner() {
       logPlanEvent({
         name: 'plan.focus_theme_set',
         session_id: sessionId,
-        meal_plan_id: currentPlan.id,
+        meal_plan_id: planId,
         payload: sanitizePayload({
-          meal_plan_id: currentPlan.id,
-          week_start: currentPlan.week_start,
+          meal_plan_id: planId,
+          week_start: weekStart,
         }),
       });
-      // The user just told us what they want to practice this week —
-      // ask if they want to regenerate the plan to actually steer
-      // toward it. Otherwise the focus only affects future weeks.
-      Alert.alert(
-        'Regenerate this week?',
-        `Rebuild the week's meals to lean into "${next}"?`,
-        [
-          { text: 'Not now', style: 'cancel' },
-          {
-            text: 'Regenerate',
-            style: 'default',
-            onPress: () => {
-              void useMealPlanStore
-                .getState()
-                .generate(currentPlan.week_start);
+      // Defer the Alert by a tick so iOS finishes dismissing the
+      // FocusPickerSheet before trying to present another modal on top.
+      // Without this delay the Alert occasionally never appears (the
+      // dismissing sheet "owns" the presentation slot during animation).
+      setTimeout(() => {
+        Alert.alert(
+          'Regenerate this week?',
+          `Rebuild the week's meals to lean into "${next}"?`,
+          [
+            { text: 'Not now', style: 'cancel' },
+            {
+              text: 'Regenerate',
+              style: 'default',
+              onPress: () => {
+                void useMealPlanStore.getState().generate(weekStart);
+              },
             },
-          },
-        ],
-      );
+          ],
+        );
+      }, 350);
     }
   };
 
   const handleSet = () => setPickerVisible(true);
+  const isBusy = savingFocus || planLoading;
 
   return (
     <View style={styles.banner} accessibilityLabel="Weekly skill focus banner">
-      <SymbolIcon name="sparkles" size={16} tintColor={colors.warning} />
-      {theme ? (
+      {isBusy ? (
+        <ActivityIndicator size="small" color={colors.brand} />
+      ) : (
+        <SymbolIcon name="sparkles" size={16} tintColor={colors.warning} />
+      )}
+      {isBusy ? (
+        <Text style={styles.text} numberOfLines={2}>
+          {planLoading
+            ? `Rebuilding the week${theme ? ` around “${theme}”` : ''}…`
+            : 'Saving focus…'}
+        </Text>
+      ) : theme ? (
         <Text style={styles.text} numberOfLines={2}>
           This week: <Text style={styles.themeText}>{theme}</Text>
         </Text>
@@ -93,14 +118,16 @@ export function FocusBanner() {
         </Text>
       )}
       <View style={{ flex: 1 }} />
-      <Pressable
-        onPress={handleSet}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel={theme ? 'Change focus theme' : 'Set focus theme'}
-      >
-        <Text style={styles.action}>{theme ? 'Change' : 'Set focus'}</Text>
-      </Pressable>
+      {!isBusy && (
+        <Pressable
+          onPress={handleSet}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={theme ? 'Change focus theme' : 'Set focus theme'}
+        >
+          <Text style={styles.action}>{theme ? 'Change' : 'Set focus'}</Text>
+        </Pressable>
+      )}
       <FocusPickerSheet
         visible={pickerVisible}
         currentTheme={theme}
