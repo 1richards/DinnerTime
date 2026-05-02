@@ -219,13 +219,13 @@ export const useShoppingStore = create<ShoppingState>()(
   },
 
   addItem: async (input: AddItemInput) => {
-    let list = get().currentList;
-    if (!list) {
-      // No persisted list. Refresh from server in case one exists but the
-      // local cache is stale (e.g. user signed in on a new device). If the
-      // server agrees there's no list, lazy-create a blank one so the
-      // recipe cart-add and pantry "Get more" flows work without requiring
-      // the user to first build a meal plan.
+    // Refresh-or-create when we don't yet have a list. Pulled into a
+    // closure so we can re-run it after a 404 from POST /shopping/items —
+    // the persisted currentList can be stale (test cleanup, account
+    // switch, RLS-deleted row) and the server doesn't auto-recover.
+    // Mirrors the meal-plan 404-refetch pattern from commit 1fe4fd0.
+    const refreshOrCreateList = async (): Promise<ShoppingList> => {
+      let list: ShoppingList | null = null;
       try {
         const refreshResponse = await authedFetch('/shopping/current', {
           method: 'GET',
@@ -243,32 +243,37 @@ export const useShoppingStore = create<ShoppingState>()(
           }
         }
       } catch {
-        // Fall through to create-on-server below; surface that error instead.
+        // Fall through to create.
       }
-    }
 
+      if (!list) {
+        const createResponse = await authedFetch('/shopping/lists', {
+          method: 'POST',
+          body: JSON.stringify({}),
+        });
+        if (!createResponse.ok) {
+          const err = await createResponse.json().catch(() => ({}));
+          const message = err.error ?? 'Failed to create shopping list';
+          set({ error: message });
+          throw new Error(message);
+        }
+        const createBody = await createResponse.json();
+        const created = createBody.data;
+        const { items: createdItems, ...createdFields } = created;
+        list = createdFields as ShoppingList;
+        set({
+          currentList: list,
+          items: createdItems ?? [],
+          error: null,
+        });
+      }
+      return list;
+    };
+
+    let list = get().currentList;
     if (!list) {
-      const createResponse = await authedFetch('/shopping/lists', {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
-      if (!createResponse.ok) {
-        const err = await createResponse.json().catch(() => ({}));
-        const message = err.error ?? 'Failed to create shopping list';
-        set({ error: message });
-        throw new Error(message);
-      }
-      const createBody = await createResponse.json();
-      const created = createBody.data;
-      const { items: createdItems, ...createdFields } = created;
-      list = createdFields as ShoppingList;
-      set({
-        currentList: list,
-        items: createdItems ?? [],
-        error: null,
-      });
+      list = await refreshOrCreateList();
     }
-
     const snapshot = get().items;
 
     const optimistic: ShoppingListItem = {
@@ -287,16 +292,32 @@ export const useShoppingStore = create<ShoppingState>()(
 
     set({ items: [...snapshot, optimistic], error: null });
 
-    try {
-      const response = await authedFetch('/shopping/items', {
+    const postItem = async (listId: string): Promise<Response> =>
+      authedFetch('/shopping/items', {
         method: 'POST',
         body: JSON.stringify({
-          shopping_list_id: list.id,
+          shopping_list_id: listId,
           name: input.name,
           quantity: input.quantity ?? null,
           unit: input.unit ?? null,
         }),
       });
+
+    try {
+      let response = await postItem(list.id);
+
+      // Stale-list recovery: persisted currentList can point at a deleted
+      // row. Drop it, refresh-or-create, and retry once before surfacing.
+      // refreshOrCreateList resets `items` to the new list's contents, so
+      // re-attach the optimistic row on top before retrying.
+      if (response.status === 404) {
+        set({ currentList: null });
+        list = await refreshOrCreateList();
+        const recovered = get().items;
+        const optimisticForList = { ...optimistic, shopping_list_id: list.id };
+        set({ items: [...recovered, optimisticForList], error: null });
+        response = await postItem(list.id);
+      }
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
@@ -309,7 +330,7 @@ export const useShoppingStore = create<ShoppingState>()(
       const serverItem: ShoppingListItem = body.data;
       set((state) => ({
         items: state.items.map((i) =>
-          i.id === optimistic.id ? serverItem : i
+          i.id === optimistic.id ? { ...serverItem, shopping_list_id: list.id } : i
         ),
         error: null,
       }));

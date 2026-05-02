@@ -393,6 +393,64 @@ describe('shoppingStore', () => {
       expect(calls[1][0]).toContain('/api/v1/shopping/items');
     });
 
+    it('recovers from a stale persisted list by refreshing/creating and retrying', async () => {
+      // Persisted Zustand state points at a list the server no longer
+      // recognizes (test cleanup, account switch, RLS-deleted row). The
+      // first POST /items 404s with "shopping list not found"; addItem
+      // should drop currentList, refresh-or-create via /current → /lists,
+      // and retry the items POST once.
+      const stale = makeList({ id: 'list-stale' });
+      useShoppingStore.setState({ currentList: stale, items: [] });
+
+      const fresh = makeList({ id: 'list-fresh', meal_plan_id: null });
+      const serverItem = makeItem('server-r', {
+        shopping_list_id: 'list-fresh',
+        name: 'oats',
+      });
+
+      // 1) POST /items with stale id → 404
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ error: 'shopping list not found' }),
+      });
+      // 2) GET /current → no list (server agrees)
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: null }),
+      });
+      // 3) POST /lists → fresh blank list
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: () => Promise.resolve({ data: { ...fresh, items: [] } }),
+      });
+      // 4) POST /items retry → success
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: () => Promise.resolve({ data: serverItem }),
+      });
+
+      await useShoppingStore
+        .getState()
+        .addItem({ name: 'oats', quantity: 1, unit: 'cup' });
+
+      const state = useShoppingStore.getState();
+      expect(state.currentList?.id).toBe('list-fresh');
+      expect(state.items).toHaveLength(1);
+      expect(state.items[0].id).toBe('server-r');
+      expect(state.error).toBeNull();
+
+      const calls = mockFetch.mock.calls;
+      expect(calls).toHaveLength(4);
+      expect(calls[0][0]).toContain('/api/v1/shopping/items');
+      expect(calls[1][0]).toContain('/api/v1/shopping/current');
+      expect(calls[2][0]).toContain('/api/v1/shopping/lists');
+      expect(calls[3][0]).toContain('/api/v1/shopping/items');
+    });
+
     it('surfaces error when blank-list creation fails', async () => {
       useShoppingStore.setState({ currentList: null, items: [] });
 
