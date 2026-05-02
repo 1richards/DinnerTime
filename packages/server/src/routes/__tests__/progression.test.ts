@@ -148,6 +148,9 @@ describe('progression routes', () => {
       expect.any(String),
       'r1',
       'protein',
+      // customInstructions is the optional 5th arg added when free-form
+      // remix steering shipped; defaults to undefined when absent.
+      undefined,
     );
   });
 

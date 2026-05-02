@@ -48,15 +48,18 @@ beforeAll(async () => {
   const uid = session.user?.id;
   if (!uid) return;
 
-  // Valid pantry_items categories: produce|dairy|protein|frozen|other
+  // Valid pantry_items categories: produce|dairy|protein|frozen|other.
+  // Phase 24a (migration 00015) replaced the legacy `quantity` + `unit`
+  // pair with a single JSONB `quantity` of shape { value, unit, system }
+  // so the seed below must mirror the new column shape.
   const pantryItems = [
-    { profile_id: uid, name: 'Chicken breast', normalized_name: 'chicken breast', quantity: 2, unit: 'piece', category: 'protein', source_location: 'fridge', status: 'available', confidence: 1 },
-    { profile_id: uid, name: 'Pasta', normalized_name: 'pasta', quantity: 400, unit: 'g', category: 'other', source_location: 'fridge', status: 'available', confidence: 1 },
-    { profile_id: uid, name: 'Tomatoes', normalized_name: 'tomatoes', quantity: 4, unit: 'count', category: 'produce', source_location: 'fridge', status: 'available', confidence: 1 },
-    { profile_id: uid, name: 'Olive oil', normalized_name: 'olive oil', quantity: 1, unit: 'bottle', category: 'other', source_location: 'fridge', status: 'available', confidence: 1 },
-    { profile_id: uid, name: 'Garlic', normalized_name: 'garlic', quantity: 3, unit: 'clove', category: 'produce', source_location: 'fridge', status: 'available', confidence: 1 },
-    { profile_id: uid, name: 'Eggs', normalized_name: 'eggs', quantity: 6, unit: 'count', category: 'dairy', source_location: 'fridge', status: 'available', confidence: 1 },
-    { profile_id: uid, name: 'Rice', normalized_name: 'rice', quantity: 500, unit: 'g', category: 'other', source_location: 'fridge', status: 'available', confidence: 1 },
+    { profile_id: uid, name: 'Chicken breast', normalized_name: 'chicken breast', quantity: { value: 2, unit: 'piece', system: 'count' }, category: 'protein', source_location: 'fridge', status: 'available', confidence: 1 },
+    { profile_id: uid, name: 'Pasta', normalized_name: 'pasta', quantity: { value: 400, unit: 'g', system: 'metric-weight' }, category: 'other', source_location: 'fridge', status: 'available', confidence: 1 },
+    { profile_id: uid, name: 'Tomatoes', normalized_name: 'tomatoes', quantity: { value: 4, unit: 'count', system: 'count' }, category: 'produce', source_location: 'fridge', status: 'available', confidence: 1 },
+    { profile_id: uid, name: 'Olive oil', normalized_name: 'olive oil', quantity: { value: 1, unit: 'bottle', system: 'count' }, category: 'other', source_location: 'fridge', status: 'available', confidence: 1 },
+    { profile_id: uid, name: 'Garlic', normalized_name: 'garlic', quantity: { value: 3, unit: 'clove', system: 'count' }, category: 'produce', source_location: 'fridge', status: 'available', confidence: 1 },
+    { profile_id: uid, name: 'Eggs', normalized_name: 'eggs', quantity: { value: 6, unit: 'count', system: 'count' }, category: 'dairy', source_location: 'fridge', status: 'available', confidence: 1 },
+    { profile_id: uid, name: 'Rice', normalized_name: 'rice', quantity: { value: 500, unit: 'g', system: 'metric-weight' }, category: 'other', source_location: 'fridge', status: 'available', confidence: 1 },
   ];
   const { error: pantryErr } = await admin.from('pantry_items').insert(pantryItems);
   if (pantryErr) console.warn('[meal-plans setup] pantry insert error:', pantryErr.message);
