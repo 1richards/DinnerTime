@@ -5,7 +5,6 @@ import {
   parseRecipeFromPhoto,
   parseRecipeFromText,
   applyRemixVariation,
-  expandPlanEntryToRecipe,
 } from '../services/recipeParser.js';
 import {
   saveRecipe,
@@ -436,63 +435,6 @@ recipes.post('/import/text', async (c) => {
     return c.json({ data });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to import recipe from text';
-    return c.json({ error: message }, 500);
-  }
-});
-
-/**
- * POST /expand-from-plan-entry — turn a lightweight meal-plan entry
- * sketch (title + description + ingredient hints) into a full
- * ParsedRecipe with cookable steps. The client calls this BEFORE
- * persisting via POST /recipes when the user taps Save / Cook on a
- * plan entry that has no recipe_id, so the saved recipe lands with
- * actual instructions instead of an empty `steps` array.
- *
- * Body: {
- *   title: string;
- *   description?: string | null;
- *   ingredients?: Array<string | { name, quantity?, unit?, notes? }>;
- *   ingredients_needed?: Array<string | { name }>;
- *   estimated_time_minutes?: number | null;
- *   kid_friendly?: boolean | null;
- *   why_suggested?: string | null;
- *   focus_theme?: string | null;
- * }
- */
-recipes.post('/expand-from-plan-entry', async (c) => {
-  let body: {
-    title?: string;
-    description?: string | null;
-    ingredients?: Array<string | { name: string; quantity?: number; unit?: string; notes?: string }>;
-    ingredients_needed?: Array<string | { name: string }>;
-    estimated_time_minutes?: number | null;
-    kid_friendly?: boolean | null;
-    why_suggested?: string | null;
-    focus_theme?: string | null;
-  };
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: 'Invalid JSON body' }, 400);
-  }
-  if (!body.title || typeof body.title !== 'string') {
-    return c.json({ error: 'title is required' }, 400);
-  }
-
-  try {
-    const data = await expandPlanEntryToRecipe({
-      title: body.title,
-      description: body.description ?? null,
-      ingredients: body.ingredients,
-      ingredientsNeeded: body.ingredients_needed,
-      estimatedTimeMinutes: body.estimated_time_minutes ?? null,
-      kidFriendly: body.kid_friendly ?? null,
-      whySuggested: body.why_suggested ?? null,
-      focusTheme: body.focus_theme ?? null,
-    });
-    return c.json({ data });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to expand plan entry';
     return c.json({ error: message }, 500);
   }
 });

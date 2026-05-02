@@ -168,9 +168,10 @@ ${skillBlock}${focusBlock}
 
 OUTPUT CONTRACT:
 - Return EXACTLY 7 days, one per day_of_week (0..6, 0=Monday, 6=Sunday)
+- Each day MUST be a complete, cookable recipe — title + description + structured ingredients (with quantities) + at least 3 ordered cooking steps + prep_time_minutes + cook_time_minutes + servings. Not a sketch, a real recipe a person can follow start to finish.
 - Each entry must include complexity_target ('weeknight' for Mon-Thu, 'weekend' for Fri-Sun)
 - Set recipe_id from RECIPE LIBRARY when a listed recipe is reused; otherwise null
-- Fill ingredients_used from AVAILABLE PANTRY and ingredients_needed for missing items
+- Populate ingredients with the FULL recipe (everything the dish needs) and ingredients_needed with just the names not in AVAILABLE PANTRY
 - Prefer pantry items to minimize shopping
 - Vary cuisines and cooking methods across the week`;
 }
@@ -200,17 +201,39 @@ const generateMealPlanSchema: JsonSchema = {
             type: 'string',
             description: 'Matching recipe_id from RECIPE LIBRARY, or omit for new dish',
           },
-          ingredients_used: {
+          ingredients: {
             type: 'array',
-            items: { type: 'string' },
-            description: 'Pantry items this recipe uses',
+            description:
+              'Full structured ingredient list with quantities. Convert fractions to decimals (e.g. 0.5 not 1/2).',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                quantity: { type: 'number' },
+                unit: { type: 'string' },
+                notes: { type: 'string' },
+              },
+              required: ['name'],
+            },
           },
           ingredients_needed: {
             type: 'array',
             items: { type: 'string' },
-            description: 'Items not in pantry that must be bought',
+            description: 'Item names not in pantry that must be bought',
           },
-          estimated_time_minutes: { type: 'number' },
+          steps: {
+            type: 'array',
+            description:
+              'Ordered cooking steps a home cook can follow start to finish. NOT optional — every recipe must include at least 3 steps.',
+            items: { type: 'string' },
+          },
+          prep_time_minutes: { type: 'number', description: 'Active prep time in minutes' },
+          cook_time_minutes: { type: 'number', description: 'Inactive cook time in minutes' },
+          estimated_time_minutes: {
+            type: 'number',
+            description: 'Total time = prep + cook',
+          },
+          servings: { type: 'number', description: 'Number of servings the recipe yields' },
           difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
           complexity_target: {
             type: 'string',
@@ -224,6 +247,8 @@ const generateMealPlanSchema: JsonSchema = {
           'day_of_week',
           'title',
           'description',
+          'ingredients',
+          'steps',
           'estimated_time_minutes',
           'difficulty',
           'complexity_target',
@@ -268,14 +293,25 @@ interface ProfileRow {
 
 // ---------- AI Tool Output Shape ----------
 
+interface ClaudeMealIngredient {
+  name: string;
+  quantity?: number;
+  unit?: string;
+  notes?: string;
+}
+
 interface ClaudeMealDay {
   day_of_week: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
   title: string;
   description: string;
   recipe_id?: string | null;
-  ingredients_used?: string[];
+  ingredients?: ClaudeMealIngredient[];
   ingredients_needed?: string[];
+  steps?: string[];
+  prep_time_minutes?: number;
+  cook_time_minutes?: number;
   estimated_time_minutes: number;
+  servings?: number;
   difficulty: Difficulty;
   complexity_target: 'weeknight' | 'weekend';
   kid_friendly: boolean;
@@ -512,9 +548,20 @@ export async function generateMealPlan(
     recipe_id: coerceRecipeId(d.recipe_id),
     title: d.title,
     description: d.description,
-    ingredients: (d.ingredients_used ?? []).map((name) => ({ name })),
+    // Full structured ingredients straight from the tool. Falls back to
+    // empty so an old client that doesn't return them still inserts.
+    ingredients: (d.ingredients ?? []).map((ing) => ({
+      name: ing.name,
+      quantity: ing.quantity ?? null,
+      unit: ing.unit ?? null,
+      notes: ing.notes ?? null,
+    })),
     ingredients_needed: (d.ingredients_needed ?? []).map((name) => ({ name })),
+    steps: d.steps ?? [],
+    prep_time_minutes: d.prep_time_minutes ?? null,
+    cook_time_minutes: d.cook_time_minutes ?? null,
     estimated_time_minutes: d.estimated_time_minutes,
+    servings: d.servings ?? null,
     difficulty: d.difficulty,
     kid_friendly: d.kid_friendly,
     why_suggested: d.why_suggested,
@@ -675,9 +722,18 @@ REGENERATION CONTEXT:
     recipe_id: swapRecipeId,
     title: replacement.title,
     description: replacement.description,
-    ingredients: (replacement.ingredients_used ?? []).map((name) => ({ name })),
+    ingredients: (replacement.ingredients ?? []).map((ing) => ({
+      name: ing.name,
+      quantity: ing.quantity ?? null,
+      unit: ing.unit ?? null,
+      notes: ing.notes ?? null,
+    })),
     ingredients_needed: (replacement.ingredients_needed ?? []).map((name) => ({ name })),
+    steps: replacement.steps ?? [],
+    prep_time_minutes: replacement.prep_time_minutes ?? null,
+    cook_time_minutes: replacement.cook_time_minutes ?? null,
     estimated_time_minutes: replacement.estimated_time_minutes,
+    servings: replacement.servings ?? null,
     difficulty: replacement.difficulty,
     kid_friendly: replacement.kid_friendly,
     why_suggested: replacement.why_suggested,

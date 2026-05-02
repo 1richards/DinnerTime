@@ -123,6 +123,20 @@ describe('POST /meal-plans/generate (AI)', () => {
         expect(body.data.week_start).toBe(WEEK_START);
         expect(body.data.entries).toBeInstanceOf(Array);
         expect(body.data.entries.length).toBeGreaterThan(0);
+        // Phase v1.0.2 — entries are now full recipes. Generated days
+        // must come back with structured ingredients (with quantities)
+        // and ordered steps so the user can actually cook them. An
+        // entry with steps=[] would be the regression that triggered
+        // the "No steps listed" reports.
+        const firstEntry = body.data.entries[0];
+        expect(firstEntry.title).toBeTypeOf('string');
+        expect(firstEntry.ingredients).toBeInstanceOf(Array);
+        expect(firstEntry.ingredients.length).toBeGreaterThan(0);
+        expect(firstEntry.ingredients[0]).toMatchObject({
+          name: expect.any(String),
+        });
+        expect(firstEntry.steps).toBeInstanceOf(Array);
+        expect(firstEntry.steps.length).toBeGreaterThanOrEqual(3);
       }
     }
   );

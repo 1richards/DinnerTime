@@ -3,8 +3,9 @@ export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export interface MealPlanIngredient {
   name: string;
-  quantity?: number;
-  unit?: string;
+  quantity?: number | null;
+  unit?: string | null;
+  notes?: string | null;
 }
 
 export interface MealPlanEntry {
@@ -16,6 +17,14 @@ export interface MealPlanEntry {
   description: string | null;
   ingredients: MealPlanIngredient[];
   ingredients_needed: MealPlanIngredient[];
+  // Phase v1.0.2 — entries now ARE full recipes. The planner emits
+  // ordered steps + prep/cook times + servings in the same structured
+  // tool call so opening a plan day shows a real, cookable recipe with
+  // no follow-up Claude round-trip required.
+  steps: string[];
+  prep_time_minutes: number | null;
+  cook_time_minutes: number | null;
+  servings: number | null;
   estimated_time_minutes: number | null;
   difficulty: Difficulty | null;
   kid_friendly: boolean;
