@@ -13,7 +13,7 @@
  *   POST   /recipes/discover   — AI discover
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { BASE_URL, authHeaders, resetTestUser } from './_helpers/test-user.js';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
@@ -25,6 +25,13 @@ let headers: Record<string, string>;
 beforeAll(async () => {
   await resetTestUser();
   headers = await authHeaders();
+});
+
+// Wipe all rows the suite inserted into the shared UAT account so the
+// user doesn't open the app and find Test Pasta / Dedup Lasagna / etc.
+// staring back. resetTestUser is intentionally idempotent.
+afterAll(async () => {
+  await resetTestUser();
 });
 
 /** Read response body once and return both text and parsed JSON. */
@@ -350,6 +357,74 @@ describe('POST /recipes/import/photo (AI)', () => {
         expect((json as { data: unknown }).data).toBeDefined();
       }
     }
+  );
+});
+
+describe('POST /recipes/expand-from-plan-entry (AI)', () => {
+  it('returns 401 without auth token', async () => {
+    const res = await fetch(`${base}/expand-from-plan-entry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Cacio e Pepe' }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 400 when title is missing', async () => {
+    const res = await fetch(`${base}/expand-from-plan-entry`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it(
+    'expands a plan-entry sketch into a full recipe with cookable steps',
+    { timeout: 90_000 },
+    async () => {
+      const res = await fetch(`${base}/expand-from-plan-entry`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          title: 'Cacio e Pepe',
+          description: 'Classic Roman pasta with pecorino and black pepper.',
+          ingredients: [
+            { name: 'spaghetti', quantity: 200, unit: 'g' },
+            { name: 'pecorino romano', quantity: 50, unit: 'g' },
+            { name: 'black pepper' },
+          ],
+          ingredients_needed: [{ name: 'salt' }],
+          estimated_time_minutes: 20,
+          kid_friendly: true,
+          why_suggested: 'Practices pasta from scratch — focus theme this week.',
+          focus_theme: 'pasta from scratch',
+        }),
+      });
+      const { text, json } = await readBody(res);
+      // 200 ok with expanded recipe; 500 if Claude/AI flake.
+      expect([200, 500], `body: ${text}`).toContain(res.status);
+      if (res.status === 200) {
+        const body = json as {
+          data: {
+            title: string;
+            ingredients: unknown[];
+            steps: string[];
+          };
+        };
+        expect(body.data.title).toBeTypeOf('string');
+        expect(body.data.ingredients).toBeInstanceOf(Array);
+        expect(body.data.steps).toBeInstanceOf(Array);
+        // Core acceptance: the whole point of this endpoint is steps,
+        // so an empty steps array means the expansion silently failed.
+        expect(body.data.steps.length).toBeGreaterThan(0);
+        // And the title MUST NOT echo the focus theme back as the
+        // recipe name (the failure mode the user reported with
+        // "test pasta" / "knife skills: recipe 1").
+        expect(body.data.title.toLowerCase()).not.toContain('focus theme');
+        expect(body.data.title.toLowerCase()).not.toContain('placeholder');
+      }
+    },
   );
 });
 

@@ -8,7 +8,7 @@
  *   PATCH /pantry/:id     — update item
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { BASE_URL, authHeaders, resetTestUser } from './_helpers/test-user.js';
 
 const base = `${BASE_URL}/pantry`;
@@ -18,6 +18,10 @@ let headers: Record<string, string>;
 beforeAll(async () => {
   await resetTestUser();
   headers = await authHeaders();
+});
+
+afterAll(async () => {
+  await resetTestUser();
 });
 
 async function readBody(res: Response) {

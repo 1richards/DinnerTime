@@ -54,8 +54,17 @@ export async function authHeaders(): Promise<{ Authorization: string; 'Content-T
 }
 
 /**
- * Delete all rows owned by the test user then re-upsert a clean profile.
- * Safe to call in beforeAll — never touches other users' data.
+ * Delete all rows owned by the test user. Safe to call in beforeAll OR
+ * afterAll — never touches other users' data. Also (insert-only)
+ * ensures the test profile exists, but does NOT overwrite display_name
+ * if a row already exists, so a user-customized display name on the
+ * shared UAT account survives test runs.
+ *
+ * Both `beforeAll(resetTestUser)` and `afterAll(resetTestUser)` should
+ * be wired in every integration test file: beforeAll guarantees a
+ * clean starting state, afterAll guarantees we don't pollute the live
+ * UAT account with leftover Test Pasta / Dedup Lasagna / etc. rows
+ * the user reported seeing.
  */
 export async function resetTestUser(): Promise<void> {
   // Find the user id
@@ -90,20 +99,33 @@ export async function resetTestUser(): Promise<void> {
     }
   }
 
-  // Re-upsert clean profile
-  const { error: profileErr } = await admin.from('profiles').upsert(
-    {
-      id: uid,
-      display_name: TEST_DISPLAY_NAME,
-      household_size: 2,
-      cuisine_preferences: ['Italian', 'Mexican'],
-      dietary_preferences: [],
-      disliked_ingredients: [],
-      onboarding_complete: true,
-      skill_level: 'beginner',
-    },
-    { onConflict: 'id' }
-  );
+  // Profile reset — insert-only on display_name. Read existing first;
+  // if a row already exists, keep its display_name as-is so any name
+  // the user has personalized on the shared UAT account (e.g. "Jessi")
+  // survives the suite. Only touch the columns the tests actually need
+  // to be in a known state (household_size, cuisine_preferences, etc.).
+  const { data: existingProfile } = await admin
+    .from('profiles')
+    .select('display_name')
+    .eq('id', uid)
+    .maybeSingle();
+
+  const profilePayload: Record<string, unknown> = {
+    id: uid,
+    household_size: 2,
+    cuisine_preferences: ['Italian', 'Mexican'],
+    dietary_preferences: [],
+    disliked_ingredients: [],
+    onboarding_complete: true,
+    skill_level: 'beginner',
+  };
+  if (!existingProfile) {
+    profilePayload.display_name = TEST_DISPLAY_NAME;
+  }
+
+  const { error: profileErr } = await admin.from('profiles').upsert(profilePayload, {
+    onConflict: 'id',
+  });
   if (profileErr) {
     console.warn(`[test-user] reset profiles: ${profileErr.message}`);
   }

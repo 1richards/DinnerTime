@@ -5,7 +5,7 @@
  *   POST /ai/suggest — AI-backed dinner suggestions from pantry
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { BASE_URL, authHeaders, resetTestUser } from './_helpers/test-user.js';
 import { createClient } from '@supabase/supabase-js';
 
@@ -42,6 +42,11 @@ beforeAll(async () => {
     { profile_id: uid, name: 'Garlic', normalized_name: 'garlic', quantity: 3, unit: 'clove', category: 'produce', source_location: 'fridge', status: 'available', confidence: 1 },
   ]);
   if (pantryErr) console.warn('[ai setup] pantry insert error:', pantryErr.message);
+});
+
+// Wipe everything this suite seeded into the shared UAT account.
+afterAll(async () => {
+  await resetTestUser();
 });
 
 describe('POST /ai/suggest', () => {

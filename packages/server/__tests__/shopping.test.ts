@@ -14,7 +14,7 @@
  *   POST /shopping/orders/:id/variations  — AI swap suggestions
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { BASE_URL, authHeaders, resetTestUser } from './_helpers/test-user.js';
 import { createClient } from '@supabase/supabase-js';
 
@@ -113,6 +113,10 @@ beforeAll(async () => {
       }
     }
   }
+});
+
+afterAll(async () => {
+  await resetTestUser();
 });
 
 describe('POST /shopping/generate', () => {

@@ -120,11 +120,23 @@ export function buildMealPlanPrompt(context: MealPlanContext): string {
 
   // Phase 22-05: focus theme. Optional weekly nudge — when set, the
   // generator is asked to include ≥2 recipes exercising the theme and name
-  // it in each recipe's `why_suggested`. Empty string is treated as absent
-  // (per plan: "null or empty → do NOT emit the block").
+  // it in each recipe's `why_suggested`. Empty string is treated as absent.
+  //
+  // Hard guardrails to prevent the "test-style title" failure mode users
+  // reported (titles like "Knife Skills: Recipe 1" or literal placeholders):
+  //   1. Title must be a real, named dish — never echo the theme back as
+  //      the title.
+  //   2. Examples baked in so the model has a shape to imitate.
+  //   3. Repeat the OUTPUT CONTRACT title rule so the theme block can't
+  //      override it.
   const focusBlock =
     typeof focusTheme === 'string' && focusTheme.length > 0
-      ? `\n\nTHIS WEEK'S THEME: ${focusTheme}. Include at least 2 recipes that exercise this theme (name it in why_suggested).`
+      ? `
+
+THIS WEEK'S THEME: ${focusTheme}.
+- Include at least 2 dinner recipes that genuinely exercise this skill.
+- Mention the theme in each themed recipe's why_suggested ("Practices ${focusTheme} via …").
+- TITLES MUST BE REAL DISHES. Never name a recipe "${focusTheme}", "Recipe 1", "Test Pasta", "${focusTheme} Practice", or any placeholder. Use a specific dish name a person could Google (e.g. "Beef Bourguignon", "Cacio e Pepe", "Sheet-pan Harissa Salmon").`
       : '';
 
   return `Generate a 7-day dinner meal plan for the week starting ${weekStart}.
@@ -178,7 +190,11 @@ const generateMealPlanSchema: JsonSchema = {
             enum: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
             description: 'Day of week (mon=0 through sun=6)',
           },
-          title: { type: 'string', description: 'Recipe title' },
+          title: {
+            type: 'string',
+            description:
+              'Concrete dish name a person could Google (e.g. "Cacio e Pepe", "Beef Bourguignon"). NEVER a placeholder like "Test Pasta", "Recipe 1", or the literal week theme.',
+          },
           description: { type: 'string', description: '1-2 sentence description' },
           recipe_id: {
             type: 'string',

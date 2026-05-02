@@ -6,7 +6,7 @@
  *   GET  /cooking/tips  — per-step tip (AI, cached)
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { BASE_URL, authHeaders, resetTestUser } from './_helpers/test-user.js';
 import { createClient } from '@supabase/supabase-js';
 
@@ -57,6 +57,12 @@ beforeAll(async () => {
     .single();
 
   if (recipe) recipeId = (recipe as { id: string }).id;
+});
+
+// Wipe everything this suite seeded into the shared UAT account so
+// "Cooking Test Pasta" doesn't show up in the user's Recipe Box.
+afterAll(async () => {
+  await resetTestUser();
 });
 
 async function readBody(res: Response) {

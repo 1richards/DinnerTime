@@ -209,8 +209,11 @@ describe('buildMealPlanPrompt', () => {
       const ctx: MealPlanContext = { ...baseContext, focusTheme: 'knife skills' };
       const prompt = buildMealPlanPrompt(ctx);
       expect(prompt).toContain("THIS WEEK'S THEME: knife skills");
-      expect(prompt).toMatch(/at least 2 recipes/);
+      expect(prompt).toMatch(/at least 2 (dinner )?recipes/);
       expect(prompt).toMatch(/why_suggested/);
+      // Guardrail copy that prevents the "test-style title" failure
+      // mode users reported (Knife Skills: Recipe 1 etc.).
+      expect(prompt).toMatch(/TITLES MUST BE REAL DISHES/);
     });
 
     it('focusTheme=null → prompt does NOT contain the theme block', () => {

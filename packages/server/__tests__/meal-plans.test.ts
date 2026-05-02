@@ -8,7 +8,7 @@
  *   POST /meal-plans/:id/entries/:day/cook       — mark cooked
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { BASE_URL, authHeaders, resetTestUser } from './_helpers/test-user.js';
 import { createClient } from '@supabase/supabase-js';
 
@@ -63,6 +63,10 @@ beforeAll(async () => {
   ];
   const { error: pantryErr } = await admin.from('pantry_items').insert(pantryItems);
   if (pantryErr) console.warn('[meal-plans setup] pantry insert error:', pantryErr.message);
+});
+
+afterAll(async () => {
+  await resetTestUser();
 });
 
 describe('GET /meal-plans/current', () => {
