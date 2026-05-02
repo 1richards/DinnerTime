@@ -21,9 +21,10 @@ import DraggableFlatList, {
   type RenderItemParams,
 } from 'react-native-draggable-flatlist';
 import { PreviewSheet } from '../recipes/discover';
+import { SavedRecipeDetail } from './kitchen';
 import { getRecipeImage } from '../../constants/foodImages';
 import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
-import type { ParsedRecipe } from '../../types/recipe';
+import type { ParsedRecipe, Recipe } from '../../types/recipe';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useProgressionStore } from '../../stores/progressionStore';
 import { usePantryStore } from '../../stores/pantryStore';
@@ -133,6 +134,15 @@ export default function PlanScreen() {
   const [previewCooking, setPreviewCooking] = useState(false);
   const [previewCookingLater, setPreviewCookingLater] = useState(false);
   const [previewClearing, setPreviewClearing] = useState(false);
+  // Saved-recipe detail when the user taps a plan row whose entry is
+  // backed by a Recipe from the library. Opens the same image-forward
+  // PreviewSheet (via SavedRecipeDetail) used by Recipe Box, instead of
+  // the slide-in /recipes/[id] route.
+  const [savedDetail, setSavedDetail] = useState<Recipe | null>(null);
+  const [savedDetailCookingLater, setSavedDetailCookingLater] = useState(false);
+  const [savedDetailRemoving, setSavedDetailRemoving] = useState(false);
+  const cachedRecipes = useRecipeStore((s) => s.recipes);
+  const deleteRecipe = useRecipeStore((s) => s.deleteRecipe);
   // Empty-day "+ Add a meal" or month-cell tap → opens AddMealSheet
   // pre-targeted to that ISO date. Single state covers both surfaces.
   const [addMealIso, setAddMealIso] = useState<string | null>(null);
@@ -876,8 +886,17 @@ export default function PlanScreen() {
                   return;
                 }
                 if (item.entry.recipe_id) {
-                  router.push(`/recipes/${item.entry.recipe_id}`);
-                  return;
+                  // Open the same image-forward PreviewSheet modal used by
+                  // Recipe Box. Falls back to the entry-snapshot preview if
+                  // the saved recipe isn't in the local cache (rare — the
+                  // store is persisted and prefetched).
+                  const cached = cachedRecipes.find(
+                    (r) => r.id === item.entry!.recipe_id,
+                  );
+                  if (cached) {
+                    setSavedDetail(cached);
+                    return;
+                  }
                 }
                 setPreviewEntry(item.entry);
               }}
@@ -905,7 +924,18 @@ export default function PlanScreen() {
             fromWeekStart={currentPlan.week_start}
             entriesByIso={monthPlans}
             loading={monthLoading && monthPlans.size === 0}
-            onEntryPress={(entry) => setPreviewEntry(entry)}
+            onEntryPress={(entry) => {
+              if (entry.recipe_id) {
+                const cached = cachedRecipes.find(
+                  (r) => r.id === entry.recipe_id,
+                );
+                if (cached) {
+                  setSavedDetail(cached);
+                  return;
+                }
+              }
+              setPreviewEntry(entry);
+            }}
             onPinCell={handleMonthPinCell}
             onMarkSkipped={handleMonthMarkSkipped}
           />
@@ -1050,6 +1080,76 @@ export default function PlanScreen() {
         onDuplicateLastWeek={handleDuplicateLastWeek}
         onShoppingList={handleShoppingHandoff}
       />
+
+      {/* Saved-recipe detail — opens the same image-forward PreviewSheet
+          (via SavedRecipeDetail) used by Recipe Box when the user taps a
+          plan row backed by a Recipe in their library. Replaces the
+          previous slide-in /recipes/[id] navigation. */}
+      <Modal
+        visible={savedDetail !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSavedDetail(null)}
+      >
+        {savedDetail && (
+          <SavedRecipeDetail
+            recipe={savedDetail}
+            cookingLater={savedDetailCookingLater}
+            removing={savedDetailRemoving}
+            onClose={() => setSavedDetail(null)}
+            onRemove={async () => {
+              const confirmed = await new Promise<boolean>((resolve) => {
+                Alert.alert(
+                  'Remove from library?',
+                  `"${savedDetail.title}" will be deleted from your Recipe Box.`,
+                  [
+                    { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+                    { text: 'Remove', style: 'destructive', onPress: () => resolve(true) },
+                  ],
+                );
+              });
+              if (!confirmed) return;
+              setSavedDetailRemoving(true);
+              try {
+                await deleteRecipe(savedDetail.id);
+                setSavedDetail(null);
+              } finally {
+                setSavedDetailRemoving(false);
+              }
+            }}
+            onCookNow={async () => {
+              const id = savedDetail.id;
+              setSavedDetail(null);
+              router.push(`/recipes/${id}/cook`);
+            }}
+            onCookLater={async (iso) => {
+              setSavedDetailCookingLater(true);
+              try {
+                await useMealPlanStore.getState().addToPlan(
+                  iso,
+                  {
+                    title: savedDetail.title,
+                    description: savedDetail.description,
+                    ingredients: savedDetail.ingredients,
+                    steps: savedDetail.steps,
+                    prep_time_minutes: savedDetail.prep_time_minutes,
+                    cook_time_minutes: savedDetail.cook_time_minutes,
+                    total_time_minutes: savedDetail.total_time_minutes,
+                    servings: savedDetail.servings,
+                    source_url: savedDetail.source_url,
+                    source_type: savedDetail.source_type,
+                    image_url: savedDetail.image_url,
+                  },
+                  savedDetail.id,
+                );
+                setSavedDetail(null);
+              } finally {
+                setSavedDetailCookingLater(false);
+              }
+            }}
+          />
+        )}
+      </Modal>
 
     </SafeAreaView>
   );

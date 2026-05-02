@@ -804,7 +804,7 @@ interface SavedRecipeDetailProps {
   onRemove: () => Promise<void>;
 }
 
-function SavedRecipeDetail({
+export function SavedRecipeDetail({
   recipe: snapshotRecipe,
   cookingLater,
   removing,
