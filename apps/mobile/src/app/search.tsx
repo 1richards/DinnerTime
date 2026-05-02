@@ -70,10 +70,14 @@ export default function SearchModal() {
 function SomethingNewSearch() {
   const searchRecipes = useSuggestionsStore((s) => s.searchRecipes);
   const storedPantryOnly = useSuggestionsStore((s) => s.pantryOnly);
-  const lastQuery = useSuggestionsStore((s) => s.lastQuery);
   const recentQueries = useSuggestionsStore((s) => s.recentQueries);
 
-  const [query, setQuery] = useState(lastQuery ?? '');
+  // The search bar always opens empty even when a previous query is still
+  // populating the results behind the modal. Prior queries are surfaced
+  // under the "Recent searches" section below the input — the field
+  // itself stays a clean slate so the user is never editing a stale
+  // string they didn't intend to type.
+  const [query, setQuery] = useState('');
   const [pantryOnly, setPantryOnly] = useState(storedPantryOnly);
 
   const submitQuery = (raw: string) => {
@@ -272,7 +276,11 @@ function LibrarySearch() {
   const setSearchQuery = useRecipeStore((s) => s.setSearchQuery);
   const lastQuery = useRecipeStore((s) => s.searchQuery);
 
-  const [query, setQuery] = useState(lastQuery ?? '');
+  // The input opens empty even when a previous filter is still applied
+  // to the saved-recipe list. The active filter is acknowledged via the
+  // "Clear current search" pill below; the field itself starts blank so
+  // the user is never editing a stale string they didn't intend to type.
+  const [query, setQuery] = useState('');
 
   const submitQuery = (raw: string) => {
     const trimmed = raw.trim();

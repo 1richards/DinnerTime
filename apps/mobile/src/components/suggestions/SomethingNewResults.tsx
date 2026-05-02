@@ -256,9 +256,19 @@ function PreviewRecipeCard({
   const heroUri = recipe.image_url ?? generatedUri ?? null;
 
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
-  const [saved, setSaved] = useState(false);
   const [remixOpen, setRemixOpen] = useState(false);
   const [working, setWorking] = useState<'save' | 'cook' | null>(null);
+
+  // Derive `saved` from the live recipe library so the bookmark icon
+  // flips to its filled / checked state regardless of WHICH save path
+  // the user took (this card's overlay button OR the modal PreviewSheet
+  // opened via card tap). A title match is sufficient — Something New
+  // results have distinct AI-generated titles, and a normalized
+  // case-insensitive compare absorbs whitespace drift.
+  const normalize = (s: string) => s.trim().toLowerCase();
+  const saved = useRecipeStore((s) =>
+    s.recipes.some((r) => normalize(r.title) === normalize(recipe.title)),
+  );
 
   const synthetic: Recipe = {
     ...recipe,
@@ -282,7 +292,7 @@ function PreviewRecipeCard({
         Alert.alert('Save failed', err);
         return;
       }
-      setSaved(true);
+      // `saved` flips to true via the recipeStore subscription above.
     } finally {
       setWorking(null);
     }
@@ -303,7 +313,6 @@ function PreviewRecipeCard({
         Alert.alert('Save failed', state.error);
         return;
       }
-      setSaved(true);
       const created = state.recipes.find((r) => !beforeIds.has(r.id));
       const cookId = created?.id ?? state.recipes[0]?.id;
       if (cookId) router.push(`/recipes/${cookId}/cook`);

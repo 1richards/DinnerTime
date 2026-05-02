@@ -526,8 +526,25 @@ export default function KitchenScreen() {
     try {
       // Pitfall 9 preservation: stamp source_type: 'ai' on the saved recipe,
       // same as apps/mobile/src/app/recipes/discover.tsx handleSave().
+      const beforeIds = new Set(
+        useRecipeStore.getState().recipes.map((r) => r.id),
+      );
       await saveRecipe({ ...previewRecipe, source_type: 'ai' });
+      const state = useRecipeStore.getState();
+      if (state.error) {
+        // Bail without redirecting; the user stays on the Something New
+        // preview and the standard error path takes over.
+        return;
+      }
+      // Land the user on the saved recipe in the Recipe Box so the save
+      // immediately shows up in the destination it was saved to. Switch
+      // the segment, close the Something New preview, then open the
+      // SavedRecipeDetail modal for the freshly-created row.
+      const created =
+        state.recipes.find((r) => !beforeIds.has(r.id)) ?? state.recipes[0];
       setPreviewRecipe(null);
+      setSegment('library');
+      if (created) setSavedDetail(created);
     } finally {
       setSavingPreview(false);
     }
