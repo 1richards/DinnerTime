@@ -5,6 +5,7 @@ import type { Difficulty, MealPlan, MealPlanEntry, MealPlanIngredient } from '..
 import { matchIngredientsToPantry } from './ingredientMatching.js';
 import type { PantryItem } from './pantry.js';
 import { getCookStats, logRecipeCook } from './progression.js';
+import { normalizeServings } from './recipeServings.js';
 
 // ---------- Context Types ----------
 
@@ -168,7 +169,7 @@ ${skillBlock}${focusBlock}
 
 OUTPUT CONTRACT:
 - Return EXACTLY 7 days, one per day_of_week (0..6, 0=Monday, 6=Sunday)
-- Each day MUST be a complete, cookable recipe — title + description + structured ingredients (with quantities) + at least 3 ordered cooking steps + prep_time_minutes + cook_time_minutes + servings. Not a sketch, a real recipe a person can follow start to finish.
+- Each day MUST be a complete, cookable recipe — title + description + structured ingredients (with quantities) + at least 3 ordered cooking steps + prep_time_minutes + cook_time_minutes + servings (>= 4, recipes are sized for households). Not a sketch, a real recipe a person can follow start to finish.
 - Each entry must include complexity_target ('weeknight' for Mon-Thu, 'weekend' for Fri-Sun)
 - Set recipe_id from RECIPE LIBRARY when a listed recipe is reused; otherwise null
 - Populate ingredients with the FULL recipe (everything the dish needs) and ingredients_needed with just the names not in AVAILABLE PANTRY
@@ -233,7 +234,11 @@ const generateMealPlanSchema: JsonSchema = {
             type: 'number',
             description: 'Total time = prep + cook',
           },
-          servings: { type: 'number', description: 'Number of servings the recipe yields' },
+          servings: {
+            type: 'number',
+            description:
+              'Number of servings the recipe yields. MUST be at least 4 — DinnerTime targets households, not single portions. Scale ingredient quantities accordingly.',
+          },
           difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
           complexity_target: {
             type: 'string',
@@ -561,7 +566,7 @@ export async function generateMealPlan(
     prep_time_minutes: d.prep_time_minutes ?? null,
     cook_time_minutes: d.cook_time_minutes ?? null,
     estimated_time_minutes: d.estimated_time_minutes,
-    servings: d.servings ?? null,
+    servings: normalizeServings(d.servings),
     difficulty: d.difficulty,
     kid_friendly: d.kid_friendly,
     why_suggested: d.why_suggested,
@@ -733,7 +738,7 @@ REGENERATION CONTEXT:
     prep_time_minutes: replacement.prep_time_minutes ?? null,
     cook_time_minutes: replacement.cook_time_minutes ?? null,
     estimated_time_minutes: replacement.estimated_time_minutes,
-    servings: replacement.servings ?? null,
+    servings: normalizeServings(replacement.servings),
     difficulty: replacement.difficulty,
     kid_friendly: replacement.kid_friendly,
     why_suggested: replacement.why_suggested,

@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ParsedRecipe } from './recipeParser.js';
+import { normalizeServings } from './recipeServings.js';
+export { MIN_SERVINGS, normalizeServings } from './recipeServings.js';
 
 // ---------- DB Row Type ----------
 
@@ -71,7 +73,10 @@ export async function saveRecipe(
       prep_time_minutes: recipe.prep_time_minutes,
       cook_time_minutes: recipe.cook_time_minutes,
       total_time_minutes: recipe.total_time_minutes,
-      servings: recipe.servings,
+      // Floor every saved recipe at MIN_SERVINGS so household-sized
+      // cooking is the default. Single-serving imports get scaled up
+      // implicitly; user can dial the serving stepper down per-cook.
+      servings: normalizeServings(recipe.servings),
       source_type: recipe.source_type,
       source_url: recipe.source_url,
       image_url: recipe.image_url,

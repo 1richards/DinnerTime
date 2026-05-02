@@ -1,6 +1,7 @@
 import { getClientFor } from '../ai/clientFactory.js';
 import type { JsonSchema, StructuredTool } from '../ai/types.js';
 import type { ParsedIngredient, ParsedRecipe } from './recipeParser.js';
+import { normalizeServings } from './recipeServings.js';
 
 // ---------- Types ----------
 
@@ -163,7 +164,7 @@ export function buildDiscoveryPrompt(
 
   lines.push('');
   lines.push(
-    'Return full recipes with structured ingredients (name, quantity, unit, notes) and ordered steps. Convert fractions to decimals for quantities.'
+    'Return full recipes with structured ingredients (name, quantity, unit, notes) and ordered steps. Convert fractions to decimals for quantities. Each recipe MUST have servings >= 4 — DinnerTime is built for households, scale ingredient quantities accordingly.'
   );
 
   return lines.join('\n');
@@ -203,7 +204,7 @@ export async function discoverRecipes(
     prep_time_minutes: (r.prep_time_minutes as number | null | undefined) ?? null,
     cook_time_minutes: (r.cook_time_minutes as number | null | undefined) ?? null,
     total_time_minutes: (r.total_time_minutes as number | null | undefined) ?? null,
-    servings: (r.servings as number | null | undefined) ?? null,
+    servings: normalizeServings(r.servings as number | null | undefined),
     source_url: null,
     source_type: 'ai' as ParsedRecipe['source_type'],
     image_url: null,

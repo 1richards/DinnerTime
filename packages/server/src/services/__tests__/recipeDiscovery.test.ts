@@ -150,7 +150,9 @@ describe('discoverRecipes', () => {
     expect(result[0].prep_time_minutes).toBeNull();
     expect(result[0].cook_time_minutes).toBeNull();
     expect(result[0].total_time_minutes).toBeNull();
-    expect(result[0].servings).toBeNull();
+    // servings is normalized to MIN_SERVINGS (4) when missing — DinnerTime
+    // is built for households, never single-portion recipes.
+    expect(result[0].servings).toBe(4);
     expect(result[0].source_type).toBe('ai');
   });
 

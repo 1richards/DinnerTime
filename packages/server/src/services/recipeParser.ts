@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { getClientFor } from '../ai/clientFactory.js';
 import type { JsonSchema, StructuredTool } from '../ai/types.js';
+import { normalizeServings } from './recipeServings.js';
 
 // ---------- Types ----------
 
@@ -285,7 +286,11 @@ function toolOutputToRecipe(
     prep_time_minutes: (input.prep_time_minutes as number) ?? null,
     cook_time_minutes: (input.cook_time_minutes as number) ?? null,
     total_time_minutes: (input.total_time_minutes as number) ?? null,
-    servings: (input.servings as number) ?? null,
+    // DinnerTime targets households — floor at 4 so single-serving
+    // sources don't import as 1-portion recipes (recipeStore.saveRecipe
+    // also clamps as a defensive net, but doing it here means previews
+    // and Cook Now stepper start at the right baseline).
+    servings: normalizeServings(input.servings as number | null | undefined),
     source_url: sourceUrl,
     source_type: sourceType,
     image_url: (input.image_url as string) || null,
@@ -343,7 +348,9 @@ export async function parseRecipeFromUrl(url: string): Promise<ParsedRecipe> {
     recipe.prep_time_minutes = mapped.prep_time_minutes ?? recipe.prep_time_minutes;
     recipe.cook_time_minutes = mapped.cook_time_minutes ?? recipe.cook_time_minutes;
     recipe.total_time_minutes = mapped.total_time_minutes ?? recipe.total_time_minutes;
-    recipe.servings = mapped.servings ?? recipe.servings;
+    // Re-normalize after JSON-LD overlay so single-serving sites can't
+    // sneak past the floor that toolOutputToRecipe already applied.
+    recipe.servings = normalizeServings(mapped.servings ?? recipe.servings);
     recipe.image_url = mapped.image_url ?? recipe.image_url;
 
     return recipe;
