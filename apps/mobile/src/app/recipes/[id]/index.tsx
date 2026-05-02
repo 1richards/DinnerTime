@@ -86,7 +86,10 @@ export default function RecipeDetailScreen() {
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
 
   const handleSharePdf = async () => {
-    const result = await shareRecipeAsPdf(recipe);
+    // Pass the resolved heroUri so the PDF embeds whatever the detail
+    // screen is showing — covers the Gemini-fallback case where
+    // recipe.image_url is null but the app renders a generated image.
+    const result = await shareRecipeAsPdf(recipe, { heroUri });
     if (!result.ok) {
       const msg =
         result.reason === 'print_unavailable' ||

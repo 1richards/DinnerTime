@@ -365,7 +365,10 @@ export function PreviewSheet({
   const { show: showToast, ToastComponent } = useToast();
 
   const handleSharePdf = async () => {
-    const result = await shareRecipeAsPdf(recipe);
+    // PreviewSheet's heroUri is the same image the sheet renders —
+    // pass it so the PDF picks up Gemini-fallback images for legacy
+    // recipes whose recipe.image_url is null.
+    const result = await shareRecipeAsPdf(recipe, { heroUri });
     if (!result.ok) {
       const msg =
         result.reason === 'print_unavailable' ||

@@ -55,6 +55,55 @@ function getFileSystem(): FileSystemModule | null {
 }
 
 /**
+ * Fetch an image URL and return a `data:image/...;base64,...` URI suitable
+ * for inlining in HTML. Returns null on any failure (timeout, non-image
+ * content-type, fetch error, oversized payload).
+ *
+ * Why inline instead of letting WKWebView fetch directly: expo-print's
+ * `printToFileAsync` resolves on the WKWebView's `didFinishNavigation`
+ * delegate callback, which fires after the main HTML loads but BEFORE
+ * remote `<img>` requests resolve. Letting WKWebView fetch the URL
+ * produces PDFs without the hero image about half the time. Inlining
+ * the bytes makes the image part of the initial document so it's
+ * always present in the rendered PDF.
+ *
+ * Bounded by:
+ *   - 5s fetch timeout (network hangs shouldn't block the share)
+ *   - 6 MB ceiling (DinnerTime hero images cap ~1-2 MB; anything bigger
+ *     is a generated thumbnail edge case we'd rather drop than embed)
+ */
+async function imageUrlToDataUri(url: string): Promise<string | null> {
+  if (!url) return null;
+  if (url.startsWith('data:')) return url;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') ?? 'image/jpeg';
+    if (!contentType.startsWith('image/')) return null;
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength > 6 * 1024 * 1024) return null;
+    let base64: string;
+    if (typeof Buffer !== 'undefined') {
+      base64 = Buffer.from(buf).toString('base64');
+    } else {
+      let binary = '';
+      const bytes = new Uint8Array(buf);
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      base64 = (globalThis as any).btoa(binary);
+    }
+    return `data:${contentType};base64,${base64}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Escape user-provided strings for safe HTML insertion. Intentionally
  * strict: ampersand first, then the four other XML-significant chars.
  * Recipe content is user-facing data from Claude/import flows, so we
@@ -312,8 +361,19 @@ function isMissingNativeModuleError(err: unknown): boolean {
  * structured result so the caller can route to a toast / log / retry
  * without inspecting Error instances.
  */
+export interface ShareRecipePdfOptions {
+  /**
+   * Resolved hero URI the in-app detail/preview screen is showing, which
+   * may differ from `recipe.image_url` (e.g., Gemini-generated fallback
+   * for legacy recipes without a stored image). When provided, takes
+   * precedence over `recipe.image_url`.
+   */
+  heroUri?: string | null;
+}
+
 export async function shareRecipeAsPdf(
   recipe: RecipeForPdf,
+  options?: ShareRecipePdfOptions,
 ): Promise<ShareRecipePdfResult> {
   const Print = getPrint();
   if (!Print) {
@@ -326,7 +386,16 @@ export async function shareRecipeAsPdf(
   const FileSystem = getFileSystem();
 
   try {
-    const html = buildRecipeHtml(recipe);
+    // Pre-fetch the hero image and inline it as a data URI. WKWebView
+    // wouldn't reliably wait for a remote <img> to load before printing.
+    const sourceImageUrl = options?.heroUri ?? recipe.image_url ?? null;
+    const inlinedImage = sourceImageUrl
+      ? await imageUrlToDataUri(sourceImageUrl)
+      : null;
+    const recipeForHtml: RecipeForPdf = inlinedImage
+      ? { ...recipe, image_url: inlinedImage }
+      : recipe;
+    const html = buildRecipeHtml(recipeForHtml);
 
     // printToFileAsync returns a uri pointing to a tmp file. We move it
     // to cacheDirectory under a stable filename so the share-sheet
