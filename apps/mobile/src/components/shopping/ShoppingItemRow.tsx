@@ -115,15 +115,12 @@ export function ShoppingItemRow({
     );
   }
 
-  // Per-recipe attribution (item.sources) was previously stuffed into the
-  // subtitle alongside qty/unit, leaving rows wrapped to two lines just to
-  // tell users which recipe asked for the can of tomatoes — noise for a
-  // glance-and-check task. Subtitle is now just qty/unit, leaving the
-  // row at the same compact height as a Reminders item.
-  const trailingMeta =
-    item.quantity != null
-      ? `${item.quantity}${item.unit ? ` ${item.unit}` : ''}`
-      : item.unit ?? undefined;
+  // Measurements (1 tbsp, 0.5 cup, 400 g) are intentionally NOT shown on
+  // the cart row. At grocery time the unit on the recipe ("2 tbsp olive
+  // oil") doesn't map to what's on the shelf (a 16oz bottle), so the
+  // subtitle was visual noise for a glance-and-check task. The unit is
+  // still preserved in the underlying record for the Instacart line-item
+  // builder; it's just hidden from the row UI.
 
   return (
     <Swipeable
@@ -134,7 +131,6 @@ export function ShoppingItemRow({
       <ItemRow
         leading={{ kind: 'checkbox', checked: !!item.checked, onToggle }}
         title={item.name}
-        subtitle={trailingMeta || undefined}
         struck={!!item.checked}
         onLongPress={() => setEditing(true)}
         size="compact"
