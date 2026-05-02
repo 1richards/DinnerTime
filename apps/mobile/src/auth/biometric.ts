@@ -26,28 +26,14 @@
  *   - BiometricGate: on foreground transitions when the flag is enabled.
  */
 
-// Lazy-load the native module so the app still boots on dev clients that
-// haven't been rebuilt since expo-local-authentication was added.
-let _LA: typeof import('expo-local-authentication') | null = null;
-let _loadFailed = false;
-
-function getLA(): typeof import('expo-local-authentication') | null {
-  if (_LA) return _LA;
-  if (_loadFailed) return null;
-  try {
-    _LA = require('expo-local-authentication');
-    return _LA;
-  } catch {
-    _loadFailed = true;
-    return null;
-  }
-}
+// expo-local-authentication is a hard dep of the mobile app, so it's
+// imported normally. The earlier lazy-require + try/catch was a hold-over
+// from a dev client that predated the native pod.
+import * as LA from 'expo-local-authentication';
 
 export type BiometricResult = 'success' | 'cancelled' | 'failed' | 'unavailable';
 
 export async function isBiometricAvailable(): Promise<boolean> {
-  const LA = getLA();
-  if (!LA) return false;
   try {
     const [hw, enrolled] = await Promise.all([
       LA.hasHardwareAsync(),
@@ -62,8 +48,6 @@ export async function isBiometricAvailable(): Promise<boolean> {
 export async function promptBiometricUnlock(
   reason: string,
 ): Promise<BiometricResult> {
-  const LA = getLA();
-  if (!LA) return 'unavailable';
   if (!(await isBiometricAvailable())) return 'unavailable';
   try {
     const result = await LA.authenticateAsync({
