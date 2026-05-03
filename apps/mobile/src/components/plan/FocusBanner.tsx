@@ -129,7 +129,11 @@ export function FocusBanner({ children }: FocusBannerProps = {}) {
       accessibilityLabel="Weekly skill focus banner"
     >
       <View style={styles.focusRow}>
-        <Text style={styles.focusLabel} numberOfLines={1}>
+        <Text
+          style={styles.focusLabel}
+          numberOfLines={1}
+          allowFontScaling={false}
+        >
           Skill Focus
         </Text>
         {isBusy ? (
@@ -158,7 +162,11 @@ export function FocusBanner({ children }: FocusBannerProps = {}) {
               tintColor={colors.warning}
               weight="semibold"
             />
-            <Text style={styles.focusChipLabel} numberOfLines={1}>
+            <Text
+              style={styles.focusChipLabel}
+              numberOfLines={1}
+              allowFontScaling={false}
+            >
               {theme ?? 'Set focus'}
             </Text>
           </Pressable>
@@ -203,6 +211,7 @@ const styles = StyleSheet.create({
   },
   focusRow: {
     flexDirection: 'row',
+    flexWrap: 'nowrap',
     alignItems: 'center',
     gap: 8,
   },
@@ -227,16 +236,21 @@ const styles = StyleSheet.create({
   // Focus theme rendered as a pressable pill chip. White bg + warm-tone
   // border give clean contrast against the cream banner so the chip
   // reads as a clearly-bounded container, not floating text.
+  // alignSelf:flex-start + flexShrink:0 keep the chip at content width
+  // and prevent the parent's stretch alignment from breaking the row.
   focusChip: {
     flexDirection: 'row',
+    flexWrap: 'nowrap',
     alignItems: 'center',
+    alignSelf: 'flex-start',
+    flexShrink: 0,
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#F5D9B0',
+    borderColor: colors.warning,
   },
   focusChipPressed: {
     opacity: 0.7,
