@@ -32,6 +32,7 @@ import { pickStretchDay } from '../../plan/stretchPicker';
 import { EmptyPlanState } from '../../components/plan/EmptyPlanState';
 import { FocusBanner } from '../../components/plan/FocusBanner';
 import { SwapSheet } from '../../components/plan/SwapSheet';
+import { RemixSheet } from '../../components/recipes/RemixSheet';
 import { CookConfirm } from '../../components/plan/CookConfirm';
 import { SwipeableDayRow } from '../../components/plan/SwipeableDayRow';
 import { HeroDayCard } from '../../components/plan/HeroDayCard';
@@ -135,6 +136,10 @@ export default function PlanScreen() {
   // entries that aren't backed by a saved Recipe still get a real
   // image-forward detail surface instead of a plain Alert.
   const [previewEntry, setPreviewEntry] = useState<MealPlanEntry | null>(null);
+  // Quick-10: HeroDayCard's Remix cluster icon opens RemixSheet directly
+  // (skipping the PlanEntryPreview interstitial). The selected day's entry
+  // becomes the inline source; onApplyToDay → applySwap on its day_of_week.
+  const [remixEntry, setRemixEntry] = useState<MealPlanEntry | null>(null);
   const [previewCooking, setPreviewCooking] = useState(false);
   const [previewCookingLater, setPreviewCookingLater] = useState(false);
   const [previewClearing, setPreviewClearing] = useState(false);
@@ -948,6 +953,15 @@ export default function PlanScreen() {
                   onSwap={() => setSwapTarget(item.day)}
                   onCook={() => setCookTarget(item.day)}
                   onSkip={() => setSkipTarget(item.day)}
+                  onCookNow={() => {
+                    if (item.entry?.recipe_id) {
+                      router.push(`/recipes/${item.entry.recipe_id}/cook`);
+                    }
+                    // No-op when no recipe_id — HeroDayCard already
+                    // disables the icon visually so this branch is
+                    // defense-in-depth only.
+                  }}
+                  onRemix={() => setRemixEntry(item.entry)}
                   onPress={handleEntryPress}
                 />
               );
@@ -1219,6 +1233,55 @@ export default function PlanScreen() {
           />
         )}
       </Modal>
+
+      {/* Quick-10: Direct Remix flow from HeroDayCard's cluster Remix
+          icon. Mounts RemixSheet without going through PlanEntryPreview,
+          mirroring the inline-source + onApplyToDay pattern used by
+          PlanEntryPreview's nested Remix sheet. The day's entry becomes
+          the inline source; onApplyToDay calls applySwap to atomically
+          replace the day's plan entry, then clears remixEntry to close
+          the sheet. */}
+      {remixEntry && (
+        <RemixSheet
+          visible={!!remixEntry}
+          recipeTitle={remixEntry.title}
+          source={{
+            kind: 'inline',
+            context: {
+              title: remixEntry.title,
+              description: remixEntry.description ?? null,
+              ingredients: (remixEntry.ingredients ?? []).map((i) => ({
+                name: i.name,
+              })),
+              total_time_minutes:
+                remixEntry.estimated_time_minutes ??
+                ((remixEntry.prep_time_minutes ?? 0) +
+                  (remixEntry.cook_time_minutes ?? 0) || null),
+            },
+          }}
+          baseForSave={{
+            title: remixEntry.title,
+            description: remixEntry.description ?? null,
+            ingredients: (remixEntry.ingredients ?? []).map((i) => ({
+              name: i.name,
+              quantity: i.quantity ?? null,
+              unit: i.unit ?? null,
+              notes: i.notes ?? null,
+            })),
+            steps: remixEntry.steps ?? [],
+            total_time_minutes:
+              remixEntry.estimated_time_minutes ??
+              ((remixEntry.prep_time_minutes ?? 0) +
+                (remixEntry.cook_time_minutes ?? 0) || null),
+          }}
+          onApplyToDay={async (full) => {
+            if (!remixEntry) return;
+            await applySwap(remixEntry.day_of_week, full);
+            setRemixEntry(null);
+          }}
+          onClose={() => setRemixEntry(null)}
+        />
+      )}
 
     </SafeAreaView>
   );
