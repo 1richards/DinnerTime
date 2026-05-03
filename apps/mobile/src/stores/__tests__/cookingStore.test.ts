@@ -25,13 +25,11 @@ const resetStore = () => {
   useCookingStore.setState({
     recipe: null,
     stepIndex: 0,
-    voiceEnabled: true,
     ttsEnabled: true,
     listening: false,
     timers: [],
     lastAssistantAnswer: null,
     ingredientChecks: {},
-    darkMode: false,
     lastCommandToast: null,
     currentSessionId: null,
   });
@@ -51,14 +49,12 @@ describe('cookingStore', () => {
       const s = useCookingStore.getState();
       expect(s.recipe).toBeNull();
       expect(s.stepIndex).toBe(0);
-      expect(s.voiceEnabled).toBe(true);
       expect(s.ttsEnabled).toBe(true);
       expect(s.listening).toBe(false);
       expect(s.timers).toEqual([]);
       expect(s.lastAssistantAnswer).toBeNull();
       // Phase 16 additions
       expect(s.ingredientChecks).toEqual({});
-      expect(s.darkMode).toBe(false);
       expect(s.lastCommandToast).toBeNull();
       expect(s.currentSessionId).toBeNull();
     });
@@ -255,73 +251,36 @@ describe('cookingStore', () => {
     });
   });
 
-  describe('setDarkMode', () => {
-    it('sets and resets darkMode', () => {
-      useCookingStore.getState().setDarkMode(true);
-      expect(useCookingStore.getState().darkMode).toBe(true);
-      useCookingStore.getState().setDarkMode(false);
-      expect(useCookingStore.getState().darkMode).toBe(false);
-    });
-
-    it('persists darkMode through the persist middleware with partialize (darkMode-only)', async () => {
-      const setItemSpy = vi.spyOn(
-        AsyncStorage as unknown as { setItem: (k: string, v: string) => Promise<void> },
-        'setItem'
-      );
-
-      // Seed other slices that must NOT be persisted.
-      useCookingStore.setState({
-        ingredientChecks: { 'rice-0': true },
-        lastCommandToast: { message: 'Next step', id: 't-123' },
-        currentSessionId: 'sess-abc-def123',
-        timers: [{ id: 't1', label: '1 min', endsAt: 0, remainingMs: 0 }],
-      });
-
-      useCookingStore.getState().setDarkMode(true);
-
-      // Wait a microtask for the async persist write.
-      await Promise.resolve();
-      await Promise.resolve();
-
-      expect(setItemSpy).toHaveBeenCalled();
-      // Inspect the most-recent write and parse its JSON payload.
-      const lastCall = setItemSpy.mock.calls[setItemSpy.mock.calls.length - 1];
-      const [key, value] = lastCall as unknown as [string, string];
-      expect(key).toBe('dinnertime-cooking');
-      const parsed = JSON.parse(value);
-      expect(parsed.state.darkMode).toBe(true);
-      // Partialize must drop the other slices.
-      expect(parsed.state.ingredientChecks).toBeUndefined();
-      expect(parsed.state.lastCommandToast).toBeUndefined();
-      expect(parsed.state.currentSessionId).toBeUndefined();
-      expect(parsed.state.timers).toBeUndefined();
-      expect(parsed.state.recipe).toBeUndefined();
-    });
-
-    it('rehydrates darkMode from persisted storage without mutating other slices', async () => {
-      // Pre-populate the AsyncStorage shim with a persisted darkMode = true.
+  describe('persist migration v1 → v2', () => {
+    it('rehydrates legacy v1 blob (darkMode + voiceEnabled) without crashing and drops the unknown keys', async () => {
+      // Pre-populate the AsyncStorage shim with a v1-shaped blob.
       await (AsyncStorage as unknown as {
         setItem: (k: string, v: string) => Promise<void>;
       }).setItem(
         'dinnertime-cooking',
-        JSON.stringify({ state: { darkMode: true }, version: 1 })
+        JSON.stringify({
+          state: { darkMode: true, voiceEnabled: true },
+          version: 1,
+        }),
       );
 
-      // Force Zustand to re-hydrate from storage.
+      // Force re-hydrate.
       await (
         useCookingStore as unknown as {
           persist: { rehydrate: () => Promise<void> };
         }
       ).persist.rehydrate();
 
-      const s = useCookingStore.getState();
-      expect(s.darkMode).toBe(true);
-      // All ephemeral slices remain at initial values.
+      const s = useCookingStore.getState() as Record<string, unknown>;
+      // Migration drops legacy keys — they should be undefined on the
+      // rehydrated state (initialState shape doesn't include them).
+      expect(s.darkMode).toBeUndefined();
+      expect(s.voiceEnabled).toBeUndefined();
+      // Non-persisted slices remain at their initial values.
       expect(s.recipe).toBeNull();
-      expect(s.ingredientChecks).toEqual({});
-      expect(s.lastCommandToast).toBeNull();
-      expect(s.currentSessionId).toBeNull();
+      expect(s.stepIndex).toBe(0);
       expect(s.timers).toEqual([]);
+      expect(s.ingredientChecks).toEqual({});
     });
   });
 

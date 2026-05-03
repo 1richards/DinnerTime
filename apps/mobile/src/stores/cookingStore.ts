@@ -19,7 +19,6 @@ interface CookingActions {
   // Phase 16 additions
   toggleIngredient: (id: string) => void;
   clearIngredientChecks: () => void;
-  setDarkMode: (on: boolean) => void;
   showCommandToast: (message: string) => void;
   clearCommandToast: () => void;
   startSession: () => void;
@@ -28,13 +27,11 @@ interface CookingActions {
 const initialState: CookingState = {
   recipe: null,
   stepIndex: 0,
-  voiceEnabled: false,
   ttsEnabled: true,
   listening: false,
   timers: [],
   lastAssistantAnswer: null,
   ingredientChecks: {},
-  darkMode: false,
   lastCommandToast: null,
   currentSessionId: null,
   micPermission: 'unknown',
@@ -57,17 +54,13 @@ export const useCookingStore = create<CookingState & CookingActions>()(
 
       enter: (recipe) => {
         // Reset per-session ephemeral state and mint a fresh telemetry session id.
-        // voiceEnabled resets to false every session so users opt in explicitly
-        // each time — a persisted "on" state would silently re-enable the mic
-        // on a subsequent recipe even after the user had turned it off.
-        // userNavigated also resets so the initial scroll position holds at
-        // the top (ingredients visible) until the user taps Back/Next.
+        // userNavigated resets so the initial scroll position holds at the top
+        // (ingredients visible) until the user taps Back/Next.
         set({
           recipe,
           stepIndex: 0,
           ingredientChecks: {},
           currentSessionId: genSessionId(),
-          voiceEnabled: false,
           userNavigated: false,
         });
       },
@@ -160,10 +153,6 @@ export const useCookingStore = create<CookingState & CookingActions>()(
         set({ ingredientChecks: {} });
       },
 
-      setDarkMode: (on) => {
-        set({ darkMode: on });
-      },
-
       showCommandToast: (message) => {
         const toast: CommandToast = { message, id: genToastId() };
         set({ lastCommandToast: toast });
@@ -180,10 +169,13 @@ export const useCookingStore = create<CookingState & CookingActions>()(
     {
       name: 'dinnertime-cooking',
       storage: createJSONStorage(() => AsyncStorage),
-      // Only persist the cooking-mode preferences (dark mode). Everything else
-      // is ephemeral per cooking session.
-      partialize: (state) => ({ darkMode: state.darkMode }),
-      version: 1,
+      // Nothing persists across cooking sessions anymore — both cooking-mode
+      // preferences (darkMode, voiceEnabled) were removed pre-launch. Persist
+      // config is kept (vs. dropped entirely) so the v1→v2 migrate runs on
+      // existing installs.
+      partialize: () => ({}),
+      version: 2,
+      migrate: (_persistedState, _fromVersion) => ({}),
     }
   )
 );
