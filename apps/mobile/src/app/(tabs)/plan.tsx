@@ -35,7 +35,6 @@ import { SwapSheet } from '../../components/plan/SwapSheet';
 import { CookConfirm } from '../../components/plan/CookConfirm';
 import { SwipeableDayRow } from '../../components/plan/SwipeableDayRow';
 import { HeroDayCard } from '../../components/plan/HeroDayCard';
-import { pickHeroTargetIndex } from '../../components/plan/heroTargetPicker';
 import { WeekHealthChip } from '../../components/plan/WeekHealthChip';
 import { AddMealSheet } from '../../components/plan/AddMealSheet';
 import { computePantryReady } from '../../components/plan/pantryReady';
@@ -88,7 +87,11 @@ function shortDateForDay(weekStartIso: string, dayIdx: number): string {
   const iso = addDaysIso(weekStartIso, dayIdx);
   const [, m, d] = iso.split('-').map(Number);
   if (!m || !d) return '';
-  return `${m}/${d}`;
+  // "MAY 3" — short month name + day. Used as the prominent date label
+  // on HeroDayCard and as the trailing chip on SwipeableDayRow. Reads
+  // cleaner than "5/3" at the larger hero font size.
+  const month = MONTH_SHORT[m - 1] ?? '';
+  return `${month.toUpperCase()} ${d}`;
 }
 
 /** "MON · APR 27" style label for an ISO date. */
@@ -680,32 +683,11 @@ export default function PlanScreen() {
   const planFocusBannerEnabled = useSettingsStore(
     (s) => s.planFocusBannerEnabled
   );
-  // Quick-task 7: Plan card density. Default 'detailed' renders today's
-  // active day as a HeroDayCard at its position in the FlatList (NOT pinned
-  // to top); 'compact' renders every day as the existing SwipeableDayRow.
+  // Quick-task 7: Plan card density. Default 'detailed' renders EVERY
+  // entry-bearing day as a HeroDayCard (16:9 image, prominent date,
+  // chip row, skill_note). 'compact' renders every day as the existing
+  // SwipeableDayRow.
   const planCardDensity = useSettingsStore((s) => s.planCardDensity);
-
-  // UTC-anchored today ISO so the hero target picker matches the same
-  // anchor the week_start computation uses (currentMondayIso). useMemo so
-  // it's stable per render — the date itself is fine to lock at mount,
-  // the user crossing midnight in the app is rare and handled on next
-  // mount/refresh.
-  const todayIso = useMemo(() => {
-    const now = new Date();
-    return new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-    )
-      .toISOString()
-      .slice(0, 10);
-  }, []);
-  const heroTargetIdx = useMemo(() => {
-    if (!currentPlan) return null;
-    return pickHeroTargetIndex(
-      currentPlan.entries,
-      currentPlan.week_start,
-      todayIso,
-    );
-  }, [currentPlan, todayIso]);
 
   // At-a-glance health vibe for the current week — slots into the same
   // row as the shopping cart + ellipsis so users see the vibe without
@@ -947,17 +929,15 @@ export default function PlanScreen() {
               setPreviewEntry(item.entry);
             };
 
-            // Branch on density + hero target index. Hero only renders
-            // when the entry is non-null — empty days fall through to the
-            // SwipeableDayRow's "+ Add a meal" placeholder so the visual
-            // rhythm of the week stays intact. Drag-to-reorder is
-            // intentionally disabled on the hero (HeroDayCard doesn't
-            // accept onLongPress); users can toggle to compact mode if
-            // they need to drag the hero day.
+            // Detailed mode renders EVERY entry-bearing day as a
+            // HeroDayCard. Empty days fall through to the
+            // SwipeableDayRow's "+ Add a meal" placeholder so the week's
+            // visual rhythm survives. Drag-to-reorder is intentionally
+            // disabled on hero cards (HeroDayCard doesn't accept
+            // onLongPress); users can toggle to compact mode if they
+            // need to drag.
             const isHero =
-              planCardDensity === 'detailed' &&
-              heroTargetIdx === item.day &&
-              item.entry !== null;
+              planCardDensity === 'detailed' && item.entry !== null;
 
             if (isHero && item.entry) {
               return (

@@ -157,10 +157,14 @@ export function HeroDayCard({
           <View style={styles.heroFrame}>
             <HeroDayCardImage entry={entry} heroHeight={heroHeight} />
             <View style={[styles.heroOverlayContent, { bottom: 16 }]}>
-              <Text style={styles.dayLabel}>
-                {dayLabel.toUpperCase()}
-                {dateLabel ? ` · ${dateLabel}` : ''}
-              </Text>
+              {/* Date stack — day name as kicker, date as the prominent
+                  line. Mirrors the Apple Calendar / Things-style
+                  big-date-on-top pattern so the user can scan day-by-day
+                  without hunting for the date in a thin meta strip. */}
+              <Text style={styles.dayLabel}>{dayLabel.toUpperCase()}</Text>
+              {dateLabel ? (
+                <Text style={styles.dateLabel}>{dateLabel}</Text>
+              ) : null}
               <Text style={styles.title} numberOfLines={2}>
                 {entry.title}
               </Text>
@@ -288,21 +292,32 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   dayLabel: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.6,
+    letterSpacing: 1.4,
     textShadowColor: 'rgba(0,0,0,0.45)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  dateLabel: {
+    color: '#FFFFFF',
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+    lineHeight: 30,
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+    marginBottom: 8,
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-    lineHeight: 26,
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    lineHeight: 24,
     textShadowColor: 'rgba(0,0,0,0.55)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
