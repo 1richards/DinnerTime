@@ -771,9 +771,13 @@ export default function PlanScreen() {
     </View>
   );
 
-  const planActionsRow = (
-    <View style={styles.planActionsRow}>
-      <View style={styles.planActionsLeft}>
+  // Stats + cart row — passed as children to FocusBanner so they
+  // render inside the same warm-tinted "this week" card as the focus
+  // row above. User reads the focus theme + week health + shopping
+  // shortcut as one consolidated section.
+  const planStatsRow = (
+    <>
+      <View style={{ flex: 1 }}>
         <WeekHealthChip entries={weekHealthEntries} />
       </View>
       <Pressable
@@ -787,12 +791,7 @@ export default function PlanScreen() {
       >
         <SymbolIcon name="cart" size="action" weight="semibold" tintColor={colors.brand} />
       </Pressable>
-      {/* Week-actions ellipsis hidden — every action it surfaced
-          (regenerate / shift ±1 / duplicate last / shopping list) is
-          now reachable via per-day cluster icons or the Plan tab's
-          shopping-cart button above. WeekActionSheet kept in source
-          for future re-enable. */}
-    </View>
+    </>
   );
 
   const listHeader = (
@@ -810,8 +809,13 @@ export default function PlanScreen() {
       </Animated.View>
       <InlineSearchPill placeholder="Search recipes to add" context="library" />
       {scaleSegmentedControl}
-      {planFocusBannerEnabled && <FocusBanner />}
-      {planActionsRow}
+      {planFocusBannerEnabled ? (
+        <FocusBanner>{planStatsRow}</FocusBanner>
+      ) : (
+        // FocusBanner setting is off — render the stats row standalone
+        // so the cart shortcut + week-health chip stay reachable.
+        <View style={styles.planActionsRow}>{planStatsRow}</View>
+      )}
     </View>
   );
 

@@ -31,7 +31,15 @@ import { useMealPlanStore } from '../../stores/mealPlanStore';
 import { logPlanEvent, sanitizePayload } from '../../plan/telemetry';
 import { FocusPickerSheet } from './FocusPickerSheet';
 
-export function FocusBanner() {
+interface FocusBannerProps {
+  /** Optional second row rendered inside the same warm-tinted card,
+      below the focus row. Used by plan.tsx to consolidate the weekly
+      health chip + shopping-cart action into the same "this week"
+      section so the user reads them as one unit. */
+  children?: React.ReactNode;
+}
+
+export function FocusBanner({ children }: FocusBannerProps = {}) {
   const currentPlan = useMealPlanStore((s) => s.currentPlan);
   const setFocusTheme = useMealPlanStore((s) => s.setFocusTheme);
   const planLoading = useMealPlanStore((s) => s.loading);
@@ -108,39 +116,56 @@ export function FocusBanner() {
   const handleSet = () => setPickerVisible(true);
   const isBusy = savingFocus || planLoading;
 
+  // When `children` are passed (from plan.tsx), render a stacked card
+  // with the focus row on top and the children (week health chip +
+  // cart icon) on a second row, all sharing the same warm-tinted card.
+  // This consolidates "this week" affordances into one section the user
+  // reads as a single unit.
+  const hasChildren = React.Children.count(children) > 0;
+
   return (
-    <View style={styles.banner} accessibilityLabel="Weekly skill focus banner">
-      {isBusy ? (
-        <ActivityIndicator size="small" color={colors.brand} />
-      ) : (
-        <SymbolIcon name="target" size={16} tintColor={colors.warning} />
-      )}
-      {isBusy ? (
-        <Text style={styles.text} numberOfLines={2}>
-          {planLoading
-            ? `Rebuilding the week${theme ? ` around “${theme}”` : ''}…`
-            : 'Saving focus…'}
-        </Text>
-      ) : theme ? (
-        <Text style={styles.text} numberOfLines={2}>
-          This week: <Text style={styles.themeText}>{theme}</Text>
-        </Text>
-      ) : (
-        <Text style={styles.text} numberOfLines={2}>
-          Set a weekly focus to uplevel this week&apos;s meals
-        </Text>
-      )}
-      <View style={{ flex: 1 }} />
-      {!isBusy && (
-        <Pressable
-          onPress={handleSet}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={theme ? 'Change focus theme' : 'Set focus theme'}
-        >
-          <Text style={styles.action}>{theme ? 'Change' : 'Set focus'}</Text>
-        </Pressable>
-      )}
+    <View
+      style={[styles.banner, hasChildren && styles.bannerStacked]}
+      accessibilityLabel="Weekly skill focus banner"
+    >
+      <View style={styles.focusRow}>
+        {isBusy ? (
+          <ActivityIndicator size="small" color={colors.brand} />
+        ) : (
+          <SymbolIcon name="target" size={16} tintColor={colors.warning} />
+        )}
+        {isBusy ? (
+          <Text style={styles.text} numberOfLines={2}>
+            {planLoading
+              ? `Rebuilding the week${theme ? ` around “${theme}”` : ''}…`
+              : 'Saving focus…'}
+          </Text>
+        ) : theme ? (
+          <Text style={styles.text} numberOfLines={2}>
+            This week: <Text style={styles.themeText}>{theme}</Text>
+          </Text>
+        ) : (
+          <Text style={styles.text} numberOfLines={2}>
+            Set a weekly focus to uplevel this week&apos;s meals
+          </Text>
+        )}
+        <View style={{ flex: 1 }} />
+        {!isBusy && (
+          <Pressable
+            onPress={handleSet}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={theme ? 'Change focus theme' : 'Set focus theme'}
+          >
+            <Text style={styles.action}>{theme ? 'Change' : 'Set focus'}</Text>
+          </Pressable>
+        )}
+      </View>
+
+      {hasChildren ? (
+        <View style={styles.childrenRow}>{children}</View>
+      ) : null}
+
       <FocusPickerSheet
         visible={pickerVisible}
         currentTheme={theme}
@@ -164,6 +189,24 @@ const styles = StyleSheet.create({
     // Warm accent mirroring the warning-tone chip used on the stretch DayRow;
     // gives the banner a visible-but-not-alarming "this week is special" vibe.
     backgroundColor: '#FFF4E6',
+  },
+  // Stacked variant — when children are passed, switch from a single
+  // row to a column so the focus row sits on top and the children row
+  // (week health chip + cart) sits below, sharing the same card.
+  bannerStacked: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 10,
+  },
+  focusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  childrenRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   text: {
     fontSize: 13,
