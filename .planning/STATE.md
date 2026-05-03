@@ -4,9 +4,9 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: "Completed quick task 8: visual unification of FocusPickerSheet + RemixSheet — extracted shared PickerSheet shell + OptionCard primitive (apps/mobile/src/components/ui/), refactored both sheets to render as 2-col OptionCard grids on a coherent shell; replaced Alert.prompt with inline TextInput row for custom focus; 36/36 tests green; maestro UAT screenshots saved to /tmp"
-last_updated: "2026-05-03T17:52:57.153Z"
-last_activity: "2026-05-03 - Completed quick task 21: picker visual unification — shared PickerSheet + OptionCard primitives now power FocusPickerSheet and RemixSheet mode picker on a 2-col grid; inline custom-input row replaces Alert.prompt"
+stopped_at: "Completed quick task 11: fix Month-view scroll on Plan tab — replaced parallel Week+Month display:none mount with conditional ternary render; added nestedScrollEnabled + keyboardShouldPersistTaps='handled' to Month ScrollView; dropped edges={['bottom']} from outer SafeAreaView (paddingBottom: 220 already clears home indicator). Trade-off: scroll position resets on each Week<->Month toggle, acceptable for v1. 1 commit (7fd046d), 23+/15- in apps/mobile/src/app/(tabs)/plan.tsx, 908/908 mobile tests green, 0 new typecheck errors. Diagnostic checkpoint skipped per auto-mode user directive — Path B (conservative superset of Path A + cause-#2 + cause-#3) applied directly. Maestro 31-month-view UAT deferred — running Metro is in Tailscale Serve mode, sim dev client can't fetch bundle until Metro restart with --lan only."
+last_updated: "2026-05-03T19:24:25.945Z"
+last_activity: "2026-04-24 - Completed quick task 5: ElevenLabs TTS integration — backend proxy + cooking-mode playback with expo-speech fallback"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -653,7 +653,7 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-05-03T17:52:57.149Z
-Stopped at: Completed quick task 8: visual unification of FocusPickerSheet + RemixSheet — extracted shared PickerSheet shell + OptionCard primitive (apps/mobile/src/components/ui/), refactored both sheets to render as 2-col OptionCard grids on a coherent shell; replaced Alert.prompt with inline TextInput row for custom focus; 36/36 tests green; maestro UAT screenshots saved to /tmp
+Last session: 2026-05-03T19:24:25.940Z
+Stopped at: Completed quick task 11: fix Month-view scroll on Plan tab — replaced parallel Week+Month display:none mount with conditional ternary render; added nestedScrollEnabled + keyboardShouldPersistTaps='handled' to Month ScrollView; dropped edges={['bottom']} from outer SafeAreaView (paddingBottom: 220 already clears home indicator). Trade-off: scroll position resets on each Week<->Month toggle, acceptable for v1. 1 commit (7fd046d), 23+/15- in apps/mobile/src/app/(tabs)/plan.tsx, 908/908 mobile tests green, 0 new typecheck errors. Diagnostic checkpoint skipped per auto-mode user directive — Path B (conservative superset of Path A + cause-#2 + cause-#3) applied directly. Maestro 31-month-view UAT deferred — running Metro is in Tailscale Serve mode, sim dev client can't fetch bundle until Metro restart with --lan only.
 Resume file: None
 | 2026-04-28 | fast | More options pill padding | done |
