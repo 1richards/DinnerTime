@@ -777,9 +777,8 @@ export default function PlanScreen() {
   // shortcut as one consolidated section.
   const planStatsRow = (
     <>
-      <View style={{ flex: 1 }}>
-        <WeekHealthChip entries={weekHealthEntries} />
-      </View>
+      <WeekHealthChip entries={weekHealthEntries} />
+      <View style={{ flex: 1 }} />
       <Pressable
         onPress={handleShoppingHandoff}
         accessibilityLabel="Shopping list for week"

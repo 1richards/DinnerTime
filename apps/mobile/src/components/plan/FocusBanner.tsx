@@ -129,6 +129,7 @@ export function FocusBanner({ children }: FocusBannerProps = {}) {
       accessibilityLabel="Weekly skill focus banner"
     >
       <View style={styles.focusRow}>
+        <Text style={styles.focusLabel}>Skill Focus</Text>
         {isBusy ? (
           <>
             <ActivityIndicator size="small" color={colors.brand} />
@@ -138,8 +139,17 @@ export function FocusBanner({ children }: FocusBannerProps = {}) {
                 : 'Saving focus…'}
             </Text>
           </>
-        ) : theme ? (
-          <View style={styles.focusChip}>
+        ) : (
+          <Pressable
+            onPress={handleSet}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={theme ? 'Change focus theme' : 'Set focus theme'}
+            style={({ pressed }) => [
+              styles.focusChip,
+              pressed && styles.focusChipPressed,
+            ]}
+          >
             <SymbolIcon
               name="target"
               size={14}
@@ -147,25 +157,11 @@ export function FocusBanner({ children }: FocusBannerProps = {}) {
               weight="semibold"
             />
             <Text style={styles.focusChipLabel} numberOfLines={1}>
-              {theme}
+              {theme ?? 'Set focus'}
             </Text>
-          </View>
-        ) : (
-          <Text style={styles.text} numberOfLines={2}>
-            Set a weekly focus to uplevel this week&apos;s meals
-          </Text>
-        )}
-        <View style={{ flex: 1 }} />
-        {!isBusy && (
-          <Pressable
-            onPress={handleSet}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={theme ? 'Change focus theme' : 'Set focus theme'}
-          >
-            <Text style={styles.action}>Skill Focus</Text>
           </Pressable>
         )}
+        <View style={{ flex: 1 }} />
       </View>
 
       {hasChildren ? (
@@ -219,10 +215,17 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flexShrink: 1,
   },
-  // Focus theme rendered as a pill chip mirroring WeekHealthChip's
-  // warning-tone variant — same dimensions and font weights so the focus
-  // chip and the Veg-forward / Indulgent / etc. health chip read as
-  // siblings on the same "this week" card.
+  // "Skill Focus" section label that sits to the left of the chip.
+  // Lower weight than the chip so the chip itself reads as the primary
+  // affordance.
+  focusLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  // Focus theme rendered as a pressable pill chip. White bg gives clean
+  // contrast against the warm cream banner (#FFF4E6) so the chip pops as
+  // a tappable affordance rather than blending in.
   focusChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -230,18 +233,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: '#FFF1DE',
+    backgroundColor: '#FFFFFF',
     flexShrink: 1,
+  },
+  focusChipPressed: {
+    opacity: 0.7,
   },
   focusChipLabel: {
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.1,
     color: colors.warning,
-  },
-  action: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.brand,
   },
 });
