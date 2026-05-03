@@ -6,7 +6,7 @@ current_plan: Not started
 status: planning
 stopped_at: "Completed quick task 10: HeroDayCard swipe-left replaced with 5-icon cluster (Swap / Cook Now / Remix / Cooked / Clear) + plan.tsx wires onCookNow router push + onRemix direct RemixSheet mount; 22/22 plan tests green"
 last_updated: "2026-05-03T16:28:07.055Z"
-last_activity: "2026-04-24 - Completed quick task 5: ElevenLabs TTS integration — backend proxy + cooking-mode playback with expo-speech fallback"
+last_activity: "2026-05-03 - Completed quick tasks 19 (cooking cleanup: dark mode + voice STT wiring removed; Start button + frictionless exit) and 20 (plan day card overlay icon cluster replacing swipe-left)"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -617,6 +617,8 @@ Recent decisions affecting current work:
 | 16 | Cooking-mode Done finale — celebration → Plan day marked cooked | 2026-04-30 | 4db1b1f | _fast (inline)_ |
 | 17 | Skill focus picker visual separation + offer to regenerate this week | 2026-04-30 | 31c330e | _fast (inline)_ |
 | 18 | Scan flow — stop stacking review routes; no auto-submit on first photo | 2026-04-30 | 36e95b3 | _fast (inline)_ |
+| 19 | Pre-launch cooking cleanup — drop dark mode + voice STT wiring (scaffolding kept for backlog 999.1); add Start affordance + tap-to-exit no confirmation | 2026-05-03 | 245cfd2 | [9-pre-launch-cooking-cleanup-remove-dark-m](./quick/9-pre-launch-cooking-cleanup-remove-dark-m/) |
+| 20 | Plan day card actions — replace swipe-left (Swap/Cooked/Clear) with floating 5-icon overlay cluster on hero image (Swap, Cook Now, Remix, Cooked, Clear); SuggestionCard visual parity | 2026-05-03 | adf7f55 | [10-plan-day-card-actions-replace-swipe-left](./quick/10-plan-day-card-actions-replace-swipe-left/) |
 
 ## Post-v1 Polish (out-of-band, not GSD-planned)
 
