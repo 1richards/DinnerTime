@@ -838,8 +838,12 @@ export default function PlanScreen() {
     </View>
   );
 
+  // quick-11: dropped edges={['bottom']} from outer SafeAreaView. Empty
+  // edges={[]} prevents the safe-area inset from constraining the inner
+  // ScrollView's gesture region; the Month ScrollView's paddingBottom: 220
+  // already clears the home indicator + tab bar visually.
   return (
-    <SafeAreaView className="flex-1 bg-warmWhite" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-warmWhite" edges={[]}>
       {/* Compact nav bar removed — large "This Week" title scrolls off
           naturally so the list consumes full vertical real estate. */}
 
@@ -881,13 +885,19 @@ export default function PlanScreen() {
           list's header (scaleSegmentedControl above), below the large "This
           Week" title — matches the Kitchen tab's segment-under-header rhythm. */}
 
-      {/* Week view — stays mounted when scale='month' via display:none so
-          the DayRow's scroll, swap sheet, cook confirm state all survive
-          toggle-back. */}
-      <View
-        style={[{ flex: 1 }, scale !== 'week' && { display: 'none' }]}
-        pointerEvents={scale === 'week' ? 'auto' : 'none'}
-      >
+      {/* quick-11: Week / Month conditional-render. Switched from a parallel
+          display:none mount in quick-11 because the parallel-mounted Week
+          DraggableFlatList intercepted Month-view scroll gestures, leaving
+          the Cuisine + Repeats sections of <MonthPatterns/> unreachable.
+          Trade-off: scroll position is reset on each Week↔Month toggle —
+          acceptable for v1 per .planning/quick/11/11-PLAN.md constraints. */}
+      {/* Month view note: when scale === 'month' we render a ScrollView with
+          MonthGrid + MonthPatterns stacked. quick-11 added nestedScrollEnabled
+          + keyboardShouldPersistTaps='handled' as a belt-and-braces guard on
+          top of the conditional-render fix so the ScrollView wins touch
+          arbitration even once ancestors wrap this subtree. */}
+      {scale === 'week' ? (
+      <View style={{ flex: 1 }}>
         <DraggableFlatList
           data={days}
           keyExtractor={(item) => `day-${item.day}`}
@@ -985,13 +995,8 @@ export default function PlanScreen() {
         />
       </View>
 
-      {/* Month view — parallel mount. Contains MonthGrid + MonthPatterns
-          stacked in a ScrollView. Loading skeleton via MonthGrid's `loading`
-          prop. Empty map → all-empty cells + MonthPatterns empty states. */}
-      <View
-        style={[{ flex: 1 }, scale !== 'month' && { display: 'none' }]}
-        pointerEvents={scale === 'month' ? 'auto' : 'none'}
-      >
+      ) : (
+      <View style={{ flex: 1 }}>
         <ScrollView
           // Bottom padding clears the tab bar (~83pt) plus extra so the
           // Repeats section + Cuisine chips never butt against it. Earlier
@@ -1000,6 +1005,8 @@ export default function PlanScreen() {
           contentContainerStyle={{ paddingBottom: 220 }}
           scrollEventThrottle={16}
           onScroll={onScroll}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
         >
           {monthHeader}
           <MonthGrid
@@ -1024,6 +1031,7 @@ export default function PlanScreen() {
           <MonthPatterns entries={Array.from(monthPlans.values())} />
         </ScrollView>
       </View>
+      )}
 
       <SwapSheet
         visible={swapTarget != null}
