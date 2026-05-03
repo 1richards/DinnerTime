@@ -1,6 +1,7 @@
 # Handoff — Pre-Launch Finish Line
 
 **Generated:** 2026-05-04
+**Updated:** 2026-05-03 (mid-milestone — items 1 + Plan tab UX polish + DatePicker TZ fix complete)
 **Author of pre-launch session:** Claude Opus 4.7 (1M context)
 **Goal:** ship DinnerTime to TestFlight + App Store. This doc is everything a fresh Claude Code session needs to pick up cleanly.
 
@@ -8,19 +9,34 @@
 
 ## TL;DR — what's left
 
-Five buckets, in execution order. Total estimate: half a day to a day if nothing in #2 turns out to be a multi-hour rabbit hole.
+Originally five buckets. **Items 1 + extra Plan-tab polish + a timezone bug are now done.** Remaining:
 
-1. 🐛 **Fix Month-view scroll bug** (15 min — diagnose & fix)
-2. 🛒 **Verify + fix Instacart integration end-to-end** (1–3 hr — biggest unknown)
+1. ~~🐛 **Fix Month-view scroll bug** (15 min)~~ ✅ done in `7fd046d`
+2. 🛒 **Verify + fix Instacart integration end-to-end** (1–3 hr — biggest unknown) ← **NEXT**
 3. 🧪 **In-app UAT of all recent UX changes** (30 min — punch-list run-through)
 4. ⚙️ **Settings screen UAT** (15 min)
 5. 🧹 **Comprehensive validation + bug fixes** (open-ended; tighten until launch-ready)
 
 Then ship to TestFlight per `.planning/LAUNCH-HANDOFF.md`.
 
+### What shipped between handoff write-time and now (commits since `e9ddcf1`)
+
+| Commit | What |
+|---|---|
+| `7fd046d` | quick-11: unblock Month-view scroll on Plan tab (parallel-mounted Week DraggableFlatList → conditional render) |
+| `ca292a9` | fix(plan): remove dead `{planActionsRow}` reference that was crashing Plan tab on render (collateral from `377e57d` consolidation) |
+| `a3e6eaa` `6d38fbe` `669bed7` `547364e` `6af46ae` | Plan focus banner UX evolution: theme rendered as a clickable pill chip styled like Veg-forward, "Skill Focus" left-side section label, white-bg with warning-tone border, defensive inner-row View. WeekHealthChip hugs content (no longer full-width). |
+| `60ebbb1` | **fix(plan): DatePicker timezone bug** — `Cook later` from recipe box was placing recipes on the next day for users west of UTC. Helpers switched from UTC to local-time. Affected every consumer of `DatePickerSheet` (AddToPlanSheet, SuggestionCard, Month-view empty cell, Suggestion preview). |
+
+Tailscale Serve config repaired this session: `:443 → localhost:8081` (Metro), `:8443 → localhost:3000` (API). Was previously misconfigured to a stale proxy port.
+
 ---
 
-## 1. 🐛 Critical: Month view doesn't scroll
+## 1. ✅ Month view scroll — DONE
+
+Fixed in `7fd046d` (quick-11). Cause was #1 from the original suspects: parallel-mounted Week DraggableFlatList capturing touches even when display:none. Fix: conditional render of Week vs Month + nestedScrollEnabled + dropped SafeAreaView bottom edge. Trade-off: scroll position resets on each Week ↔ Month toggle.
+
+Original analysis below preserved for context in case a regression appears.
 
 **Symptom:** On the Plan tab, tap **Month** segment. The Cuisine section + Repeats section are below the fold but the ScrollView won't scroll to reveal them. User reported twice — paddingBottom bump alone (140 → 220 in `5e00b79`) didn't fix it.
 
