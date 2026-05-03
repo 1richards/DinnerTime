@@ -141,6 +141,55 @@ describe('settingsStore', () => {
   });
 
   // -----------------------------------------------------------------------
+  // Quick-task 7 — planCardDensity (Plan-tab info-density toggle)
+  // -----------------------------------------------------------------------
+
+  describe('planCardDensity', () => {
+    it("default planCardDensity is 'detailed' (quick-task 7)", async () => {
+      const { useSettingsStore } = await import('../settingsStore');
+      await new Promise((r) => setTimeout(r, 10));
+      expect(useSettingsStore.getState().planCardDensity).toBe('detailed');
+    });
+
+    it("setPlanCardDensity('compact') flips the value (round-trip)", async () => {
+      const { useSettingsStore } = await import('../settingsStore');
+      await new Promise((r) => setTimeout(r, 10));
+      expect(useSettingsStore.getState().planCardDensity).toBe('detailed');
+
+      useSettingsStore.getState().setPlanCardDensity('compact');
+      expect(useSettingsStore.getState().planCardDensity).toBe('compact');
+
+      useSettingsStore.getState().setPlanCardDensity('detailed');
+      expect(useSettingsStore.getState().planCardDensity).toBe('detailed');
+    });
+
+    it("persists planCardDensity changes to AsyncStorage under 'dinnertime-settings'", async () => {
+      const { useSettingsStore } = await import('../settingsStore');
+      useSettingsStore.getState().setPlanCardDensity('compact');
+      await new Promise((r) => setTimeout(r, 10));
+
+      const raw = asyncStorageMock.store.get(STORAGE_KEY);
+      expect(raw).toBeDefined();
+      const parsed = JSON.parse(raw!);
+      expect(parsed.state).toBeDefined();
+      expect(parsed.state.planCardDensity).toBe('compact');
+    });
+
+    it('rehydrates prior planCardDensity from AsyncStorage on cold start', async () => {
+      asyncStorageMock.store.set(
+        STORAGE_KEY,
+        JSON.stringify({
+          state: { planCardDensity: 'compact' },
+          version: 0,
+        }),
+      );
+      const { useSettingsStore } = await import('../settingsStore');
+      await new Promise((r) => setTimeout(r, 20));
+      expect(useSettingsStore.getState().planCardDensity).toBe('compact');
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // Phase 23-03 — biometricUnlockEnabled (NFR-07)
   // -----------------------------------------------------------------------
 

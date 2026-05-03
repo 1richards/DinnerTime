@@ -22,6 +22,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type ShoppingHandoffMode = 'draft_cart' | 'legacy';
+export type PlanCardDensity = 'compact' | 'detailed';
 
 interface SettingsState {
   shoppingHandoffMode: ShoppingHandoffMode;
@@ -34,6 +35,16 @@ interface SettingsState {
    */
   planFocusBannerEnabled: boolean;
   setPlanFocusBannerEnabled: (enabled: boolean) => void;
+  /**
+   * Quick-task 7: controls Plan-tab card density. Default `'detailed'` —
+   * the active day renders as a HeroDayCard with 16:9 hero image, full
+   * skill chips, difficulty/time/servings, and italic skill_note. Setting
+   * this to `'compact'` falls back to the SwipeableDayRow rendering for
+   * every day (the pre-quick-task-7 layout). Persisted alongside the rest
+   * of the settings blob.
+   */
+  planCardDensity: PlanCardDensity;
+  setPlanCardDensity: (density: PlanCardDensity) => void;
   /**
    * Phase 23-03 (NFR-07): opt-in Face ID unlock on app foreground. Default
    * `false` per D-07 — biometric is NEVER on by default; only after the user
@@ -62,6 +73,8 @@ export const useSettingsStore = create<SettingsState>()(
       setShoppingHandoffMode: (mode) => set({ shoppingHandoffMode: mode }),
       planFocusBannerEnabled: true,
       setPlanFocusBannerEnabled: (enabled) => set({ planFocusBannerEnabled: enabled }),
+      planCardDensity: 'detailed',
+      setPlanCardDensity: (density) => set({ planCardDensity: density }),
       biometricUnlockEnabled: false,
       setBiometricUnlockEnabled: (enabled) =>
         set({ biometricUnlockEnabled: enabled }),

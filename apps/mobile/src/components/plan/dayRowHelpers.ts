@@ -118,29 +118,43 @@ export function deriveStatusChips(args: DeriveArgs): StatusChipDescriptor[] {
     });
   }
 
-  // Quick-task 6 — Matching-focus chip. Only fires when the day's recipe
-  // practices the active weekly focus theme. Case-insensitive compare
-  // (with whitespace trim on the theme — users sometimes paste themes
-  // with stray spaces from picker labels). Emits exactly ONE chip even
-  // when practicedSkills has multiple entries — only the matched skill
-  // is shown, so the day card stays scannable.
-  if (
-    args.practicedSkills &&
-    args.practicedSkills.length > 0 &&
-    typeof args.focusTheme === 'string' &&
-    args.focusTheme.trim().length > 0
-  ) {
-    const themeLc = args.focusTheme.trim().toLowerCase();
-    const match = args.practicedSkills.find(
-      (s) => s.toLowerCase() === themeLc,
-    );
-    if (match) {
-      // Lowercase first then capitalize first letter — keeps multi-word
-      // entries like "pan sauces" → "Pan sauces" (single capital, sentence
-      // case) so the chip doesn't look shouty next to the difficulty chip.
-      const lc = match.toLowerCase();
-      const display = lc[0]!.toUpperCase() + lc.slice(1);
-      out.push({ label: display, tone: 'warning', leadingIcon: 'sparkles' });
+  // Quick-task 7 — Practiced-skills chips. Emit ALL practiced_skills as
+  // chips so users see the full skill payload of every meal at a glance.
+  // The chip whose lowercase value matches the (trimmed) focus theme
+  // renders FIRST in 'warning' tone; every other skill renders AFTER in
+  // 'default' tone in source order. Drops the previous single-match-only
+  // branch (quick-task 6) which hid non-matching skills entirely.
+  //
+  // Sentence-case display: "pan sauces" → "Pan sauces" (single capital)
+  // so chips don't shout next to the difficulty chip. Case-insensitive
+  // match on focus theme + whitespace-trim on theme preserved.
+  if (args.practicedSkills && args.practicedSkills.length > 0) {
+    const themeLc =
+      typeof args.focusTheme === 'string'
+        ? args.focusTheme.trim().toLowerCase()
+        : null;
+    const sentenceCase = (s: string): string => {
+      const lc = s.toLowerCase();
+      return lc.length === 0 ? lc : lc[0]!.toUpperCase() + lc.slice(1);
+    };
+    // Partition: matched skill (if any) first, others preserve source order.
+    const matched = themeLc
+      ? args.practicedSkills.find((s) => s.toLowerCase() === themeLc) ?? null
+      : null;
+    if (matched) {
+      out.push({
+        label: sentenceCase(matched),
+        tone: 'warning',
+        leadingIcon: 'sparkles',
+      });
+    }
+    for (const skill of args.practicedSkills) {
+      if (matched && skill === matched) continue;
+      out.push({
+        label: sentenceCase(skill),
+        tone: 'default',
+        leadingIcon: 'sparkles',
+      });
     }
   }
 
