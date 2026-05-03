@@ -622,6 +622,7 @@ Recent decisions affecting current work:
 | 21 | Picker visual unification — extract shared PickerSheet shell + OptionCard primitives; FocusPickerSheet + RemixSheet mode picker render through them on a 2-col grid (drops italic examples line, replaces Alert.prompt with inline custom-input row) | 2026-05-03 | a984534 | [8-visual-unification-of-focuspickersheet-r](./quick/8-visual-unification-of-focuspickersheet-r/) |
 | 22 | Fix Month view scroll on Plan tab — parallel-mounted Week DraggableFlatList capturing touches | 2026-05-03 | 7fd046d | [11-fix-month-view-scroll-on-plan-tab-parall](./quick/11-fix-month-view-scroll-on-plan-tab-parall/) |
 | 23 | Remove dead {planActionsRow} reference crashing Plan tab on render | 2026-05-03 | ca292a9 | _fast (inline)_ |
+| 24 | Render Plan focus theme as a pill chip styled like WeekHealthChip + rename "Change"/"Set focus" → "Skill Focus" | 2026-05-03 | a3e6eaa | _fast (inline)_ |
 
 ## Post-v1 Polish (out-of-band, not GSD-planned)
 
