@@ -382,11 +382,13 @@ const styles = StyleSheet.create({
   actionBadge: {
     // 52pt exceeds Apple's 44pt minimum — intentionally generous because
     // these overlays sit over busy hero imagery and need to read clearly
-    // + tolerate imprecise thumbs in a cooking/shopping context.
+    // + tolerate imprecise thumbs in a cooking/shopping context. Background
+    // matches HeroDayCard's heroIconCluster so the action chrome reads as
+    // the same family across Plan / Something New / Recipe Box.
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.30)',
     alignItems: 'center',
     justifyContent: 'center',
   },

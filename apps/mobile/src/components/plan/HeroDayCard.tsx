@@ -19,7 +19,7 @@
  *   └──────────────────────────────────────────────┘
  *
  * The bottom-right cluster mirrors the SuggestionCard / RecipeCard
- * precedent: a semi-transparent dark capsule (rgba(0,0,0,0.55)) hosting
+ * precedent: a semi-transparent dark capsule (rgba(0,0,0,0.30)) hosting
  * 5 SF Symbols at 22pt — Swap, Cook Now (flame), Remix (sparkles),
  * Cooked, Clear. Each Pressable calls e.stopPropagation() so a tap on
  * an icon never falls through to the card-level onPress (preview /
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     top: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.30)',
     borderRadius: 9999,
     paddingHorizontal: 8,
     paddingVertical: 6,
