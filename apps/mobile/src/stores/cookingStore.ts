@@ -7,6 +7,7 @@ import type { CookingState, Timer, CommandToast } from '../types/cooking';
 interface CookingActions {
   enter: (recipe: Recipe) => void;
   exit: () => void;
+  start: () => void;
   next: () => void;
   back: () => void;
   jumpToStep: (index: number) => void;
@@ -85,6 +86,15 @@ export const useCookingStore = create<CookingState & CookingActions>()(
           stepIndex: Math.min(stepIndex + 1, maxIndex),
           userNavigated: true,
         });
+      },
+
+      // First-tap "Start" affordance. Marks the cook session as begun
+      // without advancing past the first step — pressing Start should
+      // LAND on step 1 (stepIndex=0), not jump to step 2. Subsequent
+      // taps go through next() as normal because the button label
+      // flips from "Start" → "Next" once userNavigated is true.
+      start: () => {
+        set({ userNavigated: true });
       },
 
       back: () => {

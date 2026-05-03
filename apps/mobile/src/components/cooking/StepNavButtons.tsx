@@ -39,6 +39,15 @@ export interface StepNavButtonsProps {
       + celebration overlay + nav to Plan. Optional for backward compat
       with any caller that hasn't migrated. */
   onDone?: () => void;
+  /** Override the Next-slot label/icon. Used by cook.tsx to render
+      "Start" (brand-primary) before the user has begun the recipe.
+      When omitted the slot stays "Next" with the standard styling. */
+  nextLabel?: string;
+  /** SF Symbol name for the Next slot. Defaults to 'arrow.right'. */
+  nextIcon?: string;
+  /** Render Next slot in primary brand-colored variant (e.g. when
+      label is "Start"). Has no effect if showDone is true. */
+  primaryNext?: boolean;
 }
 
 interface NavButtonProps {
@@ -139,6 +148,9 @@ export default function StepNavButtons({
   disableBack,
   disableNext,
   onDone,
+  nextLabel,
+  nextIcon,
+  primaryNext = false,
 }: StepNavButtonsProps) {
   const showDone = disableNext && typeof onDone === 'function';
   return (
@@ -170,11 +182,12 @@ export default function StepNavButtons({
         />
       ) : (
         <NavButton
-          label="Next"
-          icon="arrow.right"
+          label={nextLabel ?? 'Next'}
+          icon={nextIcon ?? 'arrow.right'}
           onPress={onNext}
           disabled={disableNext}
           testID="cook-next"
+          primary={primaryNext}
         />
       )}
     </View>

@@ -108,6 +108,7 @@ export default function CookScreen() {
     userNavigated,
     enter,
     exit,
+    start,
     next,
     back,
     jumpToStep,
@@ -425,25 +426,16 @@ export default function CookScreen() {
   }, [timers.length, removeTimer, stepSpeaker]);
 
   // --------------------------------------------------- Exit flow
+  // Tap-to-exit — no confirmation. Pre-launch UX simplification: the
+  // confirmation sheet was a friction point users dismissed on every
+  // exit, and the "lost progress" risk it warned about is minor (cook
+  // session resets on re-entry, but the recipe is still saved).
   const handleExit = useCallback(() => {
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        title: 'End cooking session?',
-        message: "Your place in the recipe won't be saved.",
-        options: ['End cooking session', 'Keep cooking'],
-        destructiveButtonIndex: 0,
-        cancelButtonIndex: 1,
-      },
-      (idx) => {
-        if (idx === 0) {
-          void fireExitConfirmHaptic();
-          stepSpeaker.stop();
-          void flushTelemetry();
-          exit();
-          router.back();
-        }
-      },
-    );
+    void fireExitConfirmHaptic();
+    stepSpeaker.stop();
+    void flushTelemetry();
+    exit();
+    router.back();
   }, [exit, stepSpeaker]);
 
   // --------------------------------------------------- Loading state
@@ -492,7 +484,11 @@ export default function CookScreen() {
         <ScrollableRecipe
           ref={recipeRef}
           recipe={recipe}
-          currentStepIndex={stepIndex}
+          // Pre-Start: -1 keeps NO step highlighted so the user reads
+          // ingredients first. Once Start is tapped (userNavigated → true),
+          // step 0 becomes active and the standard active-step highlight +
+          // auto-scroll kick in.
+          currentStepIndex={userNavigated ? stepIndex : -1}
           ingredientChecks={ingredientChecks}
           onToggleIngredient={toggleIngredient}
           autoScrollEnabled={userNavigated}
@@ -532,10 +528,22 @@ export default function CookScreen() {
         onNext={() => {
           void fireCommandHaptic();
           stepSpeaker.stop();
+          // Pre-Start: first tap "lands" on step 1 (stepIndex stays 0)
+          // and flips userNavigated so the active-step highlight,
+          // auto-scroll, and TTS all engage. After that, the slot is
+          // labeled "Next" and behaves normally.
+          if (!userNavigated) {
+            start();
+            if (currentStepText) stepSpeaker.speak(currentStepText);
+            return;
+          }
           next();
         }}
-        disableBack={stepIndex === 0}
-        disableNext={stepIndex >= totalSteps - 1}
+        disableBack={!userNavigated || stepIndex === 0}
+        disableNext={userNavigated && stepIndex >= totalSteps - 1}
+        nextLabel={userNavigated ? undefined : 'Start'}
+        nextIcon={userNavigated ? undefined : 'play.fill'}
+        primaryNext={!userNavigated}
         onDone={() => {
           void fireCommandHaptic();
           stepSpeaker.stop();
