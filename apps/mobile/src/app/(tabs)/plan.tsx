@@ -834,7 +834,6 @@ export default function PlanScreen() {
       </Animated.View>
       <InlineSearchPill placeholder="Search recipes to add" context="library" />
       {scaleSegmentedControl}
-      {planActionsRow}
     </View>
   );
 
