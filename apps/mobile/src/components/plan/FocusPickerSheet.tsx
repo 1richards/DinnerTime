@@ -1,29 +1,26 @@
 /**
- * FocusPickerSheet — modal picker that replaces the previous
- * Alert.prompt for setting the weekly skill focus theme.
+ * FocusPickerSheet — modal picker for the weekly skill focus theme.
  *
- * The list is curated: each card surfaces a skill area + a one-line
- * description + a couple of recipe types that exercise it, so the
- * user has a concrete sense of what choosing the focus will steer
- * future plan generations toward.
+ * Refactored in quick-8 to consume the shared PickerSheet shell and
+ * OptionCard primitives so the page reads as a sibling of RemixSheet's
+ * mode picker. Visual deltas vs. the previous implementation:
+ *   - Vertical list of tall cards → 2-col grid of OptionCards
+ *   - Italic "examples" line dropped (the blurb already conveys the idea)
+ *   - Custom focus uses an inline TextInput row mirroring RemixSheet's
+ *     customInputRow — no more Alert.prompt
+ *   - Sheet background switched from #FFFBF5 (one-off) to colors.bg
  *
- * Tap a card → fires onSelect(themeKey) and the parent hands it to
- * mealPlanStore.setFocusTheme. A "Custom focus" tile at the bottom
- * preserves the free-form path for users who want their own theme.
+ * The FocusBanner contract is unchanged: this sheet does NOT close on
+ * select. The parent (FocusBanner) flips visible=false from its Alert.alert
+ * callback after the user chooses Regenerate / Not now.
  */
 
 import React, { useEffect, useState } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Alert,
-} from 'react-native';
+import { View, Text, Pressable, StyleSheet, TextInput } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
+import { PickerSheet } from '../ui/PickerSheet';
+import { OptionCard } from '../ui/OptionCard';
 import { colors } from '../../design/tokens';
 import type { SymbolViewProps } from 'expo-symbols';
 
@@ -31,7 +28,6 @@ interface FocusOption {
   key: string;
   label: string;
   blurb: string;
-  examples: string;
   symbol: SymbolViewProps['name'];
   tint: string;
 }
@@ -40,64 +36,56 @@ const FOCUS_OPTIONS: FocusOption[] = [
   {
     key: 'knife skills',
     label: 'Knife skills',
-    blurb: 'Speed up prep with cleaner cuts and better technique.',
-    examples: 'Fine dice, julienne, chiffonade',
+    blurb: 'Speed up prep with cleaner cuts.',
     symbol: 'scissors',
     tint: colors.brand,
   },
   {
     key: 'pan sauces',
     label: 'Pan sauces',
-    blurb: 'Turn a fond into a restaurant-quality finish in 5 minutes.',
-    examples: 'Beurre blanc, red wine reduction, agrodolce',
+    blurb: 'Restaurant finish in 5 minutes.',
     symbol: 'flame.fill',
     tint: colors.brand,
   },
   {
     key: 'braising',
     label: 'Braising',
-    blurb: 'Low-and-slow techniques that turn cheap cuts into magic.',
-    examples: 'Short ribs, coq au vin, ropa vieja',
+    blurb: 'Low-and-slow cuts done right.',
     symbol: 'thermometer.medium',
     tint: colors.warning,
   },
   {
     key: 'stir-frying',
     label: 'Wok / stir-fry',
-    blurb: 'Get the wok-hei char and timing right for snappy veg + protein.',
-    examples: 'Beef and broccoli, dan dan noodles, mapo tofu',
+    blurb: 'Wok-hei char and timing.',
     symbol: 'flame.circle.fill',
     tint: colors.destructive,
   },
   {
     key: 'plant-forward',
     label: 'Plant-forward',
-    blurb: 'Lead with vegetables and legumes; meat is a garnish at most.',
-    examples: 'Mushroom ragu, chickpea curry, charred broccoli',
+    blurb: 'Vegetables lead, meat garnishes.',
     symbol: 'leaf.fill',
     tint: colors.success,
   },
   {
     key: 'pasta from scratch',
     label: 'Pasta from scratch',
-    blurb: 'Hand-rolled, cut, or shaped pasta paired with a real sauce.',
-    examples: 'Cacio e pepe, pappardelle al ragù, hand-cut tagliatelle',
+    blurb: 'Hand-rolled pasta + real sauce.',
     symbol: 'fork.knife',
     tint: colors.brand,
   },
   {
     key: 'global flavors',
     label: 'Global flavors',
-    blurb: 'Stretch your palate with cuisines you don’t cook often.',
-    examples: 'Thai, Korean, Ethiopian, Lebanese',
+    blurb: 'Cuisines you don’t cook often.',
     symbol: 'globe',
     tint: colors.brand,
   },
   {
     key: 'baking & breads',
     label: 'Baking & breads',
-    blurb: 'Build confidence with doughs, ferments, and oven temps.',
-    examples: 'Focaccia, no-knead loaves, pizza dough',
+    blurb: 'Doughs, ferments, oven temps.',
     symbol: 'oven.fill',
     tint: colors.warning,
   },
@@ -119,15 +107,18 @@ export function FocusPickerSheet({
   const [committing, setCommitting] = useState<string | null>(null);
   // Optimistic checkmark — populated synchronously on tap so the user sees
   // their selection register before the PATCH round-trip completes (~1-2s).
-  // Falls back to currentTheme until the user picks. Resets when the sheet
-  // is reopened (otherwise a previously-selected-then-cancelled theme would
-  // appear pre-checked).
   const [optimisticTheme, setOptimisticTheme] = useState<string | null>(
     currentTheme,
   );
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customDraft, setCustomDraft] = useState('');
 
   useEffect(() => {
-    if (visible) setOptimisticTheme(currentTheme);
+    if (visible) {
+      setOptimisticTheme(currentTheme);
+      setCustomOpen(false);
+      setCustomDraft('');
+    }
   }, [visible, currentTheme]);
 
   // Parent (FocusBanner) is responsible for closing the sheet — it presents
@@ -144,218 +135,153 @@ export function FocusPickerSheet({
     }
   };
 
-  const handleCustom = () => {
-    Alert.prompt(
-      'Custom focus',
-      'What do you want to practice this week?',
-      async (value) => {
-        const trimmed = (value ?? '').trim();
-        if (trimmed.length === 0) return;
-        await commit(trimmed);
-      },
-      'plain-text',
-      currentTheme ?? '',
-    );
+  const submitCustom = () => {
+    const trimmed = customDraft.trim();
+    if (trimmed.length === 0) return;
+    void commit(trimmed);
+    setCustomOpen(false);
+    setCustomDraft('');
   };
 
+  const footerSlot = currentTheme ? (
+    <Button
+      title="Clear focus for this week"
+      variant="outline"
+      onPress={() => void commit(null)}
+      loading={committing === '__clear__'}
+      disabled={committing !== null}
+    />
+  ) : undefined;
+
   return (
-    <Modal
+    <PickerSheet
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      kicker="WEEKLY FOCUS"
+      title="Pick a skill to practice"
+      subtitle="We’ll bias this week’s meals toward recipes that stretch you in this direction."
+      onClose={onClose}
+      footerSlot={footerSlot}
     >
-      <View style={styles.sheet}>
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.kicker}>WEEKLY FOCUS</Text>
-            <Text style={styles.title}>Pick a skill to practice</Text>
-            <Text style={styles.subtitle}>
-              We’ll bias this week’s meals toward recipes that stretch
-              you in this direction.
-            </Text>
-          </View>
-          <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn} accessibilityLabel="Close">
-            <SymbolIcon name="xmark" size="action" tintColor={colors.textPrimary} />
-          </Pressable>
-        </View>
-
-        <ScrollView contentContainerStyle={styles.list}>
-          {FOCUS_OPTIONS.map((opt) => {
-            const isCurrent = optimisticTheme === opt.key;
-            const isCommitting = committing === opt.key;
-            return (
-              <Pressable
-                key={opt.key}
+      <View style={styles.grid}>
+        {FOCUS_OPTIONS.map((opt) => {
+          const isCurrent = optimisticTheme === opt.key;
+          return (
+            <View key={opt.key} style={styles.cell}>
+              <OptionCard
+                label={opt.label}
+                sub={opt.blurb}
+                symbol={opt.symbol}
+                tint={opt.tint}
+                selected={isCurrent}
+                disabled={committing !== null && committing !== opt.key}
                 onPress={() => void commit(opt.key)}
-                disabled={committing !== null}
-                style={({ pressed }) => [
-                  styles.card,
-                  isCurrent && styles.cardSelected,
-                  pressed && committing == null ? { opacity: 0.85 } : null,
-                  committing !== null && !isCommitting ? { opacity: 0.5 } : null,
-                ]}
                 accessibilityLabel={`Focus on ${opt.label}`}
-              >
-                <View style={[styles.cardChip, { backgroundColor: `${opt.tint}1A` }]}>
-                  <SymbolIcon name={opt.symbol} size="action" tintColor={opt.tint} weight="semibold" />
-                </View>
-                <View style={styles.cardBody}>
-                  <Text style={styles.cardTitle}>{opt.label}</Text>
-                  <Text style={styles.cardBlurb}>{opt.blurb}</Text>
-                  <Text style={styles.cardExamples}>{opt.examples}</Text>
-                </View>
-                {isCurrent && (
-                  <SymbolIcon
-                    name="checkmark.circle.fill"
-                    size="action"
-                    tintColor={colors.success}
-                  />
-                )}
-              </Pressable>
-            );
-          })}
-
-          <Pressable
-            onPress={handleCustom}
-            disabled={committing !== null}
-            style={({ pressed }) => [
-              styles.card,
-              styles.cardCustom,
-              pressed && committing == null ? { opacity: 0.85 } : null,
-            ]}
-            accessibilityLabel="Set a custom focus theme"
-          >
-            <View style={[styles.cardChip, { backgroundColor: `${colors.textPrimary}10` }]}>
-              <SymbolIcon name="pencil" size="action" tintColor={colors.textPrimary} weight="semibold" />
-            </View>
-            <View style={styles.cardBody}>
-              <Text style={styles.cardTitle}>Custom focus</Text>
-              <Text style={styles.cardBlurb}>Type your own skill or theme.</Text>
-            </View>
-          </Pressable>
-
-          {currentTheme && (
-            <View style={{ marginTop: 16 }}>
-              <Button
-                title="Clear focus for this week"
-                variant="outline"
-                onPress={() => void commit(null)}
-                loading={committing === '__clear__'}
-                disabled={committing !== null}
               />
             </View>
-          )}
-        </ScrollView>
+          );
+        })}
+
+        <View style={styles.cell}>
+          <OptionCard
+            variant="custom"
+            label="Custom"
+            sub="Type your own…"
+            symbol="pencil"
+            tint={colors.textPrimary}
+            onPress={() => setCustomOpen(true)}
+            accessibilityLabel="Set a custom focus theme"
+          />
+        </View>
       </View>
-    </Modal>
+
+      {customOpen ? (
+        <View style={styles.customInputRow}>
+          <SymbolIcon
+            name="pencil"
+            size={18}
+            tintColor={colors.textSecondary}
+            weight="semibold"
+          />
+          <TextInput
+            style={styles.customInput}
+            value={customDraft}
+            onChangeText={setCustomDraft}
+            placeholder="Type your own focus…"
+            placeholderTextColor={colors.textTertiary}
+            returnKeyType="go"
+            onSubmitEditing={submitCustom}
+            autoFocus
+            multiline={false}
+          />
+          {customDraft.length > 0 ? (
+            <>
+              <Pressable
+                onPress={() => setCustomDraft('')}
+                hitSlop={8}
+                accessibilityLabel="Clear custom focus draft"
+              >
+                <SymbolIcon
+                  name="xmark.circle.fill"
+                  size={18}
+                  tintColor={colors.textTertiary}
+                />
+              </Pressable>
+              <Pressable
+                onPress={submitCustom}
+                hitSlop={8}
+                accessibilityLabel="Submit custom focus"
+                style={({ pressed }) => [
+                  styles.customSubmitBtn,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <SymbolIcon
+                  name="arrow.up.circle.fill"
+                  size={28}
+                  tintColor={colors.brand}
+                />
+              </Pressable>
+            </>
+          ) : null}
+        </View>
+      ) : null}
+    </PickerSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  sheet: {
-    flex: 1,
-    backgroundColor: '#FFFBF5',
-  },
-  header: {
+  grid: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1EAE0',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 12,
   },
-  kicker: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#C05A00',
-    letterSpacing: 1.5,
-    marginBottom: 4,
+  cell: {
+    width: '48%',
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#1A140F',
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#7A6651',
-    marginTop: 6,
-    lineHeight: 18,
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F1EAE0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 12,
-  },
-  list: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  card: {
+  customInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    // Larger inter-card gap + a soft border so each option reads as a
-    // distinct row even when none is selected (mirrors DayRow tiles in
-    // the weekly Plan view). Previous 10pt gap + 6% shadow blended the
-    // cards into one visual blob.
-    marginBottom: 14,
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: colors.surface,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#F1EAE0',
-    shadowColor: '#7A6651',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: colors.border,
+    marginTop: 12,
   },
-  cardSelected: {
-    borderWidth: 2,
-    borderColor: colors.brand,
-    backgroundColor: '#FFF4E6',
-  },
-  cardCustom: {
-    borderWidth: 1,
-    borderColor: '#E5D9CA',
-    borderStyle: 'dashed',
-    shadowOpacity: 0,
-  },
-  cardChip: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardBody: {
+  customInput: {
     flex: 1,
-    gap: 2,
-  },
-  cardTitle: {
     fontSize: 15,
-    fontWeight: '800',
-    color: '#1A140F',
-    letterSpacing: -0.2,
+    color: colors.textPrimary,
+    paddingVertical: 0,
   },
-  cardBlurb: {
-    fontSize: 13,
-    color: '#3E332A',
-    lineHeight: 18,
-  },
-  cardExamples: {
-    fontSize: 12,
-    color: '#7A6651',
-    marginTop: 2,
-    fontStyle: 'italic',
+  customSubmitBtn: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
 });

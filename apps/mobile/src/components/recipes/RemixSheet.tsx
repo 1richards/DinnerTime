@@ -14,6 +14,8 @@ import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
+import { PickerSheet } from '../ui/PickerSheet';
+import { OptionCard } from '../ui/OptionCard';
 import {
   useProgressionStore,
   type RemixMode,
@@ -483,218 +485,207 @@ export function RemixSheet({
     expandedIdx !== null && variations ? variations[expandedIdx] : null;
   const expandedFull = expandedIdx !== null ? fullByIdx[expandedIdx] : undefined;
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <View style={styles.sheet}>
-        <View style={styles.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>REMIX</Text>
-            <Text style={styles.title} numberOfLines={2}>
-              {recipeTitle}
-            </Text>
-          </View>
-          <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-            <SymbolIcon name="xmark" size={22} tintColor="#3E332A" />
-          </Pressable>
-        </View>
-
-        {/* Mode picker */}
-        {!selectedMode && (
-          <ScrollView contentContainerStyle={styles.modesContainer}>
-            <Text style={styles.helperText}>
-              How do you want to shake it up?
-            </Text>
-
-            {/* Free-form steering. Anything typed here is forwarded to the
-                variation generator alongside the selected mode — e.g. user
-                taps "Swap protein" with "use only what's in my pantry"
-                typed and the prompt steering picks up both signals. */}
-            <View style={styles.customInputRow}>
+  // Hero slot for the PickerSheet — combines the Surprise hero card and the
+  // free-form custom-instructions row. Both sit above the 2-col grid of
+  // mode tiles when the user is at the picker step.
+  const pickerHero = (
+    <>
+      <View style={styles.customInputRow}>
+        <SymbolIcon
+          name="wand.and.stars"
+          size={18}
+          tintColor={colors.textSecondary}
+          weight="semibold"
+        />
+        <TextInput
+          style={styles.customInput}
+          value={customInstructions}
+          onChangeText={setCustomInstructions}
+          placeholder="Custom instructions (optional)"
+          placeholderTextColor={colors.textTertiary}
+          returnKeyType="go"
+          onSubmitEditing={() => {
+            if (customInstructions.trim().length > 0) handleMode('surprise');
+          }}
+          multiline={false}
+        />
+        {customInstructions.length > 0 && (
+          <>
+            <Pressable
+              onPress={() => setCustomInstructions('')}
+              hitSlop={8}
+              accessibilityLabel="Clear custom instructions"
+            >
               <SymbolIcon
-                name="wand.and.stars"
+                name="xmark.circle.fill"
                 size={18}
-                tintColor={colors.textSecondary}
-                weight="semibold"
+                tintColor={colors.textTertiary}
               />
-              <TextInput
-                style={styles.customInput}
-                value={customInstructions}
-                onChangeText={setCustomInstructions}
-                placeholder="Custom instructions (optional)"
-                placeholderTextColor={colors.textTertiary}
-                returnKeyType="go"
-                onSubmitEditing={() => {
-                  if (customInstructions.trim().length > 0) handleMode('surprise');
-                }}
-                multiline={false}
-              />
-              {customInstructions.length > 0 && (
-                <>
-                  <Pressable
-                    onPress={() => setCustomInstructions('')}
-                    hitSlop={8}
-                    accessibilityLabel="Clear custom instructions"
-                  >
-                    <SymbolIcon
-                      name="xmark.circle.fill"
-                      size={18}
-                      tintColor={colors.textTertiary}
-                    />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => handleMode('surprise')}
-                    hitSlop={8}
-                    accessibilityLabel="Generate variations from custom instructions"
-                    style={({ pressed }) => [
-                      styles.customSubmitBtn,
-                      pressed && { opacity: 0.85 },
-                    ]}
-                  >
-                    <SymbolIcon
-                      name="arrow.up.circle.fill"
-                      size={28}
-                      tintColor={colors.brand}
-                    />
-                  </Pressable>
-                </>
-              )}
-            </View>
-
-            {/* Surprise me — full-width hero card. Visual language matches
-                the sectioned mode tiles below (white surface, tinted icon
-                chip, dark text) so the remix grid reads as a coherent
-                family rather than one orange slab on top of a cream
-                page. The brand accent still owns the chip + chevron so
-                this card remains the visual anchor of the page. */}
+            </Pressable>
             <Pressable
               onPress={() => handleMode('surprise')}
+              hitSlop={8}
+              accessibilityLabel="Generate variations from custom instructions"
               style={({ pressed }) => [
-                styles.surpriseCard,
-                pressed && { opacity: 0.92 },
+                styles.customSubmitBtn,
+                pressed && { opacity: 0.85 },
               ]}
             >
-              <View style={styles.surpriseChip}>
-                <SymbolIcon
-                  name="sparkles"
-                  size={26}
-                  tintColor={colors.brand}
-                  weight="semibold"
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.surpriseLabel}>Surprise me</Text>
-                <Text style={styles.surpriseSub}>A bold creative twist</Text>
-              </View>
-            </Pressable>
-
-            {/* 3-column grid of remix modes. Each tile is a self-contained
-                card (white surface + soft shadow + tinted-icon chip) so the
-                eye registers eight distinct choices rather than a single
-                wall of text. No chevrons — the entire tile is the affordance
-                and the lift on press communicates tappability. */}
-            <View style={styles.modeGrid}>
-              {GRID_MODES.map((m) => (
-                <Pressable
-                  key={m.mode}
-                  onPress={() => handleMode(m.mode)}
-                  style={({ pressed }) => [
-                    styles.modeTile,
-                    pressed && { transform: [{ scale: 0.97 }], opacity: 0.92 },
-                  ]}
-                >
-                  <View
-                    style={[styles.modeTileChip, { backgroundColor: `${m.tint}1A` }]}
-                  >
-                    <SymbolIcon
-                      name={m.symbol as never}
-                      size={22}
-                      tintColor={m.tint}
-                      weight="semibold"
-                    />
-                  </View>
-                  <Text
-                    style={styles.modeTileLabel}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.85}
-                  >
-                    {m.label}
-                  </Text>
-                  <Text style={styles.modeTileSub} numberOfLines={2}>
-                    {m.sub}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </ScrollView>
-        )}
-
-        {/* Loading state */}
-        {selectedMode && loading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.brand} />
-            <Text style={styles.loadingText}>Brewing ideas...</Text>
-          </View>
-        )}
-
-        {/* Error state */}
-        {selectedMode && error && (
-          <View style={styles.errorContainer}>
-            <SymbolIcon name="exclamationmark.circle" size={32} tintColor="#DC2626" />
-            <Text style={styles.errorText}>{error}</Text>
-            <View style={{ height: 12 }} />
-            <Button title="Try Another Mode" variant="outline" onPress={handleTryAnother} />
-          </View>
-        )}
-
-        {/* Results */}
-        {selectedMode && variations && !loading && (
-          <ScrollView contentContainerStyle={styles.resultsContainer}>
-            <Text style={styles.resultsLabel}>
-              {MODES.find((m) => m.mode === selectedMode)?.label}
-            </Text>
-            {variations.map((v, i) => (
-              <VariationCard
-                key={i}
-                variation={v}
-                index={i}
-                saved={savedIdxs.has(i)}
-                modified={modifiedIdxs.has(i)}
-                isWorking={workingIdx === i}
-                isExpanding={workingIdx === i && workingAction === 'expand'}
-                isSaving={workingIdx === i && workingAction === 'save'}
-                isModifying={workingIdx === i && workingAction === 'modify'}
-                isCooking={workingIdx === i && workingAction === 'cook'}
-                isRemixing={workingIdx === i && workingAction === 'remix'}
-                isApplying={workingIdx === i && workingAction === 'apply'}
-                disabled={workingIdx !== null && workingIdx !== i}
-                canModifyExisting={source.kind === 'saved'}
-                applyToDayMode={!!onApplyToDay}
-                baseIngredients={baseForSave?.ingredients}
-                onExpand={() => handleExpand(i, v)}
-                onCook={() => handleCookNow(i, v)}
-                onSaveAsNew={() => handleSaveAsNew(i, v)}
-                onModifyExisting={() => handleModifyExisting(i, v)}
-                onApplyToDay={() => handleApplyToDay(i, v)}
-                onRemix={() => handleRemixVariation(i, v)}
-                onOpenSaved={handleOpenSaved}
-                onOpenModified={handleOpenModified}
+              <SymbolIcon
+                name="arrow.up.circle.fill"
+                size={28}
+                tintColor={colors.brand}
               />
-            ))}
-            <View style={{ height: 16 }} />
-            <Button
-              title="Try Another Mode"
-              variant="outline"
-              onPress={handleTryAnother}
-            />
-          </ScrollView>
+            </Pressable>
+          </>
         )}
       </View>
+
+      {/* Surprise me — full-width hero card. Visual language matches the
+          OptionCards below (white surface, tinted icon chip, dark text) so
+          the page reads as a coherent family. The brand accent owns the
+          chip so this card remains the visual anchor of the page. */}
+      <Pressable
+        onPress={() => handleMode('surprise')}
+        accessibilityRole="button"
+        accessibilityLabel={`${SURPRISE_MODE.label}: ${SURPRISE_MODE.sub}`}
+        style={({ pressed }) => [
+          styles.surpriseCard,
+          pressed && { opacity: 0.92 },
+        ]}
+      >
+        <View style={styles.surpriseChip}>
+          <SymbolIcon
+            name="sparkles"
+            size={26}
+            tintColor={colors.brand}
+            weight="semibold"
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.surpriseLabel}>{SURPRISE_MODE.label}</Text>
+          <Text style={styles.surpriseSub}>{SURPRISE_MODE.sub}</Text>
+        </View>
+      </Pressable>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mode picker step — shared PickerSheet shell with 2-col OptionCard
+          grid. Mounts only when no mode is selected; otherwise the
+          post-pick Modal below owns the visible surface. */}
+      {!selectedMode && (
+        <PickerSheet
+          visible={visible}
+          kicker="REMIX"
+          title={recipeTitle}
+          onClose={onClose}
+          heroSlot={pickerHero}
+        >
+          <View style={styles.modeGrid}>
+            {GRID_MODES.map((m) => (
+              <View key={m.mode} style={styles.modeCell}>
+                <OptionCard
+                  label={m.label}
+                  sub={m.sub}
+                  symbol={m.symbol as never}
+                  tint={m.tint}
+                  onPress={() => handleMode(m.mode)}
+                  accessibilityLabel={`${m.label}: ${m.sub}`}
+                />
+              </View>
+            ))}
+          </View>
+        </PickerSheet>
+      )}
+
+      {/* Post-pick states — loading / error / results retain the original
+          Modal + custom header layout (results list has different chrome
+          than the picker grid). PickerSheet only owns the picker step. */}
+      {selectedMode && (
+        <Modal
+          visible={visible}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={onClose}
+        >
+          <View style={styles.sheet}>
+            <View style={styles.header}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>REMIX</Text>
+                <Text style={styles.title} numberOfLines={2}>
+                  {recipeTitle}
+                </Text>
+              </View>
+              <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
+                <SymbolIcon name="xmark" size={22} tintColor="#3E332A" />
+              </Pressable>
+            </View>
+
+            {/* Loading state */}
+            {loading && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.brand} />
+                <Text style={styles.loadingText}>Brewing ideas...</Text>
+              </View>
+            )}
+
+            {/* Error state */}
+            {error && (
+              <View style={styles.errorContainer}>
+                <SymbolIcon name="exclamationmark.circle" size={32} tintColor="#DC2626" />
+                <Text style={styles.errorText}>{error}</Text>
+                <View style={{ height: 12 }} />
+                <Button title="Try Another Mode" variant="outline" onPress={handleTryAnother} />
+              </View>
+            )}
+
+            {/* Results */}
+            {variations && !loading && (
+              <ScrollView contentContainerStyle={styles.resultsContainer}>
+                <Text style={styles.resultsLabel}>
+                  {MODES.find((m) => m.mode === selectedMode)?.label}
+                </Text>
+                {variations.map((v, i) => (
+                  <VariationCard
+                    key={i}
+                    variation={v}
+                    index={i}
+                    saved={savedIdxs.has(i)}
+                    modified={modifiedIdxs.has(i)}
+                    isWorking={workingIdx === i}
+                    isExpanding={workingIdx === i && workingAction === 'expand'}
+                    isSaving={workingIdx === i && workingAction === 'save'}
+                    isModifying={workingIdx === i && workingAction === 'modify'}
+                    isCooking={workingIdx === i && workingAction === 'cook'}
+                    isRemixing={workingIdx === i && workingAction === 'remix'}
+                    isApplying={workingIdx === i && workingAction === 'apply'}
+                    disabled={workingIdx !== null && workingIdx !== i}
+                    canModifyExisting={source.kind === 'saved'}
+                    applyToDayMode={!!onApplyToDay}
+                    baseIngredients={baseForSave?.ingredients}
+                    onExpand={() => handleExpand(i, v)}
+                    onCook={() => handleCookNow(i, v)}
+                    onSaveAsNew={() => handleSaveAsNew(i, v)}
+                    onModifyExisting={() => handleModifyExisting(i, v)}
+                    onApplyToDay={() => handleApplyToDay(i, v)}
+                    onRemix={() => handleRemixVariation(i, v)}
+                    onOpenSaved={handleOpenSaved}
+                    onOpenModified={handleOpenModified}
+                  />
+                ))}
+                <View style={{ height: 16 }} />
+                <Button
+                  title="Try Another Mode"
+                  variant="outline"
+                  onPress={handleTryAnother}
+                />
+              </ScrollView>
+            )}
+          </View>
+        </Modal>
+      )}
 
       {/* Nested expanded preview — full recipe for the tapped variation.
           Rendered via the shared PreviewSheet with hideRemix + modify support. */}
@@ -741,7 +732,7 @@ export function RemixSheet({
           onClose={() => setNestedRemixContext(null)}
         />
       )}
-    </Modal>
+    </>
   );
 }
 
@@ -1138,18 +1129,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modesContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 40,
-  },
-  helperText: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
   customInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1176,78 +1155,16 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   modeGrid: {
-    // 3-column flex grid. Tiles use ~31% width with 1.5% gaps left/right
-    // (rendered as marginHorizontal) so the row sums to ~99% with breathing
-    // room at the edges. Each tile is a complete card — distinct shadow +
-    // border so adjacent tiles read as separate choices, not a continuous
-    // surface.
+    // 2-col flex grid for mode tiles — sibling layout to FocusPickerSheet
+    // so both pickers read as a coherent family. Each cell wraps an
+    // OptionCard at width: 48%; rowGap 12 keeps vertical rhythm.
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     rowGap: 12,
   },
-  modeTile: {
-    width: '31.5%',
-    minHeight: 116,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    borderWidth: 1,
-    borderColor: '#EBE2D2',
-    shadowColor: '#7A6651',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  modeTileChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  modeTileLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#1A140F',
-    letterSpacing: -0.1,
-    textAlign: 'center',
-    marginBottom: 2,
-  },
-  modeTileSub: {
-    fontSize: 11,
-    color: '#7A6651',
-    textAlign: 'center',
-    lineHeight: 14,
-  },
-  modeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    shadowColor: '#7A6651',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  modeChip: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modeRowText: {
-    flex: 1,
+  modeCell: {
+    width: '48%',
   },
   surpriseCard: {
     flexDirection: 'row',
@@ -1289,16 +1206,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#7A6651',
     marginTop: 2,
-  },
-  modeLabel: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  modeSub: {
-    fontSize: 13,
-    color: colors.textSecondary,
   },
   loadingContainer: {
     flex: 1,
