@@ -625,6 +625,7 @@ Recent decisions affecting current work:
 | 24 | Render Plan focus theme as a pill chip styled like WeekHealthChip + rename "Change"/"Set focus" → "Skill Focus" | 2026-05-03 | a3e6eaa | _fast (inline)_ |
 | 25 | Plan focus chip becomes the click target with "Skill Focus" left-side label; white chip bg for contrast; WeekHealthChip hugs content not full width | 2026-05-03 | 6d38fbe | _fast (inline)_ |
 | 26 | Single-line focus row with bordered chip — drop spacer, drop flexShrink, add 1px warm border so chip reads as a clear labeled container | 2026-05-03 | 669bed7 | _fast (inline)_ |
+| 27 | Harden focus chip layout — bolder warning-tone border, flexShrink:0, alignSelf:flex-start, allowFontScaling=false to lock single-line | 2026-05-03 | 547364e | _fast (inline)_ |
 
 ## Post-v1 Polish (out-of-band, not GSD-planned)
 
