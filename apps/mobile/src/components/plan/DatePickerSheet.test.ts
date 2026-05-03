@@ -4,8 +4,13 @@
  * The sheet is a stateful React component that wraps
  * @react-native-community/datetimepicker's inline calendar. Vitest under
  * node env can't mount the real React Native renderer, so we test the
- * pure helpers (todayUtcMidnight, addDays, toIso) — which carry the
+ * pure helpers (todayLocalMidnight, addDays, toIso) — which carry the
  * contract guarantees — plus the module exports.
+ *
+ * Helpers operate in **local time** because the iOS native picker
+ * interprets value/onChange dates in local time. Tests use the
+ * (year, month, day) Date constructor (which is local-time) so they're
+ * timezone-independent.
  *
  * The visual/interactive behavior is covered by Maestro flow 31
  * (.maestro/31-addtoplan-datepicker.yaml) which downstream plan 22-01
@@ -21,31 +26,31 @@ vi.mock('@react-native-community/datetimepicker', () => ({
 
 import {
   DatePickerSheet,
-  todayUtcMidnight,
+  todayLocalMidnight,
   addDays,
   toIso,
 } from './DatePickerSheet';
 
 describe('DatePickerSheet — pure helpers', () => {
-  it('todayUtcMidnight returns a Date at UTC 00:00:00', () => {
-    const t = todayUtcMidnight();
+  it('todayLocalMidnight returns a Date at local 00:00:00', () => {
+    const t = todayLocalMidnight();
     expect(t).toBeInstanceOf(Date);
-    expect(t.getUTCHours()).toBe(0);
-    expect(t.getUTCMinutes()).toBe(0);
-    expect(t.getUTCSeconds()).toBe(0);
-    expect(t.getUTCMilliseconds()).toBe(0);
+    expect(t.getHours()).toBe(0);
+    expect(t.getMinutes()).toBe(0);
+    expect(t.getSeconds()).toBe(0);
+    expect(t.getMilliseconds()).toBe(0);
   });
 
-  it('todayUtcMidnight matches today (UTC) to the day', () => {
+  it('todayLocalMidnight matches today (local) to the day', () => {
     const now = new Date();
-    const t = todayUtcMidnight();
-    expect(t.getUTCFullYear()).toBe(now.getUTCFullYear());
-    expect(t.getUTCMonth()).toBe(now.getUTCMonth());
-    expect(t.getUTCDate()).toBe(now.getUTCDate());
+    const t = todayLocalMidnight();
+    expect(t.getFullYear()).toBe(now.getFullYear());
+    expect(t.getMonth()).toBe(now.getMonth());
+    expect(t.getDate()).toBe(now.getDate());
   });
 
   it('addDays advances by N days without mutating input', () => {
-    const start = new Date('2026-05-01T00:00:00Z');
+    const start = new Date(2026, 4, 1); // May 1, 2026 local
     const plus10 = addDays(start, 10);
     expect(toIso(plus10)).toBe('2026-05-11');
     // input untouched
@@ -53,28 +58,29 @@ describe('DatePickerSheet — pure helpers', () => {
   });
 
   it('addDays negative days goes backwards', () => {
-    const start = new Date('2026-05-15T00:00:00Z');
+    const start = new Date(2026, 4, 15); // May 15, 2026 local
     expect(toIso(addDays(start, -14))).toBe('2026-05-01');
   });
 
-  it('toIso emits a 10-char YYYY-MM-DD string', () => {
-    expect(toIso(new Date('2026-05-14T12:34:56Z'))).toBe('2026-05-14');
-    expect(toIso(new Date('2026-01-01T00:00:00Z'))).toBe('2026-01-01');
-    expect(toIso(new Date('2026-12-31T23:59:59Z')).length).toBe(10);
+  it('toIso emits a 10-char YYYY-MM-DD string in local time', () => {
+    expect(toIso(new Date(2026, 4, 14, 12, 34, 56))).toBe('2026-05-14');
+    expect(toIso(new Date(2026, 0, 1))).toBe('2026-01-01');
+    expect(toIso(new Date(2026, 11, 31, 23, 59, 59)).length).toBe(10);
   });
 
   it('default maximumDate derivation: today+60d is a valid ISO date', () => {
-    const max = addDays(todayUtcMidnight(), 60);
+    const max = addDays(todayLocalMidnight(), 60);
     const iso = toIso(max);
     expect(iso).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    // 60 days ahead is 60 days later in UTC.
-    const diffMs = max.getTime() - todayUtcMidnight().getTime();
+    // 60 days ahead is 60 days later (allowing 1h slack for any DST
+    // transition crossed in the +60d window).
+    const diffMs = max.getTime() - todayLocalMidnight().getTime();
     expect(Math.round(diffMs / 86_400_000)).toBe(60);
   });
 
   it('default maximumDate is always > default minimumDate (bounds sane)', () => {
-    const min = addDays(todayUtcMidnight(), -60);
-    const max = addDays(todayUtcMidnight(), 60);
+    const min = addDays(todayLocalMidnight(), -60);
+    const max = addDays(todayLocalMidnight(), 60);
     expect(max.getTime()).toBeGreaterThan(min.getTime());
   });
 });

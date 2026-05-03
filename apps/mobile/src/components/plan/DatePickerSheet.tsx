@@ -9,8 +9,8 @@
  *
  * Design per 22-RESEARCH.md Pattern 1:
  *   - display="inline" for iOS 14+ calendar grid (not spinner).
- *   - minimumDate defaults to today-60d (UTC midnight) so users can log
- *     meals they cooked retroactively. Symmetric with the +60d max.
+ *   - minimumDate defaults to today-60d (local midnight) so users can
+ *     log meals they cooked retroactively. Symmetric with the +60d max.
  *   - maximumDate defaults to today+60d — the roadmap cap; aligns with the
  *     server-side 70-day range ceiling (GET /meal-plans from/to).
  *   - Value MUST be initialized to a Date before mount (Pitfall 2: blank
@@ -53,27 +53,37 @@ function getDateTimePicker(): React.ComponentType<Record<string, unknown>> | nul
 }
 
 /**
- * Return today at UTC midnight (a stable "today" that ignores the local
- * time-of-day). Used as the anchor for default initialDate and for the
- * default min/max bounds (today ± 60 days).
+ * Return today at LOCAL midnight (00:00 in the device's timezone). Used
+ * as the anchor for default initialDate and for the default min/max
+ * bounds (today ± 60 days).
+ *
+ * MUST be local-time, not UTC: iOS DateTimePicker (`mode="date"`)
+ * interprets `value` and emits onChange dates in **local** time and
+ * preserves the time-of-day component across selections. Initializing
+ * with UTC midnight makes the picker emit dates with the local
+ * time-of-day equal to the UTC offset, which then serializes to the
+ * wrong day via toISOString (e.g. PT user picks May 1 → emitted Date is
+ * 2026-05-01T17:00-07:00 = 2026-05-02 UTC → "2026-05-02").
  */
-export function todayUtcMidnight(): Date {
+export function todayLocalMidnight(): Date {
   const n = new Date();
-  return new Date(
-    Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()),
-  );
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
 }
 
-/** Add `days` to `d` in UTC. Pure — does not mutate input. */
+/** Add `days` to `d` in local time. Pure — does not mutate input. */
 export function addDays(d: Date, days: number): Date {
   const r = new Date(d);
-  r.setUTCDate(r.getUTCDate() + days);
+  r.setDate(r.getDate() + days);
   return r;
 }
 
-/** Slice a Date to its YYYY-MM-DD string (UTC). */
+/** Slice a Date to its YYYY-MM-DD string in **local** time (matches the
+ *  day the user sees in the iOS picker). */
 export function toIso(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 export interface DatePickerSheetProps {
@@ -98,18 +108,18 @@ export function DatePickerSheet({
   confirmLabel = 'Add',
 }: DatePickerSheetProps) {
   const [selected, setSelected] = useState<Date>(
-    initialDate ?? todayUtcMidnight(),
+    initialDate ?? todayLocalMidnight(),
   );
 
   // Reset the selection when the sheet re-opens with a different initialDate.
   useEffect(() => {
     if (visible) {
-      setSelected(initialDate ?? todayUtcMidnight());
+      setSelected(initialDate ?? todayLocalMidnight());
     }
   }, [visible, initialDate]);
 
-  const resolvedMin = minimumDate ?? addDays(todayUtcMidnight(), -60);
-  const resolvedMax = maximumDate ?? addDays(todayUtcMidnight(), 60);
+  const resolvedMin = minimumDate ?? addDays(todayLocalMidnight(), -60);
+  const resolvedMax = maximumDate ?? addDays(todayLocalMidnight(), 60);
 
   return (
     <Modal
