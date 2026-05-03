@@ -1,22 +1,19 @@
 /**
- * Quick-task 7 — HeroDayCard test suite.
+ * Quick-task 10 — HeroDayCard test suite (post-swipe-replacement).
  *
- * Mirrors SwipeableDayRow.test.ts: vitest-node tree-walk on the rendered
- * JSX. The Reanimated swipe gesture itself can't run under node, so we
- * exercise the same `renderRightActionsFor` helper from SwipeableDayRow
- * (re-used by HeroDayCard) directly to assert telemetry parity.
+ * Tree-walks the rendered JSX under vitest-node. Swipe-left has been
+ * replaced with a floating 5-icon cluster (Swap / Cook Now / Remix /
+ * Cooked / Clear). Each cluster Pressable must:
+ *   - Fire its parent handler.
+ *   - Call e.stopPropagation() so the card-level onPress does NOT fire.
  *
- * The component IS rendered through findInTree — but expo-image,
- * SymbolIcon, ReanimatedSwipeable, and the recipe store are stubbed so
- * the render stays node-pure.
+ * Mocks for ReanimatedSwipeable + plan/telemetry have been removed
+ * because HeroDayCard no longer imports either (renderRightActionsFor
+ * stays in SwipeableDayRow.tsx untouched).
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { ReactElement } from 'react';
-
-vi.mock('react-native-gesture-handler/ReanimatedSwipeable', () => ({
-  default: ({ children }: { children: unknown }) => children,
-}));
 
 vi.mock('../ui/SymbolIcon', () => ({
   SymbolIcon: (props: unknown) => props,
@@ -40,16 +37,7 @@ vi.mock('../../stores/recipeStore', () => ({
   },
 }));
 
-const loggedEvents: Array<Record<string, unknown>> = [];
-vi.mock('../../plan/telemetry', () => ({
-  logPlanEvent: (e: Record<string, unknown>) => {
-    loggedEvents.push(e);
-  },
-  sanitizePayload: (p: Record<string, unknown>) => p,
-}));
-
 import { HeroDayCard } from './HeroDayCard';
-import { renderRightActionsFor } from './SwipeableDayRow';
 import type { MealPlanEntry } from '../../types/mealPlan';
 
 const mkEntry = (overrides: Partial<MealPlanEntry> = {}): MealPlanEntry => ({
@@ -140,11 +128,26 @@ const collectTextStrings = (nodes: NodeProps[]): string[] => {
   return out;
 };
 
-describe('HeroDayCard', () => {
-  beforeEach(() => {
-    loggedEvents.length = 0;
-  });
+const findClusterPressables = (
+  el: ReactElement,
+): Array<{ label: string; node: NodeProps }> => {
+  const tree = walkTree(el);
+  const wanted = new Set(['Swap', 'Cook Now', 'Remix', 'Cooked', 'Clear']);
+  const out: Array<{ label: string; node: NodeProps }> = [];
+  for (const n of tree) {
+    const t = n.type as { name?: string } | undefined;
+    if (typeof t !== 'function' || (t as { name?: string }).name !== 'Pressable')
+      continue;
+    const label = (n.props as { accessibilityLabel?: string })
+      .accessibilityLabel;
+    if (label && wanted.has(label)) {
+      out.push({ label, node: n });
+    }
+  }
+  return out;
+};
 
+describe('HeroDayCard', () => {
   it('exports a function-component named HeroDayCard', () => {
     expect(typeof HeroDayCard).toBe('function');
     expect(HeroDayCard.name).toBe('HeroDayCard');
@@ -160,6 +163,8 @@ describe('HeroDayCard', () => {
       onSwap: vi.fn(),
       onCook: vi.fn(),
       onSkip: vi.fn(),
+      onCookNow: vi.fn(),
+      onRemix: vi.fn(),
     });
     const tree = walkTree(el);
     const texts = collectTextStrings(tree);
@@ -176,6 +181,8 @@ describe('HeroDayCard', () => {
       onSwap: vi.fn(),
       onCook: vi.fn(),
       onSkip: vi.fn(),
+      onCookNow: vi.fn(),
+      onRemix: vi.fn(),
     });
     const tree = walkTree(el);
     const texts = collectTextStrings(tree).join('|');
@@ -194,6 +201,8 @@ describe('HeroDayCard', () => {
       onSwap: vi.fn(),
       onCook: vi.fn(),
       onSkip: vi.fn(),
+      onCookNow: vi.fn(),
+      onRemix: vi.fn(),
     });
     const tree = walkTree(el);
     // Find Chip nodes (function-component .name === 'Chip').
@@ -229,6 +238,8 @@ describe('HeroDayCard', () => {
       onSwap: vi.fn(),
       onCook: vi.fn(),
       onSkip: vi.fn(),
+      onCookNow: vi.fn(),
+      onRemix: vi.fn(),
     });
     const tree = walkTree(el);
     const chipNodes = tree.filter((n) => {
@@ -248,6 +259,8 @@ describe('HeroDayCard', () => {
       onSwap: vi.fn(),
       onCook: vi.fn(),
       onSkip: vi.fn(),
+      onCookNow: vi.fn(),
+      onRemix: vi.fn(),
     });
     const tree = walkTree(el);
     const texts = collectTextStrings(tree).join('|');
@@ -263,6 +276,8 @@ describe('HeroDayCard', () => {
       onSwap: vi.fn(),
       onCook: vi.fn(),
       onSkip: vi.fn(),
+      onCookNow: vi.fn(),
+      onRemix: vi.fn(),
     });
     const tree = walkTree(el);
     const texts = collectTextStrings(tree).join('|');
@@ -279,6 +294,8 @@ describe('HeroDayCard', () => {
       onSwap: vi.fn(),
       onCook: vi.fn(),
       onSkip: vi.fn(),
+      onCookNow: vi.fn(),
+      onRemix: vi.fn(),
     });
     const tree = walkTree(el);
     const texts = collectTextStrings(tree);
@@ -294,6 +311,8 @@ describe('HeroDayCard', () => {
       onSwap: vi.fn(),
       onCook: vi.fn(),
       onSkip: vi.fn(),
+      onCookNow: vi.fn(),
+      onRemix: vi.fn(),
     });
     const tree = walkTree(el);
     const texts = collectTextStrings(tree);
@@ -310,52 +329,173 @@ describe('HeroDayCard', () => {
       onSwap: vi.fn(),
       onCook: vi.fn(),
       onSkip: vi.fn(),
+      onCookNow: vi.fn(),
+      onRemix: vi.fn(),
     });
     const tree = walkTree(el);
-    // Find the outer Pressable that owns the onPress handler.
+    // Find the outer (card-body) Pressable that owns the onPress handler.
+    // Cluster Pressables also live in the tree, so disambiguate by
+    // accessibilityLabel — the outer one starts with the dayLabel.
     const pressables = tree.filter((n) => {
       const t = n.type as { name?: string } | undefined;
       return typeof t === 'function' && (t as { name?: string }).name === 'Pressable';
     });
-    expect(pressables.length).toBeGreaterThanOrEqual(1);
-    const onPressFn = (pressables[0]!.props as { onPress?: () => void }).onPress;
+    const outer = pressables.find((p) => {
+      const label = (p.props as { accessibilityLabel?: string })
+        .accessibilityLabel;
+      return typeof label === 'string' && label.startsWith('MON');
+    });
+    expect(outer).toBeTruthy();
+    const onPressFn = (outer!.props as { onPress?: () => void }).onPress;
     expect(typeof onPressFn).toBe('function');
     onPressFn?.();
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('renderRightActionsFor wired with handlers — tapping each fires the matching parent handler + plan.swipe_action telemetry', () => {
-    const entry = mkEntry();
+  // ── Cluster tests (Quick-10) ──────────────────────────────────────────
+
+  it('renders 5 cluster Pressables: Swap / Cook Now / Remix / Cooked / Clear', () => {
+    const el = HeroDayCard({
+      entry: mkEntry({ recipe_id: 'rec-1' }),
+      dayLabel: 'MON',
+      focusTheme: null,
+      onPress: vi.fn(),
+      onSwap: vi.fn(),
+      onCook: vi.fn(),
+      onSkip: vi.fn(),
+      onCookNow: vi.fn(),
+      onRemix: vi.fn(),
+    });
+    const cluster = findClusterPressables(el);
+    const labels = cluster.map((c) => c.label);
+    expect(labels).toEqual(
+      expect.arrayContaining(['Swap', 'Cook Now', 'Remix', 'Cooked', 'Clear']),
+    );
+    expect(cluster).toHaveLength(5);
+  });
+
+  it('tapping each cluster Pressable fires its matching parent handler', () => {
     const onSwap = vi.fn();
+    const onCookNow = vi.fn();
+    const onRemix = vi.fn();
     const onCook = vi.fn();
     const onSkip = vi.fn();
-    // The hero card uses the SAME helper as SwipeableDayRow — invoke it
-    // directly to verify telemetry + handler dispatch byte-for-byte.
-    const actions = renderRightActionsFor({ entry, onSwap, onCook, onSkip });
-    const tree = walkTree(actions);
-    const pressables = tree.filter((n) => {
-      const t = n.type as { name?: string } | undefined;
-      return typeof t === 'function' && (t as { name?: string }).name === 'Pressable';
+    const el = HeroDayCard({
+      entry: mkEntry({ recipe_id: 'rec-1' }),
+      dayLabel: 'MON',
+      focusTheme: null,
+      onPress: vi.fn(),
+      onSwap,
+      onCook,
+      onSkip,
+      onCookNow,
+      onRemix,
     });
-    expect(pressables).toHaveLength(3);
-    const labels = pressables.map(
-      (p) => (p.props as { accessibilityLabel?: string }).accessibilityLabel,
-    );
-    expect(labels).toEqual(['Swap', 'Cooked', 'Clear']);
+    const cluster = findClusterPressables(el);
+    const byLabel: Record<string, NodeProps> = {};
+    for (const c of cluster) byLabel[c.label] = c.node;
 
-    // Fire each action. Each fire emits one plan.swipe_action telemetry event.
-    (pressables[0]!.props as { onPress?: () => void }).onPress?.();
+    const fire = (label: string) => {
+      const fn = (byLabel[label]!.props as { onPress?: (e: unknown) => void })
+        .onPress;
+      fn?.({ stopPropagation: vi.fn() });
+    };
+    fire('Swap');
     expect(onSwap).toHaveBeenCalledTimes(1);
-    (pressables[1]!.props as { onPress?: () => void }).onPress?.();
+    fire('Cook Now');
+    expect(onCookNow).toHaveBeenCalledTimes(1);
+    fire('Remix');
+    expect(onRemix).toHaveBeenCalledTimes(1);
+    fire('Cooked');
     expect(onCook).toHaveBeenCalledTimes(1);
-    (pressables[2]!.props as { onPress?: () => void }).onPress?.();
+    fire('Clear');
     expect(onSkip).toHaveBeenCalledTimes(1);
+  });
 
-    expect(loggedEvents).toHaveLength(3);
-    expect(loggedEvents.every((e) => e.name === 'plan.swipe_action')).toBe(true);
-    const variants = loggedEvents.map(
-      (e) => (e.payload as { variant?: string }).variant,
+  it('each cluster Pressable calls e.stopPropagation() on its event arg', () => {
+    const el = HeroDayCard({
+      entry: mkEntry({ recipe_id: 'rec-1' }),
+      dayLabel: 'MON',
+      focusTheme: null,
+      onPress: vi.fn(),
+      onSwap: vi.fn(),
+      onCook: vi.fn(),
+      onSkip: vi.fn(),
+      onCookNow: vi.fn(),
+      onRemix: vi.fn(),
+    });
+    const cluster = findClusterPressables(el);
+    expect(cluster).toHaveLength(5);
+    for (const c of cluster) {
+      const stopPropagation = vi.fn();
+      const fn = (c.node.props as { onPress?: (e: unknown) => void }).onPress;
+      fn?.({ stopPropagation });
+      expect(stopPropagation).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('Cook Now disabled (opacity 0.4, no-op) when entry.recipe_id is null', () => {
+    const onCookNow = vi.fn();
+    const el = HeroDayCard({
+      entry: mkEntry({ recipe_id: null }),
+      dayLabel: 'MON',
+      focusTheme: null,
+      onPress: vi.fn(),
+      onSwap: vi.fn(),
+      onCook: vi.fn(),
+      onSkip: vi.fn(),
+      onCookNow,
+      onRemix: vi.fn(),
+    });
+    const cluster = findClusterPressables(el);
+    const cook = cluster.find((c) => c.label === 'Cook Now')!.node;
+    expect(cook).toBeTruthy();
+    // disabled prop reflects the lack of recipe_id.
+    expect((cook.props as { disabled?: boolean }).disabled).toBe(true);
+    // Style resolves an opacity 0.4 entry when invoked with the not-pressed
+    // state (Pressable accepts a function-style style prop).
+    const styleProp = (cook.props as {
+      style?: unknown;
+    }).style;
+    let resolved: unknown = styleProp;
+    if (typeof styleProp === 'function') {
+      resolved = (styleProp as (s: { pressed: boolean }) => unknown)({
+        pressed: false,
+      });
+    }
+    const flat = Array.isArray(resolved) ? resolved.flat(Infinity) : [resolved];
+    const hasOpacity04 = flat.some(
+      (s) =>
+        s &&
+        typeof s === 'object' &&
+        (s as { opacity?: number }).opacity === 0.4,
     );
-    expect(variants).toEqual(['swap', 'cook', 'skip']);
+    expect(hasOpacity04).toBe(true);
+    // Tapping is a no-op (does not fire onCookNow) — covers both an
+    // RN-honored `disabled` flag and the in-handler guard.
+    const fn = (cook.props as { onPress?: (e: unknown) => void }).onPress;
+    fn?.({ stopPropagation: vi.fn() });
+    expect(onCookNow).not.toHaveBeenCalled();
+  });
+
+  it('Cook Now enabled and fires onCookNow when entry.recipe_id is set', () => {
+    const onCookNow = vi.fn();
+    const el = HeroDayCard({
+      entry: mkEntry({ recipe_id: 'rec-42' }),
+      dayLabel: 'MON',
+      focusTheme: null,
+      onPress: vi.fn(),
+      onSwap: vi.fn(),
+      onCook: vi.fn(),
+      onSkip: vi.fn(),
+      onCookNow,
+      onRemix: vi.fn(),
+    });
+    const cluster = findClusterPressables(el);
+    const cook = cluster.find((c) => c.label === 'Cook Now')!.node;
+    expect((cook.props as { disabled?: boolean }).disabled).toBe(false);
+    const fn = (cook.props as { onPress?: (e: unknown) => void }).onPress;
+    fn?.({ stopPropagation: vi.fn() });
+    expect(onCookNow).toHaveBeenCalledTimes(1);
   });
 });

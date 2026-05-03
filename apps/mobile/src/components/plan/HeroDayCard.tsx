@@ -1,5 +1,6 @@
 /**
- * Quick-task 7 — HeroDayCard.
+ * Quick-task 7 — HeroDayCard. Quick-task 10 — swipe-left replaced with
+ * a floating 5-icon cluster.
  *
  * Detailed-mode hero treatment for the active day in the Plan tab.
  * Rendered at the day's natural FlatList position (NOT pinned to top) so
@@ -7,7 +8,7 @@
  *
  *   ┌──────────────────────────────────────────────┐
  *   │ ┌──────────────────────────────────────────┐ │
- *   │ │ [16:9 hero image]                        │ │
+ *   │ │ [16:9 hero image]              [Cluster] │ │
  *   │ │                                          │ │
  *   │ │ MON · 4/27                               │ │
  *   │ │ Lemon Pan-Sauce Chicken                  │ │
@@ -17,10 +18,17 @@
  *   │ Practices fond → reduction → mounted butter. │
  *   └──────────────────────────────────────────────┘
  *
- * Swipe-left reveals the same Swap / Cooked / Clear actions the
- * SwipeableDayRow does — `renderRightActionsFor` is imported directly
- * from SwipeableDayRow so telemetry (`plan.swipe_action` with variant
- * 'swap'|'cook'|'skip') stays byte-identical. No re-emission needed.
+ * The bottom-right cluster mirrors the SuggestionCard / RecipeCard
+ * precedent: a semi-transparent dark capsule (rgba(0,0,0,0.55)) hosting
+ * 5 SF Symbols at 22pt — Swap, Cook Now (flame), Remix (sparkles),
+ * Cooked, Clear. Each Pressable calls e.stopPropagation() so a tap on
+ * an icon never falls through to the card-level onPress (preview /
+ * detail navigation).
+ *
+ * Cook Now is visually disabled (opacity 0.4) when entry.recipe_id is
+ * null — ad-hoc plan entries don't have a recipe to route to. The
+ * Pressable also carries `disabled` so RN ignores the touch entirely;
+ * the in-handler guard remains as defense-in-depth.
  *
  * Tap routing is parent-owned (onPress prop) — same delegation contract
  * as DayRow / SwipeableDayRow. The parent's plan.tsx onPress callback
@@ -39,11 +47,13 @@
  *   - useGeneratedRecipeImage is called UNCONDITIONALLY (Rules of Hooks).
  *     We pass `skip: !!savedRecipe?.image_url` so it's a no-op when the
  *     saved recipe already has an image.
+ *
+ * Compact-mode SwipeableDayRow keeps its swipe-left actions and the
+ * shared `renderRightActionsFor` export — unchanged here.
  */
 
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet, Dimensions } from 'react-native';
-import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { HeroImage } from '../ui/HeroImage';
 import { Chip } from '../ui/Chip';
 import { SymbolIcon } from '../ui/SymbolIcon';
@@ -51,7 +61,6 @@ import { colors } from '../../design/tokens';
 import { useRecipeStore } from '../../stores/recipeStore';
 import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
 import { deriveStatusChips, type DayRowStatus } from './dayRowHelpers';
-import { renderRightActionsFor } from './SwipeableDayRow';
 import type { MealPlanEntry } from '../../types/mealPlan';
 import type { SymbolViewProps } from 'expo-symbols';
 
@@ -66,6 +75,12 @@ export interface HeroDayCardProps {
   onSwap: () => void;
   onCook: () => void;
   onSkip: () => void;
+  /** Quick-10: route into cooking mode for the day's recipe. Disabled in
+      the UI when entry.recipe_id is null. */
+  onCookNow: () => void;
+  /** Quick-10: open RemixSheet directly with the day's entry as the
+      inline-source — does NOT route through PlanEntryPreview. */
+  onRemix: () => void;
 }
 
 /**
@@ -87,6 +102,8 @@ export function HeroDayCard({
   onSwap,
   onCook,
   onSkip,
+  onCookNow,
+  onRemix,
 }: HeroDayCardProps): React.ReactElement {
   // 16:9 aspect from current window width (minus the 16pt horizontal
   // margin on each side).
@@ -130,83 +147,181 @@ export function HeroDayCard({
   }
 
   const isCooked = entry.status === 'cooked';
+  const cookNowEnabled = !!entry.recipe_id;
 
   return (
     <View style={styles.tileWrap}>
-      <ReanimatedSwipeable
-        renderRightActions={() =>
-          renderRightActionsFor({ entry, onSwap, onCook, onSkip })
-        }
-        rightThreshold={80}
-        overshootRight={false}
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.card,
+          pressed && styles.cardPressed,
+          isCooked && styles.cardCooked,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`${dayLabel} hero meal: ${entry.title}`}
       >
-        <Pressable
-          onPress={onPress}
-          style={({ pressed }) => [
-            styles.card,
-            pressed && styles.cardPressed,
-            isCooked && styles.cardCooked,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={`${dayLabel} hero meal: ${entry.title}`}
-        >
-          {/* Hero image lives in an inner component (owns the recipe-store
-              selector + Gemini fetch hook). Day label + title render as
-              overlay siblings inside the outer tree so vitest-node tests
-              can see them without invoking the hook-bearing inner. */}
-          <View style={styles.heroFrame}>
-            <HeroDayCardImage entry={entry} heroHeight={heroHeight} />
-            <View style={[styles.heroOverlayContent, { bottom: 16 }]}>
-              {/* Date stack — day name as kicker, date as the prominent
-                  line. Mirrors the Apple Calendar / Things-style
-                  big-date-on-top pattern so the user can scan day-by-day
-                  without hunting for the date in a thin meta strip. */}
-              <Text style={styles.dayLabel}>{dayLabel.toUpperCase()}</Text>
-              {dateLabel ? (
-                <Text style={styles.dateLabel}>{dateLabel}</Text>
-              ) : null}
-              <Text style={styles.title} numberOfLines={2}>
-                {entry.title}
-              </Text>
-            </View>
+        {/* Hero image lives in an inner component (owns the recipe-store
+            selector + Gemini fetch hook). Day label + title render as
+            overlay siblings inside the outer tree so vitest-node tests
+            can see them without invoking the hook-bearing inner. */}
+        <View style={styles.heroFrame}>
+          <HeroDayCardImage entry={entry} heroHeight={heroHeight} />
+          <View style={[styles.heroOverlayContent, { bottom: 16 }]}>
+            {/* Date stack — day name as kicker, date as the prominent
+                line. Mirrors the Apple Calendar / Things-style
+                big-date-on-top pattern so the user can scan day-by-day
+                without hunting for the date in a thin meta strip. */}
+            <Text style={styles.dayLabel}>{dayLabel.toUpperCase()}</Text>
+            {dateLabel ? (
+              <Text style={styles.dateLabel}>{dateLabel}</Text>
+            ) : null}
+            <Text style={styles.title} numberOfLines={2}>
+              {entry.title}
+            </Text>
           </View>
 
-          {/* Meta strip (difficulty · time · servings) */}
-          {metaParts.length > 0 && (
-            <View style={styles.metaRow}>
+          {/* Quick-10 floating cluster: 5 tappable icons matching the
+              SuggestionCard / RecipeCard precedent. Each Pressable
+              stops propagation so taps DON'T trigger the card-level
+              onPress. Cook Now is visually disabled when there is no
+              recipe to route to (ad-hoc entries). */}
+          <View style={styles.heroIconCluster}>
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                onSwap();
+              }}
+              hitSlop={6}
+              accessibilityLabel="Swap"
+              style={({ pressed }) => [
+                styles.iconBtn,
+                pressed && { opacity: 0.6 },
+              ]}
+            >
               <SymbolIcon
-                name={'fork.knife' as SymbolViewProps['name']}
-                size={13}
-                tintColor={colors.textSecondary}
+                name={'arrow.2.squarepath' as SymbolViewProps['name']}
+                size={22}
+                tintColor="#FFFFFF"
               />
-              <Text style={styles.metaText}>{metaParts.join(' · ')}</Text>
-            </View>
-          )}
+            </Pressable>
 
-          {/* Chip row — ALL chips from deriveStatusChips (status / stretch /
-              pantry / difficulty / ALL practiced_skills / health). */}
-          {chips.length > 0 && (
-            <View style={styles.chipRow}>
-              {chips.map((c) => (
-                <View key={c.label} style={styles.chipWrap}>
-                  <Chip
-                    kind="display"
-                    tone={c.tone}
-                    label={c.label}
-                    leadingIcon={
-                      c.leadingIcon as SymbolViewProps['name'] | undefined
-                    }
-                  />
-                </View>
-              ))}
-            </View>
-          )}
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                if (!cookNowEnabled) return;
+                onCookNow();
+              }}
+              hitSlop={6}
+              disabled={!cookNowEnabled}
+              accessibilityLabel="Cook Now"
+              style={({ pressed }) => [
+                styles.iconBtn,
+                !cookNowEnabled && { opacity: 0.4 },
+                pressed && cookNowEnabled && { opacity: 0.6 },
+              ]}
+            >
+              <SymbolIcon
+                name={'flame.fill' as SymbolViewProps['name']}
+                size={22}
+                tintColor="#FFE4B5"
+              />
+            </Pressable>
 
-          {entry.skill_note ? (
-            <Text style={styles.skillNote}>{entry.skill_note}</Text>
-          ) : null}
-        </Pressable>
-      </ReanimatedSwipeable>
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                onRemix();
+              }}
+              hitSlop={6}
+              accessibilityLabel="Remix"
+              style={({ pressed }) => [
+                styles.iconBtn,
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <SymbolIcon
+                name={'sparkles' as SymbolViewProps['name']}
+                size={22}
+                tintColor="#FFE4B5"
+              />
+            </Pressable>
+
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                onCook();
+              }}
+              hitSlop={6}
+              accessibilityLabel="Cooked"
+              style={({ pressed }) => [
+                styles.iconBtn,
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <SymbolIcon
+                name={'checkmark.circle.fill' as SymbolViewProps['name']}
+                size={22}
+                tintColor="#FFFFFF"
+              />
+            </Pressable>
+
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                onSkip();
+              }}
+              hitSlop={6}
+              accessibilityLabel="Clear"
+              style={({ pressed }) => [
+                styles.iconBtn,
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <SymbolIcon
+                name={'xmark.circle.fill' as SymbolViewProps['name']}
+                size={22}
+                tintColor="#FFFFFF"
+              />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Meta strip (difficulty · time · servings) */}
+        {metaParts.length > 0 && (
+          <View style={styles.metaRow}>
+            <SymbolIcon
+              name={'fork.knife' as SymbolViewProps['name']}
+              size={13}
+              tintColor={colors.textSecondary}
+            />
+            <Text style={styles.metaText}>{metaParts.join(' · ')}</Text>
+          </View>
+        )}
+
+        {/* Chip row — ALL chips from deriveStatusChips (status / stretch /
+            pantry / difficulty / ALL practiced_skills / health). */}
+        {chips.length > 0 && (
+          <View style={styles.chipRow}>
+            {chips.map((c) => (
+              <View key={c.label} style={styles.chipWrap}>
+                <Chip
+                  kind="display"
+                  tone={c.tone}
+                  label={c.label}
+                  leadingIcon={
+                    c.leadingIcon as SymbolViewProps['name'] | undefined
+                  }
+                />
+              </View>
+            ))}
+          </View>
+        )}
+
+        {entry.skill_note ? (
+          <Text style={styles.skillNote}>{entry.skill_note}</Text>
+        ) : null}
+      </Pressable>
     </View>
   );
 }
@@ -352,5 +467,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 10,
     lineHeight: 18,
+  },
+  // Quick-10: floating overlay cluster. rgba over hero imagery is allowed
+  // per existing precedent in RecipeCard styles.actionBadge / actionCluster.
+  heroIconCluster: {
+    position: 'absolute',
+    right: 12,
+    bottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 9999,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 8,
+  },
+  iconBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 28,
+    minHeight: 28,
   },
 });
