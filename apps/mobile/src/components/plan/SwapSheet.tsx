@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,9 +13,37 @@ import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 import { supabase } from '../../lib/supabase';
 import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
+import { useRecipeStore } from '../../stores/recipeStore';
 import type { MealPlanEntry } from '../../types/mealPlan';
-import type { ParsedRecipe } from '../../types/recipe';
+import type { ParsedRecipe, Recipe } from '../../types/recipe';
 import { colors } from '../../design/tokens';
+
+/**
+ * Recipe Box → ParsedRecipe shape. Strips the DB-only fields (id,
+ * profile_id, created_at, etc.) so the swap commit (`applySwap`)
+ * receives the same shape it gets from AI candidates and Remix flows.
+ */
+function recipeToParsed(r: Recipe): ParsedRecipe {
+  return {
+    title: r.title,
+    description: r.description ?? null,
+    ingredients: r.ingredients,
+    steps: r.steps,
+    prep_time_minutes: r.prep_time_minutes ?? null,
+    cook_time_minutes: r.cook_time_minutes ?? null,
+    total_time_minutes: r.total_time_minutes ?? null,
+    servings: r.servings ?? null,
+    image_url: r.image_url ?? null,
+    source_type: r.source_type ?? null,
+    source_url: r.source_url ?? null,
+    calories_per_serving: r.calories_per_serving ?? null,
+    protein_grams_per_serving: r.protein_grams_per_serving ?? null,
+    fat_grams_per_serving: r.fat_grams_per_serving ?? null,
+    difficulty: r.difficulty ?? null,
+    practiced_skills: r.practiced_skills ?? null,
+    skill_note: r.skill_note ?? null,
+  };
+}
 
 interface SwapSheetProps {
   visible: boolean;
@@ -67,41 +95,53 @@ export function SwapSheet({
   onSelect,
   onClose,
 }: SwapSheetProps) {
-  const [candidates, setCandidates] = useState<ParsedRecipe[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [committingIdx, setCommittingIdx] = useState<number | null>(null);
+  // Recipe Box first: the user's existing library is the primary source.
+  // Filter out the entry's own backing recipe so the user can't "swap"
+  // the meal for the same meal, then sort alphabetically for predictable
+  // scanning. AI candidates only fetch when the user explicitly asks via
+  // "Generate fresh ideas" — keeps the default open instant + offline.
+  const recipeBox = useRecipeStore((s) => s.recipes);
+  const boxCandidates = useMemo<ParsedRecipe[]>(() => {
+    const filtered = currentEntry?.recipe_id
+      ? recipeBox.filter((r) => r.id !== currentEntry.recipe_id)
+      : recipeBox;
+    return [...filtered]
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .map(recipeToParsed);
+  }, [recipeBox, currentEntry?.recipe_id]);
 
-  const load = useCallback(async () => {
+  const [aiCandidates, setAiCandidates] = useState<ParsedRecipe[]>([]);
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [committingKey, setCommittingKey] = useState<string | null>(null);
+
+  const loadAi = useCallback(async () => {
     if (!currentEntry) return;
-    setLoading(true);
+    setLoadingAi(true);
     try {
-      // Use the entry's title as the search hint so candidates land in
-      // the same culinary neighborhood (similar protein / cuisine /
-      // weight). pantryOnly=true keeps the swap aligned with what the
-      // user can actually cook tonight.
+      // Title-anchored, pantry-only — same culinary neighborhood, ingredients
+      // the user can actually cook tonight.
       const next = await fetchCandidates(currentEntry.title);
-      setCandidates(next.slice(0, 4));
+      setAiCandidates(next.slice(0, 4));
     } finally {
-      setLoading(false);
+      setLoadingAi(false);
     }
   }, [currentEntry]);
 
   useEffect(() => {
     if (!visible) {
-      setCandidates([]);
-      setCommittingIdx(null);
-      return;
+      setAiCandidates([]);
+      setLoadingAi(false);
+      setCommittingKey(null);
     }
-    void load();
-  }, [visible, load]);
+  }, [visible]);
 
-  const handlePick = async (idx: number, candidate: ParsedRecipe) => {
-    setCommittingIdx(idx);
+  const handlePick = async (key: string, candidate: ParsedRecipe) => {
+    setCommittingKey(key);
     try {
       await onSelect(candidate);
       onClose();
     } finally {
-      setCommittingIdx(null);
+      setCommittingKey(null);
     }
   };
 
@@ -133,42 +173,81 @@ export function SwapSheet({
             </Pressable>
           </View>
 
-          {loading ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator size="large" color={colors.brand} />
-              <Text style={styles.loadingText}>Finding alternatives…</Text>
-            </View>
-          ) : candidates.length === 0 ? (
-            <View style={styles.loadingWrap}>
-              <Text style={styles.loadingText}>
-                No alternatives found. Try regenerating.
-              </Text>
-              <View style={{ height: 16 }} />
-              <Button title="Try again" variant="outline" onPress={() => void load()} />
-            </View>
-          ) : (
-            <ScrollView
-              contentContainerStyle={styles.list}
-              showsVerticalScrollIndicator={false}
-            >
-              {candidates.map((c, idx) => (
-                <CandidateCard
-                  key={`${c.title}-${idx}`}
-                  recipe={c}
-                  committing={committingIdx === idx}
-                  disabled={committingIdx !== null && committingIdx !== idx}
-                  onPress={() => void handlePick(idx, c)}
+          <ScrollView
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+          >
+            {boxCandidates.length > 0 ? (
+              <>
+                <Text style={styles.sectionLabel}>FROM YOUR RECIPE BOX</Text>
+                {boxCandidates.map((c, idx) => {
+                  const key = `box-${idx}`;
+                  return (
+                    <CandidateCard
+                      key={key}
+                      recipe={c}
+                      committing={committingKey === key}
+                      disabled={committingKey !== null && committingKey !== key}
+                      onPress={() => void handlePick(key, c)}
+                    />
+                  );
+                })}
+              </>
+            ) : (
+              <View style={styles.emptyBox}>
+                <SymbolIcon
+                  name="tray"
+                  size={28}
+                  tintColor={colors.textTertiary}
                 />
-              ))}
-              <View style={{ height: 8 }} />
+                <Text style={styles.emptyBoxText}>
+                  Your Recipe Box is empty. Generate ideas below or save
+                  recipes from Discover first.
+                </Text>
+              </View>
+            )}
+
+            {/* Generate-ideas section. Stays collapsed until the user asks
+                for AI candidates — keeps the default sheet open instant
+                and offline-friendly. */}
+            <View style={styles.aiSectionDivider} />
+            <Text style={styles.sectionLabel}>FRESH IDEAS</Text>
+            {loadingAi ? (
+              <View style={styles.aiLoadingWrap}>
+                <ActivityIndicator size="small" color={colors.brand} />
+                <Text style={styles.loadingText}>Finding alternatives…</Text>
+              </View>
+            ) : aiCandidates.length === 0 ? (
               <Button
-                title="Show different options"
+                title="Generate ideas"
                 variant="outline"
-                onPress={() => void load()}
-                disabled={committingIdx !== null}
+                onPress={() => void loadAi()}
+                disabled={committingKey !== null}
               />
-            </ScrollView>
-          )}
+            ) : (
+              <>
+                {aiCandidates.map((c, idx) => {
+                  const key = `ai-${idx}`;
+                  return (
+                    <CandidateCard
+                      key={key}
+                      recipe={c}
+                      committing={committingKey === key}
+                      disabled={committingKey !== null && committingKey !== key}
+                      onPress={() => void handlePick(key, c)}
+                    />
+                  );
+                })}
+                <View style={{ height: 4 }} />
+                <Button
+                  title="Show different ideas"
+                  variant="outline"
+                  onPress={() => void loadAi()}
+                  disabled={committingKey !== null}
+                />
+              </>
+            )}
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -310,8 +389,39 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginTop: 12,
+    marginTop: 8,
     textAlign: 'center',
+  },
+  // Section header for "FROM YOUR RECIPE BOX" / "FRESH IDEAS"
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    color: '#C05A00',
+    marginBottom: 10,
+    marginLeft: 2,
+  },
+  emptyBox: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  emptyBoxText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  aiSectionDivider: {
+    height: 1,
+    backgroundColor: '#F1EAE0',
+    marginVertical: 16,
+  },
+  aiLoadingWrap: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    gap: 8,
   },
   list: {
     padding: 16,
