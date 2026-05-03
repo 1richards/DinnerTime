@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: Completed 01-missing-ingredient-indicators-on-recipe-ingredient-lists/01-PLAN.md — isIngredientInPantry helper + ScaledIngredientList trailing indicator (PreviewSheet covers Recipe Box detail / Discover preview / Plan day modal in one diff) + cooking IngredientRow + ScrollableRecipe outer-wrapper wiring; 29/29 tests green; 1 Rule 3 deviation (ScrollableRecipe outer/inner split for vitest-node + supabase CJS chain compatibility).
-last_updated: "2026-05-01T02:22:34.321Z"
-last_activity: "2026-05-03 - Completed quick task 10: Plan tab density redesign — planCardDensity setting (compact/detailed) + HeroDayCard for today + all practiced_skills chips on every day with matching focus highlighted. 160/160 plan + settingsStore tests green."
+stopped_at: "Completed quick task 10: HeroDayCard swipe-left replaced with 5-icon cluster (Swap / Cook Now / Remix / Cooked / Clear) + plan.tsx wires onCookNow router push + onRemix direct RemixSheet mount; 22/22 plan tests green"
+last_updated: "2026-05-03T16:28:07.055Z"
+last_activity: "2026-04-24 - Completed quick task 5: ElevenLabs TTS integration — backend proxy + cooking-mode playback with expo-speech fallback"
 progress:
   total_phases: 1
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
   percent: 97
 ---
 
@@ -650,7 +650,7 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-05-01T02:11:58.800Z
-Stopped at: Completed 01-missing-ingredient-indicators-on-recipe-ingredient-lists/01-PLAN.md — isIngredientInPantry helper + ScaledIngredientList trailing indicator (PreviewSheet covers Recipe Box detail / Discover preview / Plan day modal in one diff) + cooking IngredientRow + ScrollableRecipe outer-wrapper wiring; 29/29 tests green; 1 Rule 3 deviation (ScrollableRecipe outer/inner split for vitest-node + supabase CJS chain compatibility).
+Last session: 2026-05-03T16:28:07.048Z
+Stopped at: Completed quick task 10: HeroDayCard swipe-left replaced with 5-icon cluster (Swap / Cook Now / Remix / Cooked / Clear) + plan.tsx wires onCookNow router push + onRemix direct RemixSheet mount; 22/22 plan tests green
 Resume file: None
 | 2026-04-28 | fast | More options pill padding | done |
