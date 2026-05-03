@@ -183,7 +183,16 @@ Or use the helper: `apps/mobile/.maestro/scripts/uat.sh {boot|smoke|all|shot|log
 
 ## Dev Environment Startup
 
-Starting the full dev stack requires three things: the backend server, Metro bundler, and (for physical iPhone testing) a Cloudflare tunnel. Each session starts from zero — nothing persists across Claude sessions.
+Three components: backend server, Metro bundler, and (for physical-iPhone testing) a transport that exposes both to the device. Each session starts from zero — nothing persists across Claude sessions except the Tailscale Serve config (see below).
+
+There are three viable transport setups depending on where the iPhone is:
+
+| Scenario | Transport | API URL | Metro URL |
+|----------|-----------|---------|-----------|
+| Simulator | none | `http://localhost:3000` | auto (`--lan`) |
+| Physical iPhone, same WiFi | LAN | `http://192.168.4.43:3000` | auto (`--lan`) |
+| Physical iPhone, away from home | **Tailscale Serve (preferred)** | `https://clawdaddy.taile16aae.ts.net:8443` | `https://clawdaddy.taile16aae.ts.net` |
+| Physical iPhone, no Tailscale | Cloudflare tunnel | `https://<random>.trycloudflare.com` | `--tunnel` (ngrok) |
 
 ### 1. Start the Server
 
@@ -192,32 +201,78 @@ cd /Users/patrickrichards/DinnerTime
 set -a && source .env && set +a && cd packages/server && pnpm dev
 ```
 
-The server runs on port 3000. Environment variables live in the **root** `.env` file (not `packages/server/.env`). The server uses `dotenv` to load `../../.env` automatically, but `tsx watch` hot-reloads can sometimes lose the env — if the server crashes with `Missing required environment variable`, source the root `.env` manually as shown above.
+Server runs on port 3000. Env vars live in the **root** `.env` (not `packages/server/.env`). The server uses `dotenv` to load `../../.env` automatically, but `tsx watch` hot-reloads can sometimes lose the env — if it crashes with `Missing required environment variable`, source the root `.env` manually as shown above. Server is bound to `0.0.0.0` in `packages/server/src/index.ts` so it's reachable on the Tailscale virtual interface (utun) too.
 
 ### 2. Start Metro
 
+For **simulator or physical iPhone on the same WiFi**:
 ```bash
 cd apps/mobile
-npx expo start --dev-client --lan        # works for both simulator and iPhone on same WiFi
+npx expo start --dev-client --lan
 ```
 
-- Use `--lan` always. `--tunnel` (ngrok) is unreliable and not needed when iPhone is on the same WiFi as the Mac Mini.
-- After changing `apps/mobile/.env`, you MUST clear the Metro cache: `rm -rf .expo && npx expo start --dev-client --lan --clear`. Expo inlines `EXPO_PUBLIC_*` vars at **bundle time** — a running Metro won't pick up `.env` changes.
+For **physical iPhone via Tailscale (away-from-home)**:
+```bash
+cd apps/mobile
+EXPO_PACKAGER_PROXY_URL=https://clawdaddy.taile16aae.ts.net \
+REACT_NATIVE_PACKAGER_HOSTNAME=clawdaddy.taile16aae.ts.net \
+  npx expo start --dev-client --lan --clear
+```
+Both env vars are required — `EXPO_PACKAGER_PROXY_URL` makes Metro emit bundle URLs pointing at the public HTTPS proxy; `REACT_NATIVE_PACKAGER_HOSTNAME` puts the same host in the manifest's `hostUri`.
+
+- After changing `apps/mobile/.env`, you MUST clear the Metro cache: `rm -rf .expo && ... --clear`. Expo inlines `EXPO_PUBLIC_*` vars at **bundle time** — a running Metro won't pick up `.env` changes.
 - If the app shows stale errors after a URL change, the Zustand persisted state in AsyncStorage may need clearing. Force-close the app or, in extreme cases, delete `RCTAsyncLocalStorage_V1` from the simulator's app container.
 
-### 3. Cloudflare Tunnel (for physical iPhone)
+### 3. Transport: Tailscale Serve (preferred for away-from-home)
 
-The iPhone cannot reach `localhost` or `127.0.0.1` — those resolve to the phone itself. For physical device testing, start a Cloudflare tunnel:
+**One-time setup:**
+1. Enable Tailscale Serve on the tailnet via the admin console (one click). If `tailscale serve` reports "Serve is not enabled on your tailnet" the first time, follow the URL it prints.
+2. Pre-issue the cert (idempotent, instant if already issued):
+   ```bash
+   tailscale cert clawdaddy.taile16aae.ts.net
+   ```
+
+**Each session (Tailscale Serve config persists across reboots — usually you don't redo this):**
+```bash
+# Metro on the default HTTPS port (443) — port-less URL avoids dev-client URL parser quirks.
+tailscale serve --bg --https=443 http://localhost:8081
+
+# API on a non-default HTTPS port (8443) — app fetches via explicit URL with port.
+tailscale serve --bg --https=8443 http://localhost:3000
+
+tailscale serve status   # verify both mappings
+```
+
+Then in `apps/mobile/.env`:
+```
+EXPO_PUBLIC_API_URL=https://clawdaddy.taile16aae.ts.net:8443
+```
+
+**On the iPhone**, in the Expo dev client → "Enter URL manually":
+```
+https://clawdaddy.taile16aae.ts.net
+```
+**Use the `https://` form, NOT `exp://` or `exps://`** — those scheme variants silently fail to connect in some dev-client builds even when the proxy is healthy.
+
+**Why the port arrangement (Metro on 443, API on 8443):**
+- Metro on the default HTTPS port lets the dev client use a port-less URL. With a non-default port (e.g. `:8443`) the dev client's URL parser failed to connect even though Safari at the same URL worked.
+- The API can live on any port because the mobile app fetches with explicit URLs containing the port; ATS doesn't care about port numbers, only that the host has a valid HTTPS cert.
+
+**Reverting / disabling:**
+```bash
+tailscale serve --https=443 off
+tailscale serve --https=8443 off
+```
+
+### 4. Transport: Cloudflare tunnel (fallback when Tailscale isn't an option)
 
 ```bash
 cloudflared tunnel --url http://localhost:3000
 # Outputs a URL like: https://random-words.trycloudflare.com
 ```
+Update `apps/mobile/.env`: `EXPO_PUBLIC_API_URL=https://<tunnel-url>.trycloudflare.com`.
 
-Then update `apps/mobile/.env`:
-```
-EXPO_PUBLIC_API_URL=https://<tunnel-url>.trycloudflare.com
-```
+For Metro, run `npx expo start --dev-client --tunnel --clear` (uses Expo's built-in ngrok relay). The dev client's `*.exp.direct` URL is registered with Expo's manifest service — auto-discovers if you're logged into the same Expo account. **Note:** dev-client connections to `*.exp.direct` are flaky in some builds; if it fails the same way the Tailscale URL did, fall back to the simulator.
 
 **Tunnel URLs are ephemeral** — they change every time `cloudflared` restarts. Update `.env` and restart Metro with `--clear` each session.
 
@@ -235,9 +290,14 @@ For **simulator-only** testing, use `EXPO_PUBLIC_API_URL=http://localhost:3000` 
 
 - **iPhone camera photos exceed Anthropic's 5MB limit** at high quality. `scan/index.tsx` uses `quality: 0.4` to keep images under 5MB. Don't raise this without testing on a real device.
 - **`SecureStore unavailable` warning** on simulator is expected — Expo SecureStore requires a real Keychain. Auth falls back to AsyncStorage. Not a bug.
-- **Server binds to IPv6 by default** (`@hono/node-server` behavior). Both IPv4 and IPv6 localhost work from the simulator. If networking issues arise, add `hostname: '0.0.0.0'` to the `serve()` call in `packages/server/src/index.ts`.
-- **Mac Mini host**: `clawdaddy` on Tailscale (`100.90.230.96`), LAN IP typically `192.168.4.43`. iPhone must be on the same WiFi (`192.168.4.x` network).
+- **Server bind:** `serve()` in `packages/server/src/index.ts` uses `hostname: '0.0.0.0'` so the port is reachable on the Tailscale interface (utun) as well as loopback. Don't change this back to default — it'll silently break Tailscale Serve and physical-iPhone testing.
+- **Mac Mini host**: `clawdaddy` on Tailscale (`100.90.230.96`), tailnet `taile16aae.ts.net`, LAN IP typically `192.168.4.43`. MagicDNS resolves `clawdaddy.taile16aae.ts.net` from any tailnet member.
 - **Dev client bundle ID**: `com.dinnertime.app` (not `com.patrickrrichards.dinnertime`).
+- **Dev client URL scheme:** when entering a URL manually in the dev client, **use `https://...` not `exp://` or `exps://`**. The `exp[s]://` variants fail to connect against Tailscale Serve / Cloudflare tunnel HTTPS proxies even when the same URL works in Safari. Plain `https://` works.
+- **Dev client + non-standard ports:** the dev client URL parser is unreliable with non-443 ports. Metro must be exposed on **HTTPS port 443** for the dev client manual-URL path to work; put the API on `:8443` instead. Putting Metro on `:8443` while connecting via `exps://...:8443` silently fails — the request never reaches Metro (zero inbound logs) even though the proxy is healthy.
+- **iOS ATS + Tailscale plain HTTP:** `NSAllowsLocalNetworking: true` in `app.json` covers RFC1918 ranges (10.x, 172.16-31.x, 192.168.x) but **NOT** the Tailscale CGNAT range (100.64.0.0/10). Plain HTTP to a `100.x` IP or `*.ts.net` is blocked in native fetches. Always use HTTPS via Tailscale Serve, never plain HTTP to the Tailscale IP. Adding ATS exception domains requires a dev-client rebuild (~15 min).
+- **PostgREST schema cache:** after applying a Supabase migration that adds columns, save errors with "Could not find the 'X' column of 'Y' in the schema cache" mean PostgREST hasn't refreshed its cache. Either wait ~30s or in the Supabase SQL editor run `NOTIFY pgrst, 'reload schema';`. Saves should work immediately after.
+- **Stale persisted state on cart-add:** Zustand-persisted `currentList` in `shoppingStore` can point at a server-deleted row. The store now self-recovers (refresh-or-create + retry on 404 from `/shopping/items`); same pattern lives in `mealPlanStore`. If you add a new "lazy resource" pattern, replicate the 404-recovery branch.
 
 <!-- GSD:profile-start -->
 ## Developer Profile

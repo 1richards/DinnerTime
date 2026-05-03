@@ -60,6 +60,11 @@ if (process.env.NODE_ENV !== 'test') {
   serve({
     fetch: app.fetch,
     port,
+    // Bind on all interfaces so the server is reachable on the Tailscale
+    // virtual interface (utun) for physical-iPhone testing away from home,
+    // not just IPv6 localhost. Tailscale Serve still proxies localhost,
+    // but having 0.0.0.0 means direct Tailscale-IP access also works.
+    hostname: '0.0.0.0',
   });
 }
 
