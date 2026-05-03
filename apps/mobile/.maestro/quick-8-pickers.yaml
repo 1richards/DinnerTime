@@ -1,0 +1,79 @@
+appId: com.dinnertime.app
+name: "Quick-8 — picker visual parity"
+tags:
+  - qa
+  - quick-8
+# Captures focus picker + remix mode picker screenshots so the orchestrator
+# can verify they render as siblings (2-col OptionCard grid, matching
+# kicker/title/close-button headers).
+---
+- runFlow: _ensure-logged-in.yaml
+
+# --- Plan tab → maybe generate a plan -------------------------------------
+# Tab bar has 5 tabs (Kitchen / Pantry / Plan / Shopping / Settings).
+# Plan is the middle tab — tap by coordinate since text matching is
+# unreliable on the rendered tab-bar text labels.
+- tapOn:
+    point: "50%,96%"
+- extendedWaitUntil:
+    visible:
+      text: ".*Set focus.*|.*Change.*|Generate this week"
+    timeout: 30000
+# If no plan exists, generate one (requires backend; ~120s).
+- runFlow:
+    when:
+      visible:
+        text: "Generate this week"
+    commands:
+      - tapOn:
+          text: "Generate this week"
+      - extendedWaitUntil:
+          visible:
+            text: ".*Set focus.*|.*Change.*"
+          timeout: 180000
+
+# --- Focus picker ---------------------------------------------------------
+# Try the change pill first (if a focus is already set), else fall back to
+# Set focus. Either text — both routes open FocusPickerSheet.
+- tapOn:
+    text: "Change"
+    optional: true
+- tapOn:
+    text: "Set focus"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: "Pick a skill to practice"
+    timeout: 10000
+- takeScreenshot: quick-8-focus-picker
+- tapOn:
+    id: "Close"
+    optional: true
+- tapOn:
+    point: "92%,12%"
+    optional: true
+
+# --- Remix mode picker ----------------------------------------------------
+# Back to Kitchen (Home) tab first since we navigated to Plan.
+- tapOn:
+    point: "10%,96%"
+- extendedWaitUntil:
+    visible:
+      text: ".*Recipe Box.*"
+    timeout: 10000
+- tapOn:
+    text: ".*Recipe Box.*"
+# Tap the first recipe card (50%, 45%) — matches qa-remix-grid.yaml pattern.
+- tapOn:
+    point: "50%,45%"
+- extendedWaitUntil:
+    visible:
+      text: "Remix"
+    timeout: 10000
+- tapOn:
+    text: "Remix"
+- extendedWaitUntil:
+    visible:
+      text: "Surprise me"
+    timeout: 10000
+- takeScreenshot: quick-8-remix-mode-picker
