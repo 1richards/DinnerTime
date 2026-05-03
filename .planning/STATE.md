@@ -624,6 +624,7 @@ Recent decisions affecting current work:
 | 23 | Remove dead {planActionsRow} reference crashing Plan tab on render | 2026-05-03 | ca292a9 | _fast (inline)_ |
 | 24 | Render Plan focus theme as a pill chip styled like WeekHealthChip + rename "Change"/"Set focus" → "Skill Focus" | 2026-05-03 | a3e6eaa | _fast (inline)_ |
 | 25 | Plan focus chip becomes the click target with "Skill Focus" left-side label; white chip bg for contrast; WeekHealthChip hugs content not full width | 2026-05-03 | 6d38fbe | _fast (inline)_ |
+| 26 | Single-line focus row with bordered chip — drop spacer, drop flexShrink, add 1px warm border so chip reads as a clear labeled container | 2026-05-03 | 669bed7 | _fast (inline)_ |
 
 ## Post-v1 Polish (out-of-band, not GSD-planned)
 
