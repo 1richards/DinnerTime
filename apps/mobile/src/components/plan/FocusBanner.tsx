@@ -48,6 +48,14 @@ export function FocusBanner() {
   const planId = currentPlan.id;
   const weekStart = currentPlan.week_start;
 
+  // Picker flow:
+  //   1. User taps a card → FocusPickerSheet shows an optimistic checkmark.
+  //   2. PATCH lands (await setFocusTheme); on success we present the
+  //      Regenerate Alert ON TOP OF the still-visible picker sheet.
+  //   3. Whichever Alert button the user taps closes the picker. iOS stacks
+  //      the Alert above the modal correctly when the modal isn't being
+  //      dismissed concurrently — so no setTimeout dance is needed.
+  // Clearing the focus (next === null) skips the Alert and just dismisses.
   const handleSelect = async (next: string | null) => {
     setSavingFocus(true);
     try {
@@ -55,41 +63,46 @@ export function FocusBanner() {
     } finally {
       setSavingFocus(false);
     }
-    if (next) {
-      const sessionId =
-        typeof globalThis.crypto?.randomUUID === 'function'
-          ? globalThis.crypto.randomUUID()
-          : `fc-${Date.now()}`;
-      logPlanEvent({
-        name: 'plan.focus_theme_set',
-        session_id: sessionId,
-        meal_plan_id: planId,
-        payload: sanitizePayload({
-          meal_plan_id: planId,
-          week_start: weekStart,
-        }),
-      });
-      // Defer the Alert by a tick so iOS finishes dismissing the
-      // FocusPickerSheet before trying to present another modal on top.
-      // Without this delay the Alert occasionally never appears (the
-      // dismissing sheet "owns" the presentation slot during animation).
-      setTimeout(() => {
-        Alert.alert(
-          'Regenerate this week?',
-          `Rebuild the week's meals to lean into "${next}"?`,
-          [
-            { text: 'Not now', style: 'cancel' },
-            {
-              text: 'Regenerate',
-              style: 'default',
-              onPress: () => {
-                void useMealPlanStore.getState().generate(weekStart);
-              },
-            },
-          ],
-        );
-      }, 350);
+
+    if (!next) {
+      setPickerVisible(false);
+      return;
     }
+
+    const sessionId =
+      typeof globalThis.crypto?.randomUUID === 'function'
+        ? globalThis.crypto.randomUUID()
+        : `fc-${Date.now()}`;
+    logPlanEvent({
+      name: 'plan.focus_theme_set',
+      session_id: sessionId,
+      meal_plan_id: planId,
+      payload: sanitizePayload({
+        meal_plan_id: planId,
+        week_start: weekStart,
+      }),
+    });
+
+    Alert.alert(
+      'Regenerate this week?',
+      `Rebuild the week's meals to lean into "${next}"?`,
+      [
+        {
+          text: 'Not now',
+          style: 'cancel',
+          onPress: () => setPickerVisible(false),
+        },
+        {
+          text: 'Regenerate',
+          style: 'default',
+          onPress: () => {
+            setPickerVisible(false);
+            void useMealPlanStore.getState().generate(weekStart);
+          },
+        },
+      ],
+      { cancelable: false },
+    );
   };
 
   const handleSet = () => setPickerVisible(true);

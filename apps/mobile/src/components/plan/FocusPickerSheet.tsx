@@ -12,7 +12,7 @@
  * preserves the free-form path for users who want their own theme.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   View,
@@ -117,12 +117,28 @@ export function FocusPickerSheet({
   onClose,
 }: FocusPickerSheetProps) {
   const [committing, setCommitting] = useState<string | null>(null);
+  // Optimistic checkmark — populated synchronously on tap so the user sees
+  // their selection register before the PATCH round-trip completes (~1-2s).
+  // Falls back to currentTheme until the user picks. Resets when the sheet
+  // is reopened (otherwise a previously-selected-then-cancelled theme would
+  // appear pre-checked).
+  const [optimisticTheme, setOptimisticTheme] = useState<string | null>(
+    currentTheme,
+  );
 
+  useEffect(() => {
+    if (visible) setOptimisticTheme(currentTheme);
+  }, [visible, currentTheme]);
+
+  // Parent (FocusBanner) is responsible for closing the sheet — it presents
+  // the Regenerate Alert on top of the still-visible sheet, then calls
+  // setPickerVisible(false) once the user chooses. Closing here would race
+  // the Alert presentation and lose the modal slot on iOS.
   const commit = async (theme: string | null) => {
+    setOptimisticTheme(theme);
     setCommitting(theme ?? '__clear__');
     try {
       await onSelect(theme);
-      onClose();
     } finally {
       setCommitting(null);
     }
@@ -166,7 +182,7 @@ export function FocusPickerSheet({
 
         <ScrollView contentContainerStyle={styles.list}>
           {FOCUS_OPTIONS.map((opt) => {
-            const isCurrent = currentTheme === opt.key;
+            const isCurrent = optimisticTheme === opt.key;
             const isCommitting = committing === opt.key;
             return (
               <Pressable
