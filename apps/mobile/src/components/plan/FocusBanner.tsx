@@ -129,13 +129,15 @@ export function FocusBanner({ children }: FocusBannerProps = {}) {
       accessibilityLabel="Weekly skill focus banner"
     >
       <View style={styles.focusRow}>
-        <Text style={styles.focusLabel}>Skill Focus</Text>
+        <Text style={styles.focusLabel} numberOfLines={1}>
+          Skill Focus
+        </Text>
         {isBusy ? (
           <>
             <ActivityIndicator size="small" color={colors.brand} />
-            <Text style={styles.text} numberOfLines={2}>
+            <Text style={styles.text} numberOfLines={1}>
               {planLoading
-                ? `Rebuilding the week${theme ? ` around “${theme}”` : ''}…`
+                ? `Rebuilding${theme ? ` around “${theme}”` : ''}…`
                 : 'Saving focus…'}
             </Text>
           </>
@@ -161,7 +163,6 @@ export function FocusBanner({ children }: FocusBannerProps = {}) {
             </Text>
           </Pressable>
         )}
-        <View style={{ flex: 1 }} />
       </View>
 
       {hasChildren ? (
@@ -223,18 +224,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textSecondary,
   },
-  // Focus theme rendered as a pressable pill chip. White bg gives clean
-  // contrast against the warm cream banner (#FFF4E6) so the chip pops as
-  // a tappable affordance rather than blending in.
+  // Focus theme rendered as a pressable pill chip. White bg + warm-tone
+  // border give clean contrast against the cream banner so the chip
+  // reads as a clearly-bounded container, not floating text.
   focusChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: '#FFFFFF',
-    flexShrink: 1,
+    borderWidth: 1,
+    borderColor: '#F5D9B0',
   },
   focusChipPressed: {
     opacity: 0.7,
