@@ -156,19 +156,21 @@ export function FocusBanner({ children }: FocusBannerProps = {}) {
               pressed && styles.focusChipPressed,
             ]}
           >
-            <SymbolIcon
-              name="target"
-              size={14}
-              tintColor={colors.warning}
-              weight="semibold"
-            />
-            <Text
-              style={styles.focusChipLabel}
-              numberOfLines={1}
-              allowFontScaling={false}
-            >
-              {theme ?? 'Set focus'}
-            </Text>
+            <View style={styles.focusChipInner}>
+              <SymbolIcon
+                name="target"
+                size={14}
+                tintColor={colors.warning}
+                weight="semibold"
+              />
+              <Text
+                style={styles.focusChipLabel}
+                numberOfLines={1}
+                allowFontScaling={false}
+              >
+                {theme ?? 'Set focus'}
+              </Text>
+            </View>
           </Pressable>
         )}
       </View>
@@ -254,6 +256,14 @@ const styles = StyleSheet.create({
   },
   focusChipPressed: {
     opacity: 0.7,
+  },
+  // Inner row guarantees icon + text stay side-by-side regardless of any
+  // Pressable style-merging quirks (function-form `style={({pressed}) => …}`
+  // can drop properties on some hosts).
+  focusChipInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   focusChipLabel: {
     fontSize: 12,
