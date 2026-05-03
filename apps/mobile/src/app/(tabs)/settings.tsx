@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, router } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { usePreferencesStore } from '../../stores/preferencesStore';
-import { useCookingStore } from '../../stores/cookingStore';
 import { useProgressionStore } from '../../stores/progressionStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { deriveSkillTier } from '../../plan/skillTier';
@@ -30,10 +29,6 @@ export default function SettingsScreen() {
   const signOut = useAuthStore((s) => s.signOut);
   const loadPreferences = usePreferencesStore((s) => s.loadPreferences);
   const isLoading = usePreferencesStore((s) => s.isLoading);
-  // Phase 16-07: cooking preferences — dark-mode toggle. Persisted via the
-  // cookingStore's partialize rule so the value survives app restarts.
-  const darkMode = useCookingStore((s) => s.darkMode);
-  const setDarkMode = useCookingStore((s) => s.setDarkMode);
   // Phase 22-05: Plan section inputs — skill tier is derived read-only from
   // progressionStore.cookStats (same helper the server uses), banner toggle
   // is a persisted settingsStore boolean defaulting to true.
@@ -163,37 +158,17 @@ export default function SettingsScreen() {
 
         <View className="border-b border-warmGray-100 my-4" />
 
-        {/* Phase 16-07: Cooking preferences — dark-mode toggle per UI-SPEC
-            §Copywriting "Dark mode toggle" + §Component Inventory "Settings
-            additions". Wired to cookingStore.setDarkMode (persisted). */}
+        {/* Cooking section — voice picker only (TTS). Quick-task 9 removed
+            the dark-mode toggle and the on-device STT toggle pre-launch. */}
         <View className="mb-2">
           <Text className="text-label text-text-secondary uppercase mb-3">
             COOKING
           </Text>
-          <View
-            className="flex-row items-center justify-between py-4 border-b border-border"
-            accessibilityRole="switch"
-            accessibilityState={{ checked: darkMode }}
-            accessibilityLabel="Dark cooking mode"
-          >
-            <View className="flex-1 pr-4">
-              <Text className="text-body text-text-primary">
-                Dark cooking mode
-              </Text>
-              <Text className="text-body text-text-secondary">
-                Darker background while cooking. Matches Spotify's Now Playing feel.
-              </Text>
-            </View>
-            <Switch value={darkMode} onValueChange={setDarkMode} />
-          </View>
-
           {/* v1.0.2: Cooking voice picker — choose the ElevenLabs voice
               for step read-aloud. Persists in settingsStore; useStepSpeaker
               reads it at TTS-fetch time so changes apply on the next step
               without a remount. */}
-          <View className="mt-4">
-            <CookingVoiceSection />
-          </View>
+          <CookingVoiceSection />
         </View>
 
         <View className="border-b border-warmGray-100 my-4" />

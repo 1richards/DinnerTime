@@ -9,7 +9,6 @@ import { describe, it, expect, vi } from 'vitest';
 import type { ReactElement } from 'react';
 import { TEST_RECIPE } from '../../../cooking/__fixtures__/recipe';
 
-// @ts-expect-error — component does not exist yet (Wave 0 red stub; shipped 16-05)
 import { StickyCookingHeader } from '../StickyCookingHeader';
 
 type AnyEl = ReactElement<any>;
@@ -34,11 +33,8 @@ describe('StickyCookingHeader', () => {
   const baseProps = {
     recipe: TEST_RECIPE,
     timers: [],
-    voiceEnabled: true,
-    listening: false,
     ttsSpeaking: false,
     onExit: vi.fn(),
-    onToggleVoice: vi.fn(),
     onStopTTS: vi.fn(),
   };
 

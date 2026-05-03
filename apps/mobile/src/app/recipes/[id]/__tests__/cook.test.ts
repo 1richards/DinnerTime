@@ -82,7 +82,6 @@ describe('cook screen transcript dispatch', () => {
     useCookingStore.setState({
       recipe: null,
       stepIndex: 0,
-      voiceEnabled: true,
       ttsEnabled: true,
       listening: false,
       timers: [],

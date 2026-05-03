@@ -271,7 +271,7 @@ describe('cookingStore', () => {
         }
       ).persist.rehydrate();
 
-      const s = useCookingStore.getState() as Record<string, unknown>;
+      const s = useCookingStore.getState() as unknown as Record<string, unknown>;
       // Migration drops legacy keys — they should be undefined on the
       // rehydrated state (initialState shape doesn't include them).
       expect(s.darkMode).toBeUndefined();

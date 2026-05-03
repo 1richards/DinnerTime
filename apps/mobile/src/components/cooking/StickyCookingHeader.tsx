@@ -3,33 +3,29 @@
  *
  * Always-visible cluster sitting above the scrollable recipe body in cooking
  * mode. Composes every "counter-distance critical" control: Exit, recipe
- * title, active-timer strip, TTS-interrupt, and voice waveform.
+ * title, active-timer strip, TTS-interrupt.
  *
  * Layout (UI-SPEC §Layout structure + §Spacing):
  *   - Base band: 64pt tall (`h-16`), row with Exit (left), recipe title
  *     (centred, 1-line truncate), action cluster (right: optional Stop
- *     reading, always Voice waveform).
+ *     reading).
  *   - Timer band: 48pt (`h-12`), rendered only when `timers.length > 0`.
  *   - Surface: `bg-surface` + 1pt `border-border` divider. Accent color
- *     (`brand`) is RESERVED for the waveform mic fill + StopTTSButton,
- *     never for the header background (UI-SPEC §Color).
+ *     (`brand`) is RESERVED for StopTTSButton, never for the header
+ *     background (UI-SPEC §Color).
  *
- * Rendering note: sub-components (`TimerBar`, `StopTTSButton`,
- * `VoiceWaveform`) are invoked as functions rather than JSX elements so
- * the unit-test tree-flattener (which only walks `props.children`) sees
- * their descendant nodes. Functionally identical to `<Component />` at
- * runtime in React.
+ * Rendering note: sub-components (`TimerBar`, `StopTTSButton`) are invoked as
+ * functions rather than JSX elements so the unit-test tree-flattener (which
+ * only walks `props.children`) sees their descendant nodes. Functionally
+ * identical to `<Component />` at runtime in React.
  *
- * Props shape (matches Wave 0 test contract, which passes a full Recipe —
- * NOT just the title string): `{ recipe, timers, voiceEnabled, listening,
- * ttsSpeaking, onExit, onToggleVoice, onStopTTS, onCancelTimer? }`.
+ * Props shape: `{ recipe, timers, ttsSpeaking, onExit, onStopTTS, onCancelTimer? }`.
  */
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { colors } from '../../design/tokens';
 import TimerBar from './TimerBar';
-import { VoiceWaveform } from './VoiceWaveform';
 import { StopTTSButton } from './StopTTSButton';
 import type { Recipe } from '../../types/recipe';
 import type { Timer } from '../../types/cooking';
@@ -37,11 +33,8 @@ import type { Timer } from '../../types/cooking';
 export interface StickyCookingHeaderProps {
   recipe: Recipe;
   timers: Timer[];
-  voiceEnabled: boolean;
-  listening: boolean;
   ttsSpeaking: boolean;
   onExit: () => void;
-  onToggleVoice: () => void;
   onStopTTS: () => void;
   /** Optional — callers that don't need cancel can omit it (no-op fallback). */
   onCancelTimer?: (id: string) => void;
@@ -50,11 +43,8 @@ export interface StickyCookingHeaderProps {
 export function StickyCookingHeader({
   recipe,
   timers,
-  voiceEnabled,
-  listening,
   ttsSpeaking,
   onExit,
-  onToggleVoice,
   onStopTTS,
   onCancelTimer,
 }: StickyCookingHeaderProps) {
@@ -89,16 +79,13 @@ export function StickyCookingHeader({
           {recipe.title}
         </Text>
 
-        {/* Right: TTS interrupt (conditional) + voice waveform.
-            Components invoked as functions so the test tree-flattener
-            (which only walks .props.children) sees their descendants. */}
+        {/* Right: TTS interrupt (conditional). Wrapper preserves the
+            right-side reservation slot so the title doesn't reflow when
+            TTS toggles. Component invoked as a function so the test
+            tree-flattener (which only walks .props.children) sees its
+            descendants. */}
         <View className="flex-row items-center gap-2">
           {ttsSpeaking ? StopTTSButton({ onPress: onStopTTS }) : null}
-          {VoiceWaveform({
-            listening,
-            enabled: voiceEnabled,
-            onToggle: onToggleVoice,
-          })}
         </View>
       </View>
 

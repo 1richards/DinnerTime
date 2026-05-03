@@ -39,15 +39,6 @@ export interface StepNavButtonsProps {
       + celebration overlay + nav to Plan. Optional for backward compat
       with any caller that hasn't migrated. */
   onDone?: () => void;
-  /**
-   * Voice toggle: cooking mode no longer auto-enables the mic. The user
-   * opts in via this button. Active state mirrors `voiceEnabled` so the
-   * icon flips between mic.fill (on, brand-tinted) and mic.slash (off).
-   * Both onToggleVoice and voiceEnabled are required together; a caller
-   * that isn't ready to expose voice yet can omit both.
-   */
-  onToggleVoice?: () => void;
-  voiceEnabled?: boolean;
 }
 
 interface NavButtonProps {
@@ -61,10 +52,6 @@ interface NavButtonProps {
       brand bg). Used by the Done button on the last step so the
       finale CTA reads as the primary action. */
   primary?: boolean;
-  /** Render the icon and label tinted with the brand accent — used by
-      the Mic button when voice is on so the active state reads at a
-      glance from across the kitchen. */
-  active?: boolean;
 }
 
 function NavButton({
@@ -74,7 +61,6 @@ function NavButton({
   disabled = false,
   testID,
   primary = false,
-  active = false,
 }: NavButtonProps) {
   // Wrap the Pressable in a View when primary so the brand bg paints
   // reliably on iOS 26 / Fabric (mirrors the Surprise me hero fix in
@@ -108,7 +94,7 @@ function NavButton({
       </View>
     );
   }
-  const tint = active ? colors.brand : colors.textPrimary;
+  const tint = colors.textPrimary;
   return (
     <Pressable
       onPress={disabled ? undefined : onPress}
@@ -116,15 +102,15 @@ function NavButton({
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled, selected: active }}
+      accessibilityState={{ disabled }}
       className={`flex-1 flex-row items-center justify-center gap-2 bg-surface rounded-button ${
         disabled ? 'opacity-40' : ''
       }`}
       // 72pt deviation from Phase 19's 44pt minimum — see file header comment.
       style={{
         height: 72,
-        borderWidth: active ? 2 : 1,
-        borderColor: active ? colors.brand : colors.border,
+        borderWidth: 1,
+        borderColor: colors.border,
       }}
     >
       <SymbolView
@@ -153,11 +139,8 @@ export default function StepNavButtons({
   disableBack,
   disableNext,
   onDone,
-  onToggleVoice,
-  voiceEnabled,
 }: StepNavButtonsProps) {
   const showDone = disableNext && typeof onDone === 'function';
-  const showVoice = typeof onToggleVoice === 'function';
   return (
     <View
       className="flex-row items-center justify-between gap-3 px-4 bg-bg border-t border-border"
@@ -177,15 +160,6 @@ export default function StepNavButtons({
         onPress={onRepeat}
         testID="cook-repeat"
       />
-      {showVoice ? (
-        <NavButton
-          label="Voice"
-          icon={voiceEnabled ? 'mic.fill' : 'mic.slash.fill'}
-          onPress={onToggleVoice!}
-          testID="cook-voice"
-          active={!!voiceEnabled}
-        />
-      ) : null}
       {showDone ? (
         <NavButton
           label="Done"
