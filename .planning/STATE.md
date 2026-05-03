@@ -627,6 +627,7 @@ Recent decisions affecting current work:
 | 26 | Single-line focus row with bordered chip — drop spacer, drop flexShrink, add 1px warm border so chip reads as a clear labeled container | 2026-05-03 | 669bed7 | _fast (inline)_ |
 | 27 | Harden focus chip layout — bolder warning-tone border, flexShrink:0, alignSelf:flex-start, allowFontScaling=false to lock single-line | 2026-05-03 | 547364e | _fast (inline)_ |
 | 28 | Fix DatePicker timezone bug — Cook Later from recipe box was placing recipes on the next day for users west of UTC; switch helpers from UTC to local-time | 2026-05-03 | 60ebbb1 | _fast (inline)_ |
+| 29 | Wrap focus chip content in inner row View — defensive guard so icon+text stay side-by-side regardless of Pressable style-merging quirks | 2026-05-03 | 6af46ae | _fast (inline)_ |
 
 ## Post-v1 Polish (out-of-band, not GSD-planned)
 
