@@ -548,11 +548,6 @@ export function RemixSheet({
                 <Text style={styles.surpriseLabel}>Surprise me</Text>
                 <Text style={styles.surpriseSub}>A bold creative twist</Text>
               </View>
-              <SymbolIcon
-                name="chevron.forward"
-                size={18}
-                tintColor={colors.brand}
-              />
             </Pressable>
 
             {/* 3-column grid of remix modes. Each tile is a self-contained
