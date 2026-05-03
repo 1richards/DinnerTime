@@ -6,7 +6,7 @@ current_plan: Not started
 status: planning
 stopped_at: Completed 01-missing-ingredient-indicators-on-recipe-ingredient-lists/01-PLAN.md — isIngredientInPantry helper + ScaledIngredientList trailing indicator (PreviewSheet covers Recipe Box detail / Discover preview / Plan day modal in one diff) + cooking IngredientRow + ScrollableRecipe outer-wrapper wiring; 29/29 tests green; 1 Rule 3 deviation (ScrollableRecipe outer/inner split for vitest-node + supabase CJS chain compatibility).
 last_updated: "2026-05-01T02:22:34.321Z"
-last_activity: "2026-05-02 - Completed quick task 9: recipe difficulty + practiced_skills + skill_note (DB → AI → Plan/Detail UI). Migration 00035 applied via supabase db push --linked after schema-cache save error surfaced during UAT."
+last_activity: "2026-05-03 - Completed quick task 10: Plan tab density redesign — planCardDensity setting (compact/detailed) + HeroDayCard for today + all practiced_skills chips on every day with matching focus highlighted. 160/160 plan + settingsStore tests green."
 progress:
   total_phases: 1
   completed_phases: 1
@@ -606,6 +606,7 @@ Recent decisions affecting current work:
 | 7 | Pin DatePickerSheet to light theme so calendar text stays readable in dark mode | 2026-04-30 | 0dbe7cb | _fast (inline)_ |
 | 8 | Allow back-dating in DatePickerSheet — symmetric ±60d default window | 2026-04-30 | bbf1091 | _fast (inline)_ |
 | 9 | Add recipe difficulty (Easy/Medium/Hard) + practiced_skills (8-key taxonomy) + skill_note — AI-assigned, surfaced as Plan day chips + Recipe detail card | 2026-05-02 | 1d4c475 | [6-add-recipe-difficulty-easy-medium-hard-a](./quick/6-add-recipe-difficulty-easy-medium-hard-a/) |
+| 10 | Plan tab density redesign — planCardDensity setting (compact/detailed) + HeroDayCard for today + all practiced_skills chips on every day with matching focus highlighted | 2026-05-03 | f29be49 | [7-plan-tab-density-redesign-plancarddensit](./quick/7-plan-tab-density-redesign-plancarddensit/) |
 | 9 | Surface pantry-skip context in Instacart handoff success copy | 2026-04-30 | 58b7820 | _fast (inline)_ |
 | 10 | Relabel handoff secondary CTA "shopping list" → "shopping cart" | 2026-04-30 | eadfe50 | _fast (inline)_ |
 | 11 | Remove Allergies UI from Settings (duplicated Dietary Preferences) | 2026-04-30 | c301276 | _fast (inline)_ |
