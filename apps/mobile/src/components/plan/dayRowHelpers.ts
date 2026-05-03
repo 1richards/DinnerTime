@@ -141,11 +141,14 @@ export function deriveStatusChips(args: DeriveArgs): StatusChipDescriptor[] {
     const matched = themeLc
       ? args.practicedSkills.find((s) => s.toLowerCase() === themeLc) ?? null
       : null;
+    // Icon: `target` (concentric crosshair) reads as "aim to practice
+    // this skill". Sparkles is reserved for Remix everywhere else; using
+    // it here would conflate the two semantics.
     if (matched) {
       out.push({
         label: sentenceCase(matched),
         tone: 'warning',
-        leadingIcon: 'sparkles',
+        leadingIcon: 'target',
       });
     }
     for (const skill of args.practicedSkills) {
@@ -153,7 +156,7 @@ export function deriveStatusChips(args: DeriveArgs): StatusChipDescriptor[] {
       out.push({
         label: sentenceCase(skill),
         tone: 'default',
-        leadingIcon: 'sparkles',
+        leadingIcon: 'target',
       });
     }
   }

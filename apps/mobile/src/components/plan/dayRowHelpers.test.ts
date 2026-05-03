@@ -248,7 +248,8 @@ describe('deriveStatusChips: practiced-skills chips (quick-task 7)', () => {
     expect(chip!.label).toBe('Pan sauces');
   });
 
-  it('all skill chips use leadingIcon "sparkles" (matched + default)', () => {
+  it('all skill chips use leadingIcon "target" (matched + default)', () => {
+    // Sparkles is reserved for Remix; "target" is the skill-practice glyph.
     const r = deriveStatusChips({
       status: 'planned',
       practicedSkills: ['knife skills', 'pan sauces'],
@@ -259,7 +260,7 @@ describe('deriveStatusChips: practiced-skills chips (quick-task 7)', () => {
     );
     expect(skillChips.length).toBe(2);
     for (const c of skillChips) {
-      expect(c.leadingIcon).toBe('sparkles');
+      expect(c.leadingIcon).toBe('target');
     }
   });
 

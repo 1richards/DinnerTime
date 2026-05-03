@@ -113,7 +113,7 @@ export function FocusBanner() {
       {isBusy ? (
         <ActivityIndicator size="small" color={colors.brand} />
       ) : (
-        <SymbolIcon name="sparkles" size={16} tintColor={colors.warning} />
+        <SymbolIcon name="target" size={16} tintColor={colors.warning} />
       )}
       {isBusy ? (
         <Text style={styles.text} numberOfLines={2}>
