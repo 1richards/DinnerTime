@@ -318,6 +318,7 @@ export function PreviewSheet({
   modifyLabel = 'Update existing recipe',
   modifiedLabel = 'Recipe updated',
   stepsLoading = false,
+  onApplyToDay,
 }: {
   recipe: DiscoveredRecipe;
   /** Null renders a beige skeleton — no keyword-stock fallback exists anymore. */
@@ -361,6 +362,11 @@ export function PreviewSheet({
       the Plan tab while it fetches the AI-expanded recipe in the
       background, so users don't see "No steps listed." flash. */
   stepsLoading?: boolean;
+  /** Plan-flow handoff. When set, the inner RemixSheet renders its
+      variation cards in apply-to-day mode — picking a variation saves
+      to library AND fires this callback (parent wires to applySwap).
+      Pass-through only; PreviewSheet itself doesn't directly use it. */
+  onApplyToDay?: (full: ParsedRecipe) => Promise<void>;
 }) {
   const totalTime =
     recipe.total_time_minutes ??
@@ -733,6 +739,7 @@ export function PreviewSheet({
             steps: recipe.steps,
             total_time_minutes: recipe.total_time_minutes,
           }}
+          onApplyToDay={onApplyToDay}
           onClose={() => setRemixOpen(false)}
         />
       )}

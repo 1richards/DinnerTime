@@ -135,7 +135,6 @@ export default function PlanScreen() {
   // entries that aren't backed by a saved Recipe still get a real
   // image-forward detail surface instead of a plain Alert.
   const [previewEntry, setPreviewEntry] = useState<MealPlanEntry | null>(null);
-  const [previewSaving, setPreviewSaving] = useState(false);
   const [previewCooking, setPreviewCooking] = useState(false);
   const [previewCookingLater, setPreviewCookingLater] = useState(false);
   const [previewClearing, setPreviewClearing] = useState(false);
@@ -1077,7 +1076,6 @@ export default function PlanScreen() {
           <PlanEntryPreview
             entry={previewEntry}
             recipe={previewRecipe}
-            saving={previewSaving}
             cooking={previewCooking}
             cookingLater={previewCookingLater}
             clearing={previewClearing}
@@ -1095,18 +1093,18 @@ export default function PlanScreen() {
               }
             }}
             onClose={() => setPreviewEntry(null)}
-            onSave={async () => {
-              setPreviewSaving(true);
-              try {
-                // The plan entry already carries the full recipe (steps,
-                // ingredient quantities, prep/cook times) so saving is
-                // just persisting the previewRecipe — no second Claude
-                // round-trip needed.
-                await saveRecipe({ ...previewRecipe, source_type: 'ai' });
-                setPreviewEntry(null);
-              } finally {
-                setPreviewSaving(false);
-              }
+            onApplyToDay={async (full) => {
+              if (!previewEntry) return;
+              // Replace the day's plan entry with the remixed variation.
+              // RemixSheet has already saved the variation to the recipe
+              // library by this point; here we only need to assign it to
+              // the calling day. applySwap re-fetches the plan so the new
+              // entry's server-derived fields populate correctly.
+              await useMealPlanStore.getState().applySwap(
+                previewEntry.day_of_week,
+                full,
+              );
+              setPreviewEntry(null);
             }}
             onCookNow={async () => {
               setPreviewCooking(true);
@@ -1236,12 +1234,11 @@ export default function PlanScreen() {
 interface PlanEntryPreviewProps {
   entry: MealPlanEntry;
   recipe: ParsedRecipe;
-  saving: boolean;
   cooking: boolean;
   cookingLater: boolean;
   clearing: boolean;
   onClose: () => void;
-  onSave: () => Promise<void>;
+  onApplyToDay: (full: ParsedRecipe) => Promise<void>;
   onCookNow: () => Promise<void>;
   onCookLater: (iso: string) => Promise<void>;
   onClear: () => Promise<void>;
@@ -1250,12 +1247,11 @@ interface PlanEntryPreviewProps {
 function PlanEntryPreview({
   entry,
   recipe,
-  saving,
   cooking,
   cookingLater,
   clearing,
   onClose,
-  onSave,
+  onApplyToDay,
   onCookNow,
   onCookLater,
   onClear,
@@ -1269,13 +1265,20 @@ function PlanEntryPreview({
     generatedUri,
     entry.title,
   );
+  // Save-Recipe is hidden in the plan-day flow (the recipe is already
+  // assigned to a day; saving to library separately is not the user
+  // intent). Remix is the prominent CTA — picking a variation runs
+  // through onApplyToDay which assigns the variation to this day AND
+  // saves it to library, atomically.
   return (
     <PreviewSheet
       recipe={{ ...recipe, _saved: false }}
       heroUri={heroUri}
       onClose={onClose}
-      onSave={onSave}
-      saving={saving}
+      onSave={async () => {
+        // No-op — Save is hidden via hideSave below. Required-prop guard.
+      }}
+      saving={false}
       onCookNow={onCookNow}
       cooking={cooking}
       onCookLater={onCookLater}
@@ -1283,7 +1286,8 @@ function PlanEntryPreview({
       onRemove={onClear}
       removing={clearing}
       removeLabel="Clear"
-      hideRemix
+      hideSave
+      onApplyToDay={onApplyToDay}
     />
   );
 }

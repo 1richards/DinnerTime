@@ -70,6 +70,12 @@ interface RemixSheetProps {
     steps?: string[];
     total_time_minutes?: number | null;
   };
+  /** Plan-flow override. When provided, the variation cards' Save bookmark
+      becomes an "Apply to this day" calendar action instead. Tap → expand
+      variation to a full ParsedRecipe → save to library → onApplyToDay(full)
+      → close sheet. Used by the Plan tab's day-preview Remix flow so
+      picking a variation atomically replaces the day's plan entry. */
+  onApplyToDay?: (full: ParsedRecipe) => Promise<void>;
   onClose: () => void;
 }
 
@@ -138,6 +144,7 @@ export function RemixSheet({
   recipeTitle,
   source,
   baseForSave,
+  onApplyToDay,
   onClose,
 }: RemixSheetProps) {
   const fetchVariations = useProgressionStore((s) => s.fetchVariations);
@@ -161,7 +168,7 @@ export function RemixSheet({
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [workingIdx, setWorkingIdx] = useState<number | null>(null);
   const [workingAction, setWorkingAction] = useState<
-    'expand' | 'save' | 'modify' | 'cook' | 'remix' | null
+    'expand' | 'save' | 'modify' | 'cook' | 'remix' | 'apply' | null
   >(null);
   const [savedIdxs, setSavedIdxs] = useState<Set<number>>(new Set());
   const [modifiedIdxs, setModifiedIdxs] = useState<Set<number>>(new Set());
@@ -301,6 +308,41 @@ export function RemixSheet({
         return;
       }
       setSavedIdxs((prev) => new Set([...prev, idx]));
+    } finally {
+      setWorkingIdx(null);
+      setWorkingAction(null);
+    }
+  };
+
+  // Plan-flow path: save the variation to the library AND replace the
+  // calling day's plan entry. Two-step persistence keeps the variation
+  // available for future weeks (vs. a one-off plan entry that vanishes
+  // when the week is regenerated). Closes the sheet on success so the
+  // user lands back on the Plan tab with the swap already reflected.
+  const handleApplyToDay = async (idx: number, variation: RemixVariation) => {
+    if (!onApplyToDay) return;
+    setWorkingIdx(idx);
+    setWorkingAction('apply');
+    try {
+      const full = await ensureFull(idx, variation);
+      if (!full) return;
+      // Save to library first so the recipe persists across weeks.
+      await saveRecipe({ ...full, source_type: 'ai' });
+      const state = useRecipeStore.getState();
+      if (state.error) {
+        Alert.alert('Save failed', state.error);
+        return;
+      }
+      setSavedIdxs((prev) => new Set([...prev, idx]));
+      // Then assign to the day. Parent owns the actual /entries/assign call.
+      await onApplyToDay(full);
+      // Close the remix sheet — caller closes its parent preview itself.
+      onClose();
+    } catch (e) {
+      Alert.alert(
+        'Could not apply',
+        e instanceof Error ? e.message : 'Try again.',
+      );
     } finally {
       setWorkingIdx(null);
       setWorkingAction(null);
@@ -629,13 +671,16 @@ export function RemixSheet({
                 isModifying={workingIdx === i && workingAction === 'modify'}
                 isCooking={workingIdx === i && workingAction === 'cook'}
                 isRemixing={workingIdx === i && workingAction === 'remix'}
+                isApplying={workingIdx === i && workingAction === 'apply'}
                 disabled={workingIdx !== null && workingIdx !== i}
                 canModifyExisting={source.kind === 'saved'}
+                applyToDayMode={!!onApplyToDay}
                 baseIngredients={baseForSave?.ingredients}
                 onExpand={() => handleExpand(i, v)}
                 onCook={() => handleCookNow(i, v)}
                 onSaveAsNew={() => handleSaveAsNew(i, v)}
                 onModifyExisting={() => handleModifyExisting(i, v)}
+                onApplyToDay={() => handleApplyToDay(i, v)}
                 onRemix={() => handleRemixVariation(i, v)}
                 onOpenSaved={handleOpenSaved}
                 onOpenModified={handleOpenModified}
@@ -808,13 +853,19 @@ interface VariationCardProps {
   isModifying: boolean;
   isCooking: boolean;
   isRemixing: boolean;
+  isApplying: boolean;
   disabled: boolean;
   canModifyExisting: boolean;
+  /** When true, the bookmark/save badge becomes a calendar.badge.checkmark
+      "Apply to this day" badge that fires onApplyToDay. Used by the Plan
+      tab's day-preview Remix flow. */
+  applyToDayMode: boolean;
   baseIngredients?: Array<string | BaseIngredient>;
   onExpand: () => void;
   onCook: () => void;
   onSaveAsNew: () => void;
   onModifyExisting: () => void;
+  onApplyToDay: () => void;
   onRemix: () => void;
   onOpenSaved: () => void;
   onOpenModified: () => void;
@@ -831,13 +882,16 @@ function VariationCard({
   isModifying: _isModifying,
   isCooking,
   isRemixing,
+  isApplying,
   disabled,
   canModifyExisting: _canModifyExisting,
+  applyToDayMode,
   baseIngredients,
   onExpand,
   onCook,
   onSaveAsNew,
   onModifyExisting: _onModifyExisting,
+  onApplyToDay,
   onRemix,
   onOpenSaved,
   onOpenModified,
@@ -960,24 +1014,49 @@ function VariationCard({
           <Pressable
             onPress={(e) => {
               e.stopPropagation();
-              if (saved || disabled || isWorking) return;
-              onSaveAsNew();
+              if (disabled || isWorking) return;
+              if (applyToDayMode) {
+                onApplyToDay();
+              } else {
+                if (saved) return;
+                onSaveAsNew();
+              }
             }}
             hitSlop={8}
-            disabled={saved || disabled || isWorking}
+            disabled={
+              disabled || isWorking || (!applyToDayMode && saved)
+            }
             style={({ pressed }) => [
               styles.actionBadge,
-              pressed && !(saved || disabled || isWorking) ? { opacity: 0.6 } : null,
+              pressed && !(disabled || isWorking) ? { opacity: 0.6 } : null,
             ]}
-            accessibilityLabel={saved ? 'Saved to library' : 'Save to library'}
+            accessibilityLabel={
+              applyToDayMode
+                ? 'Use this for this day'
+                : saved
+                  ? 'Saved to library'
+                  : 'Save to library'
+            }
           >
-            {isSaving ? (
+            {isSaving || isApplying ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <SymbolIcon
-                name={saved ? 'checkmark.circle.fill' : 'bookmark'}
+                name={
+                  applyToDayMode
+                    ? 'calendar.badge.checkmark'
+                    : saved
+                      ? 'checkmark.circle.fill'
+                      : 'bookmark'
+                }
                 size={26}
-                tintColor={saved ? '#10B981' : '#FFFFFF'}
+                tintColor={
+                  applyToDayMode
+                    ? '#FFFFFF'
+                    : saved
+                      ? '#10B981'
+                      : '#FFFFFF'
+                }
               />
             )}
           </Pressable>
