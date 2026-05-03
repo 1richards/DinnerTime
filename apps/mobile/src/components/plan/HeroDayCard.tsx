@@ -292,16 +292,6 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   dayLabel: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-    marginBottom: 2,
-  },
-  dateLabel: {
     color: '#FFFFFF',
     fontSize: 26,
     fontWeight: '900',
@@ -310,6 +300,16 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.55)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  dateLabel: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    marginTop: 2,
     marginBottom: 8,
   },
   title: {
