@@ -130,20 +130,26 @@ export function FocusBanner({ children }: FocusBannerProps = {}) {
     >
       <View style={styles.focusRow}>
         {isBusy ? (
-          <ActivityIndicator size="small" color={colors.brand} />
-        ) : (
-          <SymbolIcon name="target" size={16} tintColor={colors.warning} />
-        )}
-        {isBusy ? (
-          <Text style={styles.text} numberOfLines={2}>
-            {planLoading
-              ? `Rebuilding the week${theme ? ` around “${theme}”` : ''}…`
-              : 'Saving focus…'}
-          </Text>
+          <>
+            <ActivityIndicator size="small" color={colors.brand} />
+            <Text style={styles.text} numberOfLines={2}>
+              {planLoading
+                ? `Rebuilding the week${theme ? ` around “${theme}”` : ''}…`
+                : 'Saving focus…'}
+            </Text>
+          </>
         ) : theme ? (
-          <Text style={styles.text} numberOfLines={2}>
-            This week: <Text style={styles.themeText}>{theme}</Text>
-          </Text>
+          <View style={styles.focusChip}>
+            <SymbolIcon
+              name="target"
+              size={14}
+              tintColor={colors.warning}
+              weight="semibold"
+            />
+            <Text style={styles.focusChipLabel} numberOfLines={1}>
+              {theme}
+            </Text>
+          </View>
         ) : (
           <Text style={styles.text} numberOfLines={2}>
             Set a weekly focus to uplevel this week&apos;s meals
@@ -157,7 +163,7 @@ export function FocusBanner({ children }: FocusBannerProps = {}) {
             accessibilityRole="button"
             accessibilityLabel={theme ? 'Change focus theme' : 'Set focus theme'}
           >
-            <Text style={styles.action}>{theme ? 'Change' : 'Set focus'}</Text>
+            <Text style={styles.action}>Skill Focus</Text>
           </Pressable>
         )}
       </View>
@@ -213,9 +219,25 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flexShrink: 1,
   },
-  themeText: {
-    fontWeight: '800',
-    color: colors.brand,
+  // Focus theme rendered as a pill chip mirroring WeekHealthChip's
+  // warning-tone variant — same dimensions and font weights so the focus
+  // chip and the Veg-forward / Indulgent / etc. health chip read as
+  // siblings on the same "this week" card.
+  focusChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#FFF1DE',
+    flexShrink: 1,
+  },
+  focusChipLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+    color: colors.warning,
   },
   action: {
     fontSize: 13,
