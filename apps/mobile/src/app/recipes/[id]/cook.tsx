@@ -529,12 +529,12 @@ export default function CookScreen() {
           void fireCommandHaptic();
           stepSpeaker.stop();
           // Pre-Start: first tap "lands" on step 1 (stepIndex stays 0)
-          // and flips userNavigated so the active-step highlight,
-          // auto-scroll, and TTS all engage. After that, the slot is
-          // labeled "Next" and behaves normally.
+          // and flips userNavigated. The useStepSpeaker effect deps are
+          // [text, enabled] — when enabled flips false→true on the next
+          // render, the effect re-runs and auto-speaks step 1. Don't
+          // double-speak here; one path owns it.
           if (!userNavigated) {
             start();
-            if (currentStepText) stepSpeaker.speak(currentStepText);
             return;
           }
           next();
