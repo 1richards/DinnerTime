@@ -4,9 +4,9 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: "Completed quick task 10: HeroDayCard swipe-left replaced with 5-icon cluster (Swap / Cook Now / Remix / Cooked / Clear) + plan.tsx wires onCookNow router push + onRemix direct RemixSheet mount; 22/22 plan tests green"
-last_updated: "2026-05-03T16:28:07.055Z"
-last_activity: "2026-05-03 - Completed quick tasks 19 (cooking cleanup: dark mode + voice STT wiring removed; Start button + frictionless exit) and 20 (plan day card overlay icon cluster replacing swipe-left)"
+stopped_at: "Completed quick task 8: visual unification of FocusPickerSheet + RemixSheet — extracted shared PickerSheet shell + OptionCard primitive (apps/mobile/src/components/ui/), refactored both sheets to render as 2-col OptionCard grids on a coherent shell; replaced Alert.prompt with inline TextInput row for custom focus; 36/36 tests green; maestro UAT screenshots saved to /tmp"
+last_updated: "2026-05-03T17:52:57.153Z"
+last_activity: "2026-04-24 - Completed quick task 5: ElevenLabs TTS integration — backend proxy + cooking-mode playback with expo-speech fallback"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -652,7 +652,7 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-05-03T16:28:07.048Z
-Stopped at: Completed quick task 10: HeroDayCard swipe-left replaced with 5-icon cluster (Swap / Cook Now / Remix / Cooked / Clear) + plan.tsx wires onCookNow router push + onRemix direct RemixSheet mount; 22/22 plan tests green
+Last session: 2026-05-03T17:52:57.149Z
+Stopped at: Completed quick task 8: visual unification of FocusPickerSheet + RemixSheet — extracted shared PickerSheet shell + OptionCard primitive (apps/mobile/src/components/ui/), refactored both sheets to render as 2-col OptionCard grids on a coherent shell; replaced Alert.prompt with inline TextInput row for custom focus; 36/36 tests green; maestro UAT screenshots saved to /tmp
 Resume file: None
 | 2026-04-28 | fast | More options pill padding | done |
