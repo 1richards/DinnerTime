@@ -289,3 +289,55 @@ describe('deriveStatusChips: difficulty + focus combined', () => {
     expect(labels).toContain('pan sauces');
   });
 });
+
+describe('deriveStatusChips: health-chip dedup vs practiced_skills', () => {
+  // The keyword-based health classifier emits "Veg-forward" when it
+  // sees ≥3 vegetable hits. The AI-curated practiced_skills emits
+  // "Plant-forward" for the same recipe. They mean the same thing —
+  // drop the redundant health chip when both would fire.
+  it('practicedSkills includes "plant-forward" → health "Veg-forward" suppressed', () => {
+    const r = deriveStatusChips({
+      status: 'planned',
+      practicedSkills: ['plant-forward'],
+      entry: {
+        title: 'Charred Broccoli with Lemon and Almonds',
+        description:
+          'Heaps of broccoli, kale, peppers, tomatoes, spinach, zucchini, mushrooms, garlic and olive oil.',
+        ingredients: [
+          { name: 'broccoli' },
+          { name: 'kale' },
+          { name: 'spinach' },
+          { name: 'tomato' },
+          { name: 'zucchini' },
+          { name: 'mushroom' },
+        ],
+      },
+    });
+    const labels = r.map((c) => c.label);
+    expect(labels).toContain('Plant-forward');
+    expect(labels).not.toContain('Veg-forward');
+  });
+
+  it('practicedSkills does NOT include "plant-forward" → health "Veg-forward" still rendered when it would fire', () => {
+    const r = deriveStatusChips({
+      status: 'planned',
+      practicedSkills: ['knife skills'],
+      entry: {
+        title: 'Charred Broccoli with Lemon and Almonds',
+        description:
+          'Heaps of broccoli, kale, peppers, tomatoes, spinach, zucchini, mushrooms, garlic and olive oil.',
+        ingredients: [
+          { name: 'broccoli' },
+          { name: 'kale' },
+          { name: 'spinach' },
+          { name: 'tomato' },
+          { name: 'zucchini' },
+          { name: 'mushroom' },
+        ],
+      },
+    });
+    const labels = r.map((c) => c.label);
+    expect(labels).toContain('Knife skills');
+    expect(labels).toContain('Veg-forward');
+  });
+});

@@ -161,9 +161,20 @@ export function deriveStatusChips(args: DeriveArgs): StatusChipDescriptor[] {
   // Per-entry health hint. Skip on cooked/skipped rows — the user has
   // already moved on, the label is noise. Only show when the verdict
   // is meaningful (we don't want a "Balanced" chip on every row).
+  // Also dedupe against practiced_skills: when the AI already tagged
+  // the recipe as "plant-forward" the keyword scorer's "Veg-forward"
+  // chip is restating the same thing. Drop the redundant health chip
+  // — the practiced_skill is curated and wins.
   if (args.entry && args.status !== 'cooked' && args.status !== 'skipped') {
     const health = entryHealthChip(args.entry);
-    if (health) out.push(health);
+    if (health) {
+      const skillSet = new Set(
+        (args.practicedSkills ?? []).map((s) => s.toLowerCase()),
+      );
+      const isRedundant =
+        health.label === 'Veg-forward' && skillSet.has('plant-forward');
+      if (!isRedundant) out.push(health);
+    }
   }
 
   return out;
