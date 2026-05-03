@@ -6,7 +6,7 @@ current_plan: Not started
 status: planning
 stopped_at: "Completed quick task 8: visual unification of FocusPickerSheet + RemixSheet — extracted shared PickerSheet shell + OptionCard primitive (apps/mobile/src/components/ui/), refactored both sheets to render as 2-col OptionCard grids on a coherent shell; replaced Alert.prompt with inline TextInput row for custom focus; 36/36 tests green; maestro UAT screenshots saved to /tmp"
 last_updated: "2026-05-03T17:52:57.153Z"
-last_activity: "2026-04-24 - Completed quick task 5: ElevenLabs TTS integration — backend proxy + cooking-mode playback with expo-speech fallback"
+last_activity: "2026-05-03 - Completed quick task 21: picker visual unification — shared PickerSheet + OptionCard primitives now power FocusPickerSheet and RemixSheet mode picker on a 2-col grid; inline custom-input row replaces Alert.prompt"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -619,6 +619,7 @@ Recent decisions affecting current work:
 | 18 | Scan flow — stop stacking review routes; no auto-submit on first photo | 2026-04-30 | 36e95b3 | _fast (inline)_ |
 | 19 | Pre-launch cooking cleanup — drop dark mode + voice STT wiring (scaffolding kept for backlog 999.1); add Start affordance + tap-to-exit no confirmation | 2026-05-03 | 245cfd2 | [9-pre-launch-cooking-cleanup-remove-dark-m](./quick/9-pre-launch-cooking-cleanup-remove-dark-m/) |
 | 20 | Plan day card actions — replace swipe-left (Swap/Cooked/Clear) with floating 5-icon overlay cluster on hero image (Swap, Cook Now, Remix, Cooked, Clear); SuggestionCard visual parity | 2026-05-03 | adf7f55 | [10-plan-day-card-actions-replace-swipe-left](./quick/10-plan-day-card-actions-replace-swipe-left/) |
+| 21 | Picker visual unification — extract shared PickerSheet shell + OptionCard primitives; FocusPickerSheet + RemixSheet mode picker render through them on a 2-col grid (drops italic examples line, replaces Alert.prompt with inline custom-input row) | 2026-05-03 | a984534 | [8-visual-unification-of-focuspickersheet-r](./quick/8-visual-unification-of-focuspickersheet-r/) |
 
 ## Post-v1 Polish (out-of-band, not GSD-planned)
 
