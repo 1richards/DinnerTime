@@ -34,6 +34,8 @@ import { FocusBanner } from '../../components/plan/FocusBanner';
 import { SwapSheet } from '../../components/plan/SwapSheet';
 import { CookConfirm } from '../../components/plan/CookConfirm';
 import { SwipeableDayRow } from '../../components/plan/SwipeableDayRow';
+import { HeroDayCard } from '../../components/plan/HeroDayCard';
+import { pickHeroTargetIndex } from '../../components/plan/heroTargetPicker';
 import { WeekHealthChip } from '../../components/plan/WeekHealthChip';
 import { AddMealSheet } from '../../components/plan/AddMealSheet';
 import { computePantryReady } from '../../components/plan/pantryReady';
@@ -678,6 +680,32 @@ export default function PlanScreen() {
   const planFocusBannerEnabled = useSettingsStore(
     (s) => s.planFocusBannerEnabled
   );
+  // Quick-task 7: Plan card density. Default 'detailed' renders today's
+  // active day as a HeroDayCard at its position in the FlatList (NOT pinned
+  // to top); 'compact' renders every day as the existing SwipeableDayRow.
+  const planCardDensity = useSettingsStore((s) => s.planCardDensity);
+
+  // UTC-anchored today ISO so the hero target picker matches the same
+  // anchor the week_start computation uses (currentMondayIso). useMemo so
+  // it's stable per render — the date itself is fine to lock at mount,
+  // the user crossing midnight in the app is rare and handled on next
+  // mount/refresh.
+  const todayIso = useMemo(() => {
+    const now = new Date();
+    return new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    )
+      .toISOString()
+      .slice(0, 10);
+  }, []);
+  const heroTargetIdx = useMemo(() => {
+    if (!currentPlan) return null;
+    return pickHeroTargetIndex(
+      currentPlan.entries,
+      currentPlan.week_start,
+      todayIso,
+    );
+  }, [currentPlan, todayIso]);
 
   // At-a-glance health vibe for the current week — slots into the same
   // row as the shopping cart + ellipsis so users see the vibe without
@@ -896,44 +924,73 @@ export default function PlanScreen() {
             if (Object.keys(changes).length === 0) return;
             void reorderDays(changes);
           }}
-          renderItem={({ item, drag, isActive }: RenderItemParams<typeof days[number]>) => (
-            <SwipeableDayRow
-              entry={item.entry}
-              dayLabel={DAY_LABELS[item.day]!}
-              dateLabel={shortDateForDay(currentPlan.week_start, item.day)}
-              isSwapping={swappingDay === item.day}
-              isCooking={cookingDay === item.day}
-              focusTheme={currentPlan.focus_theme ?? null}
-              onSwap={() => setSwapTarget(item.day)}
-              onCook={() => setCookTarget(item.day)}
-              onSkip={() => setSkipTarget(item.day)}
-              onPress={() => {
-                if (!item.entry) {
-                  // Empty day → open recipe picker scoped to this date.
-                  if (currentPlan) {
-                    setAddMealIso(addDaysIso(currentPlan.week_start, item.day));
-                  }
+          renderItem={({ item, drag, isActive }: RenderItemParams<typeof days[number]>) => {
+            // Quick-task 7 — entry-tap routing helper, shared between
+            // HeroDayCard + SwipeableDayRow so both card kinds open the
+            // same modal flow (savedDetail vs previewEntry vs addMealIso).
+            const handleEntryPress = () => {
+              if (!item.entry) {
+                if (currentPlan) {
+                  setAddMealIso(addDaysIso(currentPlan.week_start, item.day));
+                }
+                return;
+              }
+              if (item.entry.recipe_id) {
+                const cached = cachedRecipes.find(
+                  (r) => r.id === item.entry!.recipe_id,
+                );
+                if (cached) {
+                  setSavedDetail(cached);
                   return;
                 }
-                if (item.entry.recipe_id) {
-                  // Open the same image-forward PreviewSheet modal used by
-                  // Recipe Box. Falls back to the entry-snapshot preview if
-                  // the saved recipe isn't in the local cache (rare — the
-                  // store is persisted and prefetched).
-                  const cached = cachedRecipes.find(
-                    (r) => r.id === item.entry!.recipe_id,
-                  );
-                  if (cached) {
-                    setSavedDetail(cached);
-                    return;
-                  }
-                }
-                setPreviewEntry(item.entry);
-              }}
-              onLongPress={item.entry ? drag : undefined}
-              isDragActive={isActive}
-            />
-          )}
+              }
+              setPreviewEntry(item.entry);
+            };
+
+            // Branch on density + hero target index. Hero only renders
+            // when the entry is non-null — empty days fall through to the
+            // SwipeableDayRow's "+ Add a meal" placeholder so the visual
+            // rhythm of the week stays intact. Drag-to-reorder is
+            // intentionally disabled on the hero (HeroDayCard doesn't
+            // accept onLongPress); users can toggle to compact mode if
+            // they need to drag the hero day.
+            const isHero =
+              planCardDensity === 'detailed' &&
+              heroTargetIdx === item.day &&
+              item.entry !== null;
+
+            if (isHero && item.entry) {
+              return (
+                <HeroDayCard
+                  entry={item.entry}
+                  dayLabel={DAY_LABELS[item.day]!}
+                  dateLabel={shortDateForDay(currentPlan.week_start, item.day)}
+                  focusTheme={currentPlan.focus_theme ?? null}
+                  onSwap={() => setSwapTarget(item.day)}
+                  onCook={() => setCookTarget(item.day)}
+                  onSkip={() => setSkipTarget(item.day)}
+                  onPress={handleEntryPress}
+                />
+              );
+            }
+
+            return (
+              <SwipeableDayRow
+                entry={item.entry}
+                dayLabel={DAY_LABELS[item.day]!}
+                dateLabel={shortDateForDay(currentPlan.week_start, item.day)}
+                isSwapping={swappingDay === item.day}
+                isCooking={cookingDay === item.day}
+                focusTheme={currentPlan.focus_theme ?? null}
+                onSwap={() => setSwapTarget(item.day)}
+                onCook={() => setCookTarget(item.day)}
+                onSkip={() => setSkipTarget(item.day)}
+                onPress={handleEntryPress}
+                onLongPress={item.entry ? drag : undefined}
+                isDragActive={isActive}
+              />
+            );
+          }}
         />
       </View>
 

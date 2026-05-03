@@ -44,6 +44,11 @@ export default function SettingsScreen() {
   const setPlanFocusBannerEnabled = useSettingsStore(
     (s) => s.setPlanFocusBannerEnabled
   );
+  // Quick-task 7: Plan card density toggle. Default 'detailed' shows the
+  // hero card for today's meal (16:9 image, full skills, italic skill_note);
+  // 'compact' falls back to the SwipeableDayRow rendering for every day.
+  const planCardDensity = useSettingsStore((s) => s.planCardDensity);
+  const setPlanCardDensity = useSettingsStore((s) => s.setPlanCardDensity);
   const { show, ToastComponent } = useToast();
 
   // If the user signs out while on this screen, kick them to login.
@@ -244,6 +249,30 @@ export default function SettingsScreen() {
             <Switch
               value={planFocusBannerEnabled}
               onValueChange={setPlanFocusBannerEnabled}
+            />
+          </View>
+          {/* Quick-task 7 — Plan card density toggle. Binary choice rendered
+              as a Switch (matching the rest of the PLAN section's row
+              rhythm). 'detailed' surfaces the active day as a HeroDayCard
+              with 16:9 image + full skills + difficulty/time/servings;
+              'compact' falls back to SwipeableDayRow for every day. */}
+          <View
+            className="flex-row items-center justify-between py-4 border-b border-border"
+            accessibilityRole="switch"
+            accessibilityState={{ checked: planCardDensity === 'detailed' }}
+            accessibilityLabel="Plan card density"
+          >
+            <View className="flex-1 pr-4">
+              <Text className="text-body text-text-primary">
+                Detailed plan cards
+              </Text>
+              <Text className="text-body text-text-secondary">
+                Hero card for today's meal with full skills + difficulty + time. Off = compact rows.
+              </Text>
+            </View>
+            <Switch
+              value={planCardDensity === 'detailed'}
+              onValueChange={(v) => setPlanCardDensity(v ? 'detailed' : 'compact')}
             />
           </View>
         </View>
