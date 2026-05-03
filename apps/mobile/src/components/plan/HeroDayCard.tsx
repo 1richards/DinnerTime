@@ -468,12 +468,14 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     lineHeight: 18,
   },
-  // Quick-10: floating overlay cluster. rgba over hero imagery is allowed
-  // per existing precedent in RecipeCard styles.actionBadge / actionCluster.
+  // Quick-10: floating overlay cluster. Top-right anchor avoids the
+  // bottom-anchored date + title overlay (heroOverlayContent). rgba
+  // over hero imagery is allowed per existing precedent in RecipeCard
+  // styles.actionBadge / actionCluster.
   heroIconCluster: {
     position: 'absolute',
     right: 12,
-    bottom: 12,
+    top: 12,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.55)',
