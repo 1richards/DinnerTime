@@ -787,17 +787,11 @@ export default function PlanScreen() {
       >
         <SymbolIcon name="cart" size="action" weight="semibold" tintColor={colors.brand} />
       </Pressable>
-      <Pressable
-        onPress={handleOpenWeekSheet}
-        accessibilityLabel="Week actions"
-        hitSlop={8}
-        style={({ pressed }) => [
-          styles.planActionIconBtn,
-          pressed && styles.planActionBtnPressed,
-        ]}
-      >
-        <SymbolIcon name="ellipsis" size="action" weight="semibold" tintColor={colors.brand} />
-      </Pressable>
+      {/* Week-actions ellipsis hidden — every action it surfaced
+          (regenerate / shift ±1 / duplicate last / shopping list) is
+          now reachable via per-day cluster icons or the Plan tab's
+          shopping-cart button above. WeekActionSheet kept in source
+          for future re-enable. */}
     </View>
   );
 
@@ -995,7 +989,11 @@ export default function PlanScreen() {
         pointerEvents={scale === 'month' ? 'auto' : 'none'}
       >
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 140 }}
+          // Bottom padding clears the tab bar (~83pt) plus extra so the
+          // Repeats section + Cuisine chips never butt against it. Earlier
+          // 140pt left Cuisine partially clipped on devices with the home
+          // indicator + sat outside the safe-area bottom edge.
+          contentContainerStyle={{ paddingBottom: 220 }}
           scrollEventThrottle={16}
           onScroll={onScroll}
         >
