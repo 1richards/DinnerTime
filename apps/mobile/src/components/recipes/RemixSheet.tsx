@@ -988,7 +988,7 @@ function VariationCard({
             {isCooking ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <SymbolIcon name="flame.fill" size={24} tintColor="#FFE4B5" />
+              <SymbolIcon name="flame.fill" size={26} tintColor="#FFE4B5" />
             )}
           </Pressable>
           <Pressable
@@ -1008,7 +1008,7 @@ function VariationCard({
             {isRemixing ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <SymbolIcon name="sparkles" size={24} tintColor="#FFE4B5" />
+              <SymbolIcon name="sparkles" size={26} tintColor="#FFE4B5" />
             )}
           </Pressable>
           <Pressable
@@ -1373,21 +1373,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Single-capsule overlay — matches HeroDayCard.heroIconCluster +
+  // RecipeCard.actionCluster so all hero overlay actions across
+  // Plan / Something New / Recipe Box / Remix render as one family.
   heroActions: {
     position: 'absolute',
     top: 10,
     right: 10,
     flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.20)',
+    borderRadius: 9999,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     gap: 10,
   },
+  // Bare icon button — parent cluster owns the chrome now.
   actionBadge: {
-    // 52pt mirrors RecipeCard's hero overlay buttons exactly so the
-    // affordance is visually identical across Something New, Recipe Box,
-    // and Remix surfaces.
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(0,0,0,0.30)',
+    minWidth: 36,
+    minHeight: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },

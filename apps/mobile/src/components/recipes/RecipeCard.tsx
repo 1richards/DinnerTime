@@ -168,7 +168,7 @@ export function RecipeCard({
                   {previewActions.working === 'cook' ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <SymbolIcon name="flame.fill" size={24} tintColor="#FFE4B5" />
+                    <SymbolIcon name="flame.fill" size={26} tintColor="#FFE4B5" />
                   )}
                 </Pressable>
               )}
@@ -186,7 +186,7 @@ export function RecipeCard({
                   ]}
                   accessibilityLabel="Remix recipe"
                 >
-                  <SymbolIcon name="sparkles" size={24} tintColor="#FFE4B5" />
+                  <SymbolIcon name="sparkles" size={26} tintColor="#FFE4B5" />
                 </Pressable>
               )}
               {previewActions.onSave && (
@@ -240,7 +240,7 @@ export function RecipeCard({
                   ]}
                   accessibilityLabel="Cook this recipe now"
                 >
-                  <SymbolIcon name="flame.fill" size={24} tintColor="#FFE4B5" />
+                  <SymbolIcon name="flame.fill" size={26} tintColor="#FFE4B5" />
                 </Pressable>
               )}
               <Pressable
@@ -258,7 +258,7 @@ export function RecipeCard({
                 {/* `#FFE4B5` is an intentional decorative warm off-white accent
                     specifically for the sparkle glyph over dark imagery — NOT a
                     brand color. Documented deviation from Phase 19 purity. */}
-                <SymbolIcon name="sparkles" size={24} tintColor="#FFE4B5" />
+                <SymbolIcon name="sparkles" size={26} tintColor="#FFE4B5" />
               </Pressable>
               <Pressable
                 onPress={(e) => {
@@ -372,23 +372,27 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.8,
   },
+  // Single-capsule overlay — same chrome HeroDayCard.heroIconCluster uses.
+  // Wraps all action icons in one rounded translucent pill (rgba 0.20)
+  // so the action chrome reads as one unit instead of 2-3 separate
+  // dark circles. Matches Plan / Something New / Recipe Box / Remix.
   actionCluster: {
     position: 'absolute',
     top: 10,
     right: 10,
     flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.20)',
+    borderRadius: 9999,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     gap: 10,
   },
+  // Bare icon button — no individual circle bg now that the parent
+  // cluster owns the chrome. 36pt min touch target preserved.
   actionBadge: {
-    // 52pt exceeds Apple's 44pt minimum — intentionally generous because
-    // these overlays sit over busy hero imagery and need to read clearly
-    // + tolerate imprecise thumbs in a cooking/shopping context. Background
-    // matches HeroDayCard's heroIconCluster so the action chrome reads as
-    // the same family across Plan / Something New / Recipe Box.
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(0,0,0,0.30)',
+    minWidth: 36,
+    minHeight: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
