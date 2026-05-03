@@ -326,7 +326,7 @@ function CandidateCard({
             <ActivityIndicator size="small" color={colors.brand} />
           ) : (
             <SymbolIcon
-              name="arrow.left.arrow.right"
+              name="arrow.2.squarepath"
               size="action"
               tintColor={colors.brand}
               weight="semibold"

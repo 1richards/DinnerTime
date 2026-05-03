@@ -185,27 +185,12 @@ export function HeroDayCard({
               SuggestionCard / RecipeCard precedent. Each Pressable
               stops propagation so taps DON'T trigger the card-level
               onPress. Cook Now is visually disabled when there is no
-              recipe to route to (ad-hoc entries). */}
+              recipe to route to (ad-hoc entries).
+              Order (left → right): Cook Now · Remix · Swap · Cooked · Clear.
+              Swap sits next to Cooked so the "this didn't go right →
+              swap or skip" decision lives together; Cook Now and Remix
+              are the constructive actions on the left. */}
           <View style={styles.heroIconCluster}>
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                onSwap();
-              }}
-              hitSlop={6}
-              accessibilityLabel="Swap"
-              style={({ pressed }) => [
-                styles.iconBtn,
-                pressed && { opacity: 0.6 },
-              ]}
-            >
-              <SymbolIcon
-                name={'arrow.2.squarepath' as SymbolViewProps['name']}
-                size={22}
-                tintColor="#FFFFFF"
-              />
-            </Pressable>
-
             <Pressable
               onPress={(e) => {
                 e.stopPropagation();
@@ -223,7 +208,7 @@ export function HeroDayCard({
             >
               <SymbolIcon
                 name={'flame.fill' as SymbolViewProps['name']}
-                size={22}
+                size={26}
                 tintColor="#FFE4B5"
               />
             </Pressable>
@@ -242,8 +227,27 @@ export function HeroDayCard({
             >
               <SymbolIcon
                 name={'sparkles' as SymbolViewProps['name']}
-                size={22}
+                size={26}
                 tintColor="#FFE4B5"
+              />
+            </Pressable>
+
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                onSwap();
+              }}
+              hitSlop={6}
+              accessibilityLabel="Swap"
+              style={({ pressed }) => [
+                styles.iconBtn,
+                pressed && { opacity: 0.6 },
+              ]}
+            >
+              <SymbolIcon
+                name={'arrow.2.squarepath' as SymbolViewProps['name']}
+                size={26}
+                tintColor="#FFFFFF"
               />
             </Pressable>
 
@@ -261,7 +265,7 @@ export function HeroDayCard({
             >
               <SymbolIcon
                 name={'checkmark.circle.fill' as SymbolViewProps['name']}
-                size={22}
+                size={26}
                 tintColor="#FFFFFF"
               />
             </Pressable>
@@ -280,7 +284,7 @@ export function HeroDayCard({
             >
               <SymbolIcon
                 name={'xmark.circle.fill' as SymbolViewProps['name']}
-                size={22}
+                size={26}
                 tintColor="#FFFFFF"
               />
             </Pressable>
@@ -480,14 +484,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.30)',
     borderRadius: 9999,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 10,
   },
   iconBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 28,
-    minHeight: 28,
+    minWidth: 36,
+    minHeight: 36,
   },
 });
