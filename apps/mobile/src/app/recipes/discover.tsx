@@ -513,6 +513,29 @@ export function PreviewSheet({
                     </Text>
                   </>
                 )}
+                {(recipe.calories_per_serving != null ||
+                  recipe.protein_grams_per_serving != null) && (
+                  <>
+                    <Text style={styles.sheetMetaText}>{'  ·  '}</Text>
+                    <SymbolIcon
+                      name="bolt.fill"
+                      size={14}
+                      tintColor="rgba(255,255,255,0.8)"
+                    />
+                    <Text style={styles.sheetMetaText}>
+                      {recipe.calories_per_serving != null
+                        ? `${Math.round(recipe.calories_per_serving)} kcal`
+                        : ''}
+                      {recipe.calories_per_serving != null &&
+                      recipe.protein_grams_per_serving != null
+                        ? ' · '
+                        : ''}
+                      {recipe.protein_grams_per_serving != null
+                        ? `${Math.round(recipe.protein_grams_per_serving)}g`
+                        : ''}
+                    </Text>
+                  </>
+                )}
               </View>
             )}
           </View>
