@@ -634,6 +634,7 @@ Recent decisions affecting current work:
 | 33 | Heart favorite always-on in PreviewSheet hero (Recipe Box detail) — third top-right bubble next to share+close; optional recipeId+isFavorite props so other call sites stay unchanged | 2026-05-03 | 4ccc2d2 | _fast (inline)_ |
 | 34 | Focus chip restyled to match recipe-card "Pan sauces" chip — bg-surface-subtle pill via NativeWind classes mirroring resolveChipClasses default tone, drops custom white+border StyleSheet | 2026-05-03 | 39a8cc9 | _fast (inline)_ |
 | 35 | Favorite plan-generated recipes — ad-hoc heart on PreviewSheet saves recipe + links back to plan day via /entries/assign with recipe_id + toggles favorite; recipeStore.saveRecipe now returns Recipe \| null | 2026-05-03 | 7f074a3 | _fast (inline)_ |
+| 36 | Per-serving nutrition on recipe detail + weekly avg chip on This Week card (kcal·protein) — recipe[id]/index.tsx mirrors PreviewSheet badges; plan.tsx averages over entries with recipe_id→saved recipe nutrition | 2026-05-03 | f6ae91c | _fast (inline)_ |
 
 ## Post-v1 Polish (out-of-band, not GSD-planned)
 
