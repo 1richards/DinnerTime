@@ -297,13 +297,26 @@ export function RemixSheet({
     if (full) setExpandedIdx(idx);
   };
 
-  const handleSaveAsNew = async (idx: number, variation: RemixVariation) => {
+  const handleSaveAsNew = async (
+    idx: number,
+    variation: RemixVariation,
+    imageUri: string | null = null,
+  ) => {
     setWorkingIdx(idx);
     setWorkingAction('save');
     try {
       const full = await ensureFull(idx, variation);
       if (!full) return;
-      await saveRecipe({ ...full, source_type: 'ai' });
+      // Pass through the variation card's already-resolved Gemini hero so
+      // the saved recipe persists with the same image the user just saw.
+      // Without this, the saved row has image_url=null and the recipe
+      // detail page generates a fresh image (often different framing /
+      // garnish) for the same title — confusing visual jump.
+      await saveRecipe({
+        ...full,
+        image_url: full.image_url ?? imageUri,
+        source_type: 'ai',
+      });
       const state = useRecipeStore.getState();
       if (state.error) {
         Alert.alert('Save failed', state.error);
@@ -667,7 +680,7 @@ export function RemixSheet({
                     baseIngredients={baseForSave?.ingredients}
                     onExpand={() => handleExpand(i, v)}
                     onCook={() => handleCookNow(i, v)}
-                    onSaveAsNew={() => handleSaveAsNew(i, v)}
+                    onSaveAsNew={(uri) => handleSaveAsNew(i, v, uri)}
                     onModifyExisting={() => handleModifyExisting(i, v)}
                     onApplyToDay={() => handleApplyToDay(i, v)}
                     onRemix={() => handleRemixVariation(i, v)}
@@ -860,7 +873,7 @@ interface VariationCardProps {
   baseIngredients?: Array<string | BaseIngredient>;
   onExpand: () => void;
   onCook: () => void;
-  onSaveAsNew: () => void;
+  onSaveAsNew: (imageUri: string | null) => void;
   onModifyExisting: () => void;
   onApplyToDay: () => void;
   onRemix: () => void;
@@ -1016,7 +1029,7 @@ function VariationCard({
                 onApplyToDay();
               } else {
                 if (saved) return;
-                onSaveAsNew();
+                onSaveAsNew(generatedUri ?? null);
               }
             }}
             hitSlop={8}

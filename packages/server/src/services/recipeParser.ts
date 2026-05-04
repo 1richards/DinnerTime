@@ -450,7 +450,9 @@ ${stepsText || '(none provided)'}
 
 Remix to apply — "${variation.title}": ${variation.description}
 
-Produce a full parsed recipe incorporating the remix. Use "${variation.title}" (or a close variant) as the new recipe title so the user can tell it apart from the base. Rewrite ingredients and steps to reflect the change. Convert fractions to decimals for quantities.`;
+Produce a full parsed recipe incorporating the remix. Use "${variation.title}" (or a close variant) as the new recipe title so the user can tell it apart from the base. Rewrite ingredients and steps to reflect the change. Convert fractions to decimals for quantities.
+
+Populate calories_per_serving (integer kcal, ~300-900 typical, round to nearest 10) AND protein_grams_per_serving (integer or 1-decimal grams) from the rewritten ingredients + serving math. Use chicken ~25g protein/100g, beef ~26g/100g, fish ~22g/100g, eggs ~6g each, tofu ~8g/100g, beans ~7g/100g cooked. Don't omit — best estimate.`;
 
   const input = await callAIParseRecipeText('recipe.parseText', prompt);
   return toolOutputToRecipe(input, 'ai');
