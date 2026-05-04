@@ -10,6 +10,7 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { SymbolIcon } from '../ui/SymbolIcon';
@@ -615,15 +616,27 @@ export function RemixSheet({
 
       {/* Post-pick states — loading / error / results retain the original
           Modal + custom header layout (results list has different chrome
-          than the picker grid). PickerSheet only owns the picker step. */}
+          than the picker grid). PickerSheet only owns the picker step.
+          presentationStyle="fullScreen" instead of pageSheet because this
+          Modal can be mounted from inside another pageSheet (e.g. Plan
+          tab's day-preview popup is itself a pageSheet, and the Remix CTA
+          on PreviewSheet opens this Modal as a child). iOS allows only
+          one pageSheet at a time — stacking two silently breaks touch
+          routing and prevents subsequent inner Modals (like the
+          tap-to-expand variation preview) from presenting. fullScreen
+          stacks cleanly above any parent pageSheet. */}
       {selectedMode && (
         <Modal
           visible={visible}
           animationType="slide"
-          presentationStyle="pageSheet"
+          presentationStyle="fullScreen"
           onRequestClose={onClose}
         >
-          <View style={styles.sheet}>
+          {/* SafeAreaView with edges=['top'] insets the header below the
+              status bar / notch. fullScreen presentation extends content
+              behind the system UI, so without this the REMIX kicker sits
+              under the time/battery indicators on iOS. */}
+          <SafeAreaView style={styles.sheet} edges={['top']}>
             <View style={styles.header}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.label}>REMIX</Text>
@@ -696,7 +709,7 @@ export function RemixSheet({
                 />
               </ScrollView>
             )}
-          </View>
+          </SafeAreaView>
         </Modal>
       )}
 
