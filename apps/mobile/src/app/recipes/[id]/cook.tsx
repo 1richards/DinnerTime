@@ -50,6 +50,7 @@ import { View, Text, ActionSheetIOS } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
+import { setAudioModeAsync } from 'expo-audio';
 
 import { useCookingStore } from '../../../stores/cookingStore';
 import { useRecipeStore } from '../../../stores/recipeStore';
@@ -175,6 +176,21 @@ export default function CookScreen() {
       exit();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipe?.id]);
+
+  // Allow TTS to play with the iPhone silent switch on. Cooking mode is
+  // hands-free — the user often has the ringer muted but still wants to
+  // hear step instructions read aloud. Both the ElevenLabs path
+  // (expo-audio) and the fallback (expo-speech, which respects the audio
+  // session) need this. Reset to default on exit so other audio in the
+  // app (e.g. system sounds elsewhere) follows iOS's normal silent-switch
+  // behavior.
+  useEffect(() => {
+    if (!recipe) return;
+    void setAudioModeAsync({ playsInSilentMode: true });
+    return () => {
+      void setAudioModeAsync({ playsInSilentMode: false });
+    };
   }, [recipe?.id]);
 
   // --------------------------------------------------- Step TTS + handle
