@@ -13,6 +13,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { SymbolIcon } from '../ui/SymbolIcon';
 import { Button } from '../ui/Button';
 import { PickerSheet } from '../ui/PickerSheet';
@@ -987,6 +994,47 @@ interface VariationCardProps {
   onDismissError: () => void;
 }
 
+/**
+ * Animated shimmer skeleton — a translucent highlight band sweeps
+ * left-to-right across a warm-beige base, repeating every ~1.4s.
+ * Communicates "actively loading" rather than "image failed to render"
+ * (the static beige box read as the latter to users). The translate
+ * range overshoots the card width so the band exits cleanly off-screen
+ * before re-entering. Built on Reanimated 3 (already in the stack) so
+ * the animation runs on the UI thread without blocking JS.
+ */
+function ShimmerSkeleton({ width = 340 }: { width?: number }) {
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    progress.value = withRepeat(
+      withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      false,
+    );
+    // No cleanup needed — Reanimated cancels animations when the
+    // shared value's owning component unmounts.
+  }, [progress]);
+
+  const bandStyle = useAnimatedStyle(() => {
+    // Sweep from -bandWidth (off-left) to width+bandWidth (off-right).
+    const bandWidth = width * 0.6;
+    const translateX = progress.value * (width + bandWidth) - bandWidth;
+    return { transform: [{ translateX }] };
+  });
+
+  return (
+    <View style={styles.shimmerBase}>
+      <Animated.View
+        style={[
+          styles.shimmerBand,
+          { width: width * 0.6 },
+          bandStyle,
+        ]}
+      />
+    </View>
+  );
+}
+
 function VariationCard({
   variation,
   index,
@@ -1066,15 +1114,20 @@ function VariationCard({
       ]}
     >
       <View style={styles.heroWrap}>
-        {/* Two-layer load: skeleton sits underneath as the persistent
-            background; Image overlays it once the URL is set, with its
-            own blurhash placeholder bridging the network-download gap.
-            Without this stack the user saw skeleton → blank → image as
-            the skeleton View unmounted before the Image bytes arrived.
-            Same blurhash HeroImage uses (warm beige #F1EAE0 tone). */}
-        <View style={[styles.variationHero, styles.variationHeroSkeleton, StyleSheet.absoluteFillObject]}>
-          {imageStatus === 'failed' && !generatedUri && (
-            <SymbolIcon name="photo" size={32} tintColor="#C9B89E" />
+        {/* Two-layer load: shimmer skeleton sits underneath as the
+            persistent background; Image overlays it once the URL is set,
+            with its own blurhash placeholder bridging the network-download
+            gap. The shimmer signals "actively loading" so users don't
+            mistake the warm-beige box for a permanently failed image
+            (prior static skeleton looked dead). Once the Image's bytes
+            arrive, it covers the shimmer entirely. */}
+        <View style={[styles.variationHero, StyleSheet.absoluteFillObject]}>
+          {imageStatus === 'failed' && !generatedUri ? (
+            <View style={[styles.variationHeroSkeleton, StyleSheet.absoluteFillObject]}>
+              <SymbolIcon name="photo" size={32} tintColor="#C9B89E" />
+            </View>
+          ) : (
+            <ShimmerSkeleton />
           )}
         </View>
         {generatedUri && (
@@ -1436,6 +1489,20 @@ const styles = StyleSheet.create({
   variationHeroSkeleton: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // ShimmerSkeleton — warm beige base + translucent highlight band that
+  // sweeps left-to-right under the hero. overflow:hidden contains the
+  // band's translateX so it doesn't leak outside the rounded hero frame.
+  shimmerBase: {
+    flex: 1,
+    backgroundColor: '#F1EAE0',
+    overflow: 'hidden',
+  },
+  shimmerBand: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 251, 245, 0.6)',
   },
   // Single-capsule overlay — matches HeroDayCard.heroIconCluster +
   // RecipeCard.actionCluster so all hero overlay actions across
