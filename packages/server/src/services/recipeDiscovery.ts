@@ -159,6 +159,16 @@ const suggestRecipesSchema: JsonSchema = {
             description:
               "One short line (≤120 chars) explaining the technique payoff, e.g. 'Practices fond → reduction → mounted butter'. Optional — omit when there's no specific technique to call out.",
           },
+          calories_per_serving: {
+            type: 'number',
+            description:
+              'Estimated kcal per serving. Best-effort from ingredient list and quantities — omit if uncertain.',
+          },
+          protein_grams_per_serving: {
+            type: 'number',
+            description:
+              'Estimated grams of protein per serving (whole or 1-decimal). Omit if uncertain.',
+          },
         },
         required: ['title', 'ingredients', 'steps', 'difficulty', 'practiced_skills'],
       },
@@ -294,7 +304,10 @@ export async function discoverRecipes(
     system,
     user: userPrompt,
     tool: suggestRecipesTool,
-    maxTokens: 4096,
+    // 8192 (was 4096) — adding nutrition fields per recipe × 6 recipes
+    // can push response past 4096, same gemini-no-functionCall pattern
+    // we hit on mealPlanner. Generous headroom.
+    maxTokens: 8192,
   });
 
   return (recipes ?? []).map((r) => {
@@ -328,8 +341,14 @@ export async function discoverRecipes(
       source_url: null,
       source_type: 'ai' as ParsedRecipe['source_type'],
       image_url: null,
-      calories_per_serving: null,
-      protein_grams_per_serving: null,
+      calories_per_serving:
+        typeof r.calories_per_serving === 'number'
+          ? (r.calories_per_serving as number)
+          : null,
+      protein_grams_per_serving:
+        typeof r.protein_grams_per_serving === 'number'
+          ? (r.protein_grams_per_serving as number)
+          : null,
       fat_grams_per_serving: null,
       difficulty,
       practiced_skills: practicedSkills,
