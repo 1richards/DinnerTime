@@ -8,8 +8,8 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { SymbolIcon } from '../ui/SymbolIcon';
+import { HeroImage } from '../ui/HeroImage';
 import { Button } from '../ui/Button';
 import { supabase } from '../../lib/supabase';
 import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
@@ -280,12 +280,26 @@ function CandidateCard({
     recipe.total_time_minutes ??
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
 
+  // Meta strip mirrors HeroDayCard ("Easy · 25m · 4 servings") so swap
+  // candidates read as the same surface as the day they'll replace.
+  const metaParts: string[] = [];
+  if (recipe.difficulty) {
+    metaParts.push(
+      recipe.difficulty[0]!.toUpperCase() + recipe.difficulty.slice(1),
+    );
+  }
+  if (totalTime > 0) metaParts.push(`${totalTime}m`);
+  if (recipe.servings != null) {
+    metaParts.push(
+      `${recipe.servings} ${recipe.servings === 1 ? 'serving' : 'servings'}`,
+    );
+  }
+
   // Card chrome (bg + border + shadow) lives on a wrapping View, not the
   // Pressable, because iOS 26 / Fabric intermittently fails to paint a
-  // Pressable's backgroundColor when shadow props are also set, which left
-  // these tiles looking like content floating on cream (no card outline).
-  // Same fix as the Surprise me hero on RemixSheet and the cooking-mode
-  // Done button. Inner Pressable still owns the touch + opacity-on-press.
+  // Pressable's backgroundColor when shadow props are also set. Same fix
+  // pattern as the Surprise me hero on RemixSheet and the cooking-mode
+  // Done button. Inner Pressable owns the touch + opacity-on-press.
   return (
     <View style={[styles.card, disabled ? { opacity: 0.4 } : null]}>
       <Pressable
@@ -293,46 +307,68 @@ function CandidateCard({
         disabled={disabled || committing}
         style={({ pressed }) => [
           styles.cardInner,
-          pressed && !disabled ? { opacity: 0.85 } : null,
+          pressed && !disabled ? { opacity: 0.92 } : null,
         ]}
+        accessibilityRole="button"
         accessibilityLabel={`Swap to ${recipe.title}`}
       >
-        <View style={styles.cardThumbWrap}>
-          {heroUri ? (
-            <Image
-              source={{ uri: heroUri }}
-              style={styles.cardThumb}
-              contentFit="cover"
-              transition={200}
-              cachePolicy="memory-disk"
-            />
-          ) : (
-            <View style={[styles.cardThumb, { backgroundColor: '#F1EAE0' }]} />
-          )}
-        </View>
-        <View style={styles.cardBody}>
-          <Text style={styles.cardTitle} numberOfLines={2}>
-            {recipe.title}
-          </Text>
-          {totalTime > 0 && (
-            <View style={styles.cardMeta}>
-              <SymbolIcon name="clock" size={12} tintColor={colors.textSecondary} />
-              <Text style={styles.cardMetaText}>{totalTime}m</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.cardAction}>
+        {/* 16:9 hero with title overlay — same visual language as the
+            Plan tab landing hero day card (HeroDayCard). Big white title
+            on a darkened bottom band of the photo. */}
+        <View style={styles.heroFrame}>
+          <HeroImage uri={heroUri} height={180} borderRadius={14} />
+          <View style={styles.heroOverlayContent}>
+            <Text style={styles.heroTitle} numberOfLines={2}>
+              {recipe.title}
+            </Text>
+          </View>
           {committing ? (
-            <ActivityIndicator size="small" color={colors.brand} />
-          ) : (
-            <SymbolIcon
-              name="arrow.2.squarepath"
-              size="action"
-              tintColor={colors.brand}
-              weight="semibold"
-            />
-          )}
+            <View style={styles.heroSpinner}>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            </View>
+          ) : null}
         </View>
+
+        {/* Meta strip (difficulty · time · servings) + optional nutrition
+            pill — mirrors HeroDayCard's strip below its hero. */}
+        {(metaParts.length > 0 ||
+          recipe.calories_per_serving != null ||
+          recipe.protein_grams_per_serving != null) && (
+          <View style={styles.metaRow}>
+            {metaParts.length > 0 && (
+              <>
+                <SymbolIcon
+                  name="fork.knife"
+                  size={13}
+                  tintColor={colors.textSecondary}
+                />
+                <Text style={styles.metaText}>{metaParts.join(' · ')}</Text>
+              </>
+            )}
+            {(recipe.calories_per_serving != null ||
+              recipe.protein_grams_per_serving != null) && (
+              <View style={styles.nutritionPill}>
+                <SymbolIcon
+                  name="bolt.fill"
+                  size={11}
+                  tintColor={colors.warning}
+                />
+                <Text style={styles.nutritionPillText}>
+                  {recipe.calories_per_serving != null
+                    ? `${Math.round(recipe.calories_per_serving)} kcal`
+                    : ''}
+                  {recipe.calories_per_serving != null &&
+                  recipe.protein_grams_per_serving != null
+                    ? ' · '
+                    : ''}
+                  {recipe.protein_grams_per_serving != null
+                    ? `${Math.round(recipe.protein_grams_per_serving)}g`
+                    : ''}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
       </Pressable>
     </View>
   );
@@ -428,13 +464,14 @@ const styles = StyleSheet.create({
   },
   card: {
     // Wrapper owns chrome — bg + border + shadow paint reliably here on
-    // iOS 26 / Fabric (Pressable does not). Outer paddings stay so the
-    // touch surface fills the visible card.
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    // iOS 26 / Fabric (Pressable does not). Inner paddingBottom mirrors
+    // HeroDayCard so the meta strip sits below the image with the same
+    // breathing room.
+    backgroundColor: colors.surface,
+    borderRadius: 14,
     marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#F1EAE0',
+    overflow: 'hidden',
+    paddingBottom: 12,
     shadowColor: '#7A6651',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
@@ -442,48 +479,65 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
+    // Stack: hero image on top, meta strip below — matches HeroDayCard.
+    flexDirection: 'column',
   },
-  cardThumbWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#F1EAE0',
-    marginRight: 12,
+  heroFrame: {
+    position: 'relative',
   },
-  cardThumb: {
-    width: '100%',
-    height: '100%',
+  heroOverlayContent: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 16,
   },
-  cardBody: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 15,
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
     fontWeight: '700',
-    color: '#1A140F',
     letterSpacing: -0.2,
+    lineHeight: 24,
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  cardMeta: {
+  heroSpinner: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    gap: 6,
   },
-  cardMetaText: {
+  metaText: {
     fontSize: 12,
     color: colors.textSecondary,
     marginLeft: 4,
   },
-  cardAction: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFF4E6',
+  nutritionPill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 153, 0, 0.15)',
+    marginLeft: 'auto',
+    gap: 3,
+  },
+  nutritionPillText: {
+    fontSize: 11,
+    color: colors.warning,
+    fontWeight: '600',
   },
 });
