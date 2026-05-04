@@ -256,8 +256,9 @@ function PreviewRecipeCard({
   const heroUri = recipe.image_url ?? generatedUri ?? null;
 
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
+  const toggleFavorite = useRecipeStore((s) => s.toggleFavorite);
   const [remixOpen, setRemixOpen] = useState(false);
-  const [working, setWorking] = useState<'save' | 'cook' | null>(null);
+  const [working, setWorking] = useState<'save' | 'cook' | 'favorite' | null>(null);
 
   // Derive `saved` from the live recipe library so the bookmark icon
   // flips to its filled / checked state regardless of WHICH save path
@@ -293,6 +294,49 @@ function PreviewRecipeCard({
         return;
       }
       // `saved` flips to true via the recipeStore subscription above.
+    } finally {
+      setWorking(null);
+    }
+  };
+
+  // Save + favorite in a single tap. Mirrors handleCookNow's
+  // create-recipe-and-look-it-up pattern, then toggles favorite on the
+  // newly created row. Heart flips to filled via recipeStore reactivity.
+  const favoritedThisRecipe = useRecipeStore((s) =>
+    s.recipes.some(
+      (r) =>
+        normalize(r.title) === normalize(recipe.title) &&
+        r.is_favorite === true,
+    ),
+  );
+
+  const handleSaveAndFavorite = async () => {
+    setWorking('favorite');
+    try {
+      const beforeIds = new Set(
+        useRecipeStore.getState().recipes.map((r) => r.id),
+      );
+      const saved = await saveRecipe({
+        ...recipe,
+        image_url: heroUri,
+        source_type: 'ai',
+      });
+      const state = useRecipeStore.getState();
+      if (state.error) {
+        Alert.alert('Save failed', state.error);
+        return;
+      }
+      // saveRecipe returns the saved row directly (added in quick-12). If
+      // for any reason it returns null, look up by diff against beforeIds
+      // to handle the dedup-existing-row branch where saveRecipe already
+      // updated state but returned null.
+      const target =
+        saved ??
+        state.recipes.find((r) => !beforeIds.has(r.id)) ??
+        state.recipes.find((r) => normalize(r.title) === normalize(recipe.title));
+      if (target && !target.is_favorite) {
+        await toggleFavorite(target.id);
+      }
     } finally {
       setWorking(null);
     }
@@ -347,9 +391,11 @@ function PreviewRecipeCard({
         preview
         previewActions={{
           onSave: handleSave,
+          onSaveAndFavorite: handleSaveAndFavorite,
           onRemix: () => setRemixOpen(true),
           onCookNow: handleCookNow,
           saved,
+          favorited: favoritedThisRecipe,
           working,
         }}
         onPress={() => onPress()}

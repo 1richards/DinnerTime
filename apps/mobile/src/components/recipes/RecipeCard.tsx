@@ -20,10 +20,16 @@ export interface PreviewActions {
   onSave?: () => void | Promise<void>;
   onRemix?: () => void;
   onCookNow?: () => void | Promise<void>;
+  /** Save the recipe AND mark it favorite in one tap. Renders as a
+      heart icon alongside the bookmark; flips to heart.fill when done. */
+  onSaveAndFavorite?: () => void | Promise<void>;
   /** Show a green check + "Saved" state instead of the save icon. */
   saved?: boolean;
+  /** Show a filled heart instead of the outline. Independent of `saved`
+      because the bookmark + heart actions are separate paths. */
+  favorited?: boolean;
   /** Which action is currently in-flight (shows a spinner on that icon). */
-  working?: 'save' | 'cook' | null;
+  working?: 'save' | 'cook' | 'favorite' | null;
 }
 
 interface RecipeCardProps {
@@ -215,6 +221,40 @@ export function RecipeCard({
                       name={previewActions.saved ? 'checkmark.circle.fill' : 'bookmark'}
                       size={26}
                       tintColor={previewActions.saved ? '#10B981' : '#FFFFFF'}
+                    />
+                  )}
+                </Pressable>
+              )}
+              {previewActions.onSaveAndFavorite && (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    if (previewActions.favorited) return;
+                    void previewActions.onSaveAndFavorite?.();
+                  }}
+                  hitSlop={10}
+                  disabled={
+                    previewActions.favorited || previewActions.working != null
+                  }
+                  style={({ pressed }) => [
+                    styles.actionBadge,
+                    pressed && { opacity: 0.6 },
+                  ]}
+                  accessibilityLabel={
+                    previewActions.favorited
+                      ? 'Saved and favorited'
+                      : 'Save and favorite'
+                  }
+                >
+                  {previewActions.working === 'favorite' ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <SymbolIcon
+                      name={previewActions.favorited ? 'heart.fill' : 'heart'}
+                      size={26}
+                      tintColor={
+                        previewActions.favorited ? colors.brand : '#FFFFFF'
+                      }
                     />
                   )}
                 </Pressable>
