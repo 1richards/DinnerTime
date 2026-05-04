@@ -28,7 +28,9 @@
 
 import React from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   View,
   Text,
   Pressable,
@@ -74,7 +76,10 @@ export function PickerSheet({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.sheet}>
+      <KeyboardAvoidingView
+        style={styles.sheet}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         {/* Drag-indicator pill — pure visual affordance for the swipe-down
             dismiss. iOS already animates the pageSheet handle when you drag,
             but having a stationary visual cue at the top of the surface
@@ -116,7 +121,7 @@ export function PickerSheet({
             <View style={styles.footerSlot}>{footerSlot}</View>
           ) : null}
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

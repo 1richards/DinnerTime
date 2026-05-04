@@ -98,7 +98,7 @@ export function OptionCard({
       <View style={[styles.chip, { backgroundColor: `${tint}1A` }]}>
         <SymbolIcon
           name={symbol}
-          size="action"
+          size={20}
           tintColor={tint}
           weight="semibold"
         />
@@ -131,8 +131,8 @@ export function OptionCard({
 
 const styles = StyleSheet.create({
   card: {
-    minHeight: 132,
-    paddingVertical: 14,
+    minHeight: 104,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 16,
     backgroundColor: colors.surface,
@@ -163,12 +163,12 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   chip: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   title: {
     fontSize: 14,
