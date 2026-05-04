@@ -631,6 +631,7 @@ Recent decisions affecting current work:
 | 30 | Cooking mode TTS now plays with iPhone silent switch on — call setAudioModeAsync({ playsInSilentMode: true }) on enter, restore on exit | 2026-05-03 | 86dc275 | _fast (inline)_ |
 | 31 | Persistent add-timer button in cooking header — ActionSheetIOS preset minutes (5/10/15/20/30/45/60) restoring timer creation path after voice STT was parked | 2026-05-03 | c88e603 | _fast (inline)_ |
 | 32 | Cook polish — timer band sizes to content, chip bigger, Custom… via Alert.prompt, completing a cook overwrites today's plan entry with the cooked recipe + status:cooked via applySwap+markCooked | 2026-05-03 | c2cc534 | _fast (inline)_ |
+| 33 | Heart favorite always-on in PreviewSheet hero (Recipe Box detail) — third top-right bubble next to share+close; optional recipeId+isFavorite props so other call sites stay unchanged | 2026-05-03 | 4ccc2d2 | _fast (inline)_ |
 
 ## Post-v1 Polish (out-of-band, not GSD-planned)
 
