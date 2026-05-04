@@ -47,11 +47,11 @@ export default function TimerBar({ timers, onCancel }: TimerBarProps) {
       {timers.map((t) => {
         const warn = t.remainingMs < WARNING_THRESHOLD_MS;
         const chipClass = warn
-          ? 'flex-row items-center bg-warning/20 border border-warning rounded-full px-4 py-2'
-          : 'flex-row items-center bg-brand/15 border border-brand rounded-full px-4 py-2';
+          ? 'flex-row items-center bg-warning/20 border border-warning rounded-full px-5 py-3'
+          : 'flex-row items-center bg-brand/15 border border-brand rounded-full px-5 py-3';
         const labelClass = warn
-          ? 'ml-2 text-base font-semibold text-warning'
-          : 'ml-2 text-base font-semibold text-brand-pressed';
+          ? 'ml-2 text-lg font-semibold text-warning'
+          : 'ml-2 text-lg font-semibold text-brand-pressed';
         const iconTint = warn ? colors.warning : colors.brandPressed;
         return (
           <Pressable
@@ -61,11 +61,11 @@ export default function TimerBar({ timers, onCancel }: TimerBarProps) {
             accessibilityLabel="Cancel timer"
             accessibilityRole="button"
           >
-            <SymbolIcon name="timer" size={18} tintColor={iconTint} />
+            <SymbolIcon name="timer" size={22} tintColor={iconTint} />
             <Text className={labelClass}>{formatRemaining(t.remainingMs)}</Text>
             <SymbolIcon
               name="xmark.circle.fill"
-              size={16}
+              size={18}
               tintColor={iconTint}
               style={{ marginLeft: 6 }}
             />

@@ -46,7 +46,7 @@
  * after being superseded by ScrollableRecipe + StepCard and VoiceWaveform.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ActionSheetIOS } from 'react-native';
+import { View, Text, ActionSheetIOS, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -491,20 +491,40 @@ export default function CookScreen() {
           // was parked at backlog 999.1 so this is the only way for users to
           // create timers right now. Preset minutes match the durations a
           // home cook needs at counter-distance: short prep checks (5/10),
-          // standard simmers (15/20), longer roasts (30/45/60). The
-          // existing TimerBar handles the chip render + tick.
+          // standard simmers (15/20), longer roasts (30/45/60). Custom…
+          // opens an Alert.prompt so the user can enter any positive
+          // integer. The existing TimerBar handles the chip render + tick.
           const PRESETS = [5, 10, 15, 20, 30, 45, 60];
+          const CUSTOM_IDX = PRESETS.length;
+          const CANCEL_IDX = PRESETS.length + 1;
           ActionSheetIOS.showActionSheetWithOptions(
             {
               title: 'Start a timer',
               options: [
                 ...PRESETS.map((m) => `${m} minutes`),
+                'Custom…',
                 'Cancel',
               ],
-              cancelButtonIndex: PRESETS.length,
+              cancelButtonIndex: CANCEL_IDX,
             },
             (idx) => {
-              if (idx == null || idx === PRESETS.length) return;
+              if (idx == null || idx === CANCEL_IDX) return;
+              if (idx === CUSTOM_IDX) {
+                Alert.prompt(
+                  'Custom timer',
+                  'How many minutes?',
+                  (text?: string) => {
+                    if (!text) return;
+                    const minutes = Number(text.trim());
+                    if (!Number.isFinite(minutes) || minutes <= 0) return;
+                    addTimer(Math.round(minutes * 60_000));
+                  },
+                  'plain-text',
+                  '',
+                  'number-pad',
+                );
+                return;
+              }
               const minutes = PRESETS[idx];
               if (minutes === undefined) return;
               addTimer(minutes * 60_000);
@@ -589,16 +609,39 @@ export default function CookScreen() {
         onDone={() => {
           void fireCommandHaptic();
           stepSpeaker.stop();
-          // Mark the day as cooked if this recipe is on the current
-          // plan. Lookup is best-effort — if the user opened cook from
-          // somewhere outside a plan context (Recipe Box detail), no
-          // plan entry exists and we just play the celebration.
-          const { currentPlan, markCooked } = useMealPlanStore.getState();
-          const entry = currentPlan?.entries.find(
-            (e) => e.recipe_id === recipe?.id,
-          );
-          if (entry) {
-            void markCooked(entry.day_of_week);
+          // What got cooked, today, is the truth — overwrite today's plan
+          // entry with this recipe and mark it cooked. /entries/assign
+          // upserts on (plan_id, day_of_week) so this works whether today's
+          // slot was empty, planned for a different recipe, or even if no
+          // plan exists yet for this week. If today is outside the current
+          // plan's week (rare — mid-week boundary, no plan loaded), fall
+          // back to the legacy recipe_id lookup so a planned-but-different-
+          // day cook still gets recorded somewhere sensible.
+          const { currentPlan, applySwap, markCooked } =
+            useMealPlanStore.getState();
+          if (recipe && currentPlan) {
+            const now = new Date();
+            const todayLocalIso = `${now.getFullYear()}-${String(
+              now.getMonth() + 1,
+            ).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const weekStartMs = new Date(
+              `${currentPlan.week_start}T00:00:00`,
+            ).getTime();
+            const todayMs = new Date(`${todayLocalIso}T00:00:00`).getTime();
+            const dayOffset = Math.round(
+              (todayMs - weekStartMs) / 86_400_000,
+            );
+            if (dayOffset >= 0 && dayOffset <= 6) {
+              void (async () => {
+                await applySwap(dayOffset, recipe);
+                await markCooked(dayOffset);
+              })();
+            } else {
+              const entry = currentPlan.entries.find(
+                (e) => e.recipe_id === recipe.id,
+              );
+              if (entry) void markCooked(entry.day_of_week);
+            }
           }
           setDoneVisible(true);
         }}

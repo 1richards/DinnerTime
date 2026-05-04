@@ -108,10 +108,12 @@ export function StickyCookingHeader({
         </View>
       </View>
 
-      {/* Timer band — 48pt, only when timers exist. Invoked as function so
-          TimerBar's chip classNames are visible to the test flattener. */}
+      {/* Timer band — sizes to chip content, only when timers exist. Drop
+          the fixed h-12 so a larger chip doesn't get clipped or leave
+          blank slack below it. Invoked as function so TimerBar's chip
+          classNames are visible to the test flattener. */}
       {hasTimers ? (
-        <View className="h-12 bg-surface">
+        <View className="bg-surface">
           {TimerBar({ timers, onCancel: handleCancelTimer })}
         </View>
       ) : null}
