@@ -151,26 +151,27 @@ export function FocusBanner({ children }: FocusBannerProps = {}) {
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={theme ? 'Change focus theme' : 'Set focus theme'}
-            style={({ pressed }) => [
-              styles.focusChip,
-              pressed && styles.focusChipPressed,
-            ]}
+            // Match the recipe-card "Pan sauces" chip exactly: same
+            // resolveChipClasses({ kind:'display', tone:'default' }) output
+            // — bg-surface-subtle pill with text-text-secondary label.
+            // Inline className keeps the chip a Pressable (Chip's display
+            // kind returns a plain View) without forking the shared resolver.
+            className="h-8 px-3 rounded-pill flex-row items-center bg-surface-subtle"
+            style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
           >
-            <View style={styles.focusChipInner}>
-              <SymbolIcon
-                name="target"
-                size={14}
-                tintColor={colors.warning}
-                weight="semibold"
-              />
-              <Text
-                style={styles.focusChipLabel}
-                numberOfLines={1}
-                allowFontScaling={false}
-              >
-                {theme ?? 'Set focus'}
-              </Text>
-            </View>
+            <SymbolIcon
+              name="target"
+              size={14}
+              tintColor={colors.textSecondary}
+              weight="semibold"
+            />
+            <Text
+              className="text-caption text-text-secondary ml-1"
+              numberOfLines={1}
+              allowFontScaling={false}
+            >
+              {theme ?? 'Set focus'}
+            </Text>
           </Pressable>
         )}
       </View>
@@ -234,41 +235,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
-  },
-  // Focus theme rendered as a pressable pill chip. White bg + warm-tone
-  // border give clean contrast against the cream banner so the chip
-  // reads as a clearly-bounded container, not floating text.
-  // alignSelf:flex-start + flexShrink:0 keep the chip at content width
-  // and prevent the parent's stretch alignment from breaking the row.
-  focusChip: {
-    flexDirection: 'row',
-    flexWrap: 'nowrap',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    flexShrink: 0,
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: colors.warning,
-  },
-  focusChipPressed: {
-    opacity: 0.7,
-  },
-  // Inner row guarantees icon + text stay side-by-side regardless of any
-  // Pressable style-merging quirks (function-form `style={({pressed}) => …}`
-  // can drop properties on some hosts).
-  focusChipInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  focusChipLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.1,
-    color: colors.warning,
   },
 });
