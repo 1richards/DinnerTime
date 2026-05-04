@@ -636,6 +636,8 @@ Recent decisions affecting current work:
 | 35 | Favorite plan-generated recipes — ad-hoc heart on PreviewSheet saves recipe + links back to plan day via /entries/assign with recipe_id + toggles favorite; recipeStore.saveRecipe now returns Recipe \| null | 2026-05-03 | 7f074a3 | _fast (inline)_ |
 | 36 | Per-serving nutrition on recipe detail + weekly avg chip on This Week card (kcal·protein) — recipe[id]/index.tsx mirrors PreviewSheet badges; plan.tsx averages over entries with recipe_id→saved recipe nutrition | 2026-05-03 | f6ae91c | _fast (inline)_ |
 | 37 | Extend mealPlanner to populate per-serving nutrition on plan entries — migration 00036 adds calories_per_serving + protein_grams_per_serving to meal_plan_entries; planner schema asks Claude for both; /entries/assign accepts; plan.tsx weekNutrition memo prefers entry-level fields with fallback to recipe lookup | 2026-05-04 | 8318f39 | [12-extend-mealplanner-to-populate-per-servi](./quick/12-extend-mealplanner-to-populate-per-servi/) |
+| 38 | Bump mealPlanner Gemini maxTokens 4096→8192 — fixes "no functionCall part" 500 after quick-12 nutrition fields tipped 7-day plans past the budget mid-tool-call | 2026-05-04 | 6525951 | _fast (inline)_ |
+| 39 | Per-serving nutrition pill on RecipeCard + HeroDayCard + SuggestionCard — DinnerSuggestion + suggestDinnersSchema extended with both fields; uniform warning-tone styling across all surfaces | 2026-05-04 | 9231a8e | _fast (inline)_ |
 
 ## Post-v1 Polish (out-of-band, not GSD-planned)
 
