@@ -40,7 +40,7 @@ export function formatIngredientSubtitle(
   const hasUnit = typeof ing.unit === 'string' && ing.unit.length > 0;
   if (hasQty && hasUnit) return `${ing.quantity} ${ing.unit}`;
   if (hasQty) return String(ing.quantity);
-  if (hasUnit) return ing.unit;
+  if (hasUnit) return ing.unit ?? undefined;
   return undefined;
 }
 

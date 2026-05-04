@@ -328,9 +328,14 @@ export const useShoppingStore = create<ShoppingState>()(
 
       const body = await response.json();
       const serverItem: ShoppingListItem = body.data;
+      // `list` is guaranteed non-null here — it was either populated from
+      // currentList or refresh-or-created on entry, and the 404 recovery
+      // branch above re-binds it. TS loses the narrowing across awaits in
+      // this closure, so capture as a const for the set callback.
+      const finalListId = list.id;
       set((state) => ({
         items: state.items.map((i) =>
-          i.id === optimistic.id ? { ...serverItem, shopping_list_id: list.id } : i
+          i.id === optimistic.id ? { ...serverItem, shopping_list_id: finalListId } : i
         ),
         error: null,
       }));
