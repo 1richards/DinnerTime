@@ -289,11 +289,24 @@ export function RemixSheet({
   };
 
   const handleExpand = async (idx: number, variation: RemixVariation) => {
+    if (__DEV__) {
+      console.log('[remix] handleExpand start', {
+        idx,
+        title: variation.title,
+      });
+    }
     setWorkingIdx(idx);
     setWorkingAction('expand');
     const full = await ensureFull(idx, variation);
     setWorkingIdx(null);
     setWorkingAction(null);
+    if (__DEV__) {
+      console.log('[remix] handleExpand done', {
+        idx,
+        gotFull: !!full,
+        hasSteps: !!full && Array.isArray(full.steps) && full.steps.length > 0,
+      });
+    }
     if (full) setExpandedIdx(idx);
   };
 
