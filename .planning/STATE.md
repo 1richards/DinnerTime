@@ -629,6 +629,7 @@ Recent decisions affecting current work:
 | 28 | Fix DatePicker timezone bug — Cook Later from recipe box was placing recipes on the next day for users west of UTC; switch helpers from UTC to local-time | 2026-05-03 | 60ebbb1 | _fast (inline)_ |
 | 29 | Wrap focus chip content in inner row View — defensive guard so icon+text stay side-by-side regardless of Pressable style-merging quirks | 2026-05-03 | 6af46ae | _fast (inline)_ |
 | 30 | Cooking mode TTS now plays with iPhone silent switch on — call setAudioModeAsync({ playsInSilentMode: true }) on enter, restore on exit | 2026-05-03 | 86dc275 | _fast (inline)_ |
+| 31 | Persistent add-timer button in cooking header — ActionSheetIOS preset minutes (5/10/15/20/30/45/60) restoring timer creation path after voice STT was parked | 2026-05-03 | c88e603 | _fast (inline)_ |
 
 ## Post-v1 Polish (out-of-band, not GSD-planned)
 
