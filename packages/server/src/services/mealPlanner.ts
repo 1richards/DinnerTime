@@ -560,11 +560,14 @@ export async function generateMealPlan(
 
   const promptText = buildMealPlanPrompt(context);
 
-  // 7. Call AI client with tool forced
+  // 7. Call AI client with tool forced. 8192 (was 4096) — quick-12 added
+  // calories_per_serving + protein_grams_per_serving per entry which pushed
+  // the response past 4096 mid-tool-call on full 7-day plans, causing
+  // Gemini to return no functionCall part. 8192 leaves comfortable headroom.
   const { days } = await getClientFor('mealPlanner.week').generateStructured({
     user: promptText,
     tool: generateMealPlanTool,
-    maxTokens: 4096,
+    maxTokens: 8192,
   });
 
   if (!Array.isArray(days) || days.length !== 7) {
@@ -790,11 +793,12 @@ REGENERATION CONTEXT:
 - EXCLUDE the current title and do NOT return it: "${excludedTitle}"
 - Return the full 7-day array; we will only use the entry for day ${dayOfWeek}.`;
 
-  // 5. Call AI client
+  // 5. Call AI client. 8192 to match the full-week generator — same shape,
+  // same per-entry nutrition fields added in quick-12.
   const { days } = await getClientFor('mealPlanner.week').generateStructured({
     user: scopedPrompt,
     tool: generateMealPlanTool,
-    maxTokens: 4096,
+    maxTokens: 8192,
   });
 
   if (!Array.isArray(days) || days.length === 0) {
