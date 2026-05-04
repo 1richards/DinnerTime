@@ -1210,10 +1210,26 @@ export default function PlanScreen() {
             onCookLater={async (iso) => {
               setPreviewCookingLater(true);
               try {
+                // Bug-fix: forward the source entry's recipe_id when it
+                // has one so Cook Later preserves the link to the saved
+                // (and possibly favorited) recipe instead of creating a
+                // disconnected ad-hoc copy on the target day. Re-read
+                // from the live meal-plan store at firing time — the
+                // heart bubble's onAdHocFavorite path retroactively
+                // links the entry via /entries/assign + fetchCurrent, so
+                // the freshest recipe_id may not be in the closure's
+                // previewEntry snapshot.
+                const livePlan =
+                  useMealPlanStore.getState().currentPlan;
+                const liveEntry = livePlan?.entries.find(
+                  (e) => e.id === previewEntry.id,
+                );
+                const sourceRecipeId =
+                  liveEntry?.recipe_id ?? previewEntry.recipe_id ?? null;
                 await useMealPlanStore.getState().addToPlan(
                   iso,
                   previewRecipe,
-                  null,
+                  sourceRecipeId,
                 );
                 setPreviewEntry(null);
               } finally {

@@ -948,4 +948,85 @@ describe('mealPlanStore', () => {
       });
     });
   });
+
+  describe('addToPlan (Cook Later)', () => {
+    const recipe = {
+      title: 'Lemon Pan-Sauce Chicken',
+      description: 'Quick weeknight pan-sauce',
+      ingredients: [
+        { name: 'chicken breast', quantity: 2, unit: 'pieces', notes: null },
+        { name: 'lemon', quantity: 1, unit: null, notes: null },
+      ],
+      steps: ['Sear chicken', 'Make pan sauce'],
+      prep_time_minutes: 10,
+      cook_time_minutes: 25,
+      total_time_minutes: 35,
+      servings: 4,
+      source_url: null,
+      source_type: 'ai' as const,
+      image_url: null,
+    };
+
+    it('forwards recipe_id to /entries/assign when provided (Cook Later from a saved recipe)', async () => {
+      // Target date OUTSIDE the current plan window so we don't trigger fetchCurrent.
+      useMealPlanStore.setState({
+        currentPlan: makePlan({ week_start: '2026-04-13' }),
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: {} }),
+      });
+
+      await useMealPlanStore.getState().addToPlan(
+        '2026-05-25',
+        recipe,
+        'recipe-favorite-123',
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/meal-plans/entries/assign'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+          }),
+        }),
+      );
+      const [, init] = mockFetch.mock.calls[0]!;
+      const body = JSON.parse((init as RequestInit).body as string);
+      // Regression guard for cook-later-creates-dupe-recipe debug session:
+      // when Cook Later is invoked on a plan-day preview whose entry has a
+      // recipe_id (e.g. a favorited Recipe Box recipe), the source recipe_id
+      // MUST be forwarded so the new day's entry stays linked to the same
+      // recipes row. Otherwise the user sees the new entry as an "ad-hoc"
+      // un-favorited copy.
+      expect(body.recipe_id).toBe('recipe-favorite-123');
+      expect(body.date).toBe('2026-05-25');
+      expect(body.title).toBe('Lemon Pan-Sauce Chicken');
+    });
+
+    it('passes recipe_id=null when omitted (Cook Later from an unsaved Discover preview)', async () => {
+      useMealPlanStore.setState({
+        currentPlan: makePlan({ week_start: '2026-04-13' }),
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: {} }),
+      });
+
+      await useMealPlanStore.getState().addToPlan(
+        '2026-05-25',
+        recipe,
+        null,
+      );
+
+      const [, init] = mockFetch.mock.calls[0]!;
+      const body = JSON.parse((init as RequestInit).body as string);
+      expect(body.recipe_id).toBeNull();
+    });
+  });
 });
