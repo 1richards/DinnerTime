@@ -1,4 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// canonicalResolver dynamically imports `supabaseAdmin` from
+// ../config/supabase.js for the candidate-create write path
+// (canonical_ingredients has RLS service-role-only writes). Without this
+// stub, tests that exercise `candidate_created` hit the real Supabase
+// and crash with FK/unique-constraint errors. Stub via a hoisted holder
+// so each test's `makeMockSupabase(...)` instance also services the
+// admin write — same `from()` chain, same insert mock.
+const adminHolder = vi.hoisted(() => ({
+  supa: null as unknown as { from: (...args: unknown[]) => unknown },
+}));
+
+vi.mock('../../config/supabase.js', () => ({
+  // Getter so the value is read at call time (after makeMockSupabase has
+  // populated the holder). Default-exported fields would resolve once at
+  // module load and stay null.
+  get supabaseAdmin() {
+    return adminHolder.supa;
+  },
+}));
+
 import {
   _clearCache,
   resolveCanonical,
@@ -101,7 +122,12 @@ function makeMockSupabase(opts: {
     throw new Error(`Unexpected table: ${table}`);
   });
 
-  return { from, calls };
+  const supa = { from, calls };
+  // Wire this mock as the admin client so the dynamic supabaseAdmin
+  // import inside resolveCanonical resolves to the same chain — keeping
+  // the candidate_created write path covered by the same per-test mock.
+  adminHolder.supa = supa as unknown as typeof adminHolder.supa;
+  return supa;
 }
 
 beforeEach(() => _clearCache());
