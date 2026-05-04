@@ -121,25 +121,55 @@ async function getAuthToken(): Promise<string> {
 
 // Shared call — POSTs to /recipes/remix and returns the expanded ParsedRecipe.
 // All three commit actions (expand, save-new, modify-existing) hit this endpoint.
+//
+// Timeout discipline: Claude can take 7-30s to rewrite a full recipe. Without
+// an upper bound, a wedged network leaves the variation card spinner running
+// indefinitely (the symptom in remix-variation-expand-hangs). We bound at 45s
+// via AbortController — long enough for slow but real Claude responses
+// (recent server log shows 7-10s typical, occasional 30s+), short enough
+// that a hung connection surfaces as a visible error rather than a stuck UI.
+const REMIX_TIMEOUT_MS = 45_000;
+
 async function fetchRemixedRecipe(
   base: RemixSheetProps['baseForSave'] extends infer T ? T : never,
   variation: RemixVariation,
 ): Promise<ParsedRecipe> {
   const token = await getAuthToken();
-  const res = await fetch(`${getApiBaseUrl()}/api/v1/recipes/remix`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ base, variation }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error ?? 'Failed to generate recipe');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REMIX_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${getApiBaseUrl()}/api/v1/recipes/remix`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ base, variation }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    if ((err as Error).name === 'AbortError') {
+      throw new Error('Remix took too long. Try again.');
+    }
+    throw err;
   }
-  const body = await res.json();
-  return body.data as ParsedRecipe;
+  clearTimeout(timer);
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(
+      (errBody as { error?: string }).error ?? 'Failed to generate recipe',
+    );
+  }
+  const body = (await res.json()) as { data?: ParsedRecipe };
+  if (!body || !body.data || typeof body.data !== 'object') {
+    // Defensive: malformed payload silently set `full = undefined` before,
+    // which left the expand handler in a "ok-but-no-modal" limbo. Now we
+    // throw so ensureFull's catch surfaces an error state on the card.
+    throw new Error('Remix response was empty. Try again.');
+  }
+  return body.data;
 }
 
 export function RemixSheet({
@@ -175,6 +205,14 @@ export function RemixSheet({
   >(null);
   const [savedIdxs, setSavedIdxs] = useState<Set<number>>(new Set());
   const [modifiedIdxs, setModifiedIdxs] = useState<Set<number>>(new Set());
+  // Per-card error message — surfaces timeout / parse / network failures as
+  // a visible state on the card rather than silently leaving the spinner
+  // running. Cleared on retry. Without this, ensureFull's old behavior was
+  // Alert.alert + return null, which on iOS sometimes raced with Modal
+  // dismissal and the alert never showed (this was a likely cause of the
+  // user-reported "stuck loading state" — visible spinner, no alert, no
+  // modal). Inline error state survives modal lifecycle races.
+  const [errorByIdx, setErrorByIdx] = useState<Record<number, string>>({});
   // Nested remix — when a user taps the sparkle icon on a variation card we
   // expand that variation to a full ParsedRecipe (so the nested sheet has
   // ingredients to anchor against), then mount another RemixSheet inline.
@@ -196,6 +234,7 @@ export function RemixSheet({
       setModifiedIdxs(new Set());
       setCustomInstructions('');
       setNestedRemixContext(null);
+      setErrorByIdx({});
     }
   }, [visible]);
 
@@ -219,15 +258,24 @@ export function RemixSheet({
     variation: RemixVariation,
   ): Promise<ParsedRecipe | null> => {
     if (fullByIdx[idx]) return fullByIdx[idx];
+    // Clear any prior error so a retry doesn't show stale state.
+    setErrorByIdx((prev) => {
+      if (prev[idx] === undefined) return prev;
+      const next = { ...prev };
+      delete next[idx];
+      return next;
+    });
     try {
       const full = await fetchRemixedRecipe(resolveBase(), variation);
       setFullByIdx((prev) => ({ ...prev, [idx]: full }));
       return full;
     } catch (err) {
-      Alert.alert(
-        'Remix failed',
-        err instanceof Error ? err.message : String(err),
-      );
+      const message =
+        err instanceof Error ? err.message : 'Remix failed. Try again.';
+      // Inline error state on the card. Replaces Alert.alert which sometimes
+      // failed to surface from inside nested Modals on iOS — leaving the
+      // user with a stuck-looking spinner (the bug we're fixing here).
+      setErrorByIdx((prev) => ({ ...prev, [idx]: message }));
       return null;
     }
   };
@@ -614,138 +662,173 @@ export function RemixSheet({
         </PickerSheet>
       )}
 
-      {/* Post-pick states — loading / error / results retain the original
-          Modal + custom header layout (results list has different chrome
-          than the picker grid). PickerSheet only owns the picker step.
-          presentationStyle="fullScreen" instead of pageSheet because this
-          Modal can be mounted from inside another pageSheet (e.g. Plan
-          tab's day-preview popup is itself a pageSheet, and the Remix CTA
-          on PreviewSheet opens this Modal as a child). iOS allows only
-          one pageSheet at a time — stacking two silently breaks touch
-          routing and prevents subsequent inner Modals (like the
-          tap-to-expand variation preview) from presenting. fullScreen
-          stacks cleanly above any parent pageSheet. */}
+      {/* Post-pick states — loading / error / results / expanded-preview ALL
+          live inside ONE fullScreen Modal. PickerSheet only owns the picker
+          step.
+
+          Why a single Modal instead of two siblings: iOS UIKit's
+          presentation stack does not handle two sibling <Modal> components
+          both visible=true reliably. Previous fixes (79b07b3, 348e60f)
+          tried tweaking presentationStyle on the inner expanded-preview
+          Modal — those fixed direct entry chains (Recipe Box) but left the
+          Plan-tab chain (PlanEntryPreview pageSheet → PickerSheet pageSheet
+          → variations Modal → expand Modal) presenting four nested view
+          controllers, which silently dropped the inner expand on iOS.
+
+          Solution: render the expanded preview content as conditional
+          children of THIS Modal (variations OR expanded-preview, never
+          both at once). Eliminates the sibling-Modal pattern entirely.
+
+          presentationStyle="fullScreen" because this Modal can be mounted
+          from inside another pageSheet (Plan tab path). iOS allows only
+          one pageSheet at a time. fullScreen stacks cleanly above any
+          parent pageSheet. */}
       {selectedMode && (
         <Modal
           visible={visible}
           animationType="slide"
           presentationStyle="fullScreen"
-          onRequestClose={onClose}
+          onRequestClose={
+            expandedIdx !== null && expandedFull
+              ? () => setExpandedIdx(null)
+              : onClose
+          }
         >
-          {/* SafeAreaView with edges=['top'] insets the header below the
-              status bar / notch. fullScreen presentation extends content
-              behind the system UI, so without this the REMIX kicker sits
-              under the time/battery indicators on iOS. */}
-          <SafeAreaView style={styles.sheet} edges={['top']}>
-            <View style={styles.header}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>REMIX</Text>
-                <Text style={styles.title} numberOfLines={2}>
-                  {recipeTitle}
-                </Text>
+          {expandedIdx !== null && expandedFull && expandedVariation ? (
+            // Expanded-preview takes over the same Modal — no sibling
+            // Modal needed. PreviewSheet has its own SafeAreaView so
+            // we don't double-wrap.
+            <RemixVariationPreview
+              idx={expandedIdx}
+              full={expandedFull}
+              variation={expandedVariation}
+              baseIngredients={baseForSave?.ingredients}
+              saved={savedIdxs.has(expandedIdx)}
+              modified={modifiedIdxs.has(expandedIdx)}
+              saving={workingIdx === expandedIdx && workingAction === 'save'}
+              modifying={
+                workingIdx === expandedIdx && workingAction === 'modify'
+              }
+              cooking={workingIdx === expandedIdx && workingAction === 'cook'}
+              canModify={source.kind === 'saved'}
+              onClose={() => setExpandedIdx(null)}
+              onSave={() => handleSaveAsNew(expandedIdx, expandedVariation)}
+              onModify={() =>
+                handleModifyExisting(expandedIdx, expandedVariation)
+              }
+              onCook={() => handleCookNow(expandedIdx, expandedVariation)}
+            />
+          ) : (
+            /* SafeAreaView with edges=['top'] insets the header below the
+               status bar / notch. fullScreen presentation extends content
+               behind the system UI, so without this the REMIX kicker sits
+               under the time/battery indicators on iOS. */
+            <SafeAreaView style={styles.sheet} edges={['top']}>
+              <View style={styles.header}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>REMIX</Text>
+                  <Text style={styles.title} numberOfLines={2}>
+                    {recipeTitle}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={onClose}
+                  hitSlop={12}
+                  style={styles.closeBtn}
+                >
+                  <SymbolIcon name="xmark" size={22} tintColor="#3E332A" />
+                </Pressable>
               </View>
-              <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-                <SymbolIcon name="xmark" size={22} tintColor="#3E332A" />
-              </Pressable>
-            </View>
 
-            {/* Loading state */}
-            {loading && (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.brand} />
-                <Text style={styles.loadingText}>Brewing ideas...</Text>
-              </View>
-            )}
+              {/* Loading state */}
+              {loading && (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.brand} />
+                  <Text style={styles.loadingText}>Brewing ideas...</Text>
+                </View>
+              )}
 
-            {/* Error state */}
-            {error && (
-              <View style={styles.errorContainer}>
-                <SymbolIcon name="exclamationmark.circle" size={32} tintColor="#DC2626" />
-                <Text style={styles.errorText}>{error}</Text>
-                <View style={{ height: 12 }} />
-                <Button title="Try Another Mode" variant="outline" onPress={handleTryAnother} />
-              </View>
-            )}
-
-            {/* Results */}
-            {variations && !loading && (
-              <ScrollView contentContainerStyle={styles.resultsContainer}>
-                <Text style={styles.resultsLabel}>
-                  {MODES.find((m) => m.mode === selectedMode)?.label}
-                </Text>
-                {variations.map((v, i) => (
-                  <VariationCard
-                    key={i}
-                    variation={v}
-                    index={i}
-                    saved={savedIdxs.has(i)}
-                    modified={modifiedIdxs.has(i)}
-                    isWorking={workingIdx === i}
-                    isExpanding={workingIdx === i && workingAction === 'expand'}
-                    isSaving={workingIdx === i && workingAction === 'save'}
-                    isModifying={workingIdx === i && workingAction === 'modify'}
-                    isCooking={workingIdx === i && workingAction === 'cook'}
-                    isRemixing={workingIdx === i && workingAction === 'remix'}
-                    isApplying={workingIdx === i && workingAction === 'apply'}
-                    disabled={workingIdx !== null && workingIdx !== i}
-                    canModifyExisting={source.kind === 'saved'}
-                    applyToDayMode={!!onApplyToDay}
-                    baseIngredients={baseForSave?.ingredients}
-                    onExpand={() => handleExpand(i, v)}
-                    onCook={() => handleCookNow(i, v)}
-                    onSaveAsNew={(uri) => handleSaveAsNew(i, v, uri)}
-                    onModifyExisting={() => handleModifyExisting(i, v)}
-                    onApplyToDay={() => handleApplyToDay(i, v)}
-                    onRemix={() => handleRemixVariation(i, v)}
-                    onOpenSaved={handleOpenSaved}
-                    onOpenModified={handleOpenModified}
+              {/* Error state */}
+              {error && (
+                <View style={styles.errorContainer}>
+                  <SymbolIcon
+                    name="exclamationmark.circle"
+                    size={32}
+                    tintColor="#DC2626"
                   />
-                ))}
-                <View style={{ height: 16 }} />
-                <Button
-                  title="Try Another Mode"
-                  variant="outline"
-                  onPress={handleTryAnother}
-                />
-              </ScrollView>
-            )}
-          </SafeAreaView>
+                  <Text style={styles.errorText}>{error}</Text>
+                  <View style={{ height: 12 }} />
+                  <Button
+                    title="Try Another Mode"
+                    variant="outline"
+                    onPress={handleTryAnother}
+                  />
+                </View>
+              )}
+
+              {/* Results */}
+              {variations && !loading && (
+                <ScrollView contentContainerStyle={styles.resultsContainer}>
+                  <Text style={styles.resultsLabel}>
+                    {MODES.find((m) => m.mode === selectedMode)?.label}
+                  </Text>
+                  {variations.map((v, i) => (
+                    <VariationCard
+                      key={i}
+                      variation={v}
+                      index={i}
+                      saved={savedIdxs.has(i)}
+                      modified={modifiedIdxs.has(i)}
+                      isWorking={workingIdx === i}
+                      isExpanding={
+                        workingIdx === i && workingAction === 'expand'
+                      }
+                      isSaving={workingIdx === i && workingAction === 'save'}
+                      isModifying={
+                        workingIdx === i && workingAction === 'modify'
+                      }
+                      isCooking={workingIdx === i && workingAction === 'cook'}
+                      isRemixing={
+                        workingIdx === i && workingAction === 'remix'
+                      }
+                      isApplying={
+                        workingIdx === i && workingAction === 'apply'
+                      }
+                      cardError={errorByIdx[i] ?? null}
+                      disabled={workingIdx !== null && workingIdx !== i}
+                      canModifyExisting={source.kind === 'saved'}
+                      applyToDayMode={!!onApplyToDay}
+                      baseIngredients={baseForSave?.ingredients}
+                      onExpand={() => handleExpand(i, v)}
+                      onCook={() => handleCookNow(i, v)}
+                      onSaveAsNew={(uri) => handleSaveAsNew(i, v, uri)}
+                      onModifyExisting={() => handleModifyExisting(i, v)}
+                      onApplyToDay={() => handleApplyToDay(i, v)}
+                      onRemix={() => handleRemixVariation(i, v)}
+                      onOpenSaved={handleOpenSaved}
+                      onOpenModified={handleOpenModified}
+                      onDismissError={() =>
+                        setErrorByIdx((prev) => {
+                          if (prev[i] === undefined) return prev;
+                          const next = { ...prev };
+                          delete next[i];
+                          return next;
+                        })
+                      }
+                    />
+                  ))}
+                  <View style={{ height: 16 }} />
+                  <Button
+                    title="Try Another Mode"
+                    variant="outline"
+                    onPress={handleTryAnother}
+                  />
+                </ScrollView>
+              )}
+            </SafeAreaView>
+          )}
         </Modal>
       )}
-
-      {/* Nested expanded preview — full recipe for the tapped variation.
-          Rendered via the shared PreviewSheet with hideRemix + modify support.
-          presentationStyle="fullScreen" instead of pageSheet because iOS
-          only allows one pageSheet at a time — stacking pageSheet inside
-          pageSheet (the parent RemixSheet is also pageSheet) silently
-          fails to present, which manifests as "tapping a variation does
-          nothing". fullScreen takes the whole window and stacks above the
-          parent pageSheet cleanly. */}
-      <Modal
-        visible={expandedIdx !== null && expandedFull != null}
-        animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={() => setExpandedIdx(null)}
-      >
-        {expandedIdx !== null && expandedFull && expandedVariation && (
-          <RemixVariationPreview
-            idx={expandedIdx}
-            full={expandedFull}
-            variation={expandedVariation}
-            baseIngredients={baseForSave?.ingredients}
-            saved={savedIdxs.has(expandedIdx)}
-            modified={modifiedIdxs.has(expandedIdx)}
-            saving={workingIdx === expandedIdx && workingAction === 'save'}
-            modifying={workingIdx === expandedIdx && workingAction === 'modify'}
-            cooking={workingIdx === expandedIdx && workingAction === 'cook'}
-            canModify={source.kind === 'saved'}
-            onClose={() => setExpandedIdx(null)}
-            onSave={() => handleSaveAsNew(expandedIdx, expandedVariation)}
-            onModify={() => handleModifyExisting(expandedIdx, expandedVariation)}
-            onCook={() => handleCookNow(expandedIdx, expandedVariation)}
-          />
-        )}
-      </Modal>
 
       {/* Nested remix — generated when the user taps the sparkle on a
           variation card. Source is `inline` because we have a freshly
@@ -877,6 +960,9 @@ interface VariationCardProps {
   isCooking: boolean;
   isRemixing: boolean;
   isApplying: boolean;
+  /** When set, render an inline red error row on the card. Tap-to-retry
+      via onExpand; dismiss via onDismissError. */
+  cardError: string | null;
   disabled: boolean;
   canModifyExisting: boolean;
   /** When true, the bookmark/save badge becomes a calendar.badge.checkmark
@@ -892,6 +978,7 @@ interface VariationCardProps {
   onRemix: () => void;
   onOpenSaved: () => void;
   onOpenModified: () => void;
+  onDismissError: () => void;
 }
 
 function VariationCard({
@@ -906,6 +993,7 @@ function VariationCard({
   isCooking,
   isRemixing,
   isApplying,
+  cardError,
   disabled,
   canModifyExisting: _canModifyExisting,
   applyToDayMode,
@@ -918,6 +1006,7 @@ function VariationCard({
   onRemix,
   onOpenSaved,
   onOpenModified,
+  onDismissError,
 }: VariationCardProps) {
   // Normalize the parent's loose BaseIngredient[] (mix of strings and objects)
   // into the strict ParsedIngredient[] shape that useGeneratedRecipeImage
@@ -1109,6 +1198,33 @@ function VariationCard({
             <SymbolIcon name="checkmark.circle.fill" size={16} tintColor="#047857" />
             <Text style={styles.savedText}>Existing recipe updated</Text>
             <SymbolIcon name="chevron.forward" size={14} tintColor="#047857" />
+          </View>
+        )}
+
+        {cardError && !isWorking && (
+          /* Inline error row — tap the body to retry, tap the X to
+             dismiss. Replaces the prior Alert.alert path which silently
+             dropped on iOS when surfacing from inside a stacked Modal,
+             leaving the user with a stuck-looking spinner. */
+          <View style={[styles.statusRow, styles.errorRow]}>
+            <SymbolIcon
+              name="exclamationmark.triangle.fill"
+              size={16}
+              tintColor="#B91C1C"
+            />
+            <Text style={styles.errorRowText} numberOfLines={2}>
+              {cardError} Tap to retry.
+            </Text>
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                onDismissError();
+              }}
+              hitSlop={8}
+              accessibilityLabel="Dismiss error"
+            >
+              <SymbolIcon name="xmark" size={14} tintColor="#B91C1C" />
+            </Pressable>
           </View>
         )}
       </View>
@@ -1389,6 +1505,21 @@ const styles = StyleSheet.create({
   },
   modifiedRow: {
     backgroundColor: '#DBEAFE',
+  },
+  errorRow: {
+    // Soft red wash matching the warning chip family used elsewhere in
+    // the app. Body text in B91C1C reads at WCAG AA against this
+    // background. Pairs with the alert triangle leading icon.
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 10,
+    gap: 8,
+    justifyContent: 'flex-start',
+  },
+  errorRowText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#B91C1C',
   },
   savedText: {
     fontSize: 13,
