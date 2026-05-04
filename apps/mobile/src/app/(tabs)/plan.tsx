@@ -316,6 +316,12 @@ export default function PlanScreen() {
       source_url: null,
       source_type: 'ai',
       image_url: null,
+      // Pass through per-serving nutrition (quick-12 added these to
+      // meal_plan_entries) so PreviewSheet's hero meta + nutrition badges
+      // render on plan-day detail too.
+      calories_per_serving: previewEntry.calories_per_serving ?? null,
+      protein_grams_per_serving:
+        previewEntry.protein_grams_per_serving ?? null,
     };
   }, [previewEntry]);
 

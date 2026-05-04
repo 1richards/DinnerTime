@@ -864,6 +864,12 @@ export function SavedRecipeDetail({
     source_url: recipe.source_url,
     source_type: recipe.source_type,
     image_url: recipe.image_url,
+    // Per-serving nutrition — pass through so PreviewSheet's hero meta +
+    // badge cluster render. Missing here previously meant Recipe Box
+    // detail showed no kcal/protein even when the recipe row had them.
+    calories_per_serving: recipe.calories_per_serving ?? null,
+    protein_grams_per_serving: recipe.protein_grams_per_serving ?? null,
+    fat_grams_per_serving: recipe.fat_grams_per_serving ?? null,
     _saved: false,
   };
   const updateRecipe = useRecipeStore((s) => s.updateRecipe);
