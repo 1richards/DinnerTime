@@ -251,6 +251,11 @@ mealPlans.post('/entries/assign', async (c) => {
     kid_friendly?: boolean | null;
     why_suggested?: string | null;
     recipe_id?: string | null;
+    // Quick task 12 — accept entry-level nutrition for non-/generate paths
+    // (e.g. assigning a saved Recipe Box recipe to a day, or accepting AI
+    // suggestions from Home/Discover that already carry nutrition).
+    calories_per_serving?: number | null;
+    protein_grams_per_serving?: number | null;
   };
   try {
     body = await c.req.json();
@@ -326,6 +331,14 @@ mealPlans.post('/entries/assign', async (c) => {
       kid_friendly: body.kid_friendly ?? false,
       why_suggested: body.why_suggested ?? null,
       status: 'planned' as const,
+      // Quick task 12 — null-coerce so the upsert always sets the
+      // columns explicitly (avoids onConflict skip-update gotchas).
+      calories_per_serving:
+        typeof body.calories_per_serving === 'number' ? body.calories_per_serving : null,
+      protein_grams_per_serving:
+        typeof body.protein_grams_per_serving === 'number'
+          ? body.protein_grams_per_serving
+          : null,
     };
 
     const { data: upserted, error: upsertErr } = await supabase

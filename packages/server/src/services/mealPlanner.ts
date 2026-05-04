@@ -304,6 +304,19 @@ const generateMealPlanSchema: JsonSchema = {
             description:
               "Optional one-line technique payoff (≤120 chars). Omit when there's no specific technique to call out.",
           },
+          // Quick task 12 — per-serving nutrition. Mirrors the recipes table
+          // (migration 00033) and the parse_recipe tool's existing fields. Both
+          // optional — Claude omits when it can't estimate confidently.
+          calories_per_serving: {
+            type: 'number',
+            description:
+              'Estimated kcal per serving. Best-effort from ingredient list and quantities — omit if uncertain.',
+          },
+          protein_grams_per_serving: {
+            type: 'number',
+            description:
+              'Estimated grams of protein per serving (whole or 1-decimal). Omit if uncertain.',
+          },
         },
         required: [
           'day_of_week',
@@ -382,6 +395,9 @@ interface ClaudeMealDay {
   // Quick-task 6 — skill scaffolding (taxonomy-bound 1-3 skills + optional note).
   practiced_skills?: string[];
   skill_note?: string;
+  // Quick task 12 — per-serving nutrition (optional in tool output).
+  calories_per_serving?: number;
+  protein_grams_per_serving?: number;
 }
 
 const DAY_STRING_TO_INDEX: Record<ClaudeMealDay['day_of_week'], number> = {
@@ -637,6 +653,13 @@ export async function generateMealPlan(
       typeof d.skill_note === 'string' && d.skill_note.trim().length > 0
         ? d.skill_note.slice(0, 200)
         : null,
+    // Quick task 12 — per-serving nutrition straight from the tool.
+    // Coerce to null when the AI omits OR returns a non-number; the
+    // INTEGER + NUMERIC(5,1) columns reject strings.
+    calories_per_serving:
+      typeof d.calories_per_serving === 'number' ? d.calories_per_serving : null,
+    protein_grams_per_serving:
+      typeof d.protein_grams_per_serving === 'number' ? d.protein_grams_per_serving : null,
     kid_friendly: d.kid_friendly,
     why_suggested: d.why_suggested,
     status: 'planned' as const,
@@ -816,6 +839,16 @@ REGENERATION CONTEXT:
       typeof replacement.skill_note === 'string' &&
       replacement.skill_note.trim().length > 0
         ? replacement.skill_note.slice(0, 200)
+        : null,
+    // Quick task 12 — preserve nutrition on day-swap so the chip
+    // doesn't lose the value when a single day is regenerated.
+    calories_per_serving:
+      typeof replacement.calories_per_serving === 'number'
+        ? replacement.calories_per_serving
+        : null,
+    protein_grams_per_serving:
+      typeof replacement.protein_grams_per_serving === 'number'
+        ? replacement.protein_grams_per_serving
         : null,
     kid_friendly: replacement.kid_friendly,
     why_suggested: replacement.why_suggested,

@@ -251,6 +251,26 @@ describe('generateMealPlanTool', () => {
     expect(daysSchema.items.required).toContain('kid_friendly');
     expect(daysSchema.items.required).toContain('day_of_week');
   });
+
+  it('Test 3 (quick-12): per-day properties include calories_per_serving + protein_grams_per_serving as type:number with descriptions', () => {
+    const daysSchema = (generateMealPlanTool.schema.properties as Record<string, unknown>)
+      .days as { items: { properties: Record<string, { type: string; description: string }> } };
+    const cal = daysSchema.items.properties.calories_per_serving;
+    const protein = daysSchema.items.properties.protein_grams_per_serving;
+    expect(cal).toBeDefined();
+    expect(cal.type).toBe('number');
+    expect(cal.description.length).toBeGreaterThan(10);
+    expect(protein).toBeDefined();
+    expect(protein.type).toBe('number');
+    expect(protein.description.length).toBeGreaterThan(10);
+  });
+
+  it('Test 4 (quick-12): nutrition fields are NOT in the per-day required list (Claude may omit when uncertain)', () => {
+    const daysSchema = (generateMealPlanTool.schema.properties as Record<string, unknown>)
+      .days as { items: { required: string[] } };
+    expect(daysSchema.items.required).not.toContain('calories_per_serving');
+    expect(daysSchema.items.required).not.toContain('protein_grams_per_serving');
+  });
 });
 
 // ---------- generateMealPlan Tests ----------
