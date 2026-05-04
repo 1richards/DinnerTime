@@ -151,13 +151,24 @@ export function FocusBanner({ children }: FocusBannerProps = {}) {
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={theme ? 'Change focus theme' : 'Set focus theme'}
-            // Match the recipe-card "Pan sauces" chip exactly: same
-            // resolveChipClasses({ kind:'display', tone:'default' }) output
-            // — bg-surface-subtle pill with text-text-secondary label.
-            // Inline className keeps the chip a Pressable (Chip's display
-            // kind returns a plain View) without forking the shared resolver.
-            className="h-8 px-3 rounded-pill flex-row items-center bg-surface-subtle"
-            style={({ pressed }) => (pressed ? { opacity: 0.7 } : undefined)}
+            // Set state: dashed border + transparent bg signals "input/empty".
+            // Once a theme is chosen the chip flips to the solid recipe-card
+            // pill style (resolveChipClasses display/default — bg-surface-subtle).
+            className={
+              theme
+                ? 'h-8 px-3 rounded-pill flex-row items-center bg-surface-subtle'
+                : 'h-8 px-3 rounded-pill flex-row items-center'
+            }
+            style={({ pressed }) => [
+              pressed ? { opacity: 0.7 } : null,
+              theme
+                ? null
+                : {
+                    borderWidth: 1,
+                    borderStyle: 'dashed',
+                    borderColor: colors.textSecondary,
+                  },
+            ]}
           >
             <SymbolIcon
               name="target"
