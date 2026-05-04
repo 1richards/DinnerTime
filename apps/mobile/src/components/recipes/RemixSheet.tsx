@@ -1066,23 +1066,26 @@ function VariationCard({
       ]}
     >
       <View style={styles.heroWrap}>
-        {generatedUri ? (
+        {/* Two-layer load: skeleton sits underneath as the persistent
+            background; Image overlays it once the URL is set, with its
+            own blurhash placeholder bridging the network-download gap.
+            Without this stack the user saw skeleton → blank → image as
+            the skeleton View unmounted before the Image bytes arrived.
+            Same blurhash HeroImage uses (warm beige #F1EAE0 tone). */}
+        <View style={[styles.variationHero, styles.variationHeroSkeleton, StyleSheet.absoluteFillObject]}>
+          {imageStatus === 'failed' && !generatedUri && (
+            <SymbolIcon name="photo" size={32} tintColor="#C9B89E" />
+          )}
+        </View>
+        {generatedUri && (
           <Image
             source={{ uri: generatedUri }}
             style={styles.variationHero}
             contentFit="cover"
-            transition={200}
+            transition={300}
+            placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
             cachePolicy="memory-disk"
           />
-        ) : (
-          // Skeleton while Gemini resolves OR if it failed. Subtle pulse via
-          // the warm beige #F1EAE0 placeholder — same tone the rest of the
-          // app uses for image placeholders. Better than misleading stock.
-          <View style={[styles.variationHero, styles.variationHeroSkeleton]}>
-            {imageStatus === 'failed' && (
-              <SymbolIcon name="photo" size={32} tintColor="#C9B89E" />
-            )}
-          </View>
         )}
         {/* Hero action cluster — Cook / Remix / Save. Mirrors the
             Something New RecipeCard preview pattern (cluster top-right,
