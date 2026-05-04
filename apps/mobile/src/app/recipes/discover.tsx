@@ -15,6 +15,7 @@ import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { Image } from 'expo-image';
 import { Button } from '../../components/ui/Button';
 import { RemixSheet, type RemixSource } from '../../components/recipes/RemixSheet';
+import { FavoriteButton } from '../../components/recipes/FavoriteButton';
 import { DatePickerSheet } from '../../components/plan/DatePickerSheet';
 import { ServingSizeStepper } from '../../components/recipes/ServingSizeStepper';
 import { ScaledIngredientList } from '../../components/recipes/ScaledIngredientList';
@@ -319,6 +320,8 @@ export function PreviewSheet({
   modifiedLabel = 'Recipe updated',
   stepsLoading = false,
   onApplyToDay,
+  recipeId,
+  isFavorite,
 }: {
   recipe: DiscoveredRecipe;
   /** Null renders a beige skeleton — no keyword-stock fallback exists anymore. */
@@ -367,6 +370,12 @@ export function PreviewSheet({
       to library AND fires this callback (parent wires to applySwap).
       Pass-through only; PreviewSheet itself doesn't directly use it. */
   onApplyToDay?: (full: ParsedRecipe) => Promise<void>;
+  /** Saved-recipe favorite toggle. When both `recipeId` and `isFavorite`
+      are provided, a heart bubble renders top-right next to the share +
+      close icons. Discover/Plan/Remix consumers pass neither and the
+      bubble stays hidden. */
+  recipeId?: string;
+  isFavorite?: boolean;
 }) {
   const totalTime =
     recipe.total_time_minutes ??
@@ -456,6 +465,11 @@ export function PreviewSheet({
           >
             <SymbolIcon name="square.and.arrow.up" size={22} tintColor="#FFFFFF" />
           </Pressable>
+          {recipeId && isFavorite !== undefined ? (
+            <View style={styles.sheetFavorite}>
+              <FavoriteButton recipeId={recipeId} isFavorite={isFavorite} size={22} />
+            </View>
+          ) : null}
           <View style={styles.sheetHeroText}>
             <Text style={styles.sheetTitle} numberOfLines={3}>
               {recipe.title}
@@ -857,6 +871,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 14,
     right: 58,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetFavorite: {
+    position: 'absolute',
+    top: 14,
+    right: 102,
     width: 36,
     height: 36,
     borderRadius: 18,

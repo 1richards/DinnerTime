@@ -891,6 +891,8 @@ export function SavedRecipeDetail({
       onRemove={onRemove}
       removing={removing}
       bodyExtra={labelsContent}
+      recipeId={recipe.id}
+      isFavorite={recipe.is_favorite ?? false}
     />
   );
 }
