@@ -633,6 +633,7 @@ Recent decisions affecting current work:
 | 32 | Cook polish — timer band sizes to content, chip bigger, Custom… via Alert.prompt, completing a cook overwrites today's plan entry with the cooked recipe + status:cooked via applySwap+markCooked | 2026-05-03 | c2cc534 | _fast (inline)_ |
 | 33 | Heart favorite always-on in PreviewSheet hero (Recipe Box detail) — third top-right bubble next to share+close; optional recipeId+isFavorite props so other call sites stay unchanged | 2026-05-03 | 4ccc2d2 | _fast (inline)_ |
 | 34 | Focus chip restyled to match recipe-card "Pan sauces" chip — bg-surface-subtle pill via NativeWind classes mirroring resolveChipClasses default tone, drops custom white+border StyleSheet | 2026-05-03 | 39a8cc9 | _fast (inline)_ |
+| 35 | Favorite plan-generated recipes — ad-hoc heart on PreviewSheet saves recipe + links back to plan day via /entries/assign with recipe_id + toggles favorite; recipeStore.saveRecipe now returns Recipe \| null | 2026-05-03 | 7f074a3 | _fast (inline)_ |
 
 ## Post-v1 Polish (out-of-band, not GSD-planned)
 
