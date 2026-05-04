@@ -329,6 +329,11 @@ export default function KitchenScreen() {
   const [savingPreview, setSavingPreview] = useState(false);
   const [cookingPreview, setCookingPreview] = useState(false);
   const [cookingLaterPreview, setCookingLaterPreview] = useState(false);
+  // Ad-hoc favorite state for the Something New PreviewSheet — flips
+  // when the user taps the heart in the hero, which save+favorites the
+  // recipe in one round-trip. Reset whenever a new recipe is opened.
+  const [previewFavorited, setPreviewFavorited] = useState(false);
+  const toggleFavoriteRecipe = useRecipeStore((s) => s.toggleFavorite);
   // Recipe Box card tap → modal preview (replaces /recipes/[id] push).
   const [savedDetail, setSavedDetail] = useState<Recipe | null>(null);
   const [savedDetailCookingLater, setSavedDetailCookingLater] = useState(false);
@@ -703,7 +708,10 @@ export default function KitchenScreen() {
               previewRecipe.image_url ?? previewGeneratedUri,
               previewRecipe.title,
             )}
-            onClose={() => setPreviewRecipe(null)}
+            onClose={() => {
+              setPreviewRecipe(null);
+              setPreviewFavorited(false);
+            }}
             onSave={handlePreviewSave}
             saving={savingPreview}
             onCookNow={handlePreviewCookNow}
@@ -718,11 +726,45 @@ export default function KitchenScreen() {
                   null,
                 );
                 setPreviewRecipe(null);
+                setPreviewFavorited(false);
               } finally {
                 setCookingLaterPreview(false);
               }
             }}
             cookingLater={cookingLaterPreview}
+            adHocFavorited={previewFavorited}
+            onAdHocFavorite={async () => {
+              if (!previewRecipe) return;
+              const beforeIds = new Set(
+                useRecipeStore.getState().recipes.map((r) => r.id),
+              );
+              const heroUri =
+                previewRecipe.image_url ?? previewGeneratedUri ?? null;
+              const saved = await useRecipeStore
+                .getState()
+                .saveRecipe({
+                  ...previewRecipe,
+                  image_url: heroUri,
+                  source_type: 'ai',
+                });
+              const state = useRecipeStore.getState();
+              if (state.error) {
+                Alert.alert('Save failed', state.error);
+                return;
+              }
+              const target =
+                saved ??
+                state.recipes.find((r) => !beforeIds.has(r.id)) ??
+                state.recipes.find(
+                  (r) =>
+                    r.title.trim().toLowerCase() ===
+                    previewRecipe.title.trim().toLowerCase(),
+                );
+              if (target && !target.is_favorite) {
+                await toggleFavoriteRecipe(target.id);
+              }
+              setPreviewFavorited(true);
+            }}
           />
         )}
       </Modal>
