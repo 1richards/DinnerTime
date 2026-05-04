@@ -322,6 +322,8 @@ export function PreviewSheet({
   onApplyToDay,
   recipeId,
   isFavorite,
+  onAdHocFavorite,
+  adHocFavorited,
 }: {
   recipe: DiscoveredRecipe;
   /** Null renders a beige skeleton — no keyword-stock fallback exists anymore. */
@@ -376,6 +378,12 @@ export function PreviewSheet({
       bubble stays hidden. */
   recipeId?: string;
   isFavorite?: boolean;
+  /** Ad-hoc favorite path for plan-generated recipes that don't have a
+      saved recipe_id yet. When provided AND `recipeId` is absent, the
+      heart bubble renders with this handler — the parent owns the
+      save→link→favorite chain and flips `adHocFavorited` when done. */
+  onAdHocFavorite?: () => Promise<void>;
+  adHocFavorited?: boolean;
 }) {
   const totalTime =
     recipe.total_time_minutes ??
@@ -469,6 +477,24 @@ export function PreviewSheet({
             <View style={styles.sheetFavorite}>
               <FavoriteButton recipeId={recipeId} isFavorite={isFavorite} size={22} />
             </View>
+          ) : onAdHocFavorite ? (
+            <Pressable
+              onPress={() => {
+                void onAdHocFavorite();
+              }}
+              style={styles.sheetFavorite}
+              hitSlop={8}
+              accessibilityLabel={
+                adHocFavorited ? 'Recipe favorited' : 'Save and favorite'
+              }
+              accessibilityRole="button"
+            >
+              <SymbolIcon
+                name={adHocFavorited ? 'heart.fill' : 'heart'}
+                size={22}
+                tintColor={adHocFavorited ? colors.brand : '#FFFFFF'}
+              />
+            </Pressable>
           ) : null}
           <View style={styles.sheetHeroText}>
             <Text style={styles.sheetTitle} numberOfLines={3}>

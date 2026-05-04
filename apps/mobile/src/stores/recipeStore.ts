@@ -23,7 +23,7 @@ interface RecipeState {
   importFromUrl: (url: string) => Promise<void>;
   importFromPhoto: (image: string) => Promise<void>;
   importFromText: (text: string) => Promise<void>;
-  saveRecipe: (recipe: ParsedRecipe) => Promise<void>;
+  saveRecipe: (recipe: ParsedRecipe) => Promise<Recipe | null>;
   fetchRecipes: (opts?: FetchRecipesOptions) => Promise<void>;
   updateRecipe: (id: string, patch: Partial<Recipe>) => Promise<void>;
   deleteRecipe: (id: string) => Promise<void>;
@@ -189,7 +189,7 @@ export const useRecipeStore = create<RecipeState>()(
     }
   },
 
-  saveRecipe: async (recipe: ParsedRecipe) => {
+  saveRecipe: async (recipe: ParsedRecipe): Promise<Recipe | null> => {
     set({ isLoading: true, error: null });
     try {
       const token = await getAuthToken();
@@ -208,7 +208,7 @@ export const useRecipeStore = create<RecipeState>()(
           error: err.error ?? 'Failed to save recipe',
           isLoading: false,
         });
-        return;
+        return null;
       }
 
       const body = await response.json();
@@ -227,11 +227,13 @@ export const useRecipeStore = create<RecipeState>()(
           error: null,
         };
       });
+      return saved;
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : 'Failed to save recipe',
         isLoading: false,
       });
+      return null;
     }
   },
 

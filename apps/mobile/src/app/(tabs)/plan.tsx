@@ -1336,6 +1336,78 @@ function PlanEntryPreview({
     generatedUri,
     entry.title,
   );
+
+  // Heart-state derivation. Two paths:
+  //  - entry.recipe_id is set → recipe is already in Recipe Box; look up
+  //    is_favorite reactively from recipeStore so the heart reflects edits
+  //    from any other surface and the standard FavoriteButton path runs.
+  //  - entry.recipe_id is null → ad-hoc plan-generated recipe. Local state
+  //    flips when the user taps the heart; the handler saves the recipe,
+  //    links it back to this day's entry (via /entries/assign with
+  //    recipe_id), and toggles favorite on the new id.
+  const savedRecipeForEntry = useRecipeStore((s) =>
+    entry.recipe_id ? s.recipes.find((r) => r.id === entry.recipe_id) : null,
+  );
+  const saveRecipe = useRecipeStore((s) => s.saveRecipe);
+  const toggleFavorite = useRecipeStore((s) => s.toggleFavorite);
+  const [adHocFavorited, setAdHocFavorited] = useState(false);
+
+  const heartProps =
+    entry.recipe_id && savedRecipeForEntry
+      ? {
+          recipeId: entry.recipe_id,
+          isFavorite: savedRecipeForEntry.is_favorite ?? false,
+        }
+      : {
+          adHocFavorited,
+          onAdHocFavorite: async () => {
+            const saved = await saveRecipe(recipe);
+            if (!saved) return;
+            try {
+              const { supabase } = await import('../../lib/supabase');
+              const { data } = await supabase.auth.getSession();
+              const accessToken = data.session?.access_token;
+              if (accessToken) {
+                const plan = useMealPlanStore.getState().currentPlan;
+                if (plan) {
+                  const targetIso = addDaysIso(
+                    plan.week_start,
+                    entry.day_of_week,
+                  );
+                  const baseUrl =
+                    process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+                  await fetch(
+                    `${baseUrl}/api/v1/meal-plans/entries/assign`,
+                    {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${accessToken}`,
+                      },
+                      body: JSON.stringify({
+                        date: targetIso,
+                        title: entry.title,
+                        description: entry.description ?? null,
+                        ingredients: entry.ingredients ?? [],
+                        estimated_time_minutes:
+                          entry.estimated_time_minutes ?? null,
+                        recipe_id: saved.id,
+                      }),
+                    },
+                  );
+                  await useMealPlanStore.getState().fetchCurrent();
+                }
+              }
+            } catch {
+              // Linking back to the plan entry is a nice-to-have; if it
+              // fails the recipe is still saved + favorited and the user
+              // can find it in Recipe Box. Don't block the favorite UX.
+            }
+            await toggleFavorite(saved.id);
+            setAdHocFavorited(true);
+          },
+        };
+
   // Save-Recipe is hidden in the plan-day flow (the recipe is already
   // assigned to a day; saving to library separately is not the user
   // intent). Remix is the prominent CTA — picking a variation runs
@@ -1359,6 +1431,7 @@ function PlanEntryPreview({
       removeLabel="Clear"
       hideSave
       onApplyToDay={onApplyToDay}
+      {...heartProps}
     />
   );
 }
