@@ -274,6 +274,15 @@ export function buildDiscoveryPrompt(
   );
 
   lines.push('');
+  lines.push('NUTRITION (per serving — populate for every recipe):');
+  lines.push(
+    '- calories_per_serving: integer kcal estimate from ingredients + quantities. Reasonable home-cooked dinner range is ~300-900 kcal. Round to nearest 10.'
+  );
+  lines.push(
+    '- protein_grams_per_serving: integer or 1-decimal grams. Use ingredient nutrition (chicken ~25g/100g, beef ~26g/100g, fish ~22g/100g, eggs ~6g each, tofu ~8g/100g, beans ~7g/100g cooked) + serving math. Don\'t omit — make a best estimate.'
+  );
+
+  lines.push('');
   lines.push(
     'Return full recipes with structured ingredients (name, quantity, unit, notes) and ordered steps. Convert fractions to decimals for quantities. Each recipe MUST have servings >= 4 — DinnerTime is built for households, scale ingredient quantities accordingly.'
   );

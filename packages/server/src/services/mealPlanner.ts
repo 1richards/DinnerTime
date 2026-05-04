@@ -203,7 +203,8 @@ OUTPUT CONTRACT:
 - Set recipe_id from RECIPE LIBRARY when a listed recipe is reused; otherwise null
 - Populate ingredients with the FULL recipe (everything the dish needs) and ingredients_needed with just the names not in AVAILABLE PANTRY
 - Prefer pantry items to minimize shopping
-- Vary cuisines and cooking methods across the week`;
+- Vary cuisines and cooking methods across the week
+- Populate calories_per_serving (integer kcal, ~300-900 typical, round to nearest 10) AND protein_grams_per_serving (integer or 1-decimal grams) for EVERY day. Use ingredient nutrition (chicken ~25g protein/100g, beef ~26g/100g, fish ~22g/100g, eggs ~6g each, tofu ~8g/100g, beans ~7g/100g cooked) + serving math. Don't omit — make a best estimate.`;
 }
 
 // ---------- Tool Definition ----------

@@ -211,7 +211,8 @@ GUIDELINES:
 - Match difficulty to skill level (${profile.skill_level})
 ${hasKids ? '- Include at least 1-2 kid-friendly options (familiar flavors, simple textures)' : ''}
 - Vary the cuisines and cooking methods across suggestions
-- Include estimated cooking time`;
+- Include estimated cooking time
+- Populate calories_per_serving (integer kcal, ~300-900 typical, round to nearest 10) AND protein_grams_per_serving (integer or 1-decimal grams) for EVERY suggestion. Use ingredient nutrition (chicken ~25g protein/100g, beef ~26g/100g, fish ~22g/100g, eggs ~6g each, tofu ~8g/100g, beans ~7g/100g cooked) + serving math. Don't omit — best estimate.`;
 }
 
 // ---------- Main Service ----------
