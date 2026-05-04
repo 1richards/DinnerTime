@@ -307,9 +307,27 @@ export function RecipeCard({
               </View>
             )}
             {recipe.servings != null && (
-              <View className="flex-row items-center">
+              <View className="flex-row items-center mr-3">
                 <SymbolIcon name="person.2" size={13} tintColor={colors.textSecondary} />
                 <Text className={`ml-1 ${c.metaText}`}>{recipe.servings} servings</Text>
+              </View>
+            )}
+            {(recipe.calories_per_serving != null ||
+              recipe.protein_grams_per_serving != null) && (
+              <View className="h-7 px-2.5 rounded-pill flex-row items-center bg-warning/15">
+                <SymbolIcon name="bolt.fill" size={12} tintColor={colors.warning} />
+                <Text className="ml-1 text-caption text-warning font-semibold">
+                  {recipe.calories_per_serving != null
+                    ? `${Math.round(recipe.calories_per_serving)} kcal`
+                    : ''}
+                  {recipe.calories_per_serving != null &&
+                  recipe.protein_grams_per_serving != null
+                    ? ' · '
+                    : ''}
+                  {recipe.protein_grams_per_serving != null
+                    ? `${Math.round(recipe.protein_grams_per_serving)}g`
+                    : ''}
+                </Text>
               </View>
             )}
           </View>

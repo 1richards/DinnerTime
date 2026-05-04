@@ -14,6 +14,10 @@ export interface DinnerSuggestion {
   kid_friendly: boolean;
   cuisine_type: string;
   why_suggested: string;
+  // Quick-12 follow-up — per-serving nutrition for the inline tile.
+  // Both optional; AI omits when uncertain.
+  calories_per_serving?: number | null;
+  protein_grams_per_serving?: number | null;
 }
 
 export interface SuggestionsResponse {
@@ -87,6 +91,16 @@ const suggestDinnersSchema: JsonSchema = {
           why_suggested: {
             type: 'string',
             description: 'Brief reason this was suggested',
+          },
+          calories_per_serving: {
+            type: 'number',
+            description:
+              'Estimated kcal per serving. Best-effort from ingredient list and quantities — omit if uncertain.',
+          },
+          protein_grams_per_serving: {
+            type: 'number',
+            description:
+              'Estimated grams of protein per serving (whole or 1-decimal). Omit if uncertain.',
           },
         },
         required: [

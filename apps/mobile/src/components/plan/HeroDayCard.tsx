@@ -300,6 +300,31 @@ export function HeroDayCard({
               tintColor={colors.textSecondary}
             />
             <Text style={styles.metaText}>{metaParts.join(' · ')}</Text>
+            {(entry.calories_per_serving != null ||
+              entry.protein_grams_per_serving != null) && (
+              <View
+                style={styles.nutritionPill}
+                className="bg-warning/15 rounded-pill"
+              >
+                <SymbolIcon
+                  name="bolt.fill"
+                  size={11}
+                  tintColor={colors.warning}
+                />
+                <Text style={styles.nutritionPillText}>
+                  {entry.calories_per_serving != null
+                    ? `${Math.round(entry.calories_per_serving)} kcal`
+                    : ''}
+                  {entry.calories_per_serving != null &&
+                  entry.protein_grams_per_serving != null
+                    ? ' · '
+                    : ''}
+                  {entry.protein_grams_per_serving != null
+                    ? `${Math.round(entry.protein_grams_per_serving)}g`
+                    : ''}
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -452,6 +477,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     fontWeight: '500',
+  },
+  // Per-serving nutrition pill — sits at the right end of the meta strip.
+  nutritionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginLeft: 'auto',
+    gap: 3,
+  },
+  nutritionPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.warning,
   },
   chipRow: {
     flexDirection: 'row',

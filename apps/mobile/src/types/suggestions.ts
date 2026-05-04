@@ -8,6 +8,10 @@ export interface DinnerSuggestion {
   kid_friendly: boolean;
   cuisine_type: string;
   why_suggested: string;
+  // Quick-12 follow-up — per-serving nutrition. Both optional; AI omits when
+  // uncertain. Surfaced as an inline pill on SuggestionCard.
+  calories_per_serving?: number | null;
+  protein_grams_per_serving?: number | null;
 }
 
 export interface SuggestionsResponse {

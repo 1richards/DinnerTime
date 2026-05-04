@@ -214,7 +214,7 @@ export function SuggestionCard({ suggestion, onPress }: SuggestionCardProps) {
             {suggestion.description}
           </Text>
 
-          {/* Meta row — time + pantry grounding */}
+          {/* Meta row — time + pantry grounding + nutrition */}
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
               <SymbolIcon name="clock" size={13} tintColor="#7A6651" />
@@ -222,6 +222,24 @@ export function SuggestionCard({ suggestion, onPress }: SuggestionCardProps) {
                 {suggestion.estimated_time_minutes} min
               </Text>
             </View>
+            {(suggestion.calories_per_serving != null ||
+              suggestion.protein_grams_per_serving != null) && (
+              <View style={[styles.metaItem, styles.metaNutrition]}>
+                <SymbolIcon name="bolt.fill" size={11} tintColor={colors.warning} />
+                <Text style={styles.metaNutritionText}>
+                  {suggestion.calories_per_serving != null
+                    ? `${Math.round(suggestion.calories_per_serving)} kcal`
+                    : ''}
+                  {suggestion.calories_per_serving != null &&
+                  suggestion.protein_grams_per_serving != null
+                    ? ' · '
+                    : ''}
+                  {suggestion.protein_grams_per_serving != null
+                    ? `${Math.round(suggestion.protein_grams_per_serving)}g`
+                    : ''}
+                </Text>
+              </View>
+            )}
             {pantryCount > 0 && (
               <View style={[styles.metaItem, styles.metaPantry]}>
                 <SymbolIcon name="checkmark.circle.fill" size={13} tintColor="#047857" />
@@ -365,5 +383,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#065F46',
+  },
+  // Per-serving nutrition pill (kcal · protein). Same warm-warning tone as
+  // the other recipe-surface nutrition pills.
+  metaNutrition: {
+    backgroundColor: 'rgba(217,119,6,0.15)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    gap: 3,
+  },
+  metaNutritionText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.warning,
   },
 });
