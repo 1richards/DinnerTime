@@ -10,8 +10,6 @@ import {
   Alert,
   TextInput,
   Animated,
-  Easing,
-  type LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -991,89 +989,40 @@ interface VariationCardProps {
 }
 
 /**
- * Animated shimmer skeleton — two layered animations communicate
- * "actively loading" so users don't read the warm-beige fill as a
- * permanently failed image:
- *   1. The whole base pulses opacity (0.55 → 1.0) every ~900ms
- *   2. A translucent highlight band sweeps left-to-right across the
- *      base every ~1.4s, exiting fully off-screen on each side
- *
- * Uses the built-in React Native Animated API (driver:'native' for
- * the GPU-cheap transform/opacity props) instead of Reanimated, so
- * animation runs without dependence on babel plugin configuration.
- * Width is captured via onLayout so the sweep math matches the actual
- * card width on every device.
+ * Animated shimmer skeleton — copy of the exact pattern used by
+ * SuggestionSkeleton (Something New flow): opacity pulses 0.3 ↔ 0.7
+ * over 800ms each direction, useNativeDriver:true so the loop runs
+ * on the UI thread. Same warm-gray placeholder block users already
+ * recognize as "actively loading" from the Kitchen tab.
  */
 function ShimmerSkeleton() {
-  const sweep = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0)).current;
-  const [width, setWidth] = useState(0);
-
+  const opacity = useRef(new Animated.Value(0.3)).current;
   useEffect(() => {
-    const sweepLoop = Animated.loop(
-      Animated.timing(sweep, {
-        toValue: 1,
-        duration: 1400,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      }),
-    );
-    const pulseLoop = Animated.loop(
+    const animation = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 900,
-          easing: Easing.inOut(Easing.ease),
+        Animated.timing(opacity, {
+          toValue: 0.7,
+          duration: 800,
           useNativeDriver: true,
         }),
-        Animated.timing(pulse, {
-          toValue: 0,
-          duration: 900,
-          easing: Easing.inOut(Easing.ease),
+        Animated.timing(opacity, {
+          toValue: 0.3,
+          duration: 800,
           useNativeDriver: true,
         }),
       ]),
     );
-    sweepLoop.start();
-    pulseLoop.start();
-    return () => {
-      sweepLoop.stop();
-      pulseLoop.stop();
-    };
-  }, [sweep, pulse]);
-
-  const onLayout = (e: LayoutChangeEvent) => {
-    const next = e.nativeEvent.layout.width;
-    if (next > 0 && next !== width) setWidth(next);
-  };
-
-  const bandWidth = Math.max(width * 0.6, 80);
-  const translateX = sweep.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-bandWidth, width + bandWidth],
-  });
-  const baseOpacity = pulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.55, 1],
-  });
+    animation.start();
+    return () => animation.stop();
+  }, [opacity]);
 
   return (
-    <View style={styles.shimmerBase} onLayout={onLayout}>
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFillObject,
-          { backgroundColor: '#F1EAE0', opacity: baseOpacity },
-        ]}
-      />
-      {width > 0 && (
-        <Animated.View
-          style={[
-            styles.shimmerBand,
-            { width: bandWidth, transform: [{ translateX }] },
-          ]}
-        />
-      )}
-    </View>
+    <Animated.View
+      style={[
+        StyleSheet.absoluteFillObject,
+        { backgroundColor: '#E8DCC9', opacity },
+      ]}
+    />
   );
 }
 
@@ -1531,21 +1480,6 @@ const styles = StyleSheet.create({
   variationHeroSkeleton: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  // ShimmerSkeleton — pulsing warm beige base + translucent highlight
-  // band that sweeps left-to-right under the hero. overflow:hidden
-  // contains the band's translateX so it doesn't leak outside the
-  // rounded hero frame. Background lives on an inner Animated.View so
-  // its opacity can pulse without affecting the band.
-  shimmerBase: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-  shimmerBand: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 251, 245, 0.85)',
   },
   // Single-capsule overlay — matches HeroDayCard.heroIconCluster +
   // RecipeCard.actionCluster so all hero overlay actions across
