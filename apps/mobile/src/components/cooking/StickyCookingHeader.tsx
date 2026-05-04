@@ -38,6 +38,10 @@ export interface StickyCookingHeaderProps {
   onStopTTS: () => void;
   /** Optional — callers that don't need cancel can omit it (no-op fallback). */
   onCancelTimer?: (id: string) => void;
+  /** Optional — callers that want a persistent add-timer affordance pass a
+      handler that opens a duration picker (e.g. ActionSheetIOS). When
+      omitted, the button is hidden so legacy headers stay unchanged. */
+  onAddTimer?: () => void;
 }
 
 export function StickyCookingHeader({
@@ -47,6 +51,7 @@ export function StickyCookingHeader({
   onExit,
   onStopTTS,
   onCancelTimer,
+  onAddTimer,
 }: StickyCookingHeaderProps) {
   const handleCancelTimer = onCancelTimer ?? (() => {});
   const hasTimers = timers.length > 0;
@@ -79,12 +84,26 @@ export function StickyCookingHeader({
           {recipe.title}
         </Text>
 
-        {/* Right: TTS interrupt (conditional). Wrapper preserves the
-            right-side reservation slot so the title doesn't reflow when
-            TTS toggles. Component invoked as a function so the test
-            tree-flattener (which only walks .props.children) sees its
-            descendants. */}
+        {/* Right: persistent add-timer button + optional TTS interrupt.
+            Wrapper preserves the right-side reservation slot so the title
+            doesn't reflow when TTS toggles. StopTTSButton is invoked as a
+            function so the test tree-flattener (which only walks
+            .props.children) sees its descendants. */}
         <View className="flex-row items-center gap-2">
+          {onAddTimer ? (
+            <Pressable
+              onPress={onAddTimer}
+              accessibilityLabel="Add timer"
+              accessibilityRole="button"
+              hitSlop={8}
+            >
+              <SymbolIcon
+                name="timer"
+                size="title"
+                tintColor={colors.brand}
+              />
+            </Pressable>
+          ) : null}
           {ttsSpeaking ? StopTTSButton({ onPress: onStopTTS }) : null}
         </View>
       </View>

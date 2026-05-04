@@ -114,6 +114,7 @@ export default function CookScreen() {
     back,
     jumpToStep,
     repeat,
+    addTimer,
     removeTimer,
     toggleIngredient,
     clearCommandToast,
@@ -485,6 +486,31 @@ export default function CookScreen() {
           stepSpeaker.stop();
         }}
         onCancelTimer={removeTimer}
+        onAddTimer={() => {
+          // Persistent header affordance — voice STT (the legacy add path)
+          // was parked at backlog 999.1 so this is the only way for users to
+          // create timers right now. Preset minutes match the durations a
+          // home cook needs at counter-distance: short prep checks (5/10),
+          // standard simmers (15/20), longer roasts (30/45/60). The
+          // existing TimerBar handles the chip render + tick.
+          const PRESETS = [5, 10, 15, 20, 30, 45, 60];
+          ActionSheetIOS.showActionSheetWithOptions(
+            {
+              title: 'Start a timer',
+              options: [
+                ...PRESETS.map((m) => `${m} minutes`),
+                'Cancel',
+              ],
+              cancelButtonIndex: PRESETS.length,
+            },
+            (idx) => {
+              if (idx == null || idx === PRESETS.length) return;
+              const minutes = PRESETS[idx];
+              if (minutes === undefined) return;
+              addTimer(minutes * 60_000);
+            },
+          );
+        }}
       />
 
       {/* Command toast overlays the content. The 1.5s auto-dismiss lives
