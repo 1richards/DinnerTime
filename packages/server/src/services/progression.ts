@@ -333,7 +333,7 @@ const REMIX_PROMPTS: Record<RemixMode, string> = {
   veggies:
     'Suggest 3 variations that keep the protein and technique but SWAP OR ADD VEGETABLES/AROMATICS/NON-PROTEIN INGREDIENTS to change the flavor profile (e.g., swap spinach for kale, add roasted peppers, substitute sweet potato for regular potato).',
   vegetarian:
-    'Suggest 3 variations that REPLACE the meat/seafood with a satisfying vegetarian alternative while keeping the dish recognizable. Lean on hearty vegetables, legumes, mushrooms, paneer, tofu, tempeh, or cheese — pick what fits the cuisine. Each variation must specify the replacement and any seasoning adjustments needed.',
+    'Suggest 3 variations that REPLACE the meat/seafood with a satisfying vegetarian alternative while keeping the dish recognizable. Every variation must be strictly vegetarian — NO meat, poultry, seafood, or cured/processed meats of any kind. This explicitly excludes bacon, pancetta, prosciutto, ham, sausage, salami, chorizo, anchovies, fish sauce, lard, and gelatin. Lean on hearty vegetables, legumes, mushrooms, paneer, tofu, tempeh, halloumi, or cheese — pick what fits the cuisine. Each variation must specify the replacement and any seasoning adjustments needed.',
   quicker:
     'Suggest 3 variations that deliver the same dish in LESS TIME. Shortcut techniques, pre-made ingredients, smaller cuts, or skipping non-essential steps. Each variation must explain what time-saver it uses.',
   harder:
