@@ -127,6 +127,10 @@ export function HeroDayCard({
       ingredients: (entry.ingredients ?? []).map((i) => ({ name: i.name })),
     },
     difficulty: entry.difficulty ?? null,
+    // Difficulty chip suppressed on the hero card — the meta strip below
+    // already shows the same string ("Easy · 25m · 4 servings"), so the
+    // chip would be a duplicate.
+    suppressDifficultyChip: true,
     practicedSkills: entry.practiced_skills ?? null,
     focusTheme: focusTheme ?? null,
   });

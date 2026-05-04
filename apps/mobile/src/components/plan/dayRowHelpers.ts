@@ -46,8 +46,14 @@ export interface DeriveArgs {
    * Difficulty tier. When set, emits a chip labeled "Easy" | "Medium" |
    * "Hard" with tone scaling by tier (easy=success, medium=default,
    * hard=warning). Null/undefined → no chip (legacy rows).
+   *
+   * Suppressed when `suppressDifficultyChip` is true — used by HeroDayCard
+   * which already shows the same string inline in its meta strip, making
+   * the chip redundant. DayRow has no inline meta strip and keeps the chip
+   * as its only difficulty surface.
    */
   difficulty?: 'easy' | 'medium' | 'hard' | null;
+  suppressDifficultyChip?: boolean;
   /**
    * Practiced skills tagged on this entry by the AI. Used for the
    * matching-focus chip — when an entry exercises the week's focus
@@ -102,7 +108,7 @@ export function deriveStatusChips(args: DeriveArgs): StatusChipDescriptor[] {
   // glanceable read on each day's effort. Tone scales: easy=success
   // (green = low risk), medium=default (neutral), hard=warning (amber =
   // bring focus). null/undefined → no chip (legacy rows).
-  if (args.difficulty) {
+  if (args.difficulty && !args.suppressDifficultyChip) {
     const label =
       args.difficulty[0]!.toUpperCase() + args.difficulty.slice(1);
     const tone: ChipTone =

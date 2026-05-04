@@ -943,7 +943,21 @@ export async function markCooked(
     const pantryItem = pantryItems.find((p) => p.id === match.pantryItemId);
     if (!pantryItem) continue;
 
-    const newQuantity = Math.max(0, pantryItem.quantity - match.deductQuantity);
+    // Guard against NaN: if the recipe ingredient lacks a quantity OR the
+    // pantry row's quantity is unexpectedly nullish, the subtraction yields
+    // NaN, which Postgres maps to null and rejects on the NOT NULL constraint.
+    // Default to the existing pantry quantity (no-op deduction) so the cook
+    // event still records, even if the per-item subtraction can't compute.
+    const before =
+      typeof pantryItem.quantity === 'number' && Number.isFinite(pantryItem.quantity)
+        ? pantryItem.quantity
+        : 0;
+    const deduct =
+      typeof match.deductQuantity === 'number' &&
+      Number.isFinite(match.deductQuantity)
+        ? match.deductQuantity
+        : 0;
+    const newQuantity = Math.max(0, before - deduct);
     const newStatus = match.willDeplete ? 'used' : 'available';
 
     const { error: updateError } = await supabase
