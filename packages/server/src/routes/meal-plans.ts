@@ -316,12 +316,44 @@ mealPlans.post('/entries/assign', async (c) => {
       planId = (newPlan as { id: string }).id;
     }
 
-    // 2. Upsert the entry for the target day. meal_plan_entries has a UNIQUE
+    // 2. Validate body.recipe_id, if provided, against the recipes table.
+    //    The FK on meal_plan_entries.recipe_id is `REFERENCES recipes(id)
+    //    ON DELETE SET NULL`, so the schema already tolerates orphaned
+    //    entries when a recipe is deleted. Mirror that tolerance on
+    //    insert/upsert: if the client hands us a recipe_id that has
+    //    since been deleted (e.g. stale persisted Zustand state on a
+    //    different device, account reset, manual deletion), strip it
+    //    rather than 500'ing the request. The user still gets the meal
+    //    title/description/ingredients pinned to the day.
+    //
+    //    Same class of bug pattern documented in CLAUDE.md for the
+    //    shoppingStore: lazy-resource flows must self-heal when the
+    //    referenced row no longer exists.
+    let resolvedRecipeId: string | null = null;
+    if (typeof body.recipe_id === 'string' && body.recipe_id.length > 0) {
+      const { data: recipeRow } = await supabase
+        .from('recipes')
+        .select('id')
+        .eq('id', body.recipe_id)
+        .maybeSingle();
+      if (recipeRow && (recipeRow as { id: string }).id) {
+        resolvedRecipeId = (recipeRow as { id: string }).id;
+      } else {
+        // Recipe doesn't exist (or RLS hides it from this user). Strip
+        // the id and proceed — the entry is still created, just unlinked.
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[meal-plans/entries/assign] stripping unknown recipe_id=${body.recipe_id} for user=${user.id}; entry will be unlinked`,
+        );
+      }
+    }
+
+    // 3. Upsert the entry for the target day. meal_plan_entries has a UNIQUE
     //    constraint on (meal_plan_id, day_of_week).
     const entryPayload = {
       meal_plan_id: planId,
       day_of_week: resolvedDay,
-      recipe_id: body.recipe_id ?? null,
+      recipe_id: resolvedRecipeId,
       title: body.title,
       description: body.description ?? null,
       ingredients: body.ingredients ?? [],

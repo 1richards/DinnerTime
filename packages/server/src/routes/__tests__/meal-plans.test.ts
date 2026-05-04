@@ -44,6 +44,17 @@ const {
      * the legacy state.assignExistingPlanId / state.currentPlan fallbacks".
      */
     skipOwnedPlan: any | null | undefined;
+    /**
+     * recipe_id existence lookup used by POST /entries/assign to strip stale
+     * persisted ids before upserting (FK guard). Set to a `{ id }` row to
+     * simulate "recipe exists", or null to simulate "recipe deleted/RLS
+     * hidden". Default null mirrors the bug repro where a stale persisted
+     * Zustand id no longer points at a real recipes row.
+     */
+    recipeLookupRow: { id: string } | null;
+    /** Captures the `body.recipe_id` value passed into the recipes lookup so
+     * tests can assert the guard ran. Reset per beforeEach. */
+    lastRecipeLookupId: string | null;
   } = {
     currentPlan: null,
     rangePlans: [],
@@ -60,6 +71,8 @@ const {
     lastSkipPayload: null,
     skipEqPairs: [],
     skipOwnedPlan: undefined,
+    recipeLookupRow: null,
+    lastRecipeLookupId: null,
   };
   const supabase = {
     from: vi.fn().mockImplementation((table: string) => {
@@ -192,6 +205,24 @@ const {
               },
             };
           },
+        };
+      }
+      // recipe_id existence guard added in POST /entries/assign — captures
+      // the lookup id and returns the test-configured row (or null to
+      // simulate a stale/deleted id).
+      if (table === 'recipes') {
+        return {
+          select: () => ({
+            eq: (_col: string, val: string) => {
+              state.lastRecipeLookupId = val;
+              return {
+                maybeSingle: () => ({
+                  data: state.recipeLookupRow,
+                  error: null,
+                }),
+              };
+            },
+          }),
         };
       }
       return {};
@@ -428,6 +459,8 @@ describe('POST /entries/assign with date param', () => {
     state.lastSkipPayload = null;
     state.skipEqPairs = [];
     state.skipOwnedPlan = undefined;
+    state.recipeLookupRow = null;
+    state.lastRecipeLookupId = null;
   });
 
   it('Test 22-D1: body { date: "2026-05-15", title } → week_start="2026-05-11" (Monday) + day_of_week=3 (Thursday)', async () => {
@@ -520,6 +553,73 @@ describe('POST /entries/assign with date param', () => {
     const body = await res.json();
     expect(body.error).toMatch(/day must be an integer 0\.\.6/);
     expect(body.error).toMatch(/provide date/);
+  });
+
+  // FK guard for stale persisted recipe_id (debug session
+  // .planning/debug/meal-plan-fkey-recipe-id.md). When the client hands
+  // us a recipe_id that no longer exists in `recipes` (deleted on another
+  // device, account reset, RLS hidden), strip it and proceed instead of
+  // letting the FK violation bubble back as a 500. Mirrors the pattern
+  // already in shoppingStore for the cart-add stale-id case.
+  it('Test 22-D5: recipe_id pointing to a deleted recipe is stripped and the upsert succeeds with recipe_id=null', async () => {
+    state.assignInsertedPlan = { id: 'plan-stale-recipe' };
+    state.recipeLookupRow = null; // simulate "row not found"
+    const app = makeApp();
+    const res = await app.request('/meal-plans/entries/assign', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        date: '2026-05-15',
+        title: 'Stale persist',
+        recipe_id: '00000000-0000-0000-0000-deadbeefdead',
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(state.lastRecipeLookupId).toBe(
+      '00000000-0000-0000-0000-deadbeefdead',
+    );
+    expect(state.lastUpsertPayload.recipe_id).toBeNull();
+    expect(state.lastUpsertPayload.title).toBe('Stale persist');
+  });
+
+  it('Test 22-D6: recipe_id pointing to an existing recipe is preserved on the upsert', async () => {
+    state.assignInsertedPlan = { id: 'plan-real-recipe' };
+    state.recipeLookupRow = { id: 'recipe-real' };
+    const app = makeApp();
+    const res = await app.request('/meal-plans/entries/assign', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        date: '2026-05-15',
+        title: 'Real recipe',
+        recipe_id: 'recipe-real',
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(state.lastRecipeLookupId).toBe('recipe-real');
+    expect(state.lastUpsertPayload.recipe_id).toBe('recipe-real');
+  });
+
+  it('Test 22-D7: omitted recipe_id skips the lookup entirely (back-compat)', async () => {
+    state.assignInsertedPlan = { id: 'plan-no-recipe' };
+    const app = makeApp();
+    const res = await app.request('/meal-plans/entries/assign', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ date: '2026-05-15', title: 'No recipe id' }),
+    });
+    expect(res.status).toBe(200);
+    expect(state.lastRecipeLookupId).toBeNull();
+    expect(state.lastUpsertPayload.recipe_id).toBeNull();
   });
 });
 
