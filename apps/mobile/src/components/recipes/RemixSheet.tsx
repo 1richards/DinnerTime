@@ -696,28 +696,34 @@ export function RemixSheet({
         >
           {expandedIdx !== null && expandedFull && expandedVariation ? (
             // Expanded-preview takes over the same Modal — no sibling
-            // Modal needed. PreviewSheet has its own SafeAreaView so
-            // we don't double-wrap.
-            <RemixVariationPreview
-              idx={expandedIdx}
-              full={expandedFull}
-              variation={expandedVariation}
-              baseIngredients={baseForSave?.ingredients}
-              saved={savedIdxs.has(expandedIdx)}
-              modified={modifiedIdxs.has(expandedIdx)}
-              saving={workingIdx === expandedIdx && workingAction === 'save'}
-              modifying={
-                workingIdx === expandedIdx && workingAction === 'modify'
-              }
-              cooking={workingIdx === expandedIdx && workingAction === 'cook'}
-              canModify={source.kind === 'saved'}
-              onClose={() => setExpandedIdx(null)}
-              onSave={() => handleSaveAsNew(expandedIdx, expandedVariation)}
-              onModify={() =>
-                handleModifyExisting(expandedIdx, expandedVariation)
-              }
-              onCook={() => handleCookNow(expandedIdx, expandedVariation)}
-            />
+            // Modal needed. PreviewSheet returns a plain <View> with the
+            // hero image's close/favorite icons absolutely positioned at
+            // top:12, so we MUST wrap with SafeAreaView edges={['top']}
+            // here — fullScreen presentation extends content behind the
+            // status bar / dynamic island, which would otherwise clip
+            // those icons under the system UI.
+            <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+              <RemixVariationPreview
+                idx={expandedIdx}
+                full={expandedFull}
+                variation={expandedVariation}
+                baseIngredients={baseForSave?.ingredients}
+                saved={savedIdxs.has(expandedIdx)}
+                modified={modifiedIdxs.has(expandedIdx)}
+                saving={workingIdx === expandedIdx && workingAction === 'save'}
+                modifying={
+                  workingIdx === expandedIdx && workingAction === 'modify'
+                }
+                cooking={workingIdx === expandedIdx && workingAction === 'cook'}
+                canModify={source.kind === 'saved'}
+                onClose={() => setExpandedIdx(null)}
+                onSave={() => handleSaveAsNew(expandedIdx, expandedVariation)}
+                onModify={() =>
+                  handleModifyExisting(expandedIdx, expandedVariation)
+                }
+                onCook={() => handleCookNow(expandedIdx, expandedVariation)}
+              />
+            </SafeAreaView>
           ) : (
             /* SafeAreaView with edges=['top'] insets the header below the
                status bar / notch. fullScreen presentation extends content
