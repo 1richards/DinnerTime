@@ -991,6 +991,47 @@ describe('00030_feedback_submissions.sql (static)', () => {
   });
 });
 
+// ----- Quick task 12 -----
+
+describe('00036_meal_plan_entries_nutrition.sql (static)', () => {
+  const sql = readMigration('00036_meal_plan_entries_nutrition.sql');
+
+  it('targets meal_plan_entries via ALTER TABLE', () => {
+    expect(sql).toMatch(/ALTER\s+TABLE\s+meal_plan_entries/i);
+  });
+
+  it('adds calories_per_serving INTEGER (nullable)', () => {
+    expect(sql).toMatch(/ADD\s+COLUMN\s+calories_per_serving\s+INTEGER/i);
+    // The column declaration line must NOT carry NOT NULL.
+    const line = sql.match(/ADD\s+COLUMN\s+calories_per_serving[^,;]*/i)?.[0] ?? '';
+    expect(line).not.toMatch(/NOT\s+NULL/i);
+  });
+
+  it('adds protein_grams_per_serving NUMERIC(5,1) (nullable)', () => {
+    expect(sql).toMatch(/ADD\s+COLUMN\s+protein_grams_per_serving\s+NUMERIC\s*\(\s*5\s*,\s*1\s*\)/i);
+    const line = sql.match(/ADD\s+COLUMN\s+protein_grams_per_serving[^,;]*/i)?.[0] ?? '';
+    expect(line).not.toMatch(/NOT\s+NULL/i);
+  });
+
+  it('does NOT add fat_grams_per_serving (out of scope — chip shows kcal+protein only)', () => {
+    const withoutComments = sql
+      .split('\n')
+      .map((l) => l.replace(/--.*$/, ''))
+      .join('\n');
+    expect(withoutComments).not.toMatch(/fat_grams_per_serving/i);
+  });
+
+  it('does NOT create new indexes or NOT NULL constraints', () => {
+    expect(sql).not.toMatch(/CREATE\s+INDEX/i);
+    expect(sql).not.toMatch(/NOT\s+NULL/i);
+  });
+
+  it('documents both columns via COMMENT ON COLUMN', () => {
+    expect(sql).toMatch(/COMMENT\s+ON\s+COLUMN\s+meal_plan_entries\.calories_per_serving/i);
+    expect(sql).toMatch(/COMMENT\s+ON\s+COLUMN\s+meal_plan_entries\.protein_grams_per_serving/i);
+  });
+});
+
 // -----------------------------------------------------------------------------
 // LIVE — runs only when Supabase credentials are present
 // -----------------------------------------------------------------------------
