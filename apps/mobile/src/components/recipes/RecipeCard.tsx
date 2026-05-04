@@ -314,9 +314,25 @@ export function RecipeCard({
             )}
             {(recipe.calories_per_serving != null ||
               recipe.protein_grams_per_serving != null) && (
-              <View className="h-7 px-2.5 rounded-pill flex-row items-center bg-warning/15">
-                <SymbolIcon name="bolt.fill" size={12} tintColor={colors.warning} />
-                <Text className="ml-1 text-caption text-warning font-semibold">
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(217,119,6,0.15)',
+                  borderRadius: 999,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  gap: 3,
+                }}
+              >
+                <SymbolIcon name="bolt.fill" size={11} tintColor={colors.warning} />
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '700',
+                    color: colors.warning,
+                  }}
+                >
                   {recipe.calories_per_serving != null
                     ? `${Math.round(recipe.calories_per_serving)} kcal`
                     : ''}
