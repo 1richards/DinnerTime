@@ -632,6 +632,7 @@ Recent decisions affecting current work:
 | 31 | Persistent add-timer button in cooking header — ActionSheetIOS preset minutes (5/10/15/20/30/45/60) restoring timer creation path after voice STT was parked | 2026-05-03 | c88e603 | _fast (inline)_ |
 | 32 | Cook polish — timer band sizes to content, chip bigger, Custom… via Alert.prompt, completing a cook overwrites today's plan entry with the cooked recipe + status:cooked via applySwap+markCooked | 2026-05-03 | c2cc534 | _fast (inline)_ |
 | 33 | Heart favorite always-on in PreviewSheet hero (Recipe Box detail) — third top-right bubble next to share+close; optional recipeId+isFavorite props so other call sites stay unchanged | 2026-05-03 | 4ccc2d2 | _fast (inline)_ |
+| 34 | Focus chip restyled to match recipe-card "Pan sauces" chip — bg-surface-subtle pill via NativeWind classes mirroring resolveChipClasses default tone, drops custom white+border StyleSheet | 2026-05-03 | 39a8cc9 | _fast (inline)_ |
 
 ## Post-v1 Polish (out-of-band, not GSD-planned)
 
