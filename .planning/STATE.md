@@ -4,9 +4,9 @@ milestone: v1.0
 milestone_name: milestone
 current_plan: Not started
 status: planning
-stopped_at: "Pre-launch milestone — Plan-tab UX cluster + Cook-Later TZ bug. Quick tasks 22-29 + fast tasks (no quick-dir): 7fd046d quick-11 unblocked Month-view scroll on Plan tab (parallel Week DraggableFlatList → conditional render); ca292a9 removed dead {planActionsRow} reference crashing Plan tab on render (collateral from 377e57d This Week consolidation, surfaced by typecheck regression); a3e6eaa→6d38fbe→669bed7→547364e→6af46ae iterated Plan focus banner UX into final shape: theme rendered as a clickable target-icon pill chip styled like Veg-forward, Skill Focus left-side section label, white-bg with bold warning-tone (#D97706) border, defensive inner-row View guarding against Pressable style-merging quirks, WeekHealthChip dropped flex:1 wrapper so it hugs content with cart pushed right by separate spacer; 60ebbb1 fixed DatePicker timezone bug — Cook Later from recipe box was placing recipes on the next day for users west of UTC (iOS DateTimePicker preserves local time-of-day across selections; UTC-midnight init became local-5pm-PT, picker emitted 2026-05-01T17:00-07:00 = May 2 UTC, toISOString shifted forward; helpers switched to local-time end-to-end via new Date(yr,mo,day) + setDate + getFullYear/getMonth/getDate; tests updated with TZ-safe Date constructors). Tailscale Serve config repaired: :443 → localhost:8081 (Metro), :8443 → localhost:3000 (API); was previously misconfigured to a stale proxy port. NEXT: Instacart end-to-end debug per HANDOFF-NEXT-SESSION.md item #2 (1-3 hr unknown — schedule as /gsd:debug, not /gsd:quick)."
-last_updated: "2026-05-03T21:30:00.000Z"
-last_activity: "2026-05-03 - Pre-launch milestone: Plan-tab UX polish cluster + Cook-Later DatePicker TZ bug fix shipped (quick tasks 22-29; fast tasks 23-29). Next: Instacart end-to-end via /gsd:debug."
+stopped_at: "Completed quick task 12: meal_plan_entries per-serving nutrition pipeline (migration 00036 + planner schema + /entries/assign + mobile memo). Migration NOT yet applied to live Supabase — user must run supabase db push or paste into dashboard before next /generate call."
+last_updated: "2026-05-04T02:22:08.183Z"
+last_activity: "2026-05-03 - Completed quick task 11: Fix Month view scroll on Plan tab — parallel-mounted Week DraggableFlatList capturing touches"
 progress:
   total_phases: 1
   completed_phases: 0
@@ -668,7 +668,7 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-05-03T19:24:25.940Z
-Stopped at: Completed quick task 11: fix Month-view scroll on Plan tab — replaced parallel Week+Month display:none mount with conditional ternary render; added nestedScrollEnabled + keyboardShouldPersistTaps='handled' to Month ScrollView; dropped edges={['bottom']} from outer SafeAreaView (paddingBottom: 220 already clears home indicator). Trade-off: scroll position resets on each Week<->Month toggle, acceptable for v1. 1 commit (7fd046d), 23+/15- in apps/mobile/src/app/(tabs)/plan.tsx, 908/908 mobile tests green, 0 new typecheck errors. Diagnostic checkpoint skipped per auto-mode user directive — Path B (conservative superset of Path A + cause-#2 + cause-#3) applied directly. Maestro 31-month-view UAT deferred — running Metro is in Tailscale Serve mode, sim dev client can't fetch bundle until Metro restart with --lan only.
+Last session: 2026-05-04T02:22:08.178Z
+Stopped at: Completed quick task 12: meal_plan_entries per-serving nutrition pipeline (migration 00036 + planner schema + /entries/assign + mobile memo). Migration NOT yet applied to live Supabase — user must run supabase db push or paste into dashboard before next /generate call.
 Resume file: None
 | 2026-04-28 | fast | More options pill padding | done |
