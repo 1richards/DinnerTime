@@ -20,6 +20,7 @@ vi.mock('react-native', () => {
   const FlatList = (_props: unknown) => null;
   const Modal = (_props: unknown) => null;
   const TextInput = (_props: unknown) => null;
+  const KeyboardAvoidingView = (_props: unknown) => null;
   const Alert = { alert: vi.fn() };
   const Platform = { OS: 'ios', select: (map: Record<string, unknown>) => map.ios };
   const StyleSheet = { create: <T,>(styles: T) => styles, flatten: (x: unknown) => x };
@@ -36,6 +37,7 @@ vi.mock('react-native', () => {
     FlatList,
     Modal,
     TextInput,
+    KeyboardAvoidingView,
     Alert,
     Platform,
     StyleSheet,

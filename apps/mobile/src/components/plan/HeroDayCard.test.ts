@@ -229,7 +229,10 @@ describe('HeroDayCard', () => {
     expect((knifeChip?.props as { tone?: string })?.tone).toBe('default');
   });
 
-  it('renders difficulty chip when difficulty="medium"', () => {
+  it('renders difficulty in the meta strip when difficulty="medium" (chip suppressed)', () => {
+    // Difficulty appears in the meta strip "Medium · 35m · 4 servings" rather
+    // than as its own chip — the dedicated chip was suppressed in commit
+    // a17fc8c to avoid duplicating what the meta strip already shows.
     const el = HeroDayCard({
       entry: mkEntry({ difficulty: 'medium' }),
       dayLabel: 'MON',
@@ -242,12 +245,15 @@ describe('HeroDayCard', () => {
       onRemix: vi.fn(),
     });
     const tree = walkTree(el);
+    const texts = collectTextStrings(tree).join('|');
+    expect(texts).toMatch(/Medium/);
+    // No Chip should carry 'Medium' as its label.
     const chipNodes = tree.filter((n) => {
       const t = n.type as { name?: string } | undefined;
       return typeof t === 'function' && (t as { name?: string }).name === 'Chip';
     });
-    const labels = chipNodes.map((n) => (n.props as { label?: string }).label);
-    expect(labels).toContain('Medium');
+    const chipLabels = chipNodes.map((n) => (n.props as { label?: string }).label);
+    expect(chipLabels).not.toContain('Medium');
   });
 
   it('renders time chip when estimated_time_minutes=35', () => {
