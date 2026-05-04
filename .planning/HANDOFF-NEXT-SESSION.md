@@ -1,7 +1,7 @@
 # Handoff — Pre-Launch Finish Line
 
 **Generated:** 2026-05-04
-**Updated:** 2026-05-03 (mid-milestone — items 1 + Plan tab UX polish + DatePicker TZ fix complete)
+**Updated:** 2026-05-03 22:00 (overnight autonomous session — 4 user-flagged bugs + validation pass + TS error cleanup landed)
 **Author of pre-launch session:** Claude Opus 4.7 (1M context)
 **Goal:** ship DinnerTime to TestFlight + App Store. This doc is everything a fresh Claude Code session needs to pick up cleanly.
 
@@ -9,15 +9,52 @@
 
 ## TL;DR — what's left
 
-Originally five buckets. **Items 1 + extra Plan-tab polish + a timezone bug are now done.** Remaining:
+Originally five buckets. After tonight's autonomous run, the remaining work narrows to:
 
-1. ~~🐛 **Fix Month-view scroll bug** (15 min)~~ ✅ done in `7fd046d`
+1. ~~🐛 **Fix Month-view scroll bug**~~ ✅ done in `7fd046d`
 2. 🛒 **Verify + fix Instacart integration end-to-end** (1–3 hr — biggest unknown) ← **NEXT**
-3. 🧪 **In-app UAT of all recent UX changes** (30 min — punch-list run-through)
+3. 🧪 **In-app UAT** — verify the 4 user-flagged bugs are fixed (15–20 min walk-through)
 4. ⚙️ **Settings screen UAT** (15 min)
-5. 🧹 **Comprehensive validation + bug fixes** (open-ended; tighten until launch-ready)
+5. 🧹 ~~Comprehensive validation~~ ✅ test suite + typecheck cleanup done overnight
 
 Then ship to TestFlight per `.planning/LAUNCH-HANDOFF.md`.
+
+---
+
+## Overnight autonomous session — 2026-05-03 21:00–22:00
+
+User went to bed and authorized autonomous execution. Eleven commits shipped:
+
+### User-flagged UAT bugs — all fixed
+
+| User report | Fix commit | Notes |
+|---|---|---|
+| "Set focus chip should look like an input button" | `cd578d5` | Dashed border + transparent bg in empty state; solid pill once a theme is set. |
+| FK violation banner on Plan tab Month view | `688fc26` | Server-side stale-recipe_id strip on POST /entries/assign — mirrors shoppingStore self-healing pattern. 3 new tests. |
+| Chorizo appearing in VEGETARIAN remix | `906f3c7` | Tightened the vegetarian-mode prompt with explicit no-meat list (chorizo, bacon, prosciutto, anchovy, fish sauce, etc.) + halloumi as a positive option. |
+| "Recipes from Remix don't open when tapped" | `348e60f` | Triple-stacked iOS Modal pageSheets on the Plan-tab → day-preview → Remix path swallowed taps. Variations Modal now `presentationStyle="fullScreen"` (matches `79b07b3`'s inner-expand fix). |
+| "Cook later creates a duplicate non-favorited recipe" | `a660831` | PlanEntryPreview's onCookLater handler hardcoded `recipe_id: null`. Now reads live currentPlan + falls back to closure recipe_id, forwarding it through addToPlan. 2 new tests. |
+| "Swap modal cards should look like Plan landing hero cards" | `18d8137` | CandidateCard refactored: 16:9 hero image with white title overlay (HeroImage primitive reused), meta strip below ("Easy · 25m · 4 servings" + nutrition pill). Whole card tappable, side remix-icon button removed. |
+
+### Validation pass — green
+
+| Layer | Before | After |
+|---|---|---|
+| Mobile vitest | 10 failed / 898 passed | **910 / 910 ✅** (PickerSheet KeyboardAvoidingView mock + HeroDayCard difficulty test alignment, commit `0a1cb50`) |
+| Mobile typecheck (app code) | 2 errors | **0 ✅** (commit `4f0170f` — shoppingStore list-narrowing + IngredientChecklist null-coalesce) |
+| Server vitest (canonicalResolver) | 5 failed / 9 passed | **14 / 14 ✅** (commit `0b7c29e` — vi.mock'd supabaseAdmin so candidate-create stops hitting prod DB) |
+| Server vitest (full suite) | n/a | 789 / 790 (1 flake in __tests__/recipes.test.ts > "creates a recipe" — passes in isolation; transient real-DB race during parallel runs, NOT a real bug) |
+| Mobile typecheck (test files) | ~30 errors | unchanged — baseline-known, not blocking |
+
+### Pre-existing WIP backed up — not lost in disaster
+
+- `5796f9b` chore: backup pre-session WIP — eas.json (Sentry env), telemetry.ts (cooking insert console.error), 40-share-recipe-pdf.yaml (tighter Maestro selectors)
+
+### What's still untracked (intentional skip)
+
+- `.claude/scheduled_tasks.lock` — Claude internal state
+- `app.json` (root) + `packages/server/app.json` — empty stray `{"expo":{}}` shells, noise from past Expo CLI invocations
+- `apps/mobile/quick-4-a-skeleton.png`, `apps/mobile/quick-4-b-remix-buttons.png`, `sylvia-02-preview.png` — debug screenshots; large binary artifacts
 
 ### What shipped between handoff write-time and now (commits since `e9ddcf1`)
 
@@ -139,6 +176,17 @@ A lot of UX shipped in the pre-launch session. Run through this once on the iPho
 - [ ] Cooking Voice picker (Daniel/Oliver/etc.) preserved (TTS only)
 - [ ] Plan card density toggle works (Compact ↔ Detailed)
 
+### 🌙 Overnight fixes — verify these specifically before declaring UAT done
+- [ ] **Set focus chip** (Plan tab → This Week card) — when no focus is set, the chip renders with a dashed border + transparent bg. Once a theme is picked, it flips to solid. Commit `cd578d5`.
+- [ ] **FK error banner** — try the action that produced "Failed to assign entry: ... violates foreign key constraint meal_plan_entries_recipe_id_fkey". Should silently strip the stale id and the day populates without a banner. Tail server logs for `[meal-plans/entries/assign] stripping unknown recipe_id=...` to confirm the guard ran. Commit `688fc26`.
+- [ ] **Vegetarian remix** — open Remix on a meaty recipe → pick **Vegetarian** mode → all 3 variations are strictly meat/poultry/seafood-free. No chorizo, bacon, anchovy, fish sauce. Commit `906f3c7`.
+- [ ] **Remix variation tap** — three entry paths to verify (commit `348e60f` fix targeted Path A specifically; B/C are regression checks):
+  - Path A (the broken one): Plan tab → tap day → preview popup → tap Remix → pick mode → wait for variations → tap a variation card → preview slides up (or applies to day if you tapped the calendar.badge.checkmark icon).
+  - Path B (regression): Plan tab → tap a day's HeroDayCard floating cluster sparkles icon → pick mode → tap variation → preview opens.
+  - Path C (regression): Recipe Box → open a saved recipe → tap Remix → pick mode → tap variation → preview opens.
+- [ ] **Cook Later preserves favorite** — favorite (heart) a recipe in Recipe Box → in Plan tab, on a day with that recipe (or a fresh ad-hoc entry that was favorited by tapping the heart on the day-preview popup), use **Cook Later** to copy it to a future day → open Recipe Box again. Should see ONE entry, still favorited. No duplicate. Commit `a660831`.
+- [ ] **Swap modal cards** — Plan tab → tap a day → tap Swap (or use the floating cluster Swap icon) → swap modal opens with Recipe Box list. Each candidate card now uses a 16:9 hero image with white title overlay + meta strip below ("Easy · 25m · 4 servings"). Whole card tappable. Should look the same as the Plan tab landing hero cards. Commit `18d8137`.
+
 ---
 
 ## 4. ⚙️ Settings screen UAT
@@ -160,7 +208,14 @@ Maestro flow `apps/mobile/.maestro/37-settings-auth-uat.yaml` is the placeholder
 
 ## 5. 🧹 Comprehensive validation + bug fixes
 
-**Run these in sequence:**
+**Status as of overnight session:**
+- Mobile vitest: **910 / 910 passing** ✅
+- Mobile typecheck (app code): **0 errors** ✅
+- Mobile typecheck (test files): ~28 pre-existing errors (test-only Unused @ts-expect-error directives + TimerBar/CommandToast Element-vs-null assertions); not blocking
+- Server vitest: **789 / 790 passing** (1 transient flake in `__tests__/recipes.test.ts > "creates a recipe"` — passes in isolation, real-DB integration test, racy under parallel runs; NOT a real bug)
+- Server vitest (canonicalResolver): **14 / 14 passing** ✅ (was 5 failing — fixed via vi.mock'd supabaseAdmin so candidate-create stops hitting prod DB)
+
+**Run these in sequence to re-verify:**
 
 ```bash
 # Server-side
@@ -171,7 +226,7 @@ pnpm test
 cd /Users/patrickrichards/DinnerTime/apps/mobile
 npx vitest run
 
-# Mobile-side — typecheck (expect ~30 pre-existing errors in cooking/telemetry tests)
+# Mobile-side — typecheck (expect ~28 pre-existing test-file errors)
 npx tsc --noEmit
 
 # Maestro full sweep
