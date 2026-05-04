@@ -289,24 +289,11 @@ export function RemixSheet({
   };
 
   const handleExpand = async (idx: number, variation: RemixVariation) => {
-    if (__DEV__) {
-      console.log('[remix] handleExpand start', {
-        idx,
-        title: variation.title,
-      });
-    }
     setWorkingIdx(idx);
     setWorkingAction('expand');
     const full = await ensureFull(idx, variation);
     setWorkingIdx(null);
     setWorkingAction(null);
-    if (__DEV__) {
-      console.log('[remix] handleExpand done', {
-        idx,
-        gotFull: !!full,
-        hasSteps: !!full && Array.isArray(full.steps) && full.steps.length > 0,
-      });
-    }
     if (full) setExpandedIdx(idx);
   };
 
@@ -701,11 +688,17 @@ export function RemixSheet({
       )}
 
       {/* Nested expanded preview — full recipe for the tapped variation.
-          Rendered via the shared PreviewSheet with hideRemix + modify support. */}
+          Rendered via the shared PreviewSheet with hideRemix + modify support.
+          presentationStyle="fullScreen" instead of pageSheet because iOS
+          only allows one pageSheet at a time — stacking pageSheet inside
+          pageSheet (the parent RemixSheet is also pageSheet) silently
+          fails to present, which manifests as "tapping a variation does
+          nothing". fullScreen takes the whole window and stacks above the
+          parent pageSheet cleanly. */}
       <Modal
         visible={expandedIdx !== null && expandedFull != null}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle="fullScreen"
         onRequestClose={() => setExpandedIdx(null)}
       >
         {expandedIdx !== null && expandedFull && expandedVariation && (
