@@ -709,6 +709,37 @@ export default function PlanScreen() {
     [currentPlan?.entries],
   );
 
+  // Weekly per-serving nutrition averages — computed only over entries
+  // whose recipe_id resolves to a saved Recipe with non-null fields.
+  // Ad-hoc plan entries (no recipe_id) and legacy recipes (no nutrition
+  // populated) are skipped. Returns null if no entry contributed, which
+  // hides the chip entirely (no "—" placeholder).
+  const weekNutrition = useMemo<{ kcal: number; protein: number } | null>(() => {
+    const entries = currentPlan?.entries ?? [];
+    let calorieSum = 0;
+    let calorieN = 0;
+    let proteinSum = 0;
+    let proteinN = 0;
+    for (const e of entries) {
+      if (!e.recipe_id) continue;
+      const r = cachedRecipes.find((x) => x.id === e.recipe_id);
+      if (!r) continue;
+      if (r.calories_per_serving != null) {
+        calorieSum += r.calories_per_serving;
+        calorieN += 1;
+      }
+      if (r.protein_grams_per_serving != null) {
+        proteinSum += r.protein_grams_per_serving;
+        proteinN += 1;
+      }
+    }
+    if (calorieN === 0 && proteinN === 0) return null;
+    return {
+      kcal: calorieN > 0 ? Math.round(calorieSum / calorieN) : 0,
+      protein: proteinN > 0 ? Math.round(proteinSum / proteinN) : 0,
+    };
+  }, [currentPlan?.entries, cachedRecipes]);
+
   if (loading && !currentPlan) {
     return (
       <SafeAreaView
@@ -778,6 +809,17 @@ export default function PlanScreen() {
   const planStatsRow = (
     <>
       <WeekHealthChip entries={weekHealthEntries} />
+      {weekNutrition ? (
+        <View className="h-8 px-3 rounded-pill flex-row items-center bg-surface-subtle">
+          <Text
+            className="text-caption text-text-secondary"
+            numberOfLines={1}
+            allowFontScaling={false}
+          >
+            Avg {weekNutrition.kcal} kcal · {weekNutrition.protein}g
+          </Text>
+        </View>
+      ) : null}
       <View style={{ flex: 1 }} />
       <Pressable
         onPress={handleShoppingHandoff}

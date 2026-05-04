@@ -188,6 +188,42 @@ export default function RecipeDetailScreen() {
           </View>
         )}
 
+        {/* Per-serving nutrition badges. Renders only when at least one
+            field is populated (legacy rows + non-AI imports skip). Mirrors
+            the badge cluster on PreviewSheet so the standalone detail view
+            and the modal preview show the same nutrition surface. */}
+        {(recipe.calories_per_serving != null ||
+          recipe.protein_grams_per_serving != null ||
+          recipe.fat_grams_per_serving != null) && (
+          <View style={styles.nutritionRow}>
+            {recipe.calories_per_serving != null && (
+              <View style={styles.nutritionBadge}>
+                <Text style={styles.nutritionValue}>
+                  {Math.round(recipe.calories_per_serving)}
+                </Text>
+                <Text style={styles.nutritionLabel}>kcal</Text>
+              </View>
+            )}
+            {recipe.protein_grams_per_serving != null && (
+              <View style={styles.nutritionBadge}>
+                <Text style={styles.nutritionValue}>
+                  {Math.round(recipe.protein_grams_per_serving)}g
+                </Text>
+                <Text style={styles.nutritionLabel}>Protein</Text>
+              </View>
+            )}
+            {recipe.fat_grams_per_serving != null && (
+              <View style={styles.nutritionBadge}>
+                <Text style={styles.nutritionValue}>
+                  {Math.round(recipe.fat_grams_per_serving)}g
+                </Text>
+                <Text style={styles.nutritionLabel}>Fat</Text>
+              </View>
+            )}
+            <Text style={styles.nutritionPerServing}>per serving</Text>
+          </View>
+        )}
+
         {/* Skills practiced card — Quick-task 6.
             Renders only when at least one of difficulty / practiced_skills /
             skill_note is set. Legacy recipes (all three null) get NO card,
@@ -321,6 +357,45 @@ export default function RecipeDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Per-serving nutrition cluster mirroring PreviewSheet's badges so the
+  // standalone detail view and the modal preview render identical chips.
+  nutritionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    flexWrap: 'wrap',
+  },
+  nutritionBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#FFF4E6',
+    borderWidth: 1,
+    borderColor: 'rgba(192,90,0,0.18)',
+    alignItems: 'center',
+  },
+  nutritionValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1A140F',
+    letterSpacing: -0.2,
+  },
+  nutritionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#7A6651',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  nutritionPerServing: {
+    fontSize: 11,
+    color: '#7A6651',
+    fontStyle: 'italic',
+    marginLeft: 4,
+  },
   stickyFooter: {
     position: 'absolute',
     left: 0,
