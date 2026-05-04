@@ -709,11 +709,15 @@ export default function PlanScreen() {
     [currentPlan?.entries],
   );
 
-  // Weekly per-serving nutrition averages — computed only over entries
-  // whose recipe_id resolves to a saved Recipe with non-null fields.
-  // Ad-hoc plan entries (no recipe_id) and legacy recipes (no nutrition
-  // populated) are skipped. Returns null if no entry contributed, which
-  // hides the chip entirely (no "—" placeholder).
+  // Weekly per-serving nutrition averages.
+  //
+  // Quick task 12 — Prefer entry-level fields (calories_per_serving,
+  // protein_grams_per_serving) populated by /generate after migration
+  // 00036. Fall back to the linked recipe row only when the entry
+  // doesn't carry the value (legacy plan entries, or assignments
+  // from a saved Recipe Box recipe where the entry payload didn't
+  // forward the nutrition). Returns null when no entry contributed,
+  // hiding the chip entirely.
   const weekNutrition = useMemo<{ kcal: number; protein: number } | null>(() => {
     const entries = currentPlan?.entries ?? [];
     let calorieSum = 0;
@@ -721,15 +725,25 @@ export default function PlanScreen() {
     let proteinSum = 0;
     let proteinN = 0;
     for (const e of entries) {
-      if (!e.recipe_id) continue;
-      const r = cachedRecipes.find((x) => x.id === e.recipe_id);
-      if (!r) continue;
-      if (r.calories_per_serving != null) {
-        calorieSum += r.calories_per_serving;
+      // Calories: entry first, then linked recipe.
+      let kcal: number | null | undefined = e.calories_per_serving;
+      if (kcal == null && e.recipe_id) {
+        const r = cachedRecipes.find((x) => x.id === e.recipe_id);
+        kcal = r?.calories_per_serving;
+      }
+      if (typeof kcal === 'number') {
+        calorieSum += kcal;
         calorieN += 1;
       }
-      if (r.protein_grams_per_serving != null) {
-        proteinSum += r.protein_grams_per_serving;
+
+      // Protein: entry first, then linked recipe.
+      let protein: number | null | undefined = e.protein_grams_per_serving;
+      if (protein == null && e.recipe_id) {
+        const r = cachedRecipes.find((x) => x.id === e.recipe_id);
+        protein = r?.protein_grams_per_serving;
+      }
+      if (typeof protein === 'number') {
+        proteinSum += protein;
         proteinN += 1;
       }
     }

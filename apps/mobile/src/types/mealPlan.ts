@@ -66,6 +66,21 @@ export interface MealPlanEntry {
    * fond → reduction → mounted butter". Surfaced on Recipe detail.
    */
   skill_note?: string | null;
+
+  // ---- Quick task 12 extensions ----
+  /**
+   * Per-serving calorie estimate from the AI planner. Mirrors
+   * recipes.calories_per_serving (migration 00033) for entries that
+   * aren't linked to a saved recipe. NULL on legacy rows generated
+   * before migration 00036.
+   */
+  calories_per_serving?: number | null;
+  /**
+   * Per-serving protein grams from the AI planner. NUMERIC(5,1)
+   * server-side, so values arrive as numbers (e.g. 24.5). NULL on
+   * legacy rows.
+   */
+  protein_grams_per_serving?: number | null;
 }
 
 export interface MealPlan {
