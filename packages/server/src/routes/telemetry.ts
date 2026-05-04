@@ -96,6 +96,7 @@ telemetry.post('/cooking', async (c) => {
   const { error } = await supabase.from('cooking_events').insert(rows);
 
   if (error) {
+    console.error('[telemetry/cooking] insert failed:', error);
     return c.json({ error: 'insert_failed' }, 500);
   }
 

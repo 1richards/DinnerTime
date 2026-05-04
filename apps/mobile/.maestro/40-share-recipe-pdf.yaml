@@ -1,38 +1,35 @@
 appId: com.dinnertime.app
 name: "40 — recipe detail: Share PDF action surfaces toast (or share sheet)"
 ---
-# Smoke check for the v1.0.2 Share PDF action. The recipe-detail
-# overflow menu now lists "Share PDF" alongside Add to Plan / Remix /
-# Delete. On a dev client built BEFORE expo-print landed, tapping the
-# action surfaces a toast saying a rebuild is needed (graceful
-# degradation). On a fresh dev client the iOS share sheet opens — that
-# path needs manual visual verification because Maestro can't introspect
-# the system share sheet.
 - runFlow: _ensure-logged-in.yaml
 
+# Tap "Recipe Box" segment to switch to saved recipes. Regex selector
+# matches Pressable's accessibilityLabel (per flow 20).
 - tapOn:
-    text: "Cancel"
-    optional: true
-- tapOn:
-    text: ".*Go home.*"
-    optional: true
-
-# Navigate to Recipe Box → first recipe.
-- tapOn:
-    text: "Recipe Box"
-    optional: true
+    text: ".*Recipe Box.*"
+- assertVisible:
+    text: ".*in your recipe box.*"
 - takeScreenshot: 01-recipe-box
 
-# Tap the first recipe card. Cards are touch-targets but vary in label —
-# the screenshot is the source of truth.
+# Tap the first recipe card. Cards sit below the sticky search pill;
+# y=45% lands on the first card on a 17 Pro screen.
 - tapOn:
-    point: "50%,40%"
-    optional: true
-- takeScreenshot: 02-recipe-detail
+    point: "50%,45%"
+- takeScreenshot: 02-preview-sheet
 
-# Open the overflow menu (top-right ellipsis on the hero).
+# Hero has TWO buttons in the top-right: close (X) and the new share
+# button. Tap the share button via its accessibilityLabel.
 - tapOn:
-    accessibilityText: "More options"
-    optional: true
+    text: "Share recipe as PDF"
 
-- takeScreenshot: 03-action-sheet
+# Wait for the iOS native share sheet animation to complete. The share
+# sheet is a UIKit-presented controller, so it animates over ~400ms.
+- waitForAnimationToEnd:
+    timeout: 4000
+
+- takeScreenshot: 03-after-share-tap
+
+# Try to dismiss the share sheet so future runs land in a clean state.
+- tapOn:
+    text: "Cancel|Done|Close"
+    optional: true
