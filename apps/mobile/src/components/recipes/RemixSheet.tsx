@@ -25,6 +25,7 @@ import {
   type VariationContext,
 } from '../../stores/progressionStore';
 import { useRecipeStore } from '../../stores/recipeStore';
+import { useMealPlanStore } from '../../stores/mealPlanStore';
 import { supabase } from '../../lib/supabase';
 import { PreviewSheet, type DiscoveredRecipe } from '../../app/recipes/discover';
 import { getRecipeImage } from '../../constants/foodImages';
@@ -186,6 +187,7 @@ export function RemixSheet({
     (s) => s.fetchVariationsForContext,
   );
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
+  const toggleFavoriteRecipe = useRecipeStore((s) => s.toggleFavorite);
   const updateRecipe = useRecipeStore((s) => s.updateRecipe);
 
   const [selectedMode, setSelectedMode] = useState<RemixMode | null>(null);
@@ -202,9 +204,15 @@ export function RemixSheet({
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [workingIdx, setWorkingIdx] = useState<number | null>(null);
   const [workingAction, setWorkingAction] = useState<
-    'expand' | 'save' | 'modify' | 'cook' | 'remix' | 'apply' | null
+    'expand' | 'save' | 'modify' | 'cook' | 'remix' | 'apply' | 'cookLater' | null
   >(null);
   const [savedIdxs, setSavedIdxs] = useState<Set<number>>(new Set());
+  // Tracks which variations have been save-AND-favorited via the heart
+  // affordance on the expanded preview. Mirrors the kitchen-tab Something
+  // New onAdHocFavorite flag — the heart icon flips to filled red once
+  // the chained save→favorite completes so the user sees the action
+  // succeeded without needing to navigate to Recipe Box.
+  const [favoritedIdxs, setFavoritedIdxs] = useState<Set<number>>(new Set());
   const [modifiedIdxs, setModifiedIdxs] = useState<Set<number>>(new Set());
   // Per-card error message — surfaces timeout / parse / network failures as
   // a visible state on the card rather than silently leaving the spinner
@@ -377,6 +385,88 @@ export function RemixSheet({
       setWorkingIdx(null);
       setWorkingAction(null);
     }
+  };
+
+  // Cook Later from the expanded variation preview: save the variation
+  // as a recipe (so it persists across weeks), then add it to the
+  // user-picked day via mealPlanStore.addToPlan. Mirrors the kitchen-tab
+  // Something New onCookLater flow exactly. The DatePickerSheet that
+  // produces `iso` is mounted inside PreviewSheet itself; this callback
+  // just receives the selected ISO date.
+  const handleCookLater = async (
+    idx: number,
+    variation: RemixVariation,
+    iso: string,
+  ) => {
+    setWorkingIdx(idx);
+    setWorkingAction('cookLater');
+    try {
+      const full = await ensureFull(idx, variation);
+      if (!full) return;
+      // Save first so the recipe row persists with a stable id, then
+      // assign the row's id to the day. Without the save, addToPlan
+      // would create an ad-hoc entry that loses its link if the week
+      // is regenerated.
+      const saved = await saveRecipe({ ...full, source_type: 'ai' });
+      const state = useRecipeStore.getState();
+      if (state.error) {
+        Alert.alert('Save failed', state.error);
+        return;
+      }
+      setSavedIdxs((prev) => new Set([...prev, idx]));
+      const target =
+        saved ??
+        state.recipes.find(
+          (r) => r.title.trim().toLowerCase() === full.title.trim().toLowerCase(),
+        );
+      await useMealPlanStore.getState().addToPlan(iso, full, target?.id ?? null);
+      // Close the variation preview so the user lands back on the
+      // variations list with the day populated. Don't close RemixSheet
+      // itself — they may want to swap another day too.
+      setExpandedIdx(null);
+    } catch (e) {
+      Alert.alert(
+        'Could not add to plan',
+        e instanceof Error ? e.message : 'Try again.',
+      );
+    } finally {
+      setWorkingIdx(null);
+      setWorkingAction(null);
+    }
+  };
+
+  // Heart-icon path on the expanded variation preview: save the recipe
+  // (if not already saved) AND mark it as favorite, in a single user
+  // action. Mirrors the Something New PreviewSheet flow on Kitchen tab
+  // — capture the recipes-store ID set BEFORE save, find the new row by
+  // diffing, fall back to title-match if needed, then toggle favorite
+  // on that ID. The setFavoritedIdxs flip flips the heart to filled red
+  // immediately on success so the user sees confirmation in-sheet.
+  const handleSaveAndFavorite = async (
+    idx: number,
+    variation: RemixVariation,
+    imageUri: string | null = null,
+  ) => {
+    const beforeIds = new Set(useRecipeStore.getState().recipes.map((r) => r.id));
+    const full = await ensureFull(idx, variation);
+    if (!full) return;
+    const heroUri = full.image_url ?? imageUri ?? null;
+    await saveRecipe({ ...full, image_url: heroUri, source_type: 'ai' });
+    const state = useRecipeStore.getState();
+    if (state.error) {
+      Alert.alert('Save failed', state.error);
+      return;
+    }
+    setSavedIdxs((prev) => new Set([...prev, idx]));
+    const target =
+      state.recipes.find((r) => !beforeIds.has(r.id)) ??
+      state.recipes.find(
+        (r) => r.title.trim().toLowerCase() === full.title.trim().toLowerCase(),
+      );
+    if (target && !target.is_favorite) {
+      await toggleFavoriteRecipe(target.id);
+    }
+    setFavoritedIdxs((prev) => new Set([...prev, idx]));
   };
 
   // Plan-flow path: save the variation to the library AND replace the
@@ -711,11 +801,15 @@ export function RemixSheet({
                 baseIngredients={baseForSave?.ingredients}
                 saved={savedIdxs.has(expandedIdx)}
                 modified={modifiedIdxs.has(expandedIdx)}
+                favorited={favoritedIdxs.has(expandedIdx)}
                 saving={workingIdx === expandedIdx && workingAction === 'save'}
                 modifying={
                   workingIdx === expandedIdx && workingAction === 'modify'
                 }
                 cooking={workingIdx === expandedIdx && workingAction === 'cook'}
+                cookingLater={
+                  workingIdx === expandedIdx && workingAction === 'cookLater'
+                }
                 canModify={source.kind === 'saved'}
                 onClose={() => setExpandedIdx(null)}
                 onSave={() => handleSaveAsNew(expandedIdx, expandedVariation)}
@@ -723,6 +817,12 @@ export function RemixSheet({
                   handleModifyExisting(expandedIdx, expandedVariation)
                 }
                 onCook={() => handleCookNow(expandedIdx, expandedVariation)}
+                onCookLater={(iso) =>
+                  handleCookLater(expandedIdx, expandedVariation, iso)
+                }
+                onFavorite={() =>
+                  handleSaveAndFavorite(expandedIdx, expandedVariation)
+                }
               />
             </SafeAreaView>
           ) : (
@@ -867,14 +967,18 @@ function RemixVariationPreview({
   baseIngredients,
   saved,
   modified,
+  favorited,
   saving,
   modifying,
   cooking,
+  cookingLater,
   canModify,
   onClose,
   onSave,
   onModify,
   onCook,
+  onCookLater,
+  onFavorite,
 }: {
   idx: number;
   full: ParsedRecipe;
@@ -882,14 +986,18 @@ function RemixVariationPreview({
   baseIngredients?: Array<string | BaseIngredient>;
   saved: boolean;
   modified: boolean;
+  favorited: boolean;
   saving: boolean;
   modifying: boolean;
   cooking: boolean;
+  cookingLater: boolean;
   canModify: boolean;
   onClose: () => void;
   onSave: () => Promise<void>;
   onModify: () => Promise<void>;
   onCook: () => Promise<void>;
+  onCookLater: (iso: string) => Promise<void>;
+  onFavorite: () => Promise<void>;
 }) {
   // CRITICAL: cache key must match VariationCard exactly — same title,
   // same description, same normalized ingredients tuple. The expanded
@@ -938,6 +1046,10 @@ function RemixVariationPreview({
       modifying={modifying}
       onCookNow={onCook}
       cooking={cooking}
+      onCookLater={onCookLater}
+      cookingLater={cookingLater}
+      onAdHocFavorite={onFavorite}
+      adHocFavorited={favorited}
       hideRemix
       saveLabel="Save as new recipe"
       modifyLabel="Update existing recipe"
