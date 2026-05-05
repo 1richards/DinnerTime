@@ -1105,14 +1105,15 @@ function VariationCard({
       ]}
     >
       <View style={styles.heroWrap}>
-        {/* Two-layer load: shimmer skeleton sits underneath as the
-            persistent background; Image overlays it once the URL is set,
-            with its own blurhash placeholder bridging the network-download
-            gap. The shimmer signals "actively loading" so users don't
-            mistake the warm-beige box for a permanently failed image
-            (prior static skeleton looked dead). Once the Image's bytes
-            arrive, it covers the shimmer entirely. */}
-        <View style={[styles.variationHero, StyleSheet.absoluteFillObject]}>
+        {/* Two-layer load: skeleton View carries the 170pt height (gives
+            the wrapper its layout-flow height), with the shimmer + photo
+            glyph filling it via absolute positioning. The Image, once
+            available, overlays the skeleton via absolute positioning so
+            it covers the shimmer without removing it. Without the
+            in-flow skeleton, heroWrap collapses to 0 height before the
+            image arrives — what users saw as a "half-step intermediary
+            page" with no hero area. */}
+        <View style={styles.variationHero}>
           {imageStatus === 'failed' && !generatedUri ? (
             <View style={[styles.variationHeroSkeleton, StyleSheet.absoluteFillObject]}>
               <SymbolIcon name="photo" size={32} tintColor="#C9B89E" />
@@ -1124,7 +1125,7 @@ function VariationCard({
         {generatedUri && (
           <Image
             source={{ uri: generatedUri }}
-            style={styles.variationHero}
+            style={[styles.variationHero, StyleSheet.absoluteFillObject]}
             contentFit="cover"
             transition={300}
             placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
