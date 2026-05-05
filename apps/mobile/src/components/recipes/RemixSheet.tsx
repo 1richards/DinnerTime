@@ -1217,21 +1217,34 @@ function VariationCard({
       ]}
     >
       <View style={styles.heroWrap}>
-        {/* Two-layer load: skeleton View carries the 170pt height (gives
-            the wrapper its layout-flow height), with the shimmer + photo
-            glyph filling it via absolute positioning. The Image, once
-            available, overlays the skeleton via absolute positioning so
-            it covers the shimmer without removing it. Without the
-            in-flow skeleton, heroWrap collapses to 0 height before the
-            image arrives — what users saw as a "half-step intermediary
-            page" with no hero area. */}
+        {/* Loading state stack:
+            1. Skeleton View carries 170pt height (gives wrapper layout flow)
+            2. Shimmer fills via absoluteFillObject — ambient pulse
+            3. Centered spinner + "Generating image…" caption — explicit
+               loading affordance. The shimmer alone reads as "dead box"
+               to users, so we layer an unambiguous progress indicator on
+               top until generatedUri arrives.
+            4. Image, when available, covers everything below it. */}
         <View style={styles.variationHero}>
           {imageStatus === 'failed' && !generatedUri ? (
             <View style={[styles.variationHeroSkeleton, StyleSheet.absoluteFillObject]}>
               <SymbolIcon name="photo" size={32} tintColor="#C9B89E" />
+              <Text style={styles.variationHeroFailedText}>
+                Image unavailable
+              </Text>
             </View>
           ) : (
-            <ShimmerSkeleton />
+            <>
+              <ShimmerSkeleton />
+              {!generatedUri && (
+                <View style={styles.variationHeroLoading} pointerEvents="none">
+                  <ActivityIndicator size="small" color={colors.brand} />
+                  <Text style={styles.variationHeroLoadingText}>
+                    Generating image…
+                  </Text>
+                </View>
+              )}
+            </>
           )}
         </View>
         {generatedUri && (
@@ -1593,6 +1606,33 @@ const styles = StyleSheet.create({
   variationHeroSkeleton: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Centered spinner + caption sit absolutely positioned over the
+  // shimmer base. Caption uses the brand-tinted color so it reads as
+  // intentional "AI is working" rather than UI chrome — pairs with the
+  // ActivityIndicator above. pointerEvents:'none' on the parent so taps
+  // pass through to the variation card body.
+  variationHeroLoading: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  variationHeroLoadingText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.brand,
+    letterSpacing: 0.3,
+  },
+  variationHeroFailedText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#A09078',
+    marginTop: 8,
   },
   // Single-capsule overlay — matches HeroDayCard.heroIconCluster +
   // RecipeCard.actionCluster so all hero overlay actions across
