@@ -147,14 +147,27 @@ export default function RecipeDetailScreen() {
               </View>
             )}
           </HeroImage>
-          {/* Floating back chevron — top-left, above the notch */}
+          {/* Floating close (X) — top-left, above the notch. Uses xmark
+              instead of chevron.backward to match the close affordance
+              users expect from every other recipe surface (PreviewSheet,
+              RemixSheet, etc). canGoBack() guards the case where this
+              screen was reached via a deep-link / stale Modal save flow
+              with no parent route — falling back to /kitchen guarantees
+              the X always exits to a known-good screen instead of
+              silently no-op'ing. */}
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)/kitchen');
+              }
+            }}
             hitSlop={12}
             style={[styles.heroBack, { top: insets.top + 8 }]}
-            accessibilityLabel="Back"
+            accessibilityLabel="Close"
           >
-            <SymbolIcon name="chevron.backward" size={22} tintColor="#FFFFFF" />
+            <SymbolIcon name="xmark" size={22} tintColor="#FFFFFF" />
           </Pressable>
           {/* Floating action row, top-right: ellipsis overflow + favorite.
               The ellipsis collapses the 3+ secondary actions (Add to Plan,
