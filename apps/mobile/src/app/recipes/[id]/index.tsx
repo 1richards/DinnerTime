@@ -11,7 +11,6 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import { SymbolIcon } from '../../../components/ui/SymbolIcon';
-import { HeaderEllipsis } from '../../../components/ui/HeaderEllipsis';
 import { useRecipeStore } from '../../../stores/recipeStore';
 import { ServingSizeStepper } from '../../../components/recipes/ServingSizeStepper';
 import { ScaledIngredientList } from '../../../components/recipes/ScaledIngredientList';
@@ -169,22 +168,26 @@ export default function RecipeDetailScreen() {
           >
             <SymbolIcon name="xmark" size={22} tintColor="#FFFFFF" />
           </Pressable>
-          {/* Floating action row, top-right: ellipsis overflow + favorite.
-              The ellipsis collapses the 3+ secondary actions (Add to Plan,
-              Remix, Delete) that used to live as inline body buttons — matches
-              Apple's Mail/Notes header pattern (Phase 15 CONTEXT D-05). */}
+          {/* Floating action row, top-right: Share PDF icon + favorite.
+              The "..." overflow menu was hiding common actions (Add to
+              Plan, Remix, Share, Delete) behind a tap. Surface the
+              non-destructive top-bar action (Share PDF) inline and
+              promote Add to Plan + Delete into the sticky footer / body
+              respectively so nothing requires a buried menu. */}
           <View style={[styles.heroActions, { top: insets.top + 8 }]}>
-            <View style={styles.heroActionBubble}>
-              <HeaderEllipsis
+            <Pressable
+              onPress={handleSharePdf}
+              hitSlop={8}
+              style={styles.heroActionBubble}
+              accessibilityLabel="Share recipe as PDF"
+              accessibilityRole="button"
+            >
+              <SymbolIcon
+                name="square.and.arrow.up"
+                size={22}
                 tintColor="#FFFFFF"
-                actions={[
-                  { label: 'Add to Plan', onPress: () => setPlanOpen(true) },
-                  { label: 'Remix', onPress: () => setRemixOpen(true) },
-                  { label: 'Share PDF', onPress: handleSharePdf },
-                  { label: 'Delete', onPress: handleDelete, destructive: true },
-                ]}
               />
-            </View>
+            </Pressable>
             <View style={styles.heroFavoriteInline}>
               <FavoriteButton
                 recipeId={recipe.id}
@@ -315,17 +318,41 @@ export default function RecipeDetailScreen() {
           ))}
         </View>
 
+        {/* Delete — destructive action lives at the bottom of scroll
+            content so it's reachable but not prominent. Replaces the
+            former entry under the buried "..." overflow menu. */}
+        <Pressable
+          onPress={handleDelete}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.deleteRow,
+            pressed && { opacity: 0.6 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Delete recipe"
+        >
+          <SymbolIcon name="trash" size={16} tintColor={colors.destructive} />
+          <Text style={styles.deleteText}>Delete recipe</Text>
+        </Pressable>
+
       </ScrollView>
 
-      {/* Sticky footer CTAs — always visible regardless of scroll position so
-          Start Cooking + Edit + Remix are one-tap from anywhere on the recipe.
-          Mirrors the Something New PreviewSheet's fixed action bar. */}
+      {/* Sticky footer CTAs — Cook Now is the primary; Add to Plan +
+          Edit + Remix sit on a 3-up secondary row so all the previously-
+          buried actions are visible without an overflow menu. */}
       <View style={styles.stickyFooter}>
         <Button
           title="Cook Now"
           onPress={() => router.push(`/recipes/${recipe.id}/cook`)}
         />
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          <View style={{ flex: 1 }}>
+            <Button
+              title="Add to Plan"
+              variant="outline"
+              onPress={() => setPlanOpen(true)}
+            />
+          </View>
           <View style={{ flex: 1 }}>
             <Button
               title="Edit"
@@ -408,6 +435,23 @@ const styles = StyleSheet.create({
     color: '#7A6651',
     fontStyle: 'italic',
     marginLeft: 4,
+  },
+  // Subtle destructive row at the bottom of scroll content. Centered
+  // text-button style — reachable but not competing with the sticky
+  // footer CTAs. Replaces the former "..." overflow Delete entry.
+  deleteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 18,
+    marginTop: 8,
+    marginHorizontal: 20,
+  },
+  deleteText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.destructive,
   },
   stickyFooter: {
     position: 'absolute',
