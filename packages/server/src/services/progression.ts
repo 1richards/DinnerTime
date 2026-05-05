@@ -381,6 +381,21 @@ export async function generateVariationsForContext(
     ? `PRIMARY DIRECTIVE — every variation MUST honor this exactly: "${trimmedCustom}"\n\nCREATIVE DIRECTION (secondary, only where it doesn't conflict with the primary directive): ${steering}`
     : steering;
 
+  // Mode-specific HARD CONSTRAINTS. The general "preserve dish identity"
+  // line was being read as "keep the protein" by Claude in vegetarian
+  // mode (e.g. "Korean Gochujang Beef" surfaced as a vegetarian variation
+  // of beef tacos). Override per-mode where the protein IS the variation
+  // axis so the model resolves the conflict the right way.
+  const modeConstraints: Partial<Record<RemixMode, string>> = {
+    vegetarian:
+      '- ABSOLUTELY NO meat, poultry, seafood, or cured/processed meat in ANY variation. Every single variation must be 100% vegetarian. The dish FORMAT stays (tacos stay tacos, pasta stays pasta) but the protein/meat MUST change. Example: a valid vegetarian variation of "Beef Tacos" is "Black Bean Tacos" or "Mushroom and Walnut Tacos" — NEVER "Korean Beef Tacos" or "Spicy Pork Tacos". If you generate any variation containing meat, the output is invalid.',
+    protein:
+      '- Each variation MUST swap the main protein. Format stays the same, protein changes.',
+    add_protein:
+      '- Each variation MUST add a substantial protein. Format stays the same.',
+  };
+  const modeConstraint = modeConstraints[mode] ?? '';
+
   const prompt = `Recipe: "${context.title}"
 ${context.description ? `Description: ${context.description}` : ''}
 Current ingredients: ${ingredientList || '(unknown)'}
@@ -389,9 +404,9 @@ ${context.total_time_minutes ? `Current total time: ${context.total_time_minutes
 ${directive}
 
 HARD CONSTRAINTS for every variation:
-- Preserve the fundamental dish identity. If the recipe is tacos, every variation stays tacos; if it's pasta, every variation stays pasta; if it's a soup, every variation stays a soup. Don't pivot to a different dish format.
+- Preserve the fundamental dish FORMAT. If the recipe is tacos, every variation stays tacos; pasta stays pasta; soup stays soup. Don't pivot to a different dish format.
 - Keep the recipe recognizable as a remix of the original, not a different recipe entirely.
-
+${modeConstraint ? modeConstraint + '\n' : ''}
 Each variation must have:
 - A SHORT title (2-5 words, title case) naming the defining change — e.g., "Sautéed Shrimp", "Weeknight Shortcut", "Coconut Curry Twist"
 - A ONE-SENTENCE description explaining what to change and why it works
@@ -408,8 +423,56 @@ Use the suggest_variations tool to return your 3 picks.`;
   if (!result || !Array.isArray(result.variations)) {
     throw new Error('AIClient did not return a variations array');
   }
+
+  // Belt-and-suspenders for vegetarian mode: scan generated titles +
+  // descriptions for meat words and reject the whole batch with a
+  // single regeneration retry. If the retry also fails, surface what
+  // we have rather than failing the user — UI can flag the issue, but
+  // the prompt strengthening above should make this near-zero in
+  // practice.
+  if (mode === 'vegetarian') {
+    const hasMeat = (v: RemixVariation) =>
+      MEAT_WORD_REGEX.test(`${v.title} ${v.description}`);
+    const dirty = result.variations.filter(hasMeat);
+    if (dirty.length > 0) {
+      const retry = await ai.generateStructured({
+        user: `${prompt}\n\nIMPORTANT: A previous attempt produced ${dirty.length} non-vegetarian variation(s). Every variation MUST be 100% vegetarian — strip the meat references and try again.`,
+        tool: variationsTool,
+        maxTokens: 768,
+      });
+      if (retry && Array.isArray(retry.variations)) {
+        const cleanedRetry = retry.variations.filter(
+          (v: RemixVariation) => !hasMeat(v),
+        );
+        if (cleanedRetry.length >= 1) {
+          // Mix: keep clean originals + cleaned retry, dedupe by title.
+          const merged: RemixVariation[] = [];
+          const seenTitles = new Set<string>();
+          for (const v of [
+            ...result.variations.filter((v: RemixVariation) => !hasMeat(v)),
+            ...cleanedRetry,
+          ]) {
+            const key = v.title.toLowerCase().trim();
+            if (!seenTitles.has(key)) {
+              merged.push(v);
+              seenTitles.add(key);
+            }
+          }
+          if (merged.length >= 3) return merged.slice(0, 3);
+        }
+      }
+    }
+  }
+
   return result.variations;
 }
+
+// Words that are unambiguously meat/poultry/seafood. Ordered roughly by
+// frequency in remix outputs. Word-boundaries (\b) prevent false positives
+// like "beefcake" or "porkpie hat" — though those don't occur in recipe
+// names anyway. Case-insensitive at the regex flag level.
+const MEAT_WORD_REGEX =
+  /\b(beef|pork|chicken|turkey|lamb|veal|duck|goose|venison|bison|rabbit|chorizo|bacon|pancetta|prosciutto|ham|sausage|salami|pepperoni|kielbasa|bratwurst|hot ?dog|jerky|guanciale|capicola|mortadella|carnitas|barbacoa|pastrami|gochujang beef|brisket|oxtail|tongue|tripe|liver|paté|foie gras|shrimp|prawn|crab|lobster|scallop|oyster|clam|mussel|squid|octopus|calamari|tuna|salmon|cod|halibut|tilapia|trout|sardine|anchovy|anchovies|mackerel|sea bass|sea bream|swordfish|fish sauce|nduja|lardo|lard|gelatin)\b/i;
 
 /**
  * Return 3 creative variations for a SAVED recipe by id. Thin wrapper —
