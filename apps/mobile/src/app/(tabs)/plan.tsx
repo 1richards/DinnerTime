@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
 import { useShoppingStore } from '../../stores/shoppingStore';
@@ -43,12 +42,7 @@ import { WeekActionSheet } from '../../components/plan/WeekActionSheet';
 import { MonthGrid } from '../../components/plan/MonthGrid';
 import { MonthPatterns } from '../../components/plan/MonthPatterns';
 import { DatePickerSheet } from '../../components/plan/DatePickerSheet';
-import {
-  HandoffSheet,
-  type HandoffState,
-} from '../../components/shopping/HandoffSheet';
-import { openInstacartCart } from '../../shopping/openInstacartCart';
-import { classifyHandoffError } from '../../shopping/classifyHandoffError';
+import { shareShoppingListAsText } from '../../lib/shoppingListExport';
 import { logPlanEvent, sanitizePayload } from '../../plan/telemetry';
 import type { MealPlanEntry, MealPlanIngredient } from '../../types/mealPlan';
 import {
@@ -162,8 +156,7 @@ export default function PlanScreen() {
   // Alert.prompt for a free-form reason. Null when no skip confirmation is
   // in flight.
   const [skipTarget, setSkipTarget] = useState<number | null>(null);
-  const [handoffState, setHandoffState] = useState<HandoffState>({ kind: 'idle' });
-  const [handoffSessionId, setHandoffSessionId] = useState<string>('');
+  const [sharingList, setSharingList] = useState(false);
   // Phase 22-02: Week-level action sheet (regenerate / shift ±1 / duplicate
   // last / shopping). Opens on ellipsis tap in the header action row.
   const [weekSheetVisible, setWeekSheetVisible] = useState(false);
@@ -364,10 +357,12 @@ export default function PlanScreen() {
     setSkipTarget(null);
   }, [skipTarget]);
 
-  // Plan → Shopping handoff (22-01 / PLAN-X-03). Mirrors shopping.tsx's
-  // handleOrder (canonical copy, unchanged there). Aggregates this week's
-  // ingredients via generateList(currentPlan.id), then createOrder to obtain
-  // a draft-cart URL, then hands off to HandoffSheet's success state.
+  // Plan → Share Shopping List. Aggregates this week's ingredients via
+  // generateList(currentPlan.id) so the unchecked-items text reflects
+  // the latest plan, then opens the iOS share sheet via the export
+  // module. Replaces the v1.0 Instacart handoff (parked for post-MVP
+  // — see 999.x backlog). Logs telemetry under the same event name so
+  // the dashboard keeps continuity across the handoff → share rename.
   const handleShoppingHandoff = useCallback(async () => {
     if (!currentPlan?.id) {
       Alert.alert(
@@ -377,42 +372,17 @@ export default function PlanScreen() {
       return;
     }
 
-    // Feature-flag parity with shopping.tsx (SHOP-DC-05). When the Settings
-    // toggle reads 'legacy', fall back to the Phase 8 inline WebBrowser path.
-    const mode = useSettingsStore.getState().shoppingHandoffMode;
     const sessionId =
       typeof globalThis.crypto?.randomUUID === 'function'
         ? globalThis.crypto.randomUUID()
         : `pl-${Date.now()}`;
-    setHandoffSessionId(sessionId);
 
-    if (mode === 'legacy') {
-      try {
-        setHandoffState({ kind: 'sending' });
-        await useShoppingStore.getState().generateList(currentPlan.id);
-        const { url } = await useShoppingStore.getState().createOrder();
-        await WebBrowser.openBrowserAsync(url);
-      } catch {
-        // shoppingStore.error already captured
-      } finally {
-        setHandoffState({ kind: 'idle' });
-      }
-      return;
-    }
-
-    setHandoffState({ kind: 'sending' });
+    setSharingList(true);
     try {
       await useShoppingStore.getState().generateList(currentPlan.id);
+      const list = useShoppingStore.getState().currentList;
       const items = useShoppingStore.getState().items;
-      const unchecked = items.filter((i) => !i.checked);
-      const { url, order_id } = await useShoppingStore.getState().createOrder();
-
-      setHandoffState({
-        kind: 'success',
-        url,
-        itemCount: unchecked.length,
-        appInstalled: false,
-      });
+      await shareShoppingListAsText(list, items);
       logPlanEvent({
         name: 'plan.shopping_handoff_opened',
         session_id: sessionId,
@@ -422,44 +392,15 @@ export default function PlanScreen() {
           week_start: currentPlan.week_start,
         }),
       });
-      // Fire-and-forget orders refresh so the shopping tab reflects the cart.
-      void useShoppingStore.getState().fetchOrders();
-      // Use order_id locally (kept for symmetry with shopping.tsx telemetry
-      // payload — plan-channel whitelist does not include order_id so it
-      // never leaves the client, but we reference it to avoid unused warnings).
-      void order_id;
     } catch (err) {
-      const variant = classifyHandoffError(err);
-      setHandoffState({ kind: 'error', variant });
-      logPlanEvent({
-        name: 'plan.shopping_handoff_opened',
-        session_id: sessionId,
-        meal_plan_id: currentPlan.id,
-        payload: sanitizePayload({
-          error_code: variant,
-          variant,
-          meal_plan_id: currentPlan.id,
-          week_start: currentPlan.week_start,
-        }),
-      });
+      Alert.alert(
+        'Could not share',
+        err instanceof Error ? err.message : 'Try again.',
+      );
+    } finally {
+      setSharingList(false);
     }
   }, [currentPlan]);
-
-  const handleOpenCart = useCallback(async () => {
-    if (handoffState.kind !== 'success') return;
-    await openInstacartCart(handoffState.url, { sessionId: handoffSessionId });
-    setHandoffState({ kind: 'idle' });
-  }, [handoffState, handoffSessionId]);
-
-  const handleHandoffRetry = useCallback(() => {
-    // Match shopping.tsx: reset to idle so the user explicitly re-taps the
-    // Shopping-list button to retry (avoids double-Instacart-POST bugs).
-    setHandoffState({ kind: 'idle' });
-  }, []);
-
-  const handleHandoffDismiss = useCallback(() => {
-    setHandoffState({ kind: 'idle' });
-  }, []);
 
   // Phase 22-02: week-action handlers. Each action emits a sanitized
   // telemetry event with `meal_plan_id` + `week_start` so analysts can
@@ -1108,13 +1049,6 @@ export default function PlanScreen() {
         pantryDelta={cookDelta}
         onConfirm={confirmCook}
         onCancel={closeCook}
-      />
-
-      <HandoffSheet
-        state={handoffState}
-        onOpenCart={handleOpenCart}
-        onRetry={handleHandoffRetry}
-        onDismiss={handleHandoffDismiss}
       />
 
       <AddMealSheet

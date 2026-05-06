@@ -31,7 +31,7 @@
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.dinnertime.app"
+        "EXPO_PUBLIC_API_URL": "https://dinnertime-api.fly.dev"
       },
       "ios": {
         "resourceClass": "m-medium"
