@@ -1,0 +1,43 @@
+# Fly.io deploy config for the DinnerTime backend server.
+#
+# Region: sjc (San Jose) — chosen for west-coast latency since the
+# initial beta cohort is all PST. Add more regions later via
+# `fly regions add iad lhr` once the cohort expands.
+#
+# Auto stop/start: machines spin down to zero when idle and cold-start
+# on the first request. Beta traffic is sparse enough that this is the
+# cheapest tier — flip back to always-on later if cold starts hurt UX.
+#
+# Health check: GET /api/v1/health, expects {"status":"ok"} (Hono base
+# path is /api/v1; the route is registered in packages/server/src/index.ts).
+
+app = "dinnertime-api"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  # Liveness probe — Fly's external checker hits /api/v1/health every
+  # 15s. If it 5xx's or times out, the machine is restarted.
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/api/v1/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

@@ -1,0 +1,53 @@
+# Keep the Docker build context lean. The server build only needs the
+# repo root manifests + packages/server/. Excluding apps/mobile alone
+# drops ~hundreds of MB of Expo / Maestro / build artifacts.
+
+# Mobile app — entirely unrelated to the server build
+apps/
+
+# Tooling + planning artifacts
+.planning/
+.claude/
+.maestro/
+
+# IDE / editor
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Git history (Fly doesn't need it)
+.git/
+.gitignore
+
+# Test + coverage
+coverage/
+**/*.test.ts
+**/*.test.tsx
+**/__tests__/
+
+# Local dev artifacts
+*.log
+node_modules/
+**/node_modules/
+**/.expo/
+**/dist/
+**/build/
+
+# Secrets — paranoia layer (these should never be committed anyway)
+.env
+.env.*
+*.p8
+*.p12
+*.mobileprovision
+
+# Misc untracked artifacts
+sylvia-*.png
+quick-*.png
+app.json
+packages/server/app.json
