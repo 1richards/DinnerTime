@@ -424,44 +424,59 @@ Use the suggest_variations tool to return your 3 picks.`;
     throw new Error('AIClient did not return a variations array');
   }
 
-  // Belt-and-suspenders for vegetarian mode: scan generated titles +
-  // descriptions for meat words and reject the whole batch with a
-  // single regeneration retry. If the retry also fails, surface what
-  // we have rather than failing the user — UI can flag the issue, but
-  // the prompt strengthening above should make this near-zero in
-  // practice.
+  // Belt-and-suspenders for vegetarian mode: NEVER return a variation
+  // containing meat. Strategy: filter the initial output, then loop
+  // through up to 2 regeneration retries to top the clean set back up
+  // to 3. If we still don't reach 3 after retries, return whatever
+  // clean variations we have — 1-2 vegetarian options beats 3 with
+  // chorizo/beef. As an absolute last resort we throw, so the mobile
+  // surfaces an error instead of silently showing meat.
   if (mode === 'vegetarian') {
     const hasMeat = (v: RemixVariation) =>
       MEAT_WORD_REGEX.test(`${v.title} ${v.description}`);
-    const dirty = result.variations.filter(hasMeat);
-    if (dirty.length > 0) {
+    const merged: RemixVariation[] = [];
+    const seenTitles = new Set<string>();
+    const ingest = (vs: RemixVariation[]) => {
+      for (const v of vs) {
+        if (hasMeat(v)) continue;
+        const key = v.title.toLowerCase().trim();
+        if (seenTitles.has(key)) continue;
+        merged.push(v);
+        seenTitles.add(key);
+      }
+    };
+
+    ingest(result.variations);
+
+    let retries = 0;
+    while (merged.length < 3 && retries < 2) {
+      retries += 1;
+      const need = 3 - merged.length;
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[remix] vegetarian retry ${retries}: clean=${merged.length}, retrying for ${need} more variation(s)`,
+      );
       const retry = await ai.generateStructured({
-        user: `${prompt}\n\nIMPORTANT: A previous attempt produced ${dirty.length} non-vegetarian variation(s). Every variation MUST be 100% vegetarian — strip the meat references and try again.`,
+        user: `${prompt}\n\nCRITICAL: A previous attempt produced one or more non-vegetarian variations. Every single variation MUST be 100% vegetarian. Do NOT use beef, pork, chicken, turkey, lamb, fish, shrimp, chorizo, bacon, sausage, prosciutto, anchovies, or any other meat/seafood/cured meat. Generate 3 strictly-vegetarian variations now.`,
         tool: variationsTool,
         maxTokens: 768,
       });
       if (retry && Array.isArray(retry.variations)) {
-        const cleanedRetry = retry.variations.filter(
-          (v: RemixVariation) => !hasMeat(v),
-        );
-        if (cleanedRetry.length >= 1) {
-          // Mix: keep clean originals + cleaned retry, dedupe by title.
-          const merged: RemixVariation[] = [];
-          const seenTitles = new Set<string>();
-          for (const v of [
-            ...result.variations.filter((v: RemixVariation) => !hasMeat(v)),
-            ...cleanedRetry,
-          ]) {
-            const key = v.title.toLowerCase().trim();
-            if (!seenTitles.has(key)) {
-              merged.push(v);
-              seenTitles.add(key);
-            }
-          }
-          if (merged.length >= 3) return merged.slice(0, 3);
-        }
+        ingest(retry.variations);
+      } else {
+        break;
       }
     }
+
+    if (merged.length === 0) {
+      // Catastrophic: every attempt produced only meat. Throw so the
+      // mobile shows an error rather than silently surfacing meat.
+      throw new Error(
+        'Vegetarian remix produced only non-vegetarian variations after retries',
+      );
+    }
+
+    return merged.slice(0, 3);
   }
 
   return result.variations;
