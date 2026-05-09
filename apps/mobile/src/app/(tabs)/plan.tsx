@@ -1059,23 +1059,35 @@ export default function PlanScreen() {
           if (!addMealIso) return;
           // addToPlan upserts on (week, date) — handles both same-week
           // (week-view tap) and other-week (month-view tap) cases.
-          await useMealPlanStore.getState().addToPlan(
-            addMealIso,
-            {
-              title: recipe.title,
-              description: recipe.description,
-              ingredients: recipe.ingredients,
-              steps: recipe.steps,
-              prep_time_minutes: recipe.prep_time_minutes,
-              cook_time_minutes: recipe.cook_time_minutes,
-              total_time_minutes: recipe.total_time_minutes,
-              servings: recipe.servings,
-              source_url: recipe.source_url,
-              source_type: recipe.source_type,
-              image_url: recipe.image_url,
-            },
-            recipe.id,
-          );
+          // Defensive try/catch: a TestFlight build #7 crash report showed an
+          // uncaught NSException from a TurboModule bubbling out of this flow
+          // (likely expo-image on a malformed URL or a layout-commit race
+          // during sheet dismiss). Surface as an Alert instead of aborting
+          // the process; null-coalesce all optional fields so an undefined
+          // never reaches the native bridge.
+          try {
+            await useMealPlanStore.getState().addToPlan(
+              addMealIso,
+              {
+                title: recipe.title ?? '',
+                description: recipe.description ?? null,
+                ingredients: recipe.ingredients ?? [],
+                steps: recipe.steps ?? [],
+                prep_time_minutes: recipe.prep_time_minutes ?? null,
+                cook_time_minutes: recipe.cook_time_minutes ?? null,
+                total_time_minutes: recipe.total_time_minutes ?? null,
+                servings: recipe.servings ?? null,
+                source_url: recipe.source_url ?? null,
+                source_type: recipe.source_type ?? null,
+                image_url: recipe.image_url ?? null,
+              },
+              recipe.id ?? null,
+            );
+          } catch (err) {
+            const msg =
+              err instanceof Error ? err.message : 'Failed to add to plan.';
+            Alert.alert("Couldn't add to plan", msg);
+          }
         }}
         onClose={() => setAddMealIso(null)}
       />
