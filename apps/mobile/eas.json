@@ -31,7 +31,8 @@
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://dinnertime-api.fly.dev"
+        "EXPO_PUBLIC_API_URL": "https://dinnertime-api.fly.dev",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "ios": {
         "resourceClass": "m-medium"
@@ -42,8 +43,8 @@
     "production": {
       "ios": {
         "appleId": "patrickrrichards@gmail.com",
-        "ascAppId": "TODO-PATRICK-FILLS-AFTER-ASC-CREATE",
-        "appleTeamId": "TODO-PATRICK-FILLS-FROM-DEVELOPER-ACCOUNT"
+        "ascAppId": "6767079970",
+        "appleTeamId": "8622F85MW4"
       }
     }
   }

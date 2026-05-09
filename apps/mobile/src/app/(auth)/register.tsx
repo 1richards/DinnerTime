@@ -27,11 +27,9 @@ export default function RegisterScreen() {
   const confirmPasswordRef = useRef<TextInput>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [socialLoading, setSocialLoading] = useState<
-    'apple' | 'google' | null
-  >(null);
+  const [socialLoading, setSocialLoading] = useState<'apple' | null>(null);
 
-  const { signUpWithEmail, signInWithApple, signInWithGoogle } = useAuth();
+  const { signUpWithEmail, signInWithApple } = useAuth();
 
   const handleEmailSignUp = async () => {
     if (!email.trim() || !password) {
@@ -68,19 +66,6 @@ export default function RegisterScreen() {
       const { error: appleError } = await signInWithApple();
       if (appleError) {
         setError(appleError.message);
-      }
-    } finally {
-      setSocialLoading(null);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setError(null);
-    setSocialLoading('google');
-    try {
-      const { error: googleError } = await signInWithGoogle();
-      if (googleError) {
-        setError(googleError.message);
       }
     } finally {
       setSocialLoading(null);
@@ -183,13 +168,6 @@ export default function RegisterScreen() {
                 cornerRadius={12}
                 style={{ height: 52 }}
                 onPress={handleAppleSignIn}
-              />
-
-              <Button
-                title={socialLoading === 'google' ? '' : 'Continue with Google'}
-                variant="secondary"
-                onPress={handleGoogleSignIn}
-                loading={socialLoading === 'google'}
               />
             </View>
 
