@@ -625,8 +625,18 @@ export function RemixSheet({
       }
 
       if (cookId) {
+        // Defer the push until the iOS Modal has finished animating out.
+        // Pushing a NEW screen (cook is a fresh route, not a pop-back to an
+        // existing one like handleOpenSaved/Modified) while the parent Modal
+        // is mid-dismiss collides on iOS: the cook screen mounts in a
+        // half-broken state behind the modal animation — voice/Next buttons
+        // don't bind, and a subsequent navigation reveals it stacked
+        // underneath. ~350ms matches the iOS Modal dismiss curve.
+        const targetCookId = cookId;
         onClose();
-        router.push(`/recipes/${cookId}/cook`);
+        setTimeout(() => {
+          router.push(`/recipes/${targetCookId}/cook`);
+        }, 350);
       }
     } finally {
       setWorkingIdx(null);
