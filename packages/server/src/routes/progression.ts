@@ -187,6 +187,12 @@ progression.post('/variations', async (c) => {
     return c.json({ data: variations, mode });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to fetch variations';
+    console.error('[progression.variations] error:', {
+      message,
+      stack: error instanceof Error ? error.stack : undefined,
+      mode,
+      title: body.title,
+    });
     return c.json({ error: message }, 500);
   }
 });
