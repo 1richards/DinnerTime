@@ -32,6 +32,8 @@
       "channel": "production",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://dinnertime-api.fly.dev",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://rsgxnyiltmagvwhyvakp.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_OCREpmt-NR6rmvrMYD0FVA_3zzCw7KL",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "ios": {
