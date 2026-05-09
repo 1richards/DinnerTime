@@ -45,3 +45,20 @@ Acceptance: "next" / "repeat" / "stop" commands fire reliably from arm's length 
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.2: Bulk-remove on shopping list (BACKLOG)
+
+**Goal:** [Captured for future planning] Multi-select rows in the shopping list and delete them in one shot, instead of swiping each one individually. Today's flow is fine for one-off removals but tedious when the user wants to clear half a category (e.g. "I already have all this produce").
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Sketch of the implementation:
+- Long-press on a row enters selection mode → row gains a checkmark, rest of the rows expose a tap-to-toggle affordance.
+- Bulk-action toolbar appears (replaces the share bar) showing count + "Remove" button + "Cancel".
+- New store action `removeItems(ids: string[])` batches the delete; new server endpoint `DELETE /api/v1/shopping/items` accepting `{ids: [...]}` (or just N parallel DELETEs if simpler).
+- Roughly 150–200 LOC across `shopping.tsx`, `CategorySection.tsx`, the row component, the store, and the server route.
+
+Acceptance: long-press a shopping row → tap two more rows → tap "Remove (3)" → all three vanish, server state matches.
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
