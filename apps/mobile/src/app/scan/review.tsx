@@ -104,6 +104,12 @@ export default function ReviewScreen() {
     setIsConfirming(true);
     try {
       await confirmScan(profile.id);
+      // Save succeeded — drop the dirty flag so the post-Alert navigation
+      // (Later → /pantry, Get Dinner Ideas → /kitchen) doesn't re-trigger
+      // useDirtyFormGuard. Without this, isConfirming flips back to false
+      // synchronously after Alert.alert() returns, leaving touched=true
+      // and re-engaging the guard on the next router.replace().
+      setTouched(false);
 
       Alert.alert(
         'Pantry Updated!',
