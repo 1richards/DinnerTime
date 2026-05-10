@@ -40,7 +40,9 @@ import { RemixSheet } from '../recipes/RemixSheet';
 
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
 import { useRecipeStore } from '../../stores/recipeStore';
+import { usePantryStore } from '../../stores/pantryStore';
 import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
+import { isIngredientInPantry } from '../recipes/ingredientHelpers';
 import { colors } from '../../design/tokens';
 import type { ParsedRecipe, Recipe } from '../../types/recipe';
 
@@ -255,6 +257,18 @@ function PreviewRecipeCard({
   });
   const heroUri = recipe.image_url ?? generatedUri ?? null;
 
+  // Compute "X items from pantry" client-side. Search-results recipes don't
+  // carry pantry-match metadata from the server — match each ingredient
+  // against the user's current pantry list using the shared isIngredientInPantry
+  // helper (handles staples and substring matching).
+  const pantryNames = usePantryStore((s) =>
+    s.items.map((i) => i.name),
+  );
+  const pantryMatchCount = recipe.ingredients.reduce(
+    (n, ing) => (isIngredientInPantry(ing.name, pantryNames) ? n + 1 : n),
+    0,
+  );
+
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
   const toggleFavorite = useRecipeStore((s) => s.toggleFavorite);
   const [remixOpen, setRemixOpen] = useState(false);
@@ -398,6 +412,8 @@ function PreviewRecipeCard({
           favorited: favoritedThisRecipe,
           working,
         }}
+        pantryMatchCount={pantryMatchCount}
+        hideServings
         onPress={() => onPress()}
       />
       <RemixSheet

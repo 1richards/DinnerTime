@@ -60,6 +60,25 @@ interface RecipeCardProps {
    */
   onCookNow?: (recipe: Recipe) => void;
   onPress?: (recipe: Recipe) => void;
+  /**
+   * When provided, replaces the source-type badge ("AI", "URL", etc.)
+   * in the top-left of the hero with a cuisine label like "Italian".
+   * Used by suggestion + search results that carry cuisine metadata.
+   */
+  cuisineLabel?: string | null;
+  /**
+   * When > 0, renders a green "X items from pantry" pill in the meta
+   * row beneath the title. Lets the card surface how much of the
+   * recipe is already in the user's kitchen.
+   */
+  pantryMatchCount?: number;
+  /**
+   * When true, suppresses the "X servings" meta cell. The unified
+   * Cook Tonight / Something New view drops servings from cards in
+   * favor of cuisine + pantry-match badges — the saved-recipe
+   * surfaces (Library) keep the default and still show servings.
+   */
+  hideServings?: boolean;
 }
 
 const SOURCE_LABELS: Record<Recipe['source_type'], string> = {
@@ -76,6 +95,9 @@ export function RecipeCard({
   previewActions,
   onCookNow,
   onPress,
+  cuisineLabel,
+  pantryMatchCount,
+  hideServings,
 }: RecipeCardProps) {
   const toggleFavorite = useRecipeStore((s) => s.toggleFavorite);
   const [remixOpen, setRemixOpen] = useState(false);
@@ -145,10 +167,14 @@ export function RecipeCard({
               { backgroundColor: 'rgba(15,10,5,0.18)' },
             ]}
           />
-          {/* Source badge over image */}
+          {/* Top-left badge over image — cuisine label when provided
+              (Cook Tonight / Something New surfaces), source-type
+              fallback otherwise (Library / saved recipes). */}
           <View style={styles.sourceBadge}>
             <Text style={styles.sourceBadgeText}>
-              {SOURCE_LABELS[recipe.source_type]}
+              {cuisineLabel && cuisineLabel.length > 0
+                ? cuisineLabel
+                : SOURCE_LABELS[recipe.source_type]}
             </Text>
           </View>
           {/* Preview-mode quick actions — Save, Remix, Cook now. Rendered
@@ -346,7 +372,7 @@ export function RecipeCard({
                 <Text className={`ml-1 ${c.metaText}`}>{totalTime} min</Text>
               </View>
             )}
-            {recipe.servings != null && (
+            {!hideServings && recipe.servings != null && (
               <View className="flex-row items-center mr-3">
                 <SymbolIcon name="person.2" size={13} tintColor={colors.textSecondary} />
                 <Text className={`ml-1 ${c.metaText}`}>{recipe.servings} servings</Text>
@@ -363,6 +389,7 @@ export function RecipeCard({
                   paddingHorizontal: 8,
                   paddingVertical: 3,
                   gap: 3,
+                  marginRight: 6,
                 }}
               >
                 <SymbolIcon name="bolt.fill" size={11} tintColor={colors.warning} />
@@ -383,6 +410,31 @@ export function RecipeCard({
                   {recipe.protein_grams_per_serving != null
                     ? `${Math.round(recipe.protein_grams_per_serving)}g`
                     : ''}
+                </Text>
+              </View>
+            )}
+            {pantryMatchCount != null && pantryMatchCount > 0 && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#D1FAE5',
+                  borderRadius: 999,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  gap: 3,
+                }}
+              >
+                <SymbolIcon
+                  name="checkmark.circle.fill"
+                  size={11}
+                  tintColor="#047857"
+                />
+                <Text
+                  style={{ fontSize: 11, fontWeight: '700', color: '#065F46' }}
+                >
+                  {pantryMatchCount}{' '}
+                  {pantryMatchCount === 1 ? 'item' : 'items'} from pantry
                 </Text>
               </View>
             )}

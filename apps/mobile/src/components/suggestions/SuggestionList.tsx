@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, ScrollView, StyleSheet, Animated } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
-import { SuggestionCard } from './SuggestionCard';
 import { SuggestionSkeleton } from './SuggestionSkeleton';
 import { SuggestionPreviewModal } from './SuggestionPreviewModal';
 import { Button } from '../ui/Button';
 import { ErrorState } from '../ui/ErrorState';
+import { RecipeCard } from '../recipes/RecipeCard';
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
 import { usePantryStore } from '../../stores/pantryStore';
 import { FOOD_IMAGES } from '../../constants/foodImages';
 import type { DinnerSuggestion } from '../../types/suggestions';
+import type { Recipe } from '../../types/recipe';
 
 // Stable image for the pantry empty state
 const PANTRY_EMPTY_IMAGE = FOOD_IMAGES.breakfast[0];
@@ -147,12 +148,81 @@ export function SuggestionList({ HeaderComponent, onScroll }: SuggestionListProp
     );
   }
 
-  // Data state
-  const renderItem = ({ item }: { item: DinnerSuggestion }) => (
-    <View className="px-4">
-      <SuggestionCard suggestion={item} onPress={setPreviewSuggestion} />
-    </View>
-  );
+  // Data state — render via the shared RecipeCard preview layout so the
+  // default Cook Tonight view matches the search-results view 1:1. The
+  // DinnerSuggestion is mapped onto a synthetic Recipe; cuisine_type and
+  // ingredients_used.length are passed through as the cuisine label +
+  // pantry-match badge. All previewActions route to the existing
+  // SuggestionPreviewModal (which already owns suggestion → full recipe
+  // expansion + save/cook/remix), so taps anywhere on the card or on any
+  // action icon lands the user in the same flow.
+  const renderItem = ({
+    item,
+    index,
+  }: {
+    item: DinnerSuggestion;
+    index: number;
+  }) => {
+    const synthetic: Recipe = {
+      id: `suggestion-${index}-${item.title}`,
+      profile_id: '',
+      title: item.title,
+      description: item.description,
+      // Used + needed merged into a single ingredients[] list so RecipeCard
+      // can render counts and the Gemini hero hook gets a full ingredient
+      // fingerprint for image dedup.
+      ingredients: [
+        ...(item.ingredients_used ?? []).map((name) => ({
+          name,
+          quantity: null,
+          unit: null,
+          notes: null,
+        })),
+        ...(item.ingredients_needed ?? []).map((name) => ({
+          name,
+          quantity: null,
+          unit: null,
+          notes: null,
+        })),
+      ],
+      steps: [],
+      prep_time_minutes: null,
+      cook_time_minutes: null,
+      total_time_minutes: item.estimated_time_minutes,
+      servings: null,
+      source_type: 'ai',
+      source_url: null,
+      image_url: null,
+      is_favorite: false,
+      calories_per_serving: item.calories_per_serving ?? null,
+      protein_grams_per_serving: item.protein_grams_per_serving ?? null,
+      created_at: '',
+      updated_at: '',
+    };
+    const openPreview = () => setPreviewSuggestion(item);
+    return (
+      <RecipeCard
+        recipe={synthetic}
+        mode="grid"
+        preview
+        previewActions={{
+          // All actions route to the SuggestionPreviewModal — DinnerSuggestion
+          // lacks steps, so save/cook/remix require server-side expansion
+          // which the modal already owns. Visual cluster mirrors the search-
+          // results card; tap any icon → preview modal opens for the real
+          // action.
+          onSave: openPreview,
+          onSaveAndFavorite: openPreview,
+          onCookNow: openPreview,
+          onRemix: openPreview,
+        }}
+        cuisineLabel={item.cuisine_type}
+        pantryMatchCount={item.ingredients_used?.length ?? 0}
+        hideServings
+        onPress={openPreview}
+      />
+    );
+  };
 
   return (
     <>
