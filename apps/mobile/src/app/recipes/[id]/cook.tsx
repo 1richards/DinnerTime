@@ -489,19 +489,30 @@ export default function CookScreen() {
         onAddTimer={() => {
           // Persistent header affordance — voice STT (the legacy add path)
           // was parked at backlog 999.1 so this is the only way for users to
-          // create timers right now. Preset minutes match the durations a
-          // home cook needs at counter-distance: short prep checks (5/10),
+          // create timers right now. Preset durations cover the full home-
+          // cook range: quick rests (30s/1m/2m), short prep checks (5/10),
           // standard simmers (15/20), longer roasts (30/45/60). Custom…
           // opens an Alert.prompt so the user can enter any positive
           // integer. The existing TimerBar handles the chip render + tick.
-          const PRESETS = [5, 10, 15, 20, 30, 45, 60];
+          const PRESETS: Array<{ label: string; ms: number }> = [
+            { label: '30 seconds', ms: 30_000 },
+            { label: '1 minute', ms: 60_000 },
+            { label: '2 minutes', ms: 2 * 60_000 },
+            { label: '5 minutes', ms: 5 * 60_000 },
+            { label: '10 minutes', ms: 10 * 60_000 },
+            { label: '15 minutes', ms: 15 * 60_000 },
+            { label: '20 minutes', ms: 20 * 60_000 },
+            { label: '30 minutes', ms: 30 * 60_000 },
+            { label: '45 minutes', ms: 45 * 60_000 },
+            { label: '60 minutes', ms: 60 * 60_000 },
+          ];
           const CUSTOM_IDX = PRESETS.length;
           const CANCEL_IDX = PRESETS.length + 1;
           ActionSheetIOS.showActionSheetWithOptions(
             {
               title: 'Start a timer',
               options: [
-                ...PRESETS.map((m) => `${m} minutes`),
+                ...PRESETS.map((p) => p.label),
                 'Custom…',
                 'Cancel',
               ],
@@ -525,9 +536,9 @@ export default function CookScreen() {
                 );
                 return;
               }
-              const minutes = PRESETS[idx];
-              if (minutes === undefined) return;
-              addTimer(minutes * 60_000);
+              const preset = PRESETS[idx];
+              if (preset === undefined) return;
+              addTimer(preset.ms);
             },
           );
         }}

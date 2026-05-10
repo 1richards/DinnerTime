@@ -118,10 +118,15 @@ export const useCookingStore = create<CookingState & CookingActions>()(
 
       addTimer: (ms) => {
         const now = Date.now();
-        const minutes = Math.round(ms / 60000);
+        // Sub-minute timers (30s) need an "Xs" label — the prior "X min"
+        // formatter rounded these to "0 min".
+        const label =
+          ms < 60_000
+            ? `${Math.round(ms / 1000)} sec`
+            : `${Math.round(ms / 60_000)} min`;
         const timer: Timer = {
           id: genTimerId(),
-          label: `${minutes} min`,
+          label,
           endsAt: now + ms,
           remainingMs: ms,
         };
