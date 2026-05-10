@@ -45,7 +45,7 @@
  * Phase 9 components StepDisplay + VoiceStatusBadge were deleted in 16-07
  * after being superseded by ScrollableRecipe + StepCard and VoiceWaveform.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ActionSheetIOS, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
@@ -55,6 +55,7 @@ import { setAudioModeAsync } from 'expo-audio';
 import { useCookingStore } from '../../../stores/cookingStore';
 import { useRecipeStore } from '../../../stores/recipeStore';
 import { useProgressionStore } from '../../../stores/progressionStore';
+import { scaleIngredient } from '../../../lib/scaleIngredient';
 
 import { useStepSpeaker } from '../../../cooking/useStepSpeaker';
 import { askAssistant } from '../../../cooking/askAssistant';
@@ -95,9 +96,40 @@ export default function CookScreen() {
   // hook form (not the imperative API) per Phase 9 convention + Pitfall 5.
   useKeepAwake();
 
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, servings: servingsParam } = useLocalSearchParams<{
+    id: string;
+    servings?: string;
+  }>();
   const { recipes, fetchRecipes } = useRecipeStore();
-  const recipe = recipes.find((r) => r.id === id) ?? null;
+  const baseRecipe = recipes.find((r) => r.id === id) ?? null;
+
+  // Honor the servings the user chose on the detail screen (passed as
+  // ?servings=X). Without this scaling, Cook Now always rendered the
+  // recipe's saved default — adjusting the stepper from 6 → 4 on the
+  // detail page had no effect once cooking started.
+  const recipe = useMemo(() => {
+    if (!baseRecipe) return null;
+    const requested = servingsParam ? Number(servingsParam) : null;
+    const base = baseRecipe.servings ?? null;
+    if (
+      requested == null ||
+      base == null ||
+      base <= 0 ||
+      !Number.isFinite(requested) ||
+      requested <= 0 ||
+      requested === base
+    ) {
+      return baseRecipe;
+    }
+    const multiplier = requested / base;
+    return {
+      ...baseRecipe,
+      servings: requested,
+      ingredients: baseRecipe.ingredients.map((ing) =>
+        scaleIngredient(ing, multiplier),
+      ),
+    };
+  }, [baseRecipe, servingsParam]);
 
   const cooking = useCookingStore();
   const {

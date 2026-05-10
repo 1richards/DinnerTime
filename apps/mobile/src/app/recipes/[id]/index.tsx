@@ -343,7 +343,12 @@ export default function RecipeDetailScreen() {
       <View style={styles.stickyFooter}>
         <Button
           title="Cook Now"
-          onPress={() => router.push(`/recipes/${recipe.id}/cook`)}
+          onPress={() =>
+            // Pass the user's chosen servings as a query param so cook
+            // mode scales ingredients to match the detail-screen stepper
+            // instead of reverting to the recipe's saved default.
+            router.push(`/recipes/${recipe.id}/cook?servings=${servings}`)
+          }
         />
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
           <View style={{ flex: 1 }}>
