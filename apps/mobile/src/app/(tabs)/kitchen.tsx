@@ -624,7 +624,23 @@ export default function KitchenScreen() {
               rather than cluttering the results view. */}
           {showPhase17Results ? (
             <SomethingNewResults
-              onRequestPreview={(r) => setPreviewRecipe(r)}
+              onRequestPreview={(r) => {
+                setPreviewRecipe(r);
+                // Mirror SomethingNewResults' title-match check so the
+                // preview heart reflects whether a saved+favorited copy
+                // of this suggestion already exists. Without this, a
+                // card showing the filled heart opens a preview with
+                // an empty heart — confusing state mismatch.
+                const norm = (s: string) => s.trim().toLowerCase();
+                const alreadyFavorited = useRecipeStore
+                  .getState()
+                  .recipes.some(
+                    (saved) =>
+                      norm(saved.title) === norm(r.title) &&
+                      saved.is_favorite === true,
+                  );
+                setPreviewFavorited(alreadyFavorited);
+              }}
             />
           ) : showFirstTimeHint ? (
             <FirstTimeHint
