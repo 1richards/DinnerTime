@@ -46,7 +46,31 @@ Acceptance: "next" / "repeat" / "stop" commands fire reliably from arm's length 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
 
-### Phase 999.2: Bulk-remove on shopping list (BACKLOG)
+### Phase 999.2: On-demand recipe enrichment — step photos + deeper instructions (BACKLOG)
+
+**Goal:** [Captured for future planning] Let the cook pull a richer version of any recipe on demand — generated step-by-step photos, fuller technique guidance ("knead until the dough springs back", with what that looks/feels like), tips on common failure modes, equipment substitutes. Today's recipes are functional but terse; the on-demand expansion turns DinnerTime into a teaching tool the way a good cookbook author would, without bloating every recipe upfront.
+
+**Requirements:** TBD
+
+**Plans:** 0 plans
+
+Sketch of the implementation:
+- New "Enrich recipe" affordance on the recipe detail screen (and possibly on each step inside cook mode) — single tap, one-time per recipe, idempotent.
+- Backend route `POST /api/v1/recipes/:id/enrich` — Claude Sonnet rewrites each step with expanded technique notes, sensory cues, common-mistake callouts; Gemini 2.5 Flash Image (already wired for hero generation) renders a per-step photo. Results persist to a new `recipe_step_enrichments` table keyed by `(recipe_id, step_index)`.
+- Mobile reads enriched payload via the existing recipe fetch; renders inline photo + expanded text under each step when present, falls back to the terse base step otherwise.
+- Cost control: enrichment is opt-in per recipe (button press), cached forever, deduped by recipe_id. Gemini image cost is the dominant line item — eyeball the per-recipe cost before opening it to all users.
+
+Acceptance: tap "Enrich recipe" on any saved recipe → loading state → each step gets a rendered photo and a 2-3-sentence expansion explaining technique, sensory checkpoints, and common pitfalls. Closing and reopening the recipe shows the cached enriched version instantly.
+
+Open questions:
+- Where does this sit relative to remix? (remix changes the recipe; enrichment teaches the existing one)
+- Should cook mode auto-enrich the next 1-2 steps in the background so the photo is ready when the user advances?
+- Voice mode: "describe this step" already exists via Ask — does enrichment subsume that or sit alongside it?
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.3: Bulk-remove on shopping list (BACKLOG)
 
 **Goal:** [Captured for future planning] Multi-select rows in the shopping list and delete them in one shot, instead of swiping each one individually. Today's flow is fine for one-off removals but tedious when the user wants to clear half a category (e.g. "I already have all this produce").
 **Requirements:** TBD
