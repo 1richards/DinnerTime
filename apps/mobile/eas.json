@@ -34,6 +34,7 @@
         "EXPO_PUBLIC_API_URL": "https://dinnertime-api.fly.dev",
         "EXPO_PUBLIC_SUPABASE_URL": "https://rsgxnyiltmagvwhyvakp.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_OCREpmt-NR6rmvrMYD0FVA_3zzCw7KL",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://a93c8f6d9e59fd5e825cabfbba1e59da@o4511377509580800.ingest.us.sentry.io/4511377512267776",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "ios": {

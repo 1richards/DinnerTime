@@ -49,6 +49,11 @@ export class ErrorBoundary extends React.Component<
    * render error.
    */
   static captureError(error: Error, info: React.ErrorInfo): void {
+    // Backup diagnostic — emits to the iOS device console so Xcode /
+    // Console.app can surface the underlying error even if the Sentry
+    // bridge can't flush before the app suspends. Native logs always
+    // beat caught-and-rendered fallbacks for early-boot crashes.
+    console.error('[ErrorBoundary]', error?.message, error?.stack, info.componentStack);
     try {
       captureException(error, {
         tags: { source: 'error_boundary' },
