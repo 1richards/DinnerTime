@@ -86,3 +86,30 @@ Acceptance: long-press a shopping row → tap two more rows → tap "Remove (3)"
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.4: Stand up Figma as source of truth for visual design and UX flows (BACKLOG)
+
+**Goal:** [Captured for future planning] End the pain of tweaking visual designs and UX flows directly in NativeWind/React Native code. Today every iteration is "edit code → run sim → eyeball → repeat" with no fast visual canvas to think in, no shareable mocks, and no way to explore variants before committing them to code. Stand up Figma + Figma MCP as the source of truth so design iteration happens on a canvas first, then lands in code via Code Connect mappings.
+
+**Requirements:** TBD
+**Plans:** 0 plans
+
+**Prerequisite (hard blocker):** Upgrade Figma seat from View to Editor. The account `patrickrrichards@gmail.com` is on the starter plan with a View-only seat — all MCP write operations (`create_new_file`, `use_figma`, `upload_assets`) fail with a permission error. Needs Figma Professional (~$15/editor/mo) or equivalent before any of the below is possible.
+
+Scope:
+1. Figma seat upgrade + workspace/team setup
+2. Reconstruct existing app screens in Figma as a baseline design file: Kitchen / Cook Tonight, Pantry, Plan, Scan (fridge + receipt + review + Instacart), Recipes (discover + import flows), Settings (incl. staples + pantry rules + account), Auth (login + register + reset)
+3. Extract design tokens (colors, spacing, typography, radii) from the NativeWind / Tailwind config and mirror them as Figma variables so design file and code share one token system
+4. Set up Code Connect mappings so MCP `get_design_context` returns real NativeWind components from `apps/mobile/src/components/` instead of generic React+Tailwind boilerplate
+5. Document the design-iterate-implement loop in CLAUDE.md so future visual changes go through Figma first (sketch → review → implement → ship), not "edit code and pray"
+
+Acceptance: Pat can open a Figma file showing every existing screen, drag a new layout variant, and have Claude pull it back into a working PR via `get_design_context` returning real component references — without manually translating layout decisions from canvas to code.
+
+Open questions:
+- Which Figma plan tier covers the MCP feature set we need (basic Editor vs. Organization for Code Connect)?
+- Solo workspace, or set up the team properly anticipating future collaborators?
+- Auto-sync of design tokens (manual export vs. tooling like Tokens Studio)?
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
