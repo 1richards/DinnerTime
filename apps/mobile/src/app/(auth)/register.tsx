@@ -8,7 +8,7 @@ import {
   StyleSheet,
   type TextInput,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Button } from '../../components/ui/Button';
@@ -28,6 +28,11 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [socialLoading, setSocialLoading] = useState<'apple' | null>(null);
+  // When email-confirmation is enabled in Supabase Auth, signUp returns a
+  // user but no session — the user has to click a link in their inbox
+  // before they can sign in. Without surfacing that, the form just submits
+  // silently and the user thinks the app froze.
+  const [pendingConfirmation, setPendingConfirmation] = useState(false);
 
   const { signUpWithEmail, signInWithApple } = useAuth();
 
@@ -50,9 +55,20 @@ export default function RegisterScreen() {
     setError(null);
     setLoading(true);
     try {
-      const { error: signUpError } = await signUpWithEmail(email, password);
+      const { data, error: signUpError } = await signUpWithEmail(
+        email,
+        password,
+      );
       if (signUpError) {
         setError(signUpError.message);
+        return;
+      }
+      // Supabase returns { user, session }. With email-confirmation on,
+      // session is null until the user clicks the link in their inbox —
+      // surface that explicitly so they don't stare at a frozen-looking form.
+      const result = data as { session: unknown | null } | null;
+      if (result && result.session == null) {
+        setPendingConfirmation(true);
       }
     } finally {
       setLoading(false);
@@ -85,15 +101,43 @@ export default function RegisterScreen() {
           {/* Food hero card */}
           <HeroImage uri={REGISTER_HERO} height={170} gradientDirection="bottom">
             <View>
-              <Text style={styles.heroTagline}>START YOUR JOURNEY</Text>
-              <Text style={styles.heroTitle}>Join DinnerTime</Text>
+              <Text style={styles.heroTagline}>
+                {pendingConfirmation ? 'ALMOST THERE' : 'START YOUR JOURNEY'}
+              </Text>
+              <Text style={styles.heroTitle}>
+                {pendingConfirmation ? 'Check your email' : 'Join DinnerTime'}
+              </Text>
               <Text style={styles.heroSub}>
-                Create your account and start planning delicious meals.
+                {pendingConfirmation
+                  ? "We've sent a confirmation link. Tap it, then come back to sign in."
+                  : 'Create your account and start planning delicious meals.'}
               </Text>
             </View>
           </HeroImage>
 
-          {/* Form area */}
+          {pendingConfirmation ? (
+            <View style={styles.form}>
+              <View style={styles.confirmCard}>
+                <Text style={styles.confirmTitle}>
+                  Confirmation sent to {email}
+                </Text>
+                <Text style={styles.confirmBody}>
+                  Open the message from DinnerTime and tap the verification
+                  link. Once you've confirmed, return here and sign in with
+                  the email and password you just chose.
+                </Text>
+              </View>
+              <Button
+                title="Back to Sign In"
+                onPress={() => router.replace('/(auth)/login')}
+                className="mt-4"
+              />
+              <Text style={styles.confirmFooter}>
+                Didn't get the email? Check your spam folder, or sign in to
+                trigger a resend.
+              </Text>
+            </View>
+          ) : (
           <View style={styles.form}>
             {/* Error banner */}
             {error && (
@@ -181,6 +225,7 @@ export default function RegisterScreen() {
               </Link>
             </View>
           </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -253,5 +298,30 @@ const styles = StyleSheet.create({
     color: colors.brand,
     fontWeight: '700',
     fontSize: 14,
+  },
+  confirmCard: {
+    backgroundColor: colors.surfaceSubtle,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  confirmTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  confirmBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
+  },
+  confirmFooter: {
+    marginTop: 16,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.textTertiary,
+    textAlign: 'center',
   },
 });
