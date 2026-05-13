@@ -261,9 +261,11 @@ function PreviewRecipeCard({
   // carry pantry-match metadata from the server — match each ingredient
   // against the user's current pantry list using the shared isIngredientInPantry
   // helper (handles staples and substring matching).
-  const pantryNames = usePantryStore((s) =>
-    s.items.map((i) => i.name),
-  );
+  // Subscribe to the items array reference directly — mapping inside the
+  // selector would return a fresh array on every call and trip Zustand's
+  // useSyncExternalStore identity check, causing an infinite render loop.
+  const pantryItems = usePantryStore((s) => s.items);
+  const pantryNames = pantryItems.map((i) => i.name);
   const pantryMatchCount = recipe.ingredients.reduce(
     (n, ing) => (isIngredientInPantry(ing.name, pantryNames) ? n + 1 : n),
     0,
