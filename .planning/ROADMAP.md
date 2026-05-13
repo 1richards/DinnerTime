@@ -113,3 +113,57 @@ Open questions:
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
 
+### Phase 999.5: Household account sharing — multi-user households (BACKLOG)
+
+**Goal:** [Captured for future planning] Real multi-account households: husband + wife each have their own auth user (own email, own Apple ID), both see the same pantry / recipes / meal plan / shopping list, while keeping individual dietary preferences and per-user account state. Canonical pattern used by Mealime, AnyList, Plan-to-Eat, Cozi.
+
+**Requirements:** TBD
+**Plans:** 0 plans
+
+**Why now:** Surfaced during v1.0 UAT — the UAT account is naturally shared by Patrick + partner, and the absence of multi-user support is now the most-asked feature gap. v1.0 ships with a documented "one cook per household" limitation; this phase converts that into the v1.1 headline feature.
+
+**Current state (as of v1.0):**
+- 35 migrations, ~30 RLS policies of the form `auth.uid() = profile_id` on the shared-data tables.
+- Shared-data tables that need household scoping: `pantry_items`, `recipes`, `recipe_favorites` (decision needed: per-user heart vs shared library), `meal_plans`, `meal_plan_entries`, `shopping_lists`, `shopping_list_items`, `shopping_orders`, `user_staples`, `cooking_events`, `recipe_cooks`.
+- Stays per-user: `profiles`, `skill_progression`, `feedback_submissions`, `account_deletions`, `beta_invites`, analytics events (`ai_events`, `plan_events`, `shopping_events`, `scan_events`).
+- **Naming wrinkle:** the existing `household_members` table (migration 00002) is actually a dietary-persona roster, not real households. Needs renaming to `dietary_personas` to free up the namespace.
+
+**Work breakdown (~9-10 focused dev-days):**
+
+| Chunk | Effort | Notes |
+|---|---|---|
+| New tables (`households`, `household_memberships`) + `current_household_ids()` SQL helper | 0.5 day | Helper function keeps each RLS policy a one-liner |
+| Add `household_id` column to ~8 shared tables + backfill | 1.5 days | Backfill must be idempotent and transactional |
+| Rewrite ~30 RLS policies to gate on household membership | 1 day | Mechanical via the helper; RLS-leak test suite is mandatory before cutover |
+| Rename `household_members` → `dietary_personas` | 0.5 day | Migration + UI references |
+| Server routes (Hono) — set `household_id` on inserts, reads stay RLS-gated | 1 day | ~10-15 endpoints |
+| Mobile auth store — track `currentHouseholdId`, send on inserts | 0.5 day | |
+| Invite flow — generate 6-digit code, 24h TTL, accept endpoint | 1 day | |
+| Onboarding branch — "create household" vs "join existing" | 0.5 day | One new screen |
+| Settings UI — list members, regenerate invite, remove member | 1 day | Could defer to a follow-on phase |
+| Decisions: favorites per-user or shared? `recipe_cooks` attribution? | 0.5 day | Affects schema; resolve before migration |
+| Tests (RLS leak coverage, integration, two-user Maestro) | 1.5 days | Non-negotiable for RLS correctness |
+| Migration runbook + rollback + prod cutover monitoring | 0.5 day | Backfill is one-shot |
+
+Could compress to ~6 days by deferring member-management UI and locking to a single membership role.
+
+**Top risks (blast radius, not effort):**
+1. **RLS regressions** — a wrong operator in `current_household_ids()` would leak one household's pantry to another. RLS-leak test suite must be exhaustive *before* the cutover.
+2. **Backfill correctness** — every existing v1.0 user must end up with exactly one auto-created household + membership. Partial failure leaves the user base in a split-brain state. Idempotent + transactional is non-negotiable.
+
+**Open design questions to resolve at /gsd:discuss-phase time:**
+- Is "favorite this recipe" a per-user heart or a household library flag?
+- `recipe_cooks` / `cooking_events`: attribute the cook to the user who pressed the button, or to the household?
+- Can a user belong to multiple households (Patrick at home + Patrick at his parents')? Default: no — single membership simplifies everything.
+- Role model: just "member", or admin/member? Default: just "member" for v1.1, no roles.
+- Invite delivery: in-app code only, or email magic link too? Default: in-app code only for v1.1.
+
+**Definition of done:**
+- Two TestFlight users can sign up, one invites the other, both see the same pantry/plan/shopping list in real time after refresh.
+- RLS leak test suite covers every shared table; CI fails on regression.
+- Existing v1.0 users (single-user) are unaffected — their auto-created household is invisible UX-wise unless they tap "Invite household member".
+- Migration is reversible via documented rollback steps.
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
