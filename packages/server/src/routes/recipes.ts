@@ -20,6 +20,7 @@ import {
   type DiscoveryPreferences,
 } from '../services/recipeDiscovery.js';
 import { generateRecipeImage } from '../services/recipeImageGen.js';
+import { SEED_RECIPES, templateKey } from '../data/seedRecipes.js';
 
 // Fields a client is allowed to patch. Anything else in the body is ignored.
 const PATCHABLE_FIELDS = [
@@ -547,6 +548,168 @@ recipes.post('/generate-image', async (c) => {
   // either way so callers don't need error-handling branches for the common
   // "model safety block" case.
   return c.json({ url });
+});
+
+/**
+ * POST /seed-templates - one-time idempotent upsert of the baseline recipe
+ * library into `recipe_templates`. Reads from packages/server/src/data/
+ * seedRecipes.ts so editing/adding recipes is a one-file edit + redeploy.
+ *
+ * Safe to call from any authed user — the route writes via the user's
+ * supabase client and RLS allows authenticated INSERTs (no policy yet
+ * blocks them). Will be wired into server startup so a fresh deploy
+ * automatically seeds. Returns the count of templates after upsert.
+ */
+recipes.post('/seed-templates', async (c) => {
+  const supabase = c.get('supabase');
+  const rows = SEED_RECIPES.map((r) => ({
+    template_key: templateKey(r),
+    cuisine_type: r.cuisine_type,
+    title: r.title,
+    description: r.description,
+    ingredients: r.ingredients,
+    steps: r.steps,
+    prep_time_minutes: r.prep_time_minutes,
+    cook_time_minutes: r.cook_time_minutes,
+    total_time_minutes: r.total_time_minutes,
+    servings: r.servings,
+    difficulty: r.difficulty,
+    practiced_skills: r.practiced_skills,
+    skill_note: r.skill_note,
+    labels: r.labels,
+    calories_per_serving: r.calories_per_serving,
+    protein_grams_per_serving: r.protein_grams_per_serving,
+    fat_grams_per_serving: r.fat_grams_per_serving,
+  }));
+  const { error } = await supabase
+    .from('recipe_templates')
+    .upsert(rows, { onConflict: 'template_key' });
+  if (error) {
+    return c.json({ error: error.message }, 500);
+  }
+  const { count } = await supabase
+    .from('recipe_templates')
+    .select('*', { count: 'exact', head: true });
+  return c.json({ seeded: rows.length, total: count ?? rows.length });
+});
+
+/**
+ * POST /seed-baseline - copy cuisine-matching templates into the calling
+ * user's `recipes` table. Called by mobile at onboarding completion.
+ *
+ * Idempotent via `profiles.baseline_recipes_seeded` — if the flag is true
+ * the route is a no-op. Otherwise:
+ *   1. Reads the user's `cuisine_preferences` from profile
+ *   2. Selects all `recipe_templates` matching those cuisines
+ *      (or ALL templates if the user picked none — at least seed something)
+ *   3. INSERTs them as personal `recipes` rows with source_type='ai',
+ *      cuisine stored in labels[0], all other fields copied as-is
+ *   4. Flips `baseline_recipes_seeded` true so subsequent calls no-op
+ *
+ * Returns the number of recipes seeded.
+ */
+recipes.post('/seed-baseline', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('cuisine_preferences, baseline_recipes_seeded')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError) {
+    return c.json({ error: profileError.message }, 500);
+  }
+
+  if ((profile as { baseline_recipes_seeded?: boolean })?.baseline_recipes_seeded) {
+    return c.json({ seeded: 0, skipped: 'already_seeded' });
+  }
+
+  const cuisines = (profile as { cuisine_preferences?: string[] | null })
+    ?.cuisine_preferences ?? [];
+
+  // Build the template query. When the user picked specific cuisines we
+  // filter to those; when they skipped or picked none, we seed the whole
+  // baseline so they still land on a populated app. Better than empty.
+  let q = supabase.from('recipe_templates').select('*');
+  if (cuisines.length > 0) {
+    q = q.in('cuisine_type', cuisines);
+  }
+  const { data: templates, error: tplError } = await q;
+  if (tplError) {
+    return c.json({ error: tplError.message }, 500);
+  }
+
+  const tplRows = (templates ?? []) as Array<{
+    cuisine_type: string;
+    title: string;
+    description: string | null;
+    ingredients: unknown;
+    steps: unknown;
+    prep_time_minutes: number | null;
+    cook_time_minutes: number | null;
+    total_time_minutes: number | null;
+    servings: number | null;
+    difficulty: string | null;
+    practiced_skills: string[] | null;
+    skill_note: string | null;
+    labels: string[];
+    calories_per_serving: number | null;
+    protein_grams_per_serving: number | null;
+    fat_grams_per_serving: number | null;
+    image_url: string | null;
+  }>;
+
+  if (tplRows.length === 0) {
+    // No templates matched. Mark seeded so we don't retry forever, but the
+    // user lands empty. This is a server-config issue (templates table was
+    // never populated) — caller can still recover by visiting Discover.
+    await supabase
+      .from('profiles')
+      .update({ baseline_recipes_seeded: true })
+      .eq('id', user.id);
+    return c.json({ seeded: 0, reason: 'no_templates_matched' });
+  }
+
+  const recipeRows = tplRows.map((t) => ({
+    profile_id: user.id,
+    title: t.title,
+    description: t.description,
+    ingredients: t.ingredients,
+    steps: t.steps,
+    prep_time_minutes: t.prep_time_minutes,
+    cook_time_minutes: t.cook_time_minutes,
+    total_time_minutes: t.total_time_minutes,
+    servings: t.servings,
+    source_type: 'ai' as const,
+    image_url: t.image_url,
+    is_favorite: false,
+    // Cuisine rides along in labels[0] so the existing RecipeCard
+    // cuisineLabel pipeline can pick it up without a schema change.
+    labels: [t.cuisine_type, ...(t.labels ?? [])],
+    calories_per_serving: t.calories_per_serving,
+    protein_grams_per_serving: t.protein_grams_per_serving,
+    fat_grams_per_serving: t.fat_grams_per_serving,
+    difficulty: t.difficulty,
+    practiced_skills: t.practiced_skills,
+    skill_note: t.skill_note,
+  }));
+
+  const { error: insertError } = await supabase
+    .from('recipes')
+    .insert(recipeRows);
+
+  if (insertError) {
+    return c.json({ error: insertError.message }, 500);
+  }
+
+  await supabase
+    .from('profiles')
+    .update({ baseline_recipes_seeded: true })
+    .eq('id', user.id);
+
+  return c.json({ seeded: recipeRows.length });
 });
 
 export default recipes;

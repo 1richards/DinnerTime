@@ -7,6 +7,7 @@ import { Input } from '../../components/ui/Input';
 import { HeroImage } from '../../components/ui/HeroImage';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
 import { supabase } from '../../lib/supabase';
+import { authedFetch } from '../../lib/authedFetch';
 import { useAuthStore } from '../../stores/authStore';
 import { FOOD_IMAGES } from '../../constants/foodImages';
 import { colors } from '../../design/tokens';
@@ -104,6 +105,24 @@ export default function OnboardingScreen() {
       if (error) {
         Alert.alert('Error', `Could not save: ${error.message}`);
         return;
+      }
+
+      // Seed the user's recipe library from the baseline templates.
+      // Best-effort — failures here shouldn't block onboarding; the user
+      // can still discover recipes via the Discover tab. Backend is
+      // idempotent on the `baseline_recipes_seeded` profile flag so any
+      // retry path (e.g. profile screen "restore baseline" button later)
+      // will pick up missed seeds without duplicating.
+      try {
+        const seedRes = await authedFetch('/api/v1/recipes/seed-baseline', {
+          method: 'POST',
+        });
+        if (__DEV__) {
+          const json = await seedRes.json().catch(() => null);
+          console.log('[onboarding] seed-baseline returned', seedRes.status, json);
+        }
+      } catch (seedErr) {
+        if (__DEV__) console.log('[onboarding] seed-baseline failed (non-fatal)', seedErr);
       }
 
       if (__DEV__) console.log('[onboarding] setting isOnboarded=true');
