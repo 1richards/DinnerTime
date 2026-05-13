@@ -21,6 +21,7 @@ import {
 } from '../services/recipeDiscovery.js';
 import { generateRecipeImage } from '../services/recipeImageGen.js';
 import { SEED_RECIPES, templateKey } from '../data/seedRecipes.js';
+import { supabaseAdmin } from '../config/supabase.js';
 
 // Fields a client is allowed to patch. Anything else in the body is ignored.
 const PATCHABLE_FIELDS = [
@@ -561,7 +562,12 @@ recipes.post('/generate-image', async (c) => {
  * automatically seeds. Returns the count of templates after upsert.
  */
 recipes.post('/seed-templates', async (c) => {
-  const supabase = c.get('supabase');
+  // recipe_templates has RLS that allows SELECT to authenticated users
+  // but no INSERT policy — the table is admin-managed reference data,
+  // not user-writable. Use the service-role client to bypass RLS for the
+  // seed upsert; the endpoint is still auth-gated (authMiddleware above)
+  // so this requires a valid logged-in user to call.
+  const supabase = supabaseAdmin;
   const rows = SEED_RECIPES.map((r) => ({
     template_key: templateKey(r),
     cuisine_type: r.cuisine_type,
