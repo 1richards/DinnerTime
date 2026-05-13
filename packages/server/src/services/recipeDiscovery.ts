@@ -228,7 +228,7 @@ export function buildDiscoveryPrompt(
   );
   lines.push(
     cuisines.length > 0
-      ? `- Preferred cuisines: ${cuisines.join(', ')}`
+      ? `- Preferred cuisines: ${cuisines.join(', ')} — strongly prefer these. When feasible, include AT LEAST ONE recipe from EACH listed cuisine before filling remaining slots with others or repeats.`
       : '- Open to any cuisine'
   );
 
@@ -306,7 +306,13 @@ export async function discoverRecipes(
     opts.existingTitles,
     opts.pantryManifest
   );
-  const userPrompt = opts.prompt ?? 'Suggest 6 dinner recipes.';
+  // Give the AI room to honor the per-cuisine guarantee in the system
+  // prompt. Floor of 6 keeps zero-cuisine users on the same baseline;
+  // 2-recipe headroom over the cuisine count lets the AI mix in variety
+  // beyond the per-cuisine minimum.
+  const cuisineCount = opts.preferences.cuisine_preferences?.length ?? 0;
+  const defaultCount = Math.max(6, cuisineCount + 2);
+  const userPrompt = opts.prompt ?? `Suggest ${defaultCount} dinner recipes.`;
 
   const ai = getClientFor('recipe.discovery');
   const { recipes } = await ai.generateStructured({
