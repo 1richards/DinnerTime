@@ -9,6 +9,9 @@ import {
   Alert,
   Modal,
   StyleSheet,
+  FlatList,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolIcon } from '../../components/ui/SymbolIcon';
@@ -324,10 +327,15 @@ export function PreviewSheet({
   isFavorite,
   onAdHocFavorite,
   adHocFavorited,
+  stepImageUrls,
 }: {
   recipe: DiscoveredRecipe;
   /** Null renders a beige skeleton — no keyword-stock fallback exists anymore. */
   heroUri: string | null;
+  /** Optional preparation-step photos. When present (Recipe Box detail),
+      the hero becomes a paged image slider: hero first, then step shots.
+      Also flows into the shared PDF as a "Preparation" gallery. */
+  stepImageUrls?: string[];
   onClose: () => void;
   onSave: () => Promise<void>;
   saving: boolean;
@@ -393,11 +401,23 @@ export function PreviewSheet({
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const { show: showToast, ToastComponent } = useToast();
 
+  // Hero + optional preparation-step photos form a paged slider. Width is
+  // measured from the hero container so each page fills the sheet width.
+  const heroImages: Array<string | null> = [heroUri, ...(stepImageUrls ?? [])];
+  const [heroWidth, setHeroWidth] = useState(0);
+  const [heroPage, setHeroPage] = useState(0);
+  const onHeroScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (heroWidth <= 0) return;
+    const idx = Math.round(e.nativeEvent.contentOffset.x / heroWidth);
+    if (idx !== heroPage) setHeroPage(idx);
+  };
+
   const handleSharePdf = async () => {
     // PreviewSheet's heroUri is the same image the sheet renders —
     // pass it so the PDF picks up Gemini-fallback images for legacy
-    // recipes whose recipe.image_url is null.
-    const result = await shareRecipeAsPdf(recipe, { heroUri });
+    // recipes whose recipe.image_url is null. stepImageUrls flow into the
+    // PDF's "Preparation" gallery so it mirrors the on-screen slider.
+    const result = await shareRecipeAsPdf(recipe, { heroUri, stepImageUrls });
     if (!result.ok) {
       const msg =
         result.reason === 'print_unavailable' ||
@@ -449,8 +469,37 @@ export function PreviewSheet({
     <View style={styles.sheet}>
       <ToastComponent />
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        <View style={{ position: 'relative' }}>
-          {heroUri ? (
+        <View
+          style={{ position: 'relative' }}
+          onLayout={(e) => setHeroWidth(e.nativeEvent.layout.width)}
+        >
+          {heroImages.length > 1 && heroWidth > 0 ? (
+            <>
+              <FlatList
+                data={heroImages}
+                keyExtractor={(_, i) => String(i)}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={onHeroScrollEnd}
+                renderItem={({ item }) =>
+                  item ? (
+                    <Image
+                      source={{ uri: item }}
+                      style={[styles.sheetHero, { width: heroWidth }]}
+                      contentFit="cover"
+                      transition={300}
+                      placeholder="L6A,o^4n00D%-;j[t7of~qt7xuIU"
+                    />
+                  ) : (
+                    <View
+                      style={[styles.sheetHero, { width: heroWidth, backgroundColor: '#F1EAE0' }]}
+                    />
+                  )
+                }
+              />
+            </>
+          ) : heroUri ? (
             <Image
               source={{ uri: heroUri }}
               style={styles.sheetHero}
@@ -461,7 +510,20 @@ export function PreviewSheet({
           ) : (
             <View style={[styles.sheetHero, { backgroundColor: '#F1EAE0' }]} />
           )}
-          <View style={styles.sheetHeroOverlay} />
+          <View style={styles.sheetHeroOverlay} pointerEvents="none" />
+          {heroImages.length > 1 && heroWidth > 0 ? (
+            <View style={styles.sheetHeroDots} pointerEvents="none">
+              {heroImages.map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.sheetHeroDot,
+                    { opacity: i === heroPage ? 0.95 : 0.45 },
+                  ]}
+                />
+              ))}
+            </View>
+          ) : null}
           <Pressable onPress={onClose} style={styles.sheetClose} hitSlop={12} accessibilityLabel="Close">
             <SymbolIcon name="xmark" size={22} tintColor="#FFFFFF" />
           </Pressable>
@@ -900,6 +962,22 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 260,
     backgroundColor: '#2A221A',
+  },
+  sheetHeroDots: {
+    position: 'absolute',
+    bottom: 10,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  sheetHeroDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#FFFFFF',
   },
   sheetHeroOverlay: {
     ...StyleSheet.absoluteFillObject,

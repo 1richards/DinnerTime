@@ -51,6 +51,28 @@ export default function RecipeDetailScreen() {
     }
   }, [recipe?.id]);
 
+  // IMPORTANT: all hooks must run before any early return, or React throws
+  // "rendered more hooks than during the previous render" when `recipe`
+  // transitions from undefined → defined (cold start / deep link). Both
+  // hooks below tolerate an undefined recipe via the skip flag / internal
+  // guard, so they're safe to call before the loading guard.
+  //
+  // Same Gemini fallback the listing card uses when image_url is null —
+  // hits the shared session+AsyncStorage cache so legacy recipes converge
+  // on the same image both surfaces show.
+  const { url: generatedHeroUri } = useGeneratedRecipeImage(
+    recipe?.image_url ? null : recipe?.title ?? null,
+    {
+      skip: !recipe || !!recipe.image_url,
+      description: recipe?.description,
+      ingredients: recipe?.ingredients,
+    },
+  );
+  // Preparation-step photos — returned instantly if already generated,
+  // otherwise lazily generated in the background (non-blocking). The hero
+  // always leads; step shots follow in the slider as they arrive.
+  const stepImageUrls = useRecipeStepImages(recipe);
+
   if (!recipe) {
     return (
       <SafeAreaView
@@ -65,27 +87,11 @@ export default function RecipeDetailScreen() {
 
   const baseServings = recipe.servings ?? 1;
   const multiplier = baseServings > 0 ? servings / baseServings : 1;
-  // Same Gemini fallback the listing card uses when image_url is null —
-  // hits the shared session+AsyncStorage cache so legacy recipes converge
-  // on the same image both surfaces show.
-  const { url: generatedHeroUri } = useGeneratedRecipeImage(
-    recipe.image_url ? null : recipe.title,
-    {
-      skip: !!recipe.image_url,
-      description: recipe.description,
-      ingredients: recipe.ingredients,
-    },
-  );
   const heroUri = getRecipeImage(
     recipe.id,
     recipe.image_url ?? generatedHeroUri,
     recipe.title,
   );
-
-  // Preparation-step photos — returned instantly if already generated,
-  // otherwise lazily generated in the background (non-blocking). The hero
-  // always leads; step shots follow in the slider as they arrive.
-  const stepImageUrls = useRecipeStepImages(recipe);
   const heroImages: Array<string | null> = [heroUri, ...stepImageUrls];
 
   const totalTime =

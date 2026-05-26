@@ -30,6 +30,7 @@ import { PreviewSheet } from '../recipes/discover';
 import { LabelsEditor } from '../../components/recipes/LabelsEditor';
 import { getRecipeImage } from '../../constants/foodImages';
 import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
+import { useRecipeStepImages } from '../../hooks/useRecipeStepImages';
 import {
   RecipeFilterSheet,
   EMPTY_FILTERS,
@@ -928,6 +929,10 @@ export function SavedRecipeDetail({
     recipe.image_url ?? generatedUri,
     recipe.title,
   );
+  // Preparation-step photos — generated lazily in the background the first
+  // time a saved recipe is opened, persisted to the row, and shown as a
+  // slider (hero + steps). Returns existing URLs instantly on later opens.
+  const stepImageUrls = useRecipeStepImages(recipe);
   // Parsed shape PreviewSheet expects. _saved=false because the saved-state
   // path collapses to a "Saved to library + Done" footer with no Cook
   // actions — the wrong UX for a Recipe Box detail. We hide Save instead.
@@ -978,6 +983,7 @@ export function SavedRecipeDetail({
       bodyExtra={labelsContent}
       recipeId={recipe.id}
       isFavorite={recipe.is_favorite ?? false}
+      stepImageUrls={stepImageUrls}
     />
   );
 }
