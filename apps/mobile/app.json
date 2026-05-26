@@ -10,6 +10,7 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.dinnertime.app",
+      "buildNumber": "16",
       "usesAppleSignIn": true,
       "associatedDomains": [
         "applinks:dinnertime.app"
