@@ -208,7 +208,15 @@ export const suggestRecipesTool: StructuredTool<SuggestRecipesOutput> = {
 export function buildDiscoveryPrompt(
   preferences: DiscoveryPreferences,
   existingTitles?: string[],
-  pantryManifest?: string[]
+  pantryManifest?: string[],
+  /**
+   * Exact recipe count requested by the caller. When set, the count is
+   * authoritative: the per-cuisine "at least one of each" guarantee is
+   * dropped (it would otherwise force more recipes than asked for) and an
+   * explicit hard count line is added. Undefined = legacy behavior (the
+   * /discover D-07 path passes nothing and stays byte-identical).
+   */
+  count?: number
 ): string {
   const allergies = preferences.allergies ?? [];
   const restrictions = preferences.dietary_restrictions ?? [];
@@ -242,9 +250,21 @@ export function buildDiscoveryPrompt(
   );
   lines.push(
     cuisines.length > 0
-      ? `- Preferred cuisines: ${cuisines.join(', ')} — strongly prefer these. When feasible, include AT LEAST ONE recipe from EACH listed cuisine before filling remaining slots with others or repeats.`
+      ? count != null
+        ? // Exact-count path (load-more): keep the cuisine preference but
+          // DROP the per-cuisine "at least one of each" requirement, which
+          // would otherwise force the model to exceed the requested count.
+          `- Preferred cuisines: ${cuisines.join(', ')} — strongly prefer these, but do not pad the count to cover every cuisine.`
+        : `- Preferred cuisines: ${cuisines.join(', ')} — strongly prefer these. When feasible, include AT LEAST ONE recipe from EACH listed cuisine before filling remaining slots with others or repeats.`
       : '- Open to any cuisine'
   );
+
+  if (count != null) {
+    lines.push('');
+    lines.push(
+      `OUTPUT COUNT (strict): return EXACTLY ${count} recipe${count === 1 ? '' : 's'} — no more, no fewer. This overrides any cuisine-coverage preference above.`
+    );
+  }
 
   if (existingTitles && existingTitles.length > 0) {
     lines.push('');
@@ -324,7 +344,8 @@ export async function discoverRecipes(
   const system = buildDiscoveryPrompt(
     opts.preferences,
     avoidTitles,
-    opts.pantryManifest
+    opts.pantryManifest,
+    opts.count
   );
   // Give the AI room to honor the per-cuisine guarantee in the system
   // prompt. Floor of 6 keeps zero-cuisine users on the same baseline;
