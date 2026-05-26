@@ -43,6 +43,53 @@ type Entry = {
 };
 const cache = new Map<string, Entry>();
 
+// ---------- Concurrency limiter ----------
+//
+// Caps simultaneous generate-image HTTP requests at MAX_CONCURRENT.
+// Without this, mounting a library of 30 uncached recipes fires 30
+// concurrent Gemini calls that saturate the server and starve the
+// fetchRecipes call that the list depends on.
+//
+// When the queue is full, new requests wait for a slot. Queue order is
+// FIFO so visible cards (rendered first) tend to resolve before
+// off-screen ones. Resolved/cached results bypass the limiter entirely.
+
+const MAX_CONCURRENT = 2;
+let _inFlight = 0;
+const _waitQueue: Array<() => void> = [];
+
+function acquireSlot(): Promise<void> {
+  if (_inFlight < MAX_CONCURRENT) {
+    _inFlight++;
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => {
+    _waitQueue.push(resolve);
+  });
+}
+
+function releaseSlot(): void {
+  const next = _waitQueue.shift();
+  if (next) {
+    // Hand the slot to the next waiter directly — don't decrement then
+    // re-increment, keeps the in-flight count stable.
+    next();
+  } else {
+    _inFlight--;
+  }
+}
+
+async function fetchGeneratedUrlThrottled(
+  req: ImageRequest,
+): Promise<string | null> {
+  await acquireSlot();
+  try {
+    return await fetchGeneratedUrl(req);
+  } finally {
+    releaseSlot();
+  }
+}
+
 function norm(title: string): string {
   return title.trim().toLowerCase().replace(/\s+/g, ' ');
 }
@@ -224,9 +271,9 @@ export function useGeneratedRecipeImage(
         return;
       }
 
-      // No entry — kick off fetch
+      // No entry — kick off fetch (throttled to MAX_CONCURRENT in-flight)
       setResult({ url: null, status: 'loading' });
-      const inflight = fetchGeneratedUrl({
+      const inflight = fetchGeneratedUrlThrottled({
         title,
         description: description ?? null,
         ingredients: ingredients ?? null,
@@ -282,7 +329,7 @@ export function prefetchGeneratedRecipeImage(
   const key = cacheKeyFor(title, ingredients);
   // Already in cache (resolved, in-flight, or attempted+failed) — no-op.
   if (cache.has(key)) return;
-  const inflight = fetchGeneratedUrl({
+  const inflight = fetchGeneratedUrlThrottled({
     title,
     description: description ?? null,
     ingredients: ingredients ?? null,

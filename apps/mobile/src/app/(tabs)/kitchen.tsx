@@ -20,7 +20,6 @@ import { useNetworkStore } from '../../stores/networkStore';
 import { useSuggestionsStore } from '../../stores/suggestionsStore';
 import { useMealPlanStore } from '../../stores/mealPlanStore';
 
-import { SuggestionList } from '../../components/suggestions/SuggestionList';
 import { SomethingNewResults } from '../../components/suggestions/SomethingNewResults';
 import { RecentQueryChips } from '../../components/suggestions/RecentQueryChips';
 import { RecipeCard } from '../../components/recipes/RecipeCard';
@@ -317,12 +316,10 @@ export default function KitchenScreen() {
 
   // ---------- Phase 17 suggestions (Something New) state ----------
   const searchResults = useSuggestionsStore((s) => s.searchResults);
-  const recentQueries = useSuggestionsStore((s) => s.recentQueries);
-  const pantryOnly = useSuggestionsStore((s) => s.pantryOnly);
   const suggestionsLoading = useSuggestionsStore((s) => s.isLoading);
   const searchRecipes = useSuggestionsStore((s) => s.searchRecipes);
   const autoFetchActive = useSuggestionsStore((s) => s.autoFetch);
-  const legacySuggestions = useSuggestionsStore((s) => s.suggestions);
+  const setAutoFetch = useSuggestionsStore((s) => s.setAutoFetch);
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
 
   const [previewRecipe, setPreviewRecipe] = useState<ParsedRecipe | null>(null);
@@ -355,18 +352,20 @@ export default function KitchenScreen() {
   );
 
   const hasResults = searchResults.length > 0;
-  const hasHistory = recentQueries.length > 0;
-  // D-10 preservation: SuggestionList (autoFetch + post-scan pantry-grounded
-  // path) remains reachable as a fallback for first-time users who arrived via
-  // the post-scan flow or already have legacy suggestions in memory.
-  const hasLegacySuggestionsPath =
-    autoFetchActive || legacySuggestions.length > 0;
+  // Bug fix (bookmark-modal-differs-per-user): the legacy SuggestionList
+  // fallback opened SuggestionPreviewModal — a degraded modal whose ONLY
+  // action is "Add to Plan" (no Save / Cook / steps, because DinnerSuggestion
+  // carries no steps). That made the Something New segment render two
+  // different surfaces per account: accounts with persisted Phase-17
+  // searchResults got the rich PreviewSheet; accounts arriving via the
+  // post-scan autoFetch flow got the impoverished SuggestionPreviewModal.
+  //
+  // The post-scan pantry-grounded intent is now satisfied by the SAME
+  // Phase-17 path: when autoFetch fires we run a pantry-only search (see the
+  // effect below), which lands the user on SomethingNewResults → PreviewSheet
+  // just like every other surface. The legacy SuggestionList is no longer
+  // reachable from this screen, so all accounts converge on one experience.
   const showPhase17Results = hasResults || suggestionsLoading;
-  const showFirstTimeHint =
-    !showPhase17Results &&
-    !hasHistory &&
-    !suggestionsLoading &&
-    !hasLegacySuggestionsPath;
 
   // Two separate collapsing-header instances — each segment owns its own
   // scrollY (Research Pitfall 5: don't share a single scroll value across
@@ -375,15 +374,36 @@ export default function KitchenScreen() {
   const libraryHeader = useCollapsingHeader();
 
   // ---------- library fetches ----------
+  // Fetch on mount (or when coming back online). `recipes.length` was
+  // previously a dep, which caused a second redundant fetch whenever
+  // the list grew (length change → effect re-runs). Now we only refetch
+  // when the network state toggles or fetchRecipes identity changes.
+  // The offline guard is preserved: skip the network call when offline
+  // AND the cache already has data.
+  const hasRecipeCache = recipes.length > 0;
   useEffect(() => {
-    if (!isOnline && recipes.length > 0) return;
+    if (!isOnline && hasRecipeCache) return;
     fetchRecipes({});
-  }, [fetchRecipes, isOnline, recipes.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchRecipes, isOnline]);
 
   useEffect(() => {
     if (!filters.pantryOnly || pantryItems.length > 0) return;
     if (profileId) loadItems(profileId);
   }, [filters.pantryOnly, pantryItems.length, profileId, loadItems]);
+
+  // Post-scan handoff (scan/review.tsx sets autoFetch=true then routes here).
+  // Bug fix (bookmark-modal-differs-per-user): previously this signal routed
+  // users into the legacy SuggestionList → SuggestionPreviewModal surface.
+  // Now we satisfy the same "ideas from my pantry" intent through the Phase-17
+  // search so the user lands on the rich SomethingNewResults/PreviewSheet
+  // surface — identical to every other account. We clear the flag first so
+  // the search only fires once per post-scan navigation.
+  useEffect(() => {
+    if (!autoFetchActive) return;
+    setAutoFetch(false);
+    void searchRecipes('', { pantryOnly: true });
+  }, [autoFetchActive, setAutoFetch, searchRecipes]);
 
   // ---------- library filtering ----------
   const pantryNames = useMemo(
@@ -599,11 +619,11 @@ export default function KitchenScreen() {
         pointerEvents={segment === 'suggestions' ? 'auto' : 'none'}
       >
         {/* Phase 17 Something New surface. Render-tree priority:
-             1. Phase 17 results (or loading) → SomethingNewResults
-             2. Recent-query chips + first-time hint when user has no results
-                yet but no active legacy path
-             3. SuggestionList fallback — D-10 preserves the autoFetch /
-                post-scan pantry-grounded flow unchanged.
+             1. Phase 17 results (or loading) → SomethingNewResults → PreviewSheet
+             2. First-time hint otherwise. The post-scan autoFetch handoff now
+                runs a Phase-17 pantry search (see effect above) so it resolves
+                to case 1, never the legacy SuggestionList. All accounts get
+                the same rich preview experience.
          */}
         <Animated.ScrollView
           onScroll={suggestionsHeader.onScroll}
@@ -642,16 +662,17 @@ export default function KitchenScreen() {
                 setPreviewFavorited(alreadyFavorited);
               }}
             />
-          ) : showFirstTimeHint ? (
+          ) : (
+            // First-time / empty state. The legacy SuggestionList fallback
+            // was removed (bookmark-modal-differs-per-user) because it opened
+            // the degraded SuggestionPreviewModal. Both showFirstTimeHint and
+            // the former legacy-path case now resolve to the same on-ramp,
+            // which kicks off a Phase-17 pantry search → rich PreviewSheet.
             <FirstTimeHint
               onStart={() => {
                 void searchRecipes('', { pantryOnly: true });
               }}
             />
-          ) : (
-            // D-10 fallback: legacy pantry-grounded SuggestionList. Covers
-            // post-scan autoFetch + users with existing legacy suggestions.
-            <SuggestionList />
           )}
         </Animated.ScrollView>
       </View>
