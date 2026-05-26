@@ -39,6 +39,7 @@ const PATCHABLE_FIELDS = [
   'servings',
   'is_favorite',
   'image_url',
+  'step_image_urls',
   'labels',
   // Quick-task 6 — symmetric PATCH support for skill scaffolding so users
   // can hand-edit difficulty + skills + skill_note on saved recipes.
@@ -148,7 +149,12 @@ recipes.post('/search', async (c) => {
   // Strict body validation. Empty query is accepted when pantryOnly=true
   // (the "dinner ideas from my pantry" flow — the pantry manifest IS the
   // signal, no text query needed). Otherwise a text query is required.
-  let body: { query?: string; pantryOnly?: boolean };
+  let body: {
+    query?: string;
+    pantryOnly?: boolean;
+    count?: number;
+    excludeTitles?: string[];
+  };
   try {
     body = await c.req.json();
   } catch {
@@ -160,6 +166,16 @@ recipes.post('/search', async (c) => {
   if (body.query.trim().length === 0 && body.pantryOnly !== true) {
     return c.json({ error: 'Query is required' }, 400);
   }
+
+  // Optional load-more controls. count is clamped to a sane 1–6 window so a
+  // malformed client can't request a huge (slow/expensive) batch.
+  const count =
+    typeof body.count === 'number' && Number.isFinite(body.count)
+      ? Math.min(6, Math.max(1, Math.round(body.count)))
+      : undefined;
+  const excludeTitles = Array.isArray(body.excludeTitles)
+    ? body.excludeTitles.filter((t): t is string => typeof t === 'string')
+    : undefined;
 
   try {
     // NOTE: mirrors /discover preference assembly -- keep in sync.
@@ -240,6 +256,8 @@ recipes.post('/search', async (c) => {
       existingTitles,
       prompt: body.query,
       pantryManifest,
+      count,
+      excludeTitles,
     });
 
     return c.json({ data });
@@ -553,6 +571,97 @@ recipes.post('/generate-image', async (c) => {
   // either way so callers don't need error-handling branches for the common
   // "model safety block" case.
   return c.json({ url });
+});
+
+/**
+ * POST /:id/step-images - lazily generate + persist a couple of
+ * preparation-step photos for a saved recipe.
+ *
+ * Called in the background by the detail page when the user opens a recipe
+ * (a signal of genuine interest). Idempotent: if step_image_urls is already
+ * populated it returns the stored URLs without regenerating — so reopening
+ * is instant and we never pay twice. Picks two representative steps (an
+ * early prep step + a later cooking step), generates them in parallel via
+ * the step-variant of generateRecipeImage, persists the successful URLs on
+ * the recipe row, and returns them.
+ *
+ * Returns { step_image_urls: string[] } (possibly empty on model failure —
+ * the detail page just shows the single hero in that case).
+ */
+recipes.post('/:id/step-images', async (c) => {
+  const supabase = c.get('supabase');
+  const id = c.req.param('id');
+
+  const { data: recipe, error } = await supabase
+    .from('recipes')
+    .select('id, title, description, ingredients, steps, step_image_urls')
+    .eq('id', id)
+    .single();
+  if (error || !recipe) {
+    return c.json({ error: 'Recipe not found' }, 404);
+  }
+
+  const r = recipe as {
+    title: string;
+    description: string | null;
+    ingredients: unknown;
+    steps: unknown;
+    step_image_urls: string[] | null;
+  };
+
+  // Idempotent — already generated.
+  if (Array.isArray(r.step_image_urls) && r.step_image_urls.length > 0) {
+    return c.json({ step_image_urls: r.step_image_urls });
+  }
+
+  const steps = Array.isArray(r.steps)
+    ? (r.steps as unknown[]).filter(
+        (s): s is string => typeof s === 'string' && s.trim().length > 0,
+      )
+    : [];
+  if (steps.length === 0) {
+    return c.json({ step_image_urls: [] });
+  }
+
+  // Pick two distinct, representative steps: the first (prep/setup) and a
+  // later one (active cooking). For a single-step recipe, just that step.
+  const picks =
+    steps.length === 1
+      ? [steps[0]]
+      : [steps[0], steps[Math.min(steps.length - 1, Math.floor(steps.length / 2))]];
+
+  // Map stored ingredients to the IngredientHint shape (name/quantity/unit).
+  const ingredients = Array.isArray(r.ingredients)
+    ? (r.ingredients as Array<Record<string, unknown>>)
+        .map((ing) => ({
+          name: typeof ing?.name === 'string' ? (ing.name as string) : '',
+          quantity: typeof ing?.quantity === 'number' ? (ing.quantity as number) : null,
+          unit: typeof ing?.unit === 'string' ? (ing.unit as string) : null,
+        }))
+        .filter((ing) => ing.name.trim().length > 0)
+    : null;
+
+  const results = await Promise.all(
+    picks.map((stepText) =>
+      generateRecipeImage({
+        title: r.title,
+        description: r.description,
+        ingredients,
+        stepText,
+      }),
+    ),
+  );
+  const urls = results.filter(
+    (u): u is string => typeof u === 'string' && u.length > 0,
+  );
+
+  // Persist only when we actually got images, so a transient model failure
+  // doesn't lock in an empty array (which would block a later retry).
+  if (urls.length > 0) {
+    await supabase.from('recipes').update({ step_image_urls: urls }).eq('id', id);
+  }
+
+  return c.json({ step_image_urls: urls });
 });
 
 /**

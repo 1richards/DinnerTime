@@ -49,7 +49,7 @@ const getAuthToken = async (): Promise<string> => {
 
 export const useSuggestionsStore = create<SuggestionsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Legacy initial state
       suggestions: [],
       isLoading: false,
@@ -180,6 +180,10 @@ export const useSuggestionsStore = create<SuggestionsState>()(
         set({ isAppending: true, error: null });
         try {
           const token = await getAuthToken();
+          // Load-more fetches a small batch (2) for speed, and excludes the
+          // titles already on screen so the new cards are genuinely novel
+          // rather than repeats of what the user is looking at.
+          const excludeTitles = get().searchResults.map((r) => r.title);
           const response = await fetch(
             `${getApiBaseUrl()}/api/v1/recipes/search`,
             {
@@ -188,7 +192,12 @@ export const useSuggestionsStore = create<SuggestionsState>()(
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,
               },
-              body: JSON.stringify({ query, pantryOnly: options.pantryOnly }),
+              body: JSON.stringify({
+                query,
+                pantryOnly: options.pantryOnly,
+                count: 2,
+                excludeTitles,
+              }),
             }
           );
 

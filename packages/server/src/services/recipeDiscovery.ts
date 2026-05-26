@@ -78,6 +78,19 @@ export interface DiscoverRecipesOptions {
    * from `pantry_items` (status='available', confidence desc, capped at 50).
    */
   pantryManifest?: string[];
+  /**
+   * Force an exact recipe count. When set, overrides the cuisine-derived
+   * default and instructs the model to return exactly this many recipes.
+   * Used by the "Show me more ideas" load-more action (count: 2) to keep
+   * each incremental fetch fast.
+   */
+  count?: number;
+  /**
+   * Additional titles to avoid beyond `existingTitles`. The load-more flow
+   * passes the recipes already on screen (which aren't saved to the library
+   * yet) so the next batch is genuinely new, not a repeat of visible cards.
+   */
+  excludeTitles?: string[];
 }
 
 // ---------- Tool Definition ----------
@@ -302,9 +315,15 @@ export function buildDiscoveryPrompt(
 export async function discoverRecipes(
   opts: DiscoverRecipesOptions
 ): Promise<ParsedRecipe[]> {
+  // Merge the not-yet-saved on-screen titles into the avoid list so a
+  // load-more batch never repeats a card the user is already looking at.
+  const avoidTitles = [
+    ...(opts.existingTitles ?? []),
+    ...(opts.excludeTitles ?? []),
+  ];
   const system = buildDiscoveryPrompt(
     opts.preferences,
-    opts.existingTitles,
+    avoidTitles,
     opts.pantryManifest
   );
   // Give the AI room to honor the per-cuisine guarantee in the system
@@ -313,7 +332,18 @@ export async function discoverRecipes(
   // beyond the per-cuisine minimum.
   const cuisineCount = opts.preferences.cuisine_preferences?.length ?? 0;
   const defaultCount = Math.max(6, cuisineCount + 2);
-  const userPrompt = opts.prompt ?? `Suggest ${defaultCount} dinner recipes.`;
+  // Preserve the exact pre-existing default behavior when no explicit count
+  // is requested (note: opts.prompt === '' stays '' — pantry-only initial
+  // load relies on the system prompt for count). When count IS set, make it
+  // authoritative with an explicit exact-N instruction.
+  const defaultUserPrompt = opts.prompt ?? `Suggest ${defaultCount} dinner recipes.`;
+  const userPrompt = opts.count
+    ? `${
+        opts.prompt && opts.prompt.trim().length > 0
+          ? opts.prompt
+          : `Suggest ${opts.count} dinner recipes.`
+      }\n\nReturn EXACTLY ${opts.count} recipe${opts.count === 1 ? '' : 's'} — no more, no fewer.`
+    : defaultUserPrompt;
 
   const ai = getClientFor('recipe.discovery');
   const { recipes } = await ai.generateStructured({

@@ -37,6 +37,13 @@ export interface GenerateRecipeImageInput {
   title: string;
   description?: string | null;
   ingredients?: IngredientHint[] | null;
+  /**
+   * When set, generate an in-progress PREPARATION-STEP photo depicting this
+   * step's action rather than the finished plated dish. Used by the recipe
+   * detail-page image slider to show a couple of cooking moments. Also
+   * participates in the cache key so step shots never collide with the hero.
+   */
+  stepText?: string | null;
 }
 
 let _bucketEnsured = false;
@@ -140,7 +147,14 @@ function ingredientFingerprint(
 function cacheKey(input: GenerateRecipeImageInput): string {
   const normTitle = input.title.trim().toLowerCase().replace(/\s+/g, ' ');
   const fp = ingredientFingerprint(input.ingredients);
-  const composite = fp ? `${normTitle}#${fp}` : normTitle;
+  let composite = fp ? `${normTitle}#${fp}` : normTitle;
+  // Step shots are keyed on the step text too so each distinct preparation
+  // moment gets its own immutable file, separate from the finished-dish hero.
+  const step = (input.stepText ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (step.length > 0) {
+    const stepHash = createHash('sha256').update(step).digest('hex').slice(0, 8);
+    composite = `${composite}|step:${stepHash}`;
+  }
   const hash = createHash('sha256').update(composite).digest('hex').slice(0, 24);
   return `generated/${hash}.jpg`;
 }
@@ -182,6 +196,30 @@ function buildPrompt(input: GenerateRecipeImageInput): string {
   const title = input.title.trim();
   const visualIngredients = topVisualIngredients(input.ingredients, 6);
   const desc = (input.description ?? '').trim();
+  const step = (input.stepText ?? '').trim();
+
+  // Preparation-step variant: depict the cooking action in progress rather
+  // than the finished plate. Best-effort — the model is tuned for plated
+  // food, so we anchor hard on the action and the cookware.
+  if (step.length > 0) {
+    const stepLines: string[] = [];
+    stepLines.push(
+      `Photorealistic editorial cooking photograph showing a PREPARATION STEP of "${title}" in progress — NOT the finished plated dish.`,
+    );
+    stepLines.push(`The step being performed: ${step}`);
+    if (visualIngredients.length > 0) {
+      stepLines.push(
+        `Relevant ingredients visible where appropriate: ${visualIngredients.join(', ')}.`,
+      );
+    }
+    stepLines.push(
+      'Show the food mid-process in real cookware (pan, pot, cutting board, bowl) on a kitchen surface, capturing the action described. Overhead or 3/4 angle, natural light, shallow depth of field, magazine food-styling quality.',
+    );
+    stepLines.push(
+      'Must not show text, logos, watermarks, or human faces. Hands may appear ONLY if naturally performing the step. No cartoon or illustrated look — realistic photography only.',
+    );
+    return stepLines.join('\n');
+  }
 
   const lines: string[] = [];
   lines.push(

@@ -19,9 +19,10 @@ import { RemixSheet } from '../../../components/recipes/RemixSheet';
 import { AddToPlanSheet } from '../../../components/recipes/AddToPlanSheet';
 import { Button } from '../../../components/ui/Button';
 import { Chip } from '../../../components/ui/Chip';
-import { HeroImage } from '../../../components/ui/HeroImage';
+import { HeroCarousel } from '../../../components/ui/HeroCarousel';
 import { getRecipeImage } from '../../../constants/foodImages';
 import { useGeneratedRecipeImage } from '../../../hooks/useGeneratedRecipeImage';
+import { useRecipeStepImages } from '../../../hooks/useRecipeStepImages';
 import { colors } from '../../../design/tokens';
 import { shareRecipeAsPdf } from '../../../lib/recipePdf';
 import { useToast } from '../../../components/ui/Toast';
@@ -81,6 +82,12 @@ export default function RecipeDetailScreen() {
     recipe.title,
   );
 
+  // Preparation-step photos — returned instantly if already generated,
+  // otherwise lazily generated in the background (non-blocking). The hero
+  // always leads; step shots follow in the slider as they arrive.
+  const stepImageUrls = useRecipeStepImages(recipe);
+  const heroImages: Array<string | null> = [heroUri, ...stepImageUrls];
+
   const totalTime =
     recipe.total_time_minutes ??
     (recipe.prep_time_minutes ?? 0) + (recipe.cook_time_minutes ?? 0);
@@ -89,7 +96,9 @@ export default function RecipeDetailScreen() {
     // Pass the resolved heroUri so the PDF embeds whatever the detail
     // screen is showing — covers the Gemini-fallback case where
     // recipe.image_url is null but the app renders a generated image.
-    const result = await shareRecipeAsPdf(recipe, { heroUri });
+    // stepImageUrls are the generated preparation-step photos so the PDF
+    // mirrors the on-screen image slider.
+    const result = await shareRecipeAsPdf(recipe, { heroUri, stepImageUrls });
     if (!result.ok) {
       const msg =
         result.reason === 'print_unavailable' ||
@@ -134,18 +143,24 @@ export default function RecipeDetailScreen() {
       >
         {/* Hero image with title overlay — NYT Cooking style */}
         <View style={{ position: 'relative' }}>
-          <HeroImage uri={heroUri} height={280}>
-            {/* Title + meta on image */}
-            <Text style={styles.heroTitle} numberOfLines={3}>
-              {recipe.title}
-            </Text>
-            {totalTime > 0 && (
-              <View style={styles.heroMeta}>
-                <SymbolIcon name="clock" size={14} tintColor="rgba(255,255,255,0.8)" />
-                <Text style={styles.heroMetaText}>{totalTime} min</Text>
-              </View>
-            )}
-          </HeroImage>
+          <HeroCarousel
+            images={heroImages}
+            height={280}
+            heroOverlay={
+              <>
+                {/* Title + meta on image */}
+                <Text style={styles.heroTitle} numberOfLines={3}>
+                  {recipe.title}
+                </Text>
+                {totalTime > 0 && (
+                  <View style={styles.heroMeta}>
+                    <SymbolIcon name="clock" size={14} tintColor="rgba(255,255,255,0.8)" />
+                    <Text style={styles.heroMetaText}>{totalTime} min</Text>
+                  </View>
+                )}
+              </>
+            }
+          />
           {/* Floating close (X) — top-left, above the notch. Uses xmark
               instead of chevron.backward to match the close affordance
               users expect from every other recipe surface (PreviewSheet,

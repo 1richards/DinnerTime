@@ -19,6 +19,9 @@ export interface RecipeRow {
   source_type: 'url' | 'photo' | 'manual';
   source_url: string | null;
   image_url: string | null;
+  /** Supplementary preparation-step photos, generated lazily when the user
+      opens the detail page. NULL until generated. */
+  step_image_urls: string[] | null;
   calories_per_serving: number | null;
   protein_grams_per_serving: number | null;
   fat_grams_per_serving: number | null;

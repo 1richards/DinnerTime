@@ -146,7 +146,12 @@ interface RecipeForPdf
     | 'fat_grams_per_serving'
   > {}
 
-export function buildRecipeHtml(recipe: RecipeForPdf): string {
+export function buildRecipeHtml(
+  recipe: RecipeForPdf,
+  /** Already-resolved preparation-step images (data URIs or URLs). Rendered
+      as a gallery so the PDF mirrors the in-app image slider. */
+  stepImages: string[] = [],
+): string {
   const title = escapeHtml(recipe.title || 'Untitled Recipe');
   const description = recipe.description
     ? `<p class="description">${escapeHtml(recipe.description)}</p>`
@@ -201,6 +206,13 @@ export function buildRecipeHtml(recipe: RecipeForPdf): string {
       return `<li><span class="step-num">${i + 1}.</span><span class="step-text">${text}</span></li>`;
     })
     .join('');
+
+  const prepGallery =
+    stepImages.length > 0
+      ? `<h2>Preparation</h2><div class="prep-gallery">${stepImages
+          .map((src) => `<img class="prep-img" src="${escapeHtml(src)}" />`)
+          .join('')}</div>`
+      : '';
 
   const sourceLink = recipe.source_url
     ? `<p class="source">Source: <a href="${escapeHtml(recipe.source_url)}">${escapeHtml(recipe.source_url)}</a></p>`
@@ -263,6 +275,18 @@ export function buildRecipeHtml(recipe: RecipeForPdf): string {
       border-radius: 12px;
       margin-bottom: 18px;
     }
+    .prep-gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 4px 0 8px;
+    }
+    .prep-img {
+      width: 48%;
+      max-height: 220px;
+      object-fit: cover;
+      border-radius: 10px;
+    }
     ul.ingredients {
       list-style: disc;
       padding-left: 20px;
@@ -320,6 +344,7 @@ export function buildRecipeHtml(recipe: RecipeForPdf): string {
   <ul class="ingredients">${ingredients}</ul>
   <h2>Steps</h2>
   <ol class="steps">${steps}</ol>
+  ${prepGallery}
   ${sourceLink}
   <div class="footer">Shared from DinnerTime · dinnertime.app</div>
 </body>
@@ -369,6 +394,11 @@ export interface ShareRecipePdfOptions {
    * precedence over `recipe.image_url`.
    */
   heroUri?: string | null;
+  /**
+   * Preparation-step photo URLs shown in the detail-page slider. Inlined
+   * and rendered as a gallery so the PDF mirrors what's on screen.
+   */
+  stepImageUrls?: Array<string | null> | null;
 }
 
 export async function shareRecipeAsPdf(
@@ -395,7 +425,18 @@ export async function shareRecipeAsPdf(
     const recipeForHtml: RecipeForPdf = inlinedImage
       ? { ...recipe, image_url: inlinedImage }
       : recipe;
-    const html = buildRecipeHtml(recipeForHtml);
+
+    // Inline the preparation-step photos the same way (data URIs), in
+    // parallel. Drop any that fail to fetch so a single bad URL doesn't
+    // block the share.
+    const stepUrls = (options?.stepImageUrls ?? []).filter(
+      (u): u is string => typeof u === 'string' && u.length > 0,
+    );
+    const inlinedSteps = (
+      await Promise.all(stepUrls.map((u) => imageUrlToDataUri(u)))
+    ).filter((u): u is string => typeof u === 'string' && u.length > 0);
+
+    const html = buildRecipeHtml(recipeForHtml, inlinedSteps);
 
     // printToFileAsync returns a uri pointing to a tmp file. We move it
     // to cacheDirectory under a stable filename so the share-sheet

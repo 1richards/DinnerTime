@@ -26,6 +26,10 @@ interface RecipeState {
   saveRecipe: (recipe: ParsedRecipe) => Promise<Recipe | null>;
   fetchRecipes: (opts?: FetchRecipesOptions) => Promise<void>;
   updateRecipe: (id: string, patch: Partial<Recipe>) => Promise<void>;
+  /** Merge fields into a recipe in local state only (no server write). Used
+      when the server has already persisted the change — e.g. the background
+      step-image generation endpoint returns URLs it already saved. */
+  mergeRecipeLocal: (id: string, patch: Partial<Recipe>) => void;
   deleteRecipe: (id: string) => Promise<void>;
   toggleFavorite: (id: string) => Promise<void>;
   setSearchQuery: (q: string) => void;
@@ -319,6 +323,12 @@ export const useRecipeStore = create<RecipeState>()(
         error: err instanceof Error ? err.message : 'Failed to update recipe',
       });
     }
+  },
+
+  mergeRecipeLocal: (id: string, patch: Partial<Recipe>) => {
+    set((state) => ({
+      recipes: state.recipes.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+    }));
   },
 
   deleteRecipe: async (id: string) => {

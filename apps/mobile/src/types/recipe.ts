@@ -68,6 +68,9 @@ export interface Recipe {
   source_type: ImportSource;
   source_url: string | null;
   image_url: string | null;
+  /** Supplementary preparation-step photos, generated lazily when the user
+      opens the detail page. NULL/absent until generated. */
+  step_image_urls?: string[] | null;
   is_favorite: boolean;
   /** User-defined free-form labels (e.g. "tacos", "game nights"). */
   labels?: string[];
