@@ -16,6 +16,8 @@ import telemetry from './routes/telemetry.js';
 import account from './routes/account.js';
 import feedback from './routes/feedback.js';
 import { rateLimitErrorHandler } from './middleware/rateLimitErrors.js';
+import { SEED_RECIPES, templateKey } from './data/seedRecipes.js';
+import { supabaseAdmin } from './config/supabase.js';
 
 const app = new Hono().basePath('/api/v1');
 
@@ -53,6 +55,54 @@ app.route('/account', account);
 // internally, so mount at root.
 app.route('/', feedback);
 
+// ---------------------------------------------------------------------------
+// Startup: auto-seed recipe_templates on every boot (idempotent).
+//
+// recipe_templates is reference data managed by the backend — not user-owned.
+// The original design required a manual POST /seed-templates after each deploy,
+// which meant a missed step left recipe_templates empty, causing seed-baseline
+// to return { seeded: 0, reason: 'no_templates_matched' } for every new user.
+//
+// Moving the upsert to startup ensures templates are always current without
+// any manual intervention. The upsert is keyed on template_key (immutable
+// slug derived from cuisine_type + title) so repeated calls are safe and free.
+// Non-fatal: a Supabase outage at boot time is logged and skipped — the
+// server still starts, and existing user recipes are unaffected.
+// ---------------------------------------------------------------------------
+async function autoSeedTemplates(): Promise<void> {
+  try {
+    const rows = SEED_RECIPES.map((r) => ({
+      template_key: templateKey(r),
+      cuisine_type: r.cuisine_type,
+      title: r.title,
+      description: r.description,
+      ingredients: r.ingredients,
+      steps: r.steps,
+      prep_time_minutes: r.prep_time_minutes,
+      cook_time_minutes: r.cook_time_minutes,
+      total_time_minutes: r.total_time_minutes,
+      servings: r.servings,
+      difficulty: r.difficulty,
+      practiced_skills: r.practiced_skills,
+      skill_note: r.skill_note,
+      labels: r.labels,
+      calories_per_serving: r.calories_per_serving,
+      protein_grams_per_serving: r.protein_grams_per_serving,
+      fat_grams_per_serving: r.fat_grams_per_serving,
+    }));
+    const { error } = await supabaseAdmin
+      .from('recipe_templates')
+      .upsert(rows, { onConflict: 'template_key' });
+    if (error) {
+      console.error('[startup] recipe_templates seed failed:', error.message);
+    } else {
+      console.log(`[startup] recipe_templates seeded (${rows.length} templates)`);
+    }
+  } catch (err) {
+    console.error('[startup] recipe_templates seed exception:', err);
+  }
+}
+
 // Start server (only when not imported for testing)
 if (process.env.NODE_ENV !== 'test') {
   const port = env.PORT;
@@ -66,6 +116,10 @@ if (process.env.NODE_ENV !== 'test') {
     // but having 0.0.0.0 means direct Tailscale-IP access also works.
     hostname: '0.0.0.0',
   });
+
+  // Auto-seed templates after server is up. Fire-and-forget — don't await
+  // so the server accepts requests immediately while the upsert runs.
+  void autoSeedTemplates();
 }
 
 export { app };

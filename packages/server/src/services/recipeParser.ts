@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { getClientFor } from '../ai/clientFactory.js';
 import type { JsonSchema, StructuredTool } from '../ai/types.js';
+import { sanitizeRecipeTextFields } from './recipeTextSanitizer.js';
 
 // ---------- Types ----------
 
@@ -289,11 +290,27 @@ function toolOutputToRecipe(
   }));
   const steps = (input.steps as string[]) || [];
 
-  return {
+  // Defend against Gemini-preview degeneration leaking CJK filler tokens
+  // (调整/碎/块/条) into English recipe text. tool_use constrains JSON shape
+  // but not string CONTENT, so we scrub at the parse boundary before the
+  // recipe is ever returned/stored. See services/recipeTextSanitizer.ts.
+  const { value: cleaned, changed } = sanitizeRecipeTextFields({
     title: (input.title as string) || 'Untitled Recipe',
     description: (input.description as string) || null,
     ingredients,
     steps,
+  });
+  if (changed) {
+    console.warn(
+      `[recipeParser] stripped non-Latin contamination from generated recipe "${cleaned.title}" (source=${sourceType})`,
+    );
+  }
+
+  return {
+    title: cleaned.title || 'Untitled Recipe',
+    description: cleaned.description ?? null,
+    ingredients: cleaned.ingredients as ParsedIngredient[],
+    steps: cleaned.steps as string[],
     prep_time_minutes: (input.prep_time_minutes as number) ?? null,
     cook_time_minutes: (input.cook_time_minutes as number) ?? null,
     total_time_minutes: (input.total_time_minutes as number) ?? null,

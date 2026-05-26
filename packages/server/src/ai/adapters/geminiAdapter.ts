@@ -129,6 +129,14 @@ export class GeminiAdapter implements AIClient {
       config: {
         systemInstruction: opts.system,
         maxOutputTokens: opts.maxTokens ?? 4096,
+        // Lower sampling temperature for structured recipe generation. The
+        // default (~1.0) on these preview models materially raises the odds
+        // of a degeneration / repetition loop that leaks CJK filler tokens
+        // (调整/碎/块/条) into English recipe strings. 0.4 keeps recipes
+        // varied while sharply cutting the tail-token failure mode. Paired
+        // with the recipeTextSanitizer guard at the parse boundary as
+        // defense-in-depth.
+        temperature: 0.4,
         tools: [
           {
             functionDeclarations: [

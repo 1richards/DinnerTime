@@ -2,6 +2,7 @@ import { getClientFor } from '../ai/clientFactory.js';
 import type { JsonSchema, StructuredTool } from '../ai/types.js';
 import type { ParsedIngredient, ParsedRecipe } from './recipeParser.js';
 import { normalizeServings } from './recipeServings.js';
+import { sanitizeRecipeTextFields } from './recipeTextSanitizer.js';
 
 // Quick-task 6 — Canonical 8-key practiced-skill taxonomy.
 //
@@ -344,11 +345,26 @@ export async function discoverRecipes(
         ? rawSkillNote.slice(0, 200)
         : null;
 
-    return {
+    // Defend against Gemini-preview degeneration leaking CJK filler tokens
+    // (调整/碎/块/条) into English recipe text — scrub before returning so
+    // garbage is never persisted. See services/recipeTextSanitizer.ts.
+    const { value: cleaned, changed } = sanitizeRecipeTextFields({
       title: (r.title as string) || 'Untitled Recipe',
       description: (r.description as string | null | undefined) ?? null,
       ingredients: (r.ingredients as ParsedIngredient[]) ?? [],
       steps: (r.steps as string[]) ?? [],
+    });
+    if (changed) {
+      console.warn(
+        `[recipeDiscovery] stripped non-Latin contamination from discovered recipe "${cleaned.title}"`,
+      );
+    }
+
+    return {
+      title: cleaned.title || 'Untitled Recipe',
+      description: cleaned.description ?? null,
+      ingredients: (cleaned.ingredients as ParsedIngredient[]) ?? [],
+      steps: (cleaned.steps as string[]) ?? [],
       prep_time_minutes: (r.prep_time_minutes as number | null | undefined) ?? null,
       cook_time_minutes: (r.cook_time_minutes as number | null | undefined) ?? null,
       total_time_minutes: (r.total_time_minutes as number | null | undefined) ?? null,

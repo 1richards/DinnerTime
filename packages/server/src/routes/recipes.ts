@@ -22,6 +22,10 @@ import {
 import { generateRecipeImage } from '../services/recipeImageGen.js';
 import { SEED_RECIPES, templateKey } from '../data/seedRecipes.js';
 import { supabaseAdmin } from '../config/supabase.js';
+import {
+  hasCjkContamination,
+  sanitizeRecipeTextFields,
+} from '../services/recipeTextSanitizer.js';
 
 // Fields a client is allowed to patch. Anything else in the body is ignored.
 const PATCHABLE_FIELDS = [
@@ -717,5 +721,218 @@ recipes.post('/seed-baseline', async (c) => {
 
   return c.json({ seeded: recipeRows.length });
 });
+
+/**
+ * POST /seed-baseline-backfill - repair existing user recipes that were
+ * seeded with empty steps.
+ *
+ * Early users completed onboarding before `recipe_templates` was reliably
+ * populated, so `seed-baseline` copied templates that had `steps: []` (or the
+ * insert ran against an empty templates table). Their `recipes` rows now show
+ * "No steps listed." This sweep re-populates `steps` (and other empty fields)
+ * from the authoritative in-code SEED_RECIPES, matched by recipe title.
+ *
+ * Admin-scoped (service-role client) so a single call from any authed user
+ * repairs ALL affected accounts without each user re-onboarding. Idempotent:
+ * rows that already have steps are skipped, and unmatched titles are left
+ * untouched. Only fills fields that are currently empty — never overwrites
+ * user edits to a populated field.
+ */
+recipes.post('/seed-baseline-backfill', async (c) => {
+  // Reference-data correction across all users — use the service-role client
+  // to bypass per-user RLS. Still auth-gated by authMiddleware above.
+  const supabase = supabaseAdmin;
+
+  // Build lookups from the authoritative seed data. byKey is the precise
+  // match (cuisine + title); byTitle is the fallback when labels[0] isn't a
+  // recognizable cuisine.
+  const byKey = new Map<string, (typeof SEED_RECIPES)[number]>();
+  const byTitle = new Map<string, (typeof SEED_RECIPES)[number]>();
+  const normTitle = (t: string) => t.trim().toLowerCase().replace(/\s+/g, ' ');
+  for (const r of SEED_RECIPES) {
+    byKey.set(templateKey(r), r);
+    byTitle.set(normTitle(r.title), r);
+  }
+
+  const { data: rows, error } = await supabase
+    .from('recipes')
+    .select(
+      'id, title, labels, steps, ingredients, prep_time_minutes, ' +
+        'cook_time_minutes, total_time_minutes, servings, difficulty, ' +
+        'practiced_skills, skill_note, calories_per_serving, ' +
+        'protein_grams_per_serving, fat_grams_per_serving',
+    );
+  if (error) {
+    return c.json({ error: error.message }, 500);
+  }
+
+  type Row = {
+    id: string;
+    title: string;
+    labels: string[] | null;
+    steps: unknown;
+    ingredients: unknown;
+    prep_time_minutes: number | null;
+    cook_time_minutes: number | null;
+    total_time_minutes: number | null;
+    servings: number | null;
+    difficulty: string | null;
+    practiced_skills: string[] | null;
+    skill_note: string | null;
+    calories_per_serving: number | null;
+    protein_grams_per_serving: number | null;
+    fat_grams_per_serving: number | null;
+  };
+
+  const isEmptyArr = (v: unknown) => !Array.isArray(v) || v.length === 0;
+
+  let examined = 0;
+  let matched = 0;
+  let updated = 0;
+  const unmatched: string[] = [];
+
+  for (const row of (rows ?? []) as unknown as Row[]) {
+    // Only touch rows missing steps — that's the bug we're repairing.
+    if (!isEmptyArr(row.steps)) continue;
+    examined++;
+
+    const cuisine =
+      Array.isArray(row.labels) && row.labels[0] ? row.labels[0] : null;
+    const tpl =
+      (cuisine
+        ? byKey.get(templateKey({ cuisine_type: cuisine, title: row.title }))
+        : undefined) ?? byTitle.get(normTitle(row.title));
+
+    if (!tpl) {
+      unmatched.push(row.title);
+      continue;
+    }
+    matched++;
+
+    // Always restore steps; backfill other fields only when currently empty
+    // so we never clobber a user's manual edits to a populated field.
+    const patch: Record<string, unknown> = { steps: tpl.steps };
+    if (isEmptyArr(row.ingredients)) patch.ingredients = tpl.ingredients;
+    if (row.prep_time_minutes == null) patch.prep_time_minutes = tpl.prep_time_minutes;
+    if (row.cook_time_minutes == null) patch.cook_time_minutes = tpl.cook_time_minutes;
+    if (row.total_time_minutes == null) patch.total_time_minutes = tpl.total_time_minutes;
+    if (row.servings == null) patch.servings = tpl.servings;
+    if (row.difficulty == null) patch.difficulty = tpl.difficulty;
+    if (isEmptyArr(row.practiced_skills)) patch.practiced_skills = tpl.practiced_skills;
+    if (row.skill_note == null) patch.skill_note = tpl.skill_note;
+    if (row.calories_per_serving == null) patch.calories_per_serving = tpl.calories_per_serving;
+    if (row.protein_grams_per_serving == null) patch.protein_grams_per_serving = tpl.protein_grams_per_serving;
+    if (row.fat_grams_per_serving == null) patch.fat_grams_per_serving = tpl.fat_grams_per_serving;
+
+    const { error: upErr } = await supabase
+      .from('recipes')
+      .update(patch)
+      .eq('id', row.id);
+    if (!upErr) updated++;
+  }
+
+  return c.json({ examined, matched, updated, unmatched });
+});
+
+/**
+ * POST /sanitize-cjk - one-shot repair sweep that strips leaked non-Latin
+ * (CJK) filler tokens from already-stored recipe text.
+ *
+ * Root cause: recipe-text generation routes to Gemini Flash preview models,
+ * which occasionally degenerate into a repetition loop and inject CJK tokens
+ * (调整 "adjust", 碎 "minced", 块 "chunk", 条 "strip") mid-string inside
+ * English ingredient names / steps / titles. The generation paths are now
+ * guarded (recipeTextSanitizer + lowered temperature), but rows written
+ * before the fix still contain garbage. This sweep cleans them.
+ *
+ * Admin-scoped (service-role client) so one call repairs ALL affected
+ * accounts. Idempotent: rows with no contamination are skipped; only the
+ * affected text fields are rewritten, numeric fields untouched. Mirrors the
+ * shape/contract of POST /seed-baseline-backfill.
+ */
+recipes.post('/sanitize-cjk', async (c) => {
+  const supabase = supabaseAdmin;
+
+  const { data: rows, error } = await supabase
+    .from('recipes')
+    .select('id, title, description, ingredients, steps');
+  if (error) {
+    return c.json({ error: error.message }, 500);
+  }
+
+  type Row = {
+    id: string;
+    title: string | null;
+    description: string | null;
+    ingredients: unknown;
+    steps: unknown;
+  };
+
+  // Cheap pre-filter: serialize the row's text and test for CJK before doing
+  // any field-level work, so the common (clean) case is a single regex hit.
+  const rowHasContamination = (row: Row): boolean => {
+    if (hasCjkContamination(row.title) || hasCjkContamination(row.description)) {
+      return true;
+    }
+    if (Array.isArray(row.ingredients)) {
+      for (const ing of row.ingredients as Array<Record<string, unknown>>) {
+        if (
+          hasCjkContamination(ing?.name) ||
+          hasCjkContamination(ing?.unit) ||
+          hasCjkContamination(ing?.notes)
+        ) {
+          return true;
+        }
+      }
+    }
+    if (Array.isArray(row.steps)) {
+      for (const s of row.steps as unknown[]) {
+        if (hasCjkContamination(s)) return true;
+      }
+    }
+    return false;
+  };
+
+  let examined = 0;
+  let contaminated = 0;
+  let updated = 0;
+
+  for (const row of (rows ?? []) as unknown as Row[]) {
+    examined++;
+    if (!rowHasContamination(row)) continue;
+    contaminated++;
+
+    const { value: cleaned } = sanitizeRecipeTextFields({
+      title: row.title,
+      description: row.description,
+      ingredients: Array.isArray(row.ingredients)
+        ? (row.ingredients as RecipeIngredientShape[])
+        : null,
+      steps: Array.isArray(row.steps) ? (row.steps as string[]) : null,
+    });
+
+    const patch: Record<string, unknown> = {
+      title: cleaned.title,
+      description: cleaned.description ?? null,
+    };
+    if (Array.isArray(cleaned.ingredients)) patch.ingredients = cleaned.ingredients;
+    if (Array.isArray(cleaned.steps)) patch.steps = cleaned.steps;
+
+    const { error: upErr } = await supabase
+      .from('recipes')
+      .update(patch)
+      .eq('id', row.id);
+    if (!upErr) updated++;
+  }
+
+  return c.json({ examined, contaminated, updated });
+});
+
+type RecipeIngredientShape = {
+  name?: string | null;
+  quantity?: number | null;
+  unit?: string | null;
+  notes?: string | null;
+};
 
 export default recipes;
