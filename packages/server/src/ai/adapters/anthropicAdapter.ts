@@ -110,16 +110,23 @@ export class AnthropicAdapter implements AIClient {
       // Payoff requires the static prefix to clear Anthropic's ~1024-token
       // cache minimum; verify against live token counts (perf-ai-suggestions-
       // latency.md Fix 3 — no live run in this phase).
-      system: [
-        {
-          type: 'text' as const,
-          // `i.system` is optional in the AIClient contract; the text-block
-          // `text` field requires a definite string, so coalesce (an absent
-          // system was already an empty prefix).
-          text: i.system ?? '',
-          cache_control: { type: 'ephemeral' as const },
-        },
-      ],
+      //
+      // HI-02: only emit the system block when there's actual system text.
+      // `i.system` is optional in the AIClient contract; the live Messages API
+      // rejects an empty `text` block, and a `cache_control` breakpoint on an
+      // empty prefix is a no-op anyway. The tool-schema breakpoint below still
+      // caches the static prefix regardless of whether a system prompt exists.
+      ...(i.system
+        ? {
+            system: [
+              {
+                type: 'text' as const,
+                text: i.system,
+                cache_control: { type: 'ephemeral' as const },
+              },
+            ],
+          }
+        : {}),
       tools: [
         {
           name: i.tool.name,

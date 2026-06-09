@@ -61,6 +61,23 @@ describe('AnthropicAdapter.generateStructured', () => {
     expect(args.tools[0].input_schema).toBe(schema);
     expect(args.tool_choice).toEqual({ type: 'tool', name: 't' });
     expect(args.max_tokens).toBe(4096);
+    // HI-02: with no system prompt, omit the system field entirely — the live
+    // Anthropic API rejects an empty text block. The tool schema still carries
+    // the cache_control breakpoint.
+    expect(args.system).toBeUndefined();
+    expect(args.tools[0].cache_control).toEqual({ type: 'ephemeral' });
+  });
+
+  it('emits a cache_control system block when a system prompt is given', async () => {
+    mockCreate.mockResolvedValue({
+      content: [{ type: 'tool_use', name: 't', input: { a: 1 } }],
+    });
+    const adapter = new AnthropicAdapter('claude-sonnet-4-6');
+    await adapter.generateStructured({ system: 'sys', user: 'p', tool });
+    const args = mockCreate.mock.calls[0][0];
+    expect(args.system).toEqual([
+      { type: 'text', text: 'sys', cache_control: { type: 'ephemeral' } },
+    ]);
   });
 
   it('throws when no tool_use block in response', async () => {
