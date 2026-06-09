@@ -125,6 +125,13 @@ interface ImageRequest {
   title: string;
   description?: string | null;
   ingredients?: ParsedIngredient[] | null;
+  /**
+   * Saved recipe id. When present, the server (Plan 27-01) persists the
+   * resolved hero URL to recipes.image_url so later cold starts skip
+   * generate-image entirely. Unsaved "Something New" previews have no id
+   * and pass undefined, keeping them AsyncStorage-only.
+   */
+  recipeId?: string | null;
 }
 
 async function fetchGeneratedUrl(
@@ -145,6 +152,7 @@ async function fetchGeneratedUrl(
           title: req.title,
           description: req.description ?? null,
           ingredients: req.ingredients ?? null,
+          recipeId: req.recipeId ?? null,
         }),
       },
     );
@@ -213,13 +221,19 @@ interface HookOptions {
   skip?: boolean;
   description?: string | null;
   ingredients?: ParsedIngredient[] | null;
+  /**
+   * Saved recipe id forwarded to the server so the resolved URL is persisted
+   * back to recipes.image_url (Plan 27-01). Omit/undefined for unsaved
+   * previews — they stay AsyncStorage-only.
+   */
+  recipeId?: string | null;
 }
 
 export function useGeneratedRecipeImage(
   title: string | null | undefined,
   options: HookOptions = {},
 ): GeneratedImageResult {
-  const { skip, description, ingredients } = options;
+  const { skip, description, ingredients, recipeId } = options;
 
   // Derive initial state from the in-memory cache synchronously (even if
   // module-level hydration hasn't completed — we still read whatever is in
@@ -277,6 +291,7 @@ export function useGeneratedRecipeImage(
         title,
         description: description ?? null,
         ingredients: ingredients ?? null,
+        recipeId: recipeId ?? null,
       });
       cache.set(key, { url: null, inflight, attempted: false });
       inflight.then((u) => {
@@ -324,7 +339,7 @@ export function prefetchGeneratedRecipeImage(
   title: string | null | undefined,
   options: HookOptions = {},
 ): void {
-  const { skip, description, ingredients } = options;
+  const { skip, description, ingredients, recipeId } = options;
   if (!title || skip) return;
   const key = cacheKeyFor(title, ingredients);
   // Already in cache (resolved, in-flight, or attempted+failed) — no-op.
@@ -333,6 +348,7 @@ export function prefetchGeneratedRecipeImage(
     title,
     description: description ?? null,
     ingredients: ingredients ?? null,
+    recipeId: recipeId ?? null,
   });
   cache.set(key, { url: null, inflight, attempted: false });
   inflight.then((u) => {

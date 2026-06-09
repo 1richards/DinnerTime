@@ -61,9 +61,10 @@ interface RecipeCardProps {
   onCookNow?: (recipe: Recipe) => void;
   onPress?: (recipe: Recipe) => void;
   /**
-   * When provided, replaces the source-type badge ("AI", "URL", etc.)
-   * in the top-left of the hero with a cuisine label like "Italian".
-   * Used by suggestion + search results that carry cuisine metadata.
+   * Accepted for backwards compatibility (SuggestionList passes a cuisine
+   * type), but no longer rendered. The source-type / cuisine corner badge
+   * was removed entirely in Plan 27-02 (Decision 7) — no AI/URL/cuisine
+   * label appears on any card now.
    */
   cuisineLabel?: string | null;
   /**
@@ -81,21 +82,17 @@ interface RecipeCardProps {
   hideServings?: boolean;
 }
 
-const SOURCE_LABELS: Record<Recipe['source_type'], string> = {
-  url: 'URL',
-  photo: 'Photo',
-  manual: 'Manual',
-  ai: 'AI',
-};
-
-export function RecipeCard({
+function RecipeCardBase({
   recipe,
   mode = 'grid',
   preview = false,
   previewActions,
   onCookNow,
   onPress,
-  cuisineLabel,
+  // cuisineLabel is still accepted (SuggestionList passes it) but no longer
+  // rendered — the source-type / cuisine corner badge was removed in Plan
+  // 27-02 (Decision 7). Intentionally not destructured so it's a harmless
+  // accepted-but-ignored prop.
   pantryMatchCount,
   hideServings,
 }: RecipeCardProps) {
@@ -117,6 +114,10 @@ export function RecipeCard({
       skip: !!recipe.image_url,
       description: recipe.description,
       ingredients: recipe.ingredients,
+      // Decision 1 wiring — when this is a saved recipe, send its id so the
+      // server (Plan 27-01) persists the generated URL to recipes.image_url.
+      // Unsaved "Something New" previews carry no id → undefined → no write.
+      recipeId: recipe.id ?? undefined,
     },
   );
   const imageUri = getRecipeImage(
@@ -167,16 +168,6 @@ export function RecipeCard({
               { backgroundColor: 'rgba(15,10,5,0.18)' },
             ]}
           />
-          {/* Top-left badge over image — cuisine label when provided
-              (Cook Tonight / Something New surfaces), source-type
-              fallback otherwise (Library / saved recipes). */}
-          <View style={styles.sourceBadge}>
-            <Text style={styles.sourceBadgeText}>
-              {cuisineLabel && cuisineLabel.length > 0
-                ? cuisineLabel
-                : SOURCE_LABELS[recipe.source_type]}
-            </Text>
-          </View>
           {/* Preview-mode quick actions — Save, Remix, Cook now. Rendered
               over the hero when the card represents an unsaved ParsedRecipe
               (e.g. Something New results). Each button stops propagation so
@@ -475,29 +466,28 @@ export function RecipeCard({
   );
 }
 
+/**
+ * Memoized so a parent re-render (e.g. kitchen.tsx search/filter state) doesn't
+ * re-render every mounted card. The comparator returns true (skip render) when
+ * none of the render-affecting fields changed. Decision 4 / Image P2 — pairs
+ * with the useCallback renderItem + FlatList windowing in kitchen.tsx.
+ */
+export const RecipeCard = React.memo(
+  RecipeCardBase,
+  (prev, next) =>
+    prev.recipe.id === next.recipe.id &&
+    prev.recipe.image_url === next.recipe.image_url &&
+    prev.recipe.is_favorite === next.recipe.is_favorite &&
+    prev.mode === next.mode &&
+    prev.pantryMatchCount === next.pantryMatchCount,
+);
+
 export type { RecipeCardMode };
 
 // Non-tokenizable positioning styles (absolute overlay clusters) — colors use
 // rgba over imagery, not brand tokens. Text sizes use the type scale via
 // NativeWind classes on the actionable text; these are decorative badges.
 const styles = StyleSheet.create({
-  sourceBadge: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-  },
-  sourceBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.8,
-  },
   // Single-capsule overlay — same chrome HeroDayCard.heroIconCluster uses.
   // Wraps all action icons in one rounded translucent pill (rgba 0.20)
   // so the action chrome reads as one unit instead of 2-3 separate
