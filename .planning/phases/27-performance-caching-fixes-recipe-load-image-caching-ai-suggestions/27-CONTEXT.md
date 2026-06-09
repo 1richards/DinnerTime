@@ -70,9 +70,9 @@ Post-launch performance/caching fix phase (v1.0.2). APPLIES the recommended fixe
 
 ### Code touch points (verify current state before editing)
 - `packages/server/src/routes/recipes.ts` — `/generate-image`, `/search`, `/discover` handlers.
-- `packages/server/src/ai/recipeDiscovery.ts` — `discoverRecipes()`, batch size, retry.
-- `packages/server/src/ai/recipeImageGen.ts` — content-addressed cache pattern to mirror; `cachedUrlIfExists` Storage probe.
-- `packages/server/src/ai/anthropicAdapter.ts`, `geminiAdapter.ts` — prompt caching.
+- `packages/server/src/services/recipeDiscovery.ts` — `discoverRecipes()`, batch size, retry.
+- `packages/server/src/services/recipeImageGen.ts` — content-addressed cache pattern to mirror; `cachedUrlIfExists` Storage probe.
+- `packages/server/src/ai/adapters/anthropicAdapter.ts`, `packages/server/src/ai/adapters/geminiAdapter.ts` — prompt caching.
 - `apps/mobile/src/hooks/useGeneratedRecipeImage.ts` — client image hook + inflight pattern.
 - `apps/mobile/src/app/(tabs)/kitchen.tsx` — Recipe Box FlatList + renderItem.
 - `apps/mobile/src/components/recipes/RecipeCard.tsx` — source-type badge to remove.
