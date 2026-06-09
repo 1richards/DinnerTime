@@ -475,9 +475,27 @@ function RecipeCardBase({
 export const RecipeCard = React.memo(
   RecipeCardBase,
   (prev, next) =>
+    // recipeStore.updateRecipe replaces the row object ({ ...r, ...patch }) for
+    // ANY field edit, so we compare every render-affecting field — not just
+    // id/image/favorite. Missing fields here caused stale cards after a
+    // title/description/labels/servings/nutrition edit (HI-01). `labels`
+    // compares by reference, which is correct because the store always replaces
+    // the row object (and the labels array) on update, so the win from 27-02
+    // (stable renderItem + windowing) is preserved: an unchanged row object
+    // still skips the render.
     prev.recipe.id === next.recipe.id &&
     prev.recipe.image_url === next.recipe.image_url &&
     prev.recipe.is_favorite === next.recipe.is_favorite &&
+    prev.recipe.title === next.recipe.title &&
+    prev.recipe.description === next.recipe.description &&
+    prev.recipe.servings === next.recipe.servings &&
+    prev.recipe.total_time_minutes === next.recipe.total_time_minutes &&
+    prev.recipe.prep_time_minutes === next.recipe.prep_time_minutes &&
+    prev.recipe.cook_time_minutes === next.recipe.cook_time_minutes &&
+    prev.recipe.calories_per_serving === next.recipe.calories_per_serving &&
+    prev.recipe.protein_grams_per_serving ===
+      next.recipe.protein_grams_per_serving &&
+    prev.recipe.labels === next.recipe.labels &&
     prev.mode === next.mode &&
     prev.pantryMatchCount === next.pantryMatchCount,
 );
