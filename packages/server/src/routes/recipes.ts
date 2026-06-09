@@ -593,11 +593,21 @@ recipes.post('/generate-image', async (c) => {
         }))
         .filter((ing) => ing.name.trim().length > 0)
     : null;
-  const url = await generateRecipeImage({
-    title: body.title,
-    description: typeof body.description === 'string' ? body.description : null,
-    ingredients: cleanedIngredients,
-  });
+  // ME-02: image generation is best-effort. A thrown gen error returns the
+  // documented `{ url: null }` fallback (mobile keeps its placeholder) instead
+  // of a generic 500 that the hook treats as a hard failure.
+  let url: string | null = null;
+  try {
+    url = await generateRecipeImage({
+      title: body.title,
+      description:
+        typeof body.description === 'string' ? body.description : null,
+      ingredients: cleanedIngredients,
+    });
+  } catch (e) {
+    console.warn('[generate-image] generation failed', e);
+    url = null;
+  }
   // Decision 1 (Image P0): persist the resolved hero URL so a saved recipe
   // never re-requests generation on a later cold start / new device /
   // AsyncStorage clear. supabaseAdmin bypasses RLS, so the
@@ -606,6 +616,10 @@ recipes.post('/generate-image', async (c) => {
   // A cross-profile recipeId simply matches zero rows (no error, no leak).
   // A null url → no write (don't clobber an existing image). Unsaved
   // "Something New" previews pass no recipeId and keep AsyncStorage-only.
+  //
+  // ME-02: persistence is best-effort. If the write-back rejects or returns an
+  // error (network blip / PostgREST hiccup), we log and STILL return the good
+  // generated URL — the client can use the image even if it didn't persist.
   if (
     typeof body.recipeId === 'string' &&
     body.recipeId.length > 0 &&
@@ -613,11 +627,18 @@ recipes.post('/generate-image', async (c) => {
     url.length > 0
   ) {
     const user = c.get('user');
-    await supabaseAdmin
-      .from('recipes')
-      .update({ image_url: url })
-      .eq('id', body.recipeId)
-      .eq('profile_id', user.id);
+    try {
+      const { error } = await supabaseAdmin
+        .from('recipes')
+        .update({ image_url: url })
+        .eq('id', body.recipeId)
+        .eq('profile_id', user.id);
+      if (error) {
+        console.warn('[generate-image] image_url persist failed', error);
+      }
+    } catch (e) {
+      console.warn('[generate-image] image_url persist threw', e);
+    }
   }
   // null is a valid response — mobile keeps its fallback image. Return 200
   // either way so callers don't need error-handling branches for the common

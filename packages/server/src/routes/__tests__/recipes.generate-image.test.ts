@@ -184,4 +184,44 @@ describe('POST /recipes/generate-image (Phase 27 — Image P0 write-back)', () =
     expect(mockGenerateRecipeImage).not.toHaveBeenCalled();
     expect(updateMock).not.toHaveBeenCalled();
   });
+
+  it('ME-02: write-back rejection still returns the generated url (200, not 500)', async () => {
+    eqProfileMock.mockRejectedValueOnce(new Error('PostgREST hiccup'));
+
+    const res = await postGenerateImage({
+      title: 'Pesto Orzo',
+      recipeId: 'recipe-123',
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ url: RESOLVED_URL });
+  });
+
+  it('ME-02: write-back returning a PostgREST error still returns the url (200)', async () => {
+    eqProfileMock.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'update failed' },
+    });
+
+    const res = await postGenerateImage({
+      title: 'Pesto Orzo',
+      recipeId: 'recipe-123',
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ url: RESOLVED_URL });
+  });
+
+  it('ME-02: generation throwing returns { url: null } (200, not 500), no db write', async () => {
+    mockGenerateRecipeImage.mockRejectedValueOnce(new Error('model blocked'));
+
+    const res = await postGenerateImage({
+      title: 'Pesto Orzo',
+      recipeId: 'recipe-123',
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ url: null });
+    expect(updateMock).not.toHaveBeenCalled();
+  });
 });
