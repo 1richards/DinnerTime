@@ -26,10 +26,10 @@
 - Prompt caching applied to the static discovery system prompt/tools where it clears provider min-token thresholds.
 - No regression in existing recipe/discovery test suites.
 
-**Plans:** 5 plans
+**Plans:** 1/5 plans executed
 
 Plans:
-- [ ] 27-01-PLAN.md — Server image_url write-back: persist generated hero URL to recipes.image_url (Decision 1)
+- [x] 27-01-PLAN.md — Server image_url write-back: persist generated hero URL to recipes.image_url (Decision 1)
 - [ ] 27-02-PLAN.md — Mobile rendering: FlatList windowing + RecipeCard memo + badge removal + recipeId wiring (Decisions 3, 4, 7)
 - [ ] 27-03-PLAN.md — Discovery response cache + in-flight coalescing on /search + /discover (Decision 2)
 - [ ] 27-04-PLAN.md — Discovery batch 6→3 + observable Gemini retry + Discover mount guard (Decision 5)
