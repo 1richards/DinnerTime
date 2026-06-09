@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useDeferredValue } from 'react';
+import React, { useEffect, useMemo, useState, useDeferredValue, useCallback } from 'react';
 import {
   View,
   Text,
@@ -545,6 +545,21 @@ export default function KitchenScreen() {
     setSavedDetail(recipe);
   };
 
+  // Stable renderItem for the Recipe Box FlatList — hoisted out of the inline
+  // closure so it isn't recreated each parent render. Pairs with React.memo
+  // on RecipeCard (Plan 27-02 Task 2) so off-screen/unaffected cards skip
+  // re-render. windowing props on the FlatList bound how many of these mount.
+  const renderRecipeCard = useCallback(
+    ({ item }: { item: Recipe }) => (
+      <RecipeCard
+        recipe={item}
+        onPress={handleCardPress}
+        onCookNow={(r) => router.push(`/recipes/${r.id}/cook`)}
+      />
+    ),
+    [handleCardPress],
+  );
+
   // ---------- Phase 17 preview handlers ----------
   const handlePreviewSave = async () => {
     if (!previewRecipe) return;
@@ -689,13 +704,11 @@ export default function KitchenScreen() {
           data={filteredRecipes}
           keyExtractor={(item: Recipe) => item.id}
           ListHeaderComponent={libraryListHeader}
-          renderItem={({ item }: { item: Recipe }) => (
-            <RecipeCard
-              recipe={item}
-              onPress={handleCardPress}
-              onCookNow={(r) => router.push(`/recipes/${r.id}/cook`)}
-            />
-          )}
+          renderItem={renderRecipeCard}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          removeClippedSubviews
           ListEmptyComponent={
             <View className="items-center mt-12 px-6">
               <Text className="text-body text-text-secondary text-center">
