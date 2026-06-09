@@ -23,6 +23,7 @@ import { DatePickerSheet } from '../../components/plan/DatePickerSheet';
 import { ServingSizeStepper } from '../../components/recipes/ServingSizeStepper';
 import { ScaledIngredientList } from '../../components/recipes/ScaledIngredientList';
 import { useRecipeStore } from '../../stores/recipeStore';
+import { useAuthStore } from '../../stores/authStore';
 import { usePantryStore } from '../../stores/pantryStore';
 import { useShoppingStore } from '../../stores/shoppingStore';
 import { supabase } from '../../lib/supabase';
@@ -56,8 +57,19 @@ const normalizeTitle = (t: string): string => t.trim().toLowerCase();
 // AI result instead of paying a fresh multi-second discover. Component
 // `recipes` state resets on unmount, so the cache must live at module scope to
 // survive remounts.
+//
+// ME-01: the cache records the userId it was computed for. If a different
+// account signs in on the same device within the TTL, the stored userId no
+// longer matches the active user, so the read is treated as a miss and the new
+// account never sees the previous account's suggestions. The server-side
+// discoveryCache is already keyed by userId; this mirrors that scoping on the
+// client module cache.
 const DISCOVER_CACHE_TTL_MS = 10 * 60 * 1000;
-let discoverCache: { at: number; results: DiscoveredRecipe[] } | null = null;
+let discoverCache: {
+  at: number;
+  userId: string;
+  results: DiscoveredRecipe[];
+} | null = null;
 
 export default function DiscoverScreen() {
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
@@ -109,7 +121,14 @@ export default function DiscoverScreen() {
         // Don't seed _saved here — it's derived reactively below from
         // useRecipeStore so re-fetches and concurrent saves stay in sync.
         setRecipes(list as DiscoveredRecipe[]);
-        discoverCache = { at: Date.now(), results: list as DiscoveredRecipe[] };
+        // Stamp the cache with the active user so a later sign-in by a
+        // different account on this device can't read these results (ME-01).
+        const currentUserId = useAuthStore.getState().user?.id ?? '';
+        discoverCache = {
+          at: Date.now(),
+          userId: currentUserId,
+          results: list as DiscoveredRecipe[],
+        };
         setIsLoading(false);
       } catch (err) {
         setError(
@@ -125,7 +144,14 @@ export default function DiscoverScreen() {
     // Reuse a fresh cached result instead of re-firing on every mount.
     // Explicit refresh/regenerate (which calls fetchDiscover directly) still
     // forces a fresh call and refreshes the cache via the success path.
-    if (discoverCache && Date.now() - discoverCache.at < DISCOVER_CACHE_TTL_MS) {
+    // ME-01: only reuse the cache when it belongs to the active user — a
+    // different account on the same device is a miss, not a stale read.
+    const currentUserId = useAuthStore.getState().user?.id ?? '';
+    if (
+      discoverCache &&
+      discoverCache.userId === currentUserId &&
+      Date.now() - discoverCache.at < DISCOVER_CACHE_TTL_MS
+    ) {
       setRecipes(discoverCache.results);
       return;
     }
