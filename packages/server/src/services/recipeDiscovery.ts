@@ -348,11 +348,15 @@ export async function discoverRecipes(
     opts.count
   );
   // Give the AI room to honor the per-cuisine guarantee in the system
-  // prompt. Floor of 6 keeps zero-cuisine users on the same baseline;
-  // 2-recipe headroom over the cuisine count lets the AI mix in variety
-  // beyond the per-cuisine minimum.
+  // prompt. 2-recipe headroom over the cuisine count lets the AI mix in
+  // variety beyond the per-cuisine minimum.
   const cuisineCount = opts.preferences.cuisine_preferences?.length ?? 0;
-  const defaultCount = Math.max(6, cuisineCount + 2);
+  // Decision 5 / Fix 4a: initial batch 3 (was 6). The remaining recipes
+  // lazy-append via the existing load-more path
+  // (suggestionsStore.appendSearchResults, count:2). Floor 3 keeps
+  // zero-cuisine users on a sane minimum; 2-recipe headroom over cuisine
+  // count preserved.
+  const defaultCount = Math.max(3, cuisineCount + 2);
   // Preserve the exact pre-existing default behavior when no explicit count
   // is requested (note: opts.prompt === '' stays '' — pantry-only initial
   // load relies on the system prompt for count). When count IS set, make it
