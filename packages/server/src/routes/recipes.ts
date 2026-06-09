@@ -19,6 +19,10 @@ import {
   discoverRecipes,
   type DiscoveryPreferences,
 } from '../services/recipeDiscovery.js';
+import {
+  discoveryCacheKey,
+  getOrComputeDiscovery,
+} from '../services/discoveryCache.js';
 import { generateRecipeImage } from '../services/recipeImageGen.js';
 import { SEED_RECIPES, templateKey } from '../data/seedRecipes.js';
 import { supabaseAdmin } from '../config/supabase.js';
@@ -251,14 +255,32 @@ recipes.post('/search', async (c) => {
     const library = await getRecipes(supabase, user.id);
     const existingTitles = library.map((r) => r.title);
 
-    const data = await discoverRecipes({
-      preferences,
-      existingTitles,
+    // Load-more requests (a forced count AND on-screen titles to avoid) are
+    // meant to be novel each time, so they bypass the base response cache.
+    const isLoadMore =
+      typeof count === 'number' &&
+      Array.isArray(excludeTitles) &&
+      excludeTitles.length > 0;
+    const cacheKey = discoveryCacheKey({
+      userId: user.id,
       prompt: body.query,
+      pantryOnly: body.pantryOnly === true,
       pantryManifest,
       count,
-      excludeTitles,
     });
+    const data = await getOrComputeDiscovery(
+      cacheKey,
+      () =>
+        discoverRecipes({
+          preferences,
+          existingTitles,
+          prompt: body.query,
+          pantryManifest,
+          count,
+          excludeTitles,
+        }),
+      { cacheable: !isLoadMore },
+    );
 
     return c.json({ data });
   } catch (error) {
@@ -330,11 +352,19 @@ recipes.post('/discover', async (c) => {
     const library = await getRecipes(supabase, user.id);
     const existingTitles = library.map((r) => r.title);
 
-    const data = await discoverRecipes({
-      preferences,
-      existingTitles,
-      prompt: body.prompt,
+    // The zero-input library discovery is the canonical cacheable load.
+    const cacheKey = discoveryCacheKey({
+      userId: user.id,
+      prompt: body.prompt ?? '',
+      pantryOnly: false,
     });
+    const data = await getOrComputeDiscovery(cacheKey, () =>
+      discoverRecipes({
+        preferences,
+        existingTitles,
+        prompt: body.prompt,
+      }),
+    );
 
     return c.json({ data });
   } catch (error) {

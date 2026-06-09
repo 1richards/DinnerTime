@@ -81,6 +81,7 @@ vi.mock('../../services/recipeDiscovery.js', () => ({
 }));
 
 const { default: recipes } = await import('../recipes.js');
+const { __resetDiscoveryCache } = await import('../../services/discoveryCache.js');
 const { Hono } = await import('hono');
 
 function makeApp() {
@@ -108,6 +109,9 @@ const sampleDiscovered = [
 describe('POST /recipes/discover', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Routes now share a module-scoped discovery cache; reset between tests so
+    // an identical-key cached result doesn't suppress the discoverRecipes call.
+    __resetDiscoveryCache();
     mockGetRecipes.mockResolvedValue([
       { id: 'r1', title: 'Grandma Spaghetti' },
       { id: 'r2', title: 'Chicken Tikka' },

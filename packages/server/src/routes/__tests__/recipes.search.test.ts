@@ -137,6 +137,7 @@ vi.mock('../../services/recipeDiscovery.js', () => ({
 }));
 
 const { default: recipes } = await import('../recipes.js');
+const { __resetDiscoveryCache } = await import('../../services/discoveryCache.js');
 const { Hono } = await import('hono');
 
 function makeApp() {
@@ -165,6 +166,9 @@ describe('POST /recipes/search (Phase 17 Wave 0)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setPantryRows([]);
+    // Routes now share a module-scoped discovery cache; reset between tests so
+    // a cached result from a prior test doesn't suppress the discoverRecipes call.
+    __resetDiscoveryCache();
   });
 
   it('P17-04: returns 400 when query is missing or empty', async () => {
