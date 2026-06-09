@@ -101,13 +101,32 @@ export class AnthropicAdapter implements AIClient {
     const res = await this.client.messages.create({
       model: this.model,
       max_tokens: i.maxTokens ?? 4096,
-      system: i.system,
+      // Decision 6 / Fix 3: cache the large static discovery system prefix.
+      // ephemeral = ~5 min provider-side prompt cache; cuts input-token
+      // processing (and cost) on every call. Anthropic caches the longest
+      // matching prefix that ends at a cache_control breakpoint, so we mark
+      // BOTH the system block and the tool schema (the static prefix) — the
+      // variable user prompt (`i.user`) below stays uncached on purpose.
+      // Payoff requires the static prefix to clear Anthropic's ~1024-token
+      // cache minimum; verify against live token counts (perf-ai-suggestions-
+      // latency.md Fix 3 — no live run in this phase).
+      system: [
+        {
+          type: 'text' as const,
+          // `i.system` is optional in the AIClient contract; the text-block
+          // `text` field requires a definite string, so coalesce (an absent
+          // system was already an empty prefix).
+          text: i.system ?? '',
+          cache_control: { type: 'ephemeral' as const },
+        },
+      ],
       tools: [
         {
           name: i.tool.name,
           description: i.tool.description,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           input_schema: i.tool.schema as any,
+          cache_control: { type: 'ephemeral' as const },
         },
       ],
       tool_choice: { type: 'tool', name: i.tool.name },
