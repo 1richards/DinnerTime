@@ -544,6 +544,7 @@ recipes.post('/generate-image', async (c) => {
       quantity?: number | null;
       unit?: string | null;
     }> | null;
+    recipeId?: string | null;
   };
   try {
     body = await c.req.json();
@@ -567,6 +568,27 @@ recipes.post('/generate-image', async (c) => {
     description: typeof body.description === 'string' ? body.description : null,
     ingredients: cleanedIngredients,
   });
+  // Decision 1 (Image P0): persist the resolved hero URL so a saved recipe
+  // never re-requests generation on a later cold start / new device /
+  // AsyncStorage clear. supabaseAdmin bypasses RLS, so the
+  // .eq('profile_id', user.id) clause is the authoritative ownership guard —
+  // it mirrors the 00004_recipes.sql "Users can update own recipes" policy.
+  // A cross-profile recipeId simply matches zero rows (no error, no leak).
+  // A null url → no write (don't clobber an existing image). Unsaved
+  // "Something New" previews pass no recipeId and keep AsyncStorage-only.
+  if (
+    typeof body.recipeId === 'string' &&
+    body.recipeId.length > 0 &&
+    typeof url === 'string' &&
+    url.length > 0
+  ) {
+    const user = c.get('user');
+    await supabaseAdmin
+      .from('recipes')
+      .update({ image_url: url })
+      .eq('id', body.recipeId)
+      .eq('profile_id', user.id);
+  }
   // null is a valid response — mobile keeps its fallback image. Return 200
   // either way so callers don't need error-handling branches for the common
   // "model safety block" case.
