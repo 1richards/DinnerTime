@@ -4,14 +4,14 @@ milestone: v1.0.2
 milestone_name: — Performance & Caching
 current_plan: 1
 status: executing
-stopped_at: Completed 27-02-PLAN.md (Recipe Box windowing + memoize + badge removal + recipeId wiring)
-last_updated: "2026-06-09T04:31:08.995Z"
+stopped_at: Completed 27-04-PLAN.md (discovery batch 6→3 + observable Gemini retry + Discover module-scoped TTL cache)
+last_updated: "2026-06-09T04:35:09.949Z"
 last_activity: 2026-06-09
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 5
-  completed_plans: 2
+  completed_plans: 3
   percent: 97
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 27 (Performance & caching fixes) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Current Plan: 1
 Status: Ready to execute
 Last activity: 2026-06-09
@@ -178,6 +178,7 @@ Progress: [██████████] 97%
 | Phase 01-missing-ingredient-indicators-on-recipe-ingredient-lists P01 | 8min | 3 tasks | 9 files |
 | Phase 27 P01 | 2min | 2 tasks | 2 files |
 | Phase 27 P02 | 4min | 2 tasks | 3 files |
+| Phase 27 P04 | 6min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -588,6 +589,9 @@ Recent decisions affecting current work:
 - [Phase 27]: [27-01] Reused supabaseAdmin + c.get('user') with .eq('profile_id', user.id) ownership guard for image_url write-back; no migration (UPDATE RLS already exists)
 - [Phase 27]: [27-02] Kept cuisineLabel prop on RecipeCard (SuggestionList passes it) but stopped rendering it — Decision 7 mandates the badge stop showing, not removing the public API
 - [Phase 27]: [27-02] FlatList windowing tuple (initialNumToRender=6/maxToRenderPerBatch=6/windowSize=5/removeClippedSubviews) + useCallback renderItem + React.memo(RecipeCard) comparator bounds generate-image fan-out to the visible window
+- [Phase 27]: [27-04] Discover mount-fetch guard lives at module scope (let discoverCache + TTL) because component recipes useState resets on unmount — a recipes.length guard is a no-op
+- [Phase 27]: [27-04] Initial discovery batch floor reduced 6→3 (lazy-append remainder); explicit-count load-more path left authoritative
+- [Phase 27]: [27-04] Gemini MALFORMED_FUNCTION_CALL retry made observable via console.warn (model+tool only, no PII); telemetry stays at clientFactory layer
 
 ### Pending Todos
 
@@ -677,7 +681,7 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-06-09T04:31:00.300Z
-Stopped at: Completed 27-02-PLAN.md (Recipe Box windowing + memoize + badge removal + recipeId wiring)
+Last session: 2026-06-09T04:34:59.850Z
+Stopped at: Completed 27-04-PLAN.md (discovery batch 6→3 + observable Gemini retry + Discover module-scoped TTL cache)
 Resume file: None
 | 2026-04-28 | fast | More options pill padding | done |
