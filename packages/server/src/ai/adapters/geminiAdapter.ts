@@ -167,6 +167,12 @@ export class GeminiAdapter implements AIClient {
 
     if (res.candidates[0].finishReason === 'MALFORMED_FUNCTION_CALL') {
       if (attempt === 0) {
+        // Decision 5 / Fix 4: was fully silent. Surface the retry so the
+        // "sometimes 2x slow" tail is measurable. model + tool name only —
+        // no prompt/PII.
+        console.warn(
+          `[geminiAdapter] MALFORMED_FUNCTION_CALL retry (attempt 1) model=${this.model} tool=${opts.tool.name}`
+        );
         return this.callStructured<T>(opts, 1);
       }
       throw new MalformedFunctionCallError();
