@@ -4,14 +4,14 @@ milestone: v1.0.2
 milestone_name: — Performance & Caching
 current_plan: 1
 status: executing
-stopped_at: Completed 27-04-PLAN.md (discovery batch 6→3 + observable Gemini retry + Discover module-scoped TTL cache)
-last_updated: "2026-06-09T04:35:09.949Z"
+stopped_at: Completed 27-03-PLAN.md (discovery response cache + in-flight coalescing)
+last_updated: "2026-06-09T04:41:45.076Z"
 last_activity: 2026-06-09
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
   percent: 97
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 27 (Performance & caching fixes) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Current Plan: 1
 Status: Ready to execute
 Last activity: 2026-06-09
@@ -179,6 +179,7 @@ Progress: [██████████] 97%
 | Phase 27 P01 | 2min | 2 tasks | 2 files |
 | Phase 27 P02 | 4min | 2 tasks | 3 files |
 | Phase 27 P04 | 6min | 3 tasks | 3 files |
+| Phase 27 P03 | 4min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -592,6 +593,8 @@ Recent decisions affecting current work:
 - [Phase 27]: [27-04] Discover mount-fetch guard lives at module scope (let discoverCache + TTL) because component recipes useState resets on unmount — a recipes.length guard is a no-op
 - [Phase 27]: [27-04] Initial discovery batch floor reduced 6→3 (lazy-append remainder); explicit-count load-more path left authoritative
 - [Phase 27]: [27-04] Gemini MALFORMED_FUNCTION_CALL retry made observable via console.warn (model+tool only, no PII); telemetry stays at clientFactory layer
+- [Phase 27]: 27-03: Discovery cache key excludes excludeTitles so the initial load is cacheable; load-more passes cacheable:false to bypass the base cache
+- [Phase 27]: 27-03: Hand-rolled insertion-ordered Map LRU (12-min TTL, 200-entry cap) + Map<key,Promise> coalescing mirroring recipeImageGen.ts sha256 pattern — no new dependency
 
 ### Pending Todos
 
@@ -681,7 +684,7 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-06-09T04:34:59.850Z
-Stopped at: Completed 27-04-PLAN.md (discovery batch 6→3 + observable Gemini retry + Discover module-scoped TTL cache)
+Last session: 2026-06-09T04:41:38.379Z
+Stopped at: Completed 27-03-PLAN.md (discovery response cache + in-flight coalescing)
 Resume file: None
 | 2026-04-28 | fast | More options pill padding | done |
