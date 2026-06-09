@@ -123,6 +123,19 @@ export class GeminiAdapter implements AIClient {
     opts: StructuredCallOpts<T>,
     attempt = 0
   ): Promise<T> {
+    // Decision 6 / Fix 3 (Gemini): explicit context-cache NOT applied here
+    // (caches.create → cachedContent). The @google/genai client DOES expose
+    // ai.caches.create, but the static discovery prefix (systemInstruction +
+    // suggestRecipesTool declaration) does not reliably clear Gemini's
+    // context-cache minimum-token floor, and the named-cache TTL lifecycle
+    // (create/get/update/delete + per-(model,prefix-hash) memoization +
+    // expiry handling) adds operational surface for a marginal, unverified
+    // win on this hot "Something New" path. Anthropic prompt caching (Plan
+    // 27-05 Task 1) covers the Claude path; revisit Gemini cachedContent if
+    // live token counts show the prefix clears the floor.
+    // See perf-ai-suggestions-latency.md Fix 3 (caveat: verify against live
+    // token counts). Until then the systemInstruction + tools are re-sent
+    // inline each call below.
     const req = {
       model: this.model,
       contents: { parts: opts.parts },
