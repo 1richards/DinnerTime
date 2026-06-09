@@ -52,6 +52,13 @@ export type DiscoveredRecipe = ParsedRecipe & {
 /** Normalize a title for cross-checking against the user's library. */
 const normalizeTitle = (t: string): string => t.trim().toLowerCase();
 
+// Decision 5 / Fix 5 (RC3): reopening Discover within the TTL reuses the last
+// AI result instead of paying a fresh multi-second discover. Component
+// `recipes` state resets on unmount, so the cache must live at module scope to
+// survive remounts.
+const DISCOVER_CACHE_TTL_MS = 10 * 60 * 1000;
+let discoverCache: { at: number; results: DiscoveredRecipe[] } | null = null;
+
 export default function DiscoverScreen() {
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
   // Reactive set of normalized titles already in the library. Keeps the
@@ -102,6 +109,7 @@ export default function DiscoverScreen() {
         // Don't seed _saved here — it's derived reactively below from
         // useRecipeStore so re-fetches and concurrent saves stay in sync.
         setRecipes(list as DiscoveredRecipe[]);
+        discoverCache = { at: Date.now(), results: list as DiscoveredRecipe[] };
         setIsLoading(false);
       } catch (err) {
         setError(
@@ -114,6 +122,13 @@ export default function DiscoverScreen() {
   );
 
   useEffect(() => {
+    // Reuse a fresh cached result instead of re-firing on every mount.
+    // Explicit refresh/regenerate (which calls fetchDiscover directly) still
+    // forces a fresh call and refreshes the cache via the success path.
+    if (discoverCache && Date.now() - discoverCache.at < DISCOVER_CACHE_TTL_MS) {
+      setRecipes(discoverCache.results);
+      return;
+    }
     fetchDiscover();
   }, [fetchDiscover]);
 
