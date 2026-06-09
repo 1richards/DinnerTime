@@ -267,6 +267,9 @@ recipes.post('/search', async (c) => {
       pantryOnly: body.pantryOnly === true,
       pantryManifest,
       count,
+      // ME-03: fold the library into the key so saving a recipe (which feeds
+      // the AVOID list) invalidates the cache and can't re-surface stale.
+      libraryTitles: existingTitles,
     });
     const data = await getOrComputeDiscovery(
       cacheKey,
@@ -353,10 +356,13 @@ recipes.post('/discover', async (c) => {
     const existingTitles = library.map((r) => r.title);
 
     // The zero-input library discovery is the canonical cacheable load.
+    // ME-03: fold the library into the key so saving a recipe (which feeds the
+    // AVOID list) invalidates the cache and can't re-surface stale.
     const cacheKey = discoveryCacheKey({
       userId: user.id,
       prompt: body.prompt ?? '',
       pantryOnly: false,
+      libraryTitles: existingTitles,
     });
     const data = await getOrComputeDiscovery(cacheKey, () =>
       discoverRecipes({

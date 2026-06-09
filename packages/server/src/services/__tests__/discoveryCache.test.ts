@@ -86,6 +86,42 @@ describe('discoveryCache', () => {
     expect(pantryVariant).not.toBe(base);
   });
 
+  it('folds the library AVOID list into the key but stays order-insensitive (ME-03)', () => {
+    const noLib = discoveryCacheKey({
+      userId: 'u1',
+      prompt: 'soups',
+      pantryOnly: false,
+    });
+    const withLib = discoveryCacheKey({
+      userId: 'u1',
+      prompt: 'soups',
+      pantryOnly: false,
+      libraryTitles: ['Pesto Orzo', 'Chili'],
+    });
+    // A non-empty library changes the key — a saved recipe can't re-surface
+    // from a pre-save cache entry within the TTL.
+    expect(withLib).not.toBe(noLib);
+
+    // Saving another recipe (library grows) changes the key again.
+    const grownLib = discoveryCacheKey({
+      userId: 'u1',
+      prompt: 'soups',
+      pantryOnly: false,
+      libraryTitles: ['Pesto Orzo', 'Chili', 'Ramen'],
+    });
+    expect(grownLib).not.toBe(withLib);
+
+    // Reordering / re-casing the same library does NOT shift the key
+    // (order-insensitive, normalized digest).
+    const reordered = discoveryCacheKey({
+      userId: 'u1',
+      prompt: 'soups',
+      pantryOnly: false,
+      libraryTitles: ['  chili ', 'PESTO ORZO'],
+    });
+    expect(reordered).toBe(withLib);
+  });
+
   // Test 3 — cache hit: second call within TTL does not recompute.
   it('returns the cached value without recomputing within TTL', async () => {
     const key = discoveryCacheKey({ userId: 'u1', prompt: 'x', pantryOnly: false });

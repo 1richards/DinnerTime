@@ -23,6 +23,18 @@
  * canonical first load uncacheable. Load-more requests (count + non-empty
  * excludeTitles) are meant to be novel, so callers pass `cacheable: false` to
  * bypass the cache for those.
+ *
+ * Design note (ME-03) — the saved-recipe library IS folded into the key via
+ * `libraryTitles`. `discoverRecipes` feeds the library titles into the model's
+ * AVOID list, so the library is a genuine input to the response. Omitting it
+ * let a recipe the user just saved re-surface from a stale cache entry within
+ * the TTL (the model was told to avoid it, but the pre-save cached response
+ * was returned). Folding a stable, order-insensitive digest of the library
+ * into the key means a save (which grows the library) changes the key → a
+ * fresh discovery that honors the AVOID list. The pre-save entry ages out via
+ * TTL/LRU. This is distinct from `excludeTitles`: the library reflects durable
+ * saved state (changes rarely), whereas `excludeTitles` reflects transient
+ * on-screen titles (changes every re-trigger) and would defeat caching.
  */
 import { createHash } from 'node:crypto';
 import type { ParsedRecipe } from './recipeParser.js';
@@ -42,17 +54,35 @@ export interface DiscoveryCacheKeyInput {
   pantryManifest?: string[];
   /** Optional forced recipe count (load-more uses this). */
   count?: number;
+  /**
+   * Saved-recipe library titles feeding the model's AVOID list (ME-03).
+   * Normalized + sorted into an order-insensitive digest so a save (library
+   * growth) invalidates the cache and the AVOID contract is honored, while
+   * reordering the same library does not shift the key.
+   */
+  libraryTitles?: string[];
 }
 
 /**
- * Build a deterministic cache key. Order-insensitive on the pantry manifest,
- * case/whitespace-insensitive on the prompt, and EXCLUDES `excludeTitles` by
- * design (see module header) so the initial load is cacheable.
+ * Build a deterministic cache key. Order-insensitive on the pantry manifest
+ * AND the library titles, case/whitespace-insensitive on the prompt, and
+ * EXCLUDES `excludeTitles` by design (see module header) so the initial load
+ * is cacheable. The library digest is folded in so a saved recipe can't
+ * re-surface from a stale entry within the TTL (ME-03).
  */
 export function discoveryCacheKey(input: DiscoveryCacheKeyInput): string {
   const norm = (input.prompt ?? '').trim().toLowerCase();
   const manifest = [...(input.pantryManifest ?? [])].sort().join('|');
-  const composite = `${input.userId}::${norm}::${input.pantryOnly ? 1 : 0}::${manifest}::${input.count ?? 'def'}`;
+  // Order-insensitive, normalized digest of the library. Count + sorted-title
+  // hash keeps the composite bounded regardless of library size.
+  const libNorm = [...(input.libraryTitles ?? [])]
+    .map((t) => t.trim().toLowerCase())
+    .sort();
+  const libDigest =
+    libNorm.length === 0
+      ? '0'
+      : `${libNorm.length}:${createHash('sha256').update(libNorm.join('|')).digest('hex')}`;
+  const composite = `${input.userId}::${norm}::${input.pantryOnly ? 1 : 0}::${manifest}::${input.count ?? 'def'}::${libDigest}`;
   return createHash('sha256').update(composite).digest('hex');
 }
 
