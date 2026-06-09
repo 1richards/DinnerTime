@@ -19,7 +19,7 @@ App Store Connect requires screenshots for two iPhone size classes as of
 
 | Size class | Pixel dimensions | Simulator device | Bucket name in ASC |
 |---|---|---|---|
-| 6.9" (iPhone 17 Pro) | 1320 x 2868 | iPhone 17 Pro | "iPhone 6.9" Display" |
+| 6.9" (iPhone 17 Pro Max) | 1320 x 2868 | iPhone 17 Pro Max | "iPhone 6.9" Display" |
 | 6.5" (iPhone 11 Pro Max legacy) | 1242 x 2688 | iPhone 11 Pro Max | "iPhone 6.5" Display" |
 
 ## The five shots
@@ -33,7 +33,7 @@ text overlay to paste into App Store Connect's caption editor.
 | 1 | Kitchen -> Something New | Four suggestion cards rendered, top one visibly highlighted with "Snap your fridge" empty-state pantry indicator. Metro running against seed data. | "Open the fridge. Get dinner ideas." |
 | 2 | Pantry (post-scan) | Populated pantry with 8-12 ingredient rows, including one "running low" indicator. Scan camera button visible at the bottom. | "One photo. Everything you have, listed." |
 | 3 | Plan -> Month view | 5x7 month grid with status dots: a mix of cooked (success), planned (brand), and empty cells. Patterns panel below showing Protein + Cuisine + Repeats. | "See the whole month at a glance." |
-| 4 | Shopping -> Handoff sheet | HandoffSheet mid-transition in "N items ready" state with "Open in Instacart" primary button brand-tinted. | "Missing ingredients? One tap to Instacart." |
+| 4 | Shopping -> List | Populated shopping list grouped by category (Produce, Protein, Pantry...) with "Share Shopping List" CTA pinned to the bottom. Instacart handoff was parked for post-MVP — see `apps/mobile/src/lib/shoppingListExport.ts`. | "Your week's grocery list, ready to share." |
 | 5 | Recipe -> Cook mode | Cook mode active with current step highlighted, hands-free indicator visible, and a voice bubble ("How do I know the chicken is done?"). | "Hands-free guidance while you cook." |
 
 ## Capture recipe (per device)
@@ -41,7 +41,7 @@ text overlay to paste into App Store Connect's caption editor.
 ```bash
 # 1. Boot the simulator with the right device.
 xcrun simctl shutdown all
-xcrun simctl boot "iPhone 17 Pro"       # size class 6.9"
+xcrun simctl boot "iPhone 17 Pro Max"   # size class 6.9"
 # or:
 xcrun simctl boot "iPhone 11 Pro Max"   # size class 6.5"
 
@@ -58,11 +58,11 @@ xcrun simctl io booted screenshot .planning/app-store/screenshots/6_9_shot_1_kit
 
 ## Post-capture checklist
 
-- [ ] 5 shots captured at 6.9" (1320 x 2868)
-- [ ] 5 shots captured at 6.5" (1242 x 2688)
+- [x] 5 shots captured at 6.9" (1320 x 2868)
+- [x] 5 shots captured at 6.5" (1242 x 2688)
 - [ ] No time / battery / signal indicator artifacts (use Simulator -> Toggle In-Call Status Bar to normalize)
-- [ ] No seed-data email addresses visible in any shot (patrick+dev@dinnertime.app etc.)
-- [ ] No debug banners (set AuthStateBanner hidden or run against a release build)
+- [x] No seed-data email addresses visible in any shot (patrick+dev@dinnertime.app etc.)
+- [x] No debug banners (set `EXPO_PUBLIC_HIDE_DEV_UI=1` in `apps/mobile/.env` — the AuthStateBanner becomes a 60pt status-bar spacer; LogBox warnings are suppressed)
 - [ ] Captions match the table above character-for-character
 - [ ] Uploaded to App Store Connect for both buckets
 

@@ -1,7 +1,12 @@
 import '../global.css';
 
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, ActivityIndicator, Linking, LogBox } from 'react-native';
+
+// Suppress yellow LogBox warning badge during App Store screenshot capture.
+if (process.env.EXPO_PUBLIC_HIDE_DEV_UI === '1') {
+  LogBox.ignoreAllLogs(true);
+}
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -80,8 +85,12 @@ function AuthStateBanner() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const isOnboarded = useAuthStore((s) => s.isOnboarded);
   const isLoading = useAuthStore((s) => s.isLoading);
-  // Dev-only sentinel banner — uses bg-brand/15 + text-brand tokens via inline style
-  // (can't use className on StyleSheet-style View backgroundColor).
+  // Production builds and screenshot-capture mode render a 60pt status-bar
+  // spacer instead of the dev sentinel — tab content needs the inset so it
+  // doesn't paint under the iOS clock / Dynamic Island.
+  if (!__DEV__ || process.env.EXPO_PUBLIC_HIDE_DEV_UI === '1') {
+    return <View style={{ height: 60, backgroundColor: colors.bg }} />;
+  }
   return (
     <View style={{ padding: 16, paddingTop: 60, backgroundColor: colors.surfaceSubtle }}>
       <Text style={{ fontSize: 13, color: colors.textSecondary }}>

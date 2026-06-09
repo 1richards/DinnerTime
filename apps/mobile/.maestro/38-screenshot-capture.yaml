@@ -59,23 +59,17 @@ tags:
     timeout: 2000
 - takeScreenshot: shot-3-plan-month
 
-# --- Shot 4: Shopping / Handoff sheet ---
+# --- Shot 4: Shopping / list with Share CTA ---
+# Instacart handoff was parked for post-MVP (commit 904c129). The shopping
+# list now shows a "Share Shopping List" CTA pinned to the bottom that
+# opens the iOS share sheet. We screenshot the populated list state — NOT
+# the share sheet itself, because the system share sheet is a UIKit
+# overlay that doesn't cleanly capture in App Store screenshots.
 - tapOn:
     text: "Shopping"
 - waitForAnimationToEnd:
     timeout: 2000
-# Trigger handoff sheet. Phase 20-04 rewired "Order on Instacart" to open HandoffSheet.
-# If no items present, this is a no-op; the shot will show empty-state shopping instead.
-- runFlow:
-    when:
-      visible:
-        text: ".*Order on Instacart.*"
-    commands:
-      - tapOn:
-          text: ".*Order on Instacart.*"
-      - waitForAnimationToEnd:
-          timeout: 2000
-- takeScreenshot: shot-4-shopping-handoff
+- takeScreenshot: shot-4-shopping-list
 
 # --- Shot 5: Recipe / Cook mode ---
 # Navigate: Kitchen → Library segment → first recipe → Start Cooking

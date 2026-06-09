@@ -36,3 +36,17 @@ Thumbs.db
 
 # Testing
 coverage/
+
+# Agent harness scratch (codex / claude worktrees / locks)
+.agents/
+.codex/
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+
+# Stray EAS app.json stubs (real config lives in apps/mobile/app.json)
+/app.json
+/packages/server/app.json
+
+# Throwaway capture screenshots
+/sylvia-02-preview.png
+apps/mobile/quick-4-*.png
