@@ -295,3 +295,106 @@ describe('POST /recipes/search (Phase 17 Wave 0)', () => {
     expect(body.error).toContain('AI upstream exploded');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 29 (29-01) — light mode (opt-in), parallel fetches, sub-stage timing.
+// ---------------------------------------------------------------------------
+describe('POST /recipes/search (Phase 29 lightweight-first)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setPantryRows([]);
+    __resetDiscoveryCache();
+  });
+
+  it('threads light:true into discoverRecipes when body.light===true', async () => {
+    mockDiscoverRecipes.mockResolvedValue([
+      {
+        title: 'Light Preview',
+        description: 'A preview.',
+        ingredients: [{ name: 'eggs', quantity: null, unit: null, notes: null }],
+        steps: [],
+        source_type: 'ai',
+        source_url: null,
+        image_url: null,
+      },
+    ]);
+
+    const app = makeApp();
+    const res = await app.request('/recipes/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pantryOnly: true, query: '', light: true }),
+    });
+
+    expect(res.status).toBe(200);
+    const opts = mockDiscoverRecipes.mock.calls[0][0];
+    expect(opts.light).toBe(true);
+    const body = await res.json();
+    // Light responses carry empty steps.
+    expect(body.data[0].steps).toEqual([]);
+  });
+
+  it('backward-compat: WITHOUT light, discoverRecipes is called with a falsy light and the full path is used', async () => {
+    mockDiscoverRecipes.mockResolvedValue(sampleRecipes);
+
+    const app = makeApp();
+    const res = await app.request('/recipes/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: 'pasta', pantryOnly: false }),
+    });
+
+    expect(res.status).toBe(200);
+    const opts = mockDiscoverRecipes.mock.calls[0][0];
+    expect(opts.light).toBeFalsy();
+    const body = await res.json();
+    // Full recipes still carry ingredients + steps (old app contract).
+    expect(body.data[0].ingredients.length).toBeGreaterThan(0);
+    expect(body.data[0].steps.length).toBeGreaterThan(0);
+  });
+
+  it('surfaces a profile fetch error as a 500 even with parallelized fetches', async () => {
+    // Force the profiles query to error this test only.
+    const supabase: any = (
+      mockAuthMiddleware.mock.results[0]?.value
+    );
+    // Re-mock auth to inject a supabase whose profiles query errors.
+    mockAuthMiddleware.mockImplementation(async (c: any, next: any) => {
+      c.set('user', { id: 'user-1' });
+      c.set('supabase', {
+        from: vi.fn().mockImplementation((table: string) => {
+          if (table === 'household_members') {
+            return { select: () => ({ eq: () => ({ data: [], error: null }) }) };
+          }
+          if (table === 'profiles') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  single: () => ({ data: null, error: { message: 'profile boom' } }),
+                }),
+              }),
+            };
+          }
+          if (table === 'recipes') {
+            return { select: () => ({ eq: () => ({ data: [], error: null }) }) };
+          }
+          return {};
+        }),
+      });
+      await next();
+    });
+
+    mockDiscoverRecipes.mockResolvedValue(sampleRecipes);
+    const app = makeApp();
+    const res = await app.request('/recipes/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: 'pasta', pantryOnly: false }),
+    });
+
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toContain('profile');
+    void supabase;
+  });
+});

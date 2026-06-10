@@ -122,6 +122,34 @@ describe('discoveryCache', () => {
     expect(reordered).toBe(withLib);
   });
 
+  // Phase 29 (29-01) — `light` folded into the key so a light response and a
+  // full response for the same query can NEVER collide in the cache (the old
+  // app must never receive a light cached payload, and vice versa).
+  it('folds the light flag into the key (light vs full differ)', () => {
+    const full = discoveryCacheKey({
+      userId: 'u1',
+      prompt: 'pasta',
+      pantryOnly: true,
+    });
+    const lightTrue = discoveryCacheKey({
+      userId: 'u1',
+      prompt: 'pasta',
+      pantryOnly: true,
+      light: true,
+    });
+    const lightFalse = discoveryCacheKey({
+      userId: 'u1',
+      prompt: 'pasta',
+      pantryOnly: true,
+      light: false,
+    });
+    // light:true must differ from the default (no flag) and from light:false.
+    expect(lightTrue).not.toBe(full);
+    expect(lightTrue).not.toBe(lightFalse);
+    // default (omitted) === light:false — both represent the full contract.
+    expect(lightFalse).toBe(full);
+  });
+
   // Test 3 — cache hit: second call within TTL does not recompute.
   it('returns the cached value without recomputing within TTL', async () => {
     const key = discoveryCacheKey({ userId: 'u1', prompt: 'x', pantryOnly: false });
