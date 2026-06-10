@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { withBudget, RECIPE_LOAD_MS } from '../lib/perfBudgets';
 import type { ParsedRecipe, Recipe } from '../types/recipe';
 
 interface FetchRecipesOptions {
@@ -244,35 +245,39 @@ export const useRecipeStore = create<RecipeState>()(
   fetchRecipes: async (opts?: FetchRecipesOptions) => {
     set({ isLoading: true, error: null });
     try {
-      const token = await getAuthToken();
-      const params = new URLSearchParams();
-      if (opts?.q) params.append('q', opts.q);
-      if (opts?.favoritesOnly) params.append('favorites', 'true');
-      const qs = params.toString();
-      const url = `${getApiBaseUrl()}/api/v1/recipes${qs ? `?${qs}` : ''}`;
+      // Phase 28 (T3): time the WHOLE round-trip — incl. the getAuthToken
+      // pre-flight (a possible token-refresh cost) — against RECIPE_LOAD_MS.
+      await withBudget('recipe.fetch', RECIPE_LOAD_MS, async () => {
+        const token = await getAuthToken();
+        const params = new URLSearchParams();
+        if (opts?.q) params.append('q', opts.q);
+        if (opts?.favoritesOnly) params.append('favorites', 'true');
+        const qs = params.toString();
+        const url = `${getApiBaseUrl()}/api/v1/recipes${qs ? `?${qs}` : ''}`;
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        set({
-          error: err.error ?? 'Failed to fetch recipes',
-          isLoading: false,
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
         });
-        return;
-      }
 
-      const body = await response.json();
-      set({
-        recipes: body.data ?? [],
-        isLoading: false,
-        error: null,
+        if (!response.ok) {
+          const err = await response.json();
+          set({
+            error: err.error ?? 'Failed to fetch recipes',
+            isLoading: false,
+          });
+          return;
+        }
+
+        const body = await response.json();
+        set({
+          recipes: body.data ?? [],
+          isLoading: false,
+          error: null,
+        });
       });
     } catch (err) {
       set({

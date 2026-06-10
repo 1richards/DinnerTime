@@ -31,6 +31,7 @@ import {
   SCAN_COMPLETE_MS,
   RECEIPT_COMPLETE_MS,
   IMAGE_MAX_MB,
+  RECIPE_LOAD_MS,
   withBudget,
 } from '../perfBudgets.js';
 
@@ -42,6 +43,21 @@ describe('perfBudgets constants (NFR-18..21)', () => {
     expect(SCAN_COMPLETE_MS).toBe(6000);
     expect(RECEIPT_COMPLETE_MS).toBe(8000);
     expect(IMAGE_MAX_MB).toBe(5);
+  });
+
+  // Phase 28 (T3): cold Recipe Box list-fetch budget.
+  it('exports RECIPE_LOAD_MS as the 3.5s recipe-fetch ceiling', () => {
+    expect(typeof RECIPE_LOAD_MS).toBe('number');
+    expect(RECIPE_LOAD_MS).toBe(3500);
+  });
+});
+
+describe('withBudget recipe.fetch (Phase 28 T3)', () => {
+  it("returns the timed fn's resolved value unchanged", async () => {
+    const out = await withBudget('recipe.fetch', RECIPE_LOAD_MS, async () => ({
+      data: [1, 2, 3],
+    }));
+    expect(out).toEqual({ data: [1, 2, 3] });
   });
 });
 

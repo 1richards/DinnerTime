@@ -28,6 +28,15 @@ export const RECEIPT_COMPLETE_MS = 8000;
 export const IMAGE_MAX_MB = 5;
 
 /**
+ * Phase 28 (T3): cold Recipe Box list fetch round-trip budget
+ * (auth pre-flight + GET /recipes). 3.5s = the upper bound of the 3-5s
+ * target band. Wrap the full fetchRecipes round-trip in
+ * `withBudget('recipe.fetch', RECIPE_LOAD_MS, ...)` so the auth pre-flight
+ * (a possible token-refresh cost) is measured alongside the network call.
+ */
+export const RECIPE_LOAD_MS = 3500;
+
+/**
  * Time an async operation against a named budget. Returns the fn's resolved
  * value unchanged so callers can wrap a call site without restructuring:
  *
