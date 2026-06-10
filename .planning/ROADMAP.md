@@ -45,7 +45,7 @@ Waves:
 
 **UI hint:** no (instrumentation + data-layer; minor list pagination wiring, no new screens)
 
-**Requirements:** TBD (perf phase — scope from CONTEXT + Explore trace)
+**Requirements:** TBD (perf phase — scope from CONTEXT + Explore trace). Tracked as decision IDs T1, T2, T3 (telemetry) and O1, O2, O3 (optimizations) from 28-CONTEXT.md.
 
 **Success criteria:**
 - Server GET /recipes request log includes sub-stage timing: DB query ms, row count, payload bytes.
@@ -55,5 +55,15 @@ Waves:
 - Recipes never trigger image generation on the Recipe Box critical path: image_url is populated at save time (generate-on-save) and a backfill path exists for legacy null-image_url rows.
 - After deploy, a cold Recipe Box load measurably drops toward 3-5s (verified via the new telemetry), no test regressions.
 
-**Plans:** 0 plans
+**Plans:** 3 plans
 
+Plans:
+- [ ] 28-01-PLAN.md — Server T1+O1: GET /recipes sub-stage timing log + getRecipes lightweight column set + LIMIT (steps/step_image_urls trimmed, ingredients kept)
+- [ ] 28-02-PLAN.md — Server T2+O2+O3: /generate-image recordAiCall timing + generate-on-save fire-and-forget + manual idempotent /backfill-images route
+- [ ] 28-03-PLAN.md — Client T3+O1-guard: RECIPE_LOAD_MS withBudget on fetchRecipes + per-image logAiEvent + detail re-hydration of full steps on open
+
+Waves:
+- Wave 1 (parallel): 28-01 (server timing+trim), 28-03 (client telemetry+detail hydration — no file overlap with server)
+- Wave 2: 28-02 (server image telemetry + generate-on-save + backfill — after 28-01, shares recipes.ts)
+
+**Verification gate (human/deploy):** After all 3 plans land, deploy server to Fly + EAS build (Phase 27 fixes only reach devices in build #24+; measurements MUST be on a build that includes Phase 27 + 28). Then read the new ai_events / withBudget / `recipes.list` telemetry on a cold Recipe Box load to confirm the 3-5s target. The 3-5s confirmation is data-driven + human-gated — it cannot be asserted by the test suite alone.
