@@ -20,6 +20,7 @@ import {
   discoverRecipes,
   type DiscoveryPreferences,
 } from '../services/recipeDiscovery.js';
+import { hydrateRecipePreview } from '../services/recipeHydration.js';
 import {
   discoveryCacheKey,
   getOrComputeDiscovery,
@@ -469,6 +470,72 @@ recipes.post('/discover', async (c) => {
     return c.json({ data });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to discover recipes';
+    return c.json({ error: message }, 500);
+  }
+});
+
+/**
+ * POST /hydrate - Phase 29 (D3). Turn a LIGHTWEIGHT "Something New" preview into
+ * full content: { ingredients, steps, nutrition }. The client (29-03) calls this
+ * per-preview in the background (throttled 2-at-a-time) to fill cards after they
+ * render. Reuses the proven recipe.parseText engine via hydrateRecipePreview,
+ * which content-address caches so re-hydration is cheap/idempotent.
+ *
+ * Declared ABOVE GET /:id so '/hydrate' isn't captured as an :id param — same
+ * positioning rationale as /search and /discover.
+ *
+ * Auth still required: the guard (c.get('user')) must run even though the user
+ * id isn't needed for the stateless AI call.
+ */
+recipes.post('/hydrate', async (c) => {
+  // Run the auth guard (authMiddleware populates these; absence => unauthorized).
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  const title = typeof body.title === 'string' ? body.title : '';
+  if (title.trim().length === 0) {
+    return c.json({ error: 'title is required' }, 400);
+  }
+
+  try {
+    const full = await hydrateRecipePreview({
+      title,
+      description: typeof body.description === 'string' ? body.description : null,
+      difficulty: typeof body.difficulty === 'string' ? body.difficulty : null,
+      prep_time_minutes:
+        typeof body.prep_time_minutes === 'number' ? body.prep_time_minutes : null,
+      cook_time_minutes:
+        typeof body.cook_time_minutes === 'number' ? body.cook_time_minutes : null,
+      total_time_minutes:
+        typeof body.total_time_minutes === 'number' ? body.total_time_minutes : null,
+      cuisine: typeof body.cuisine === 'string' ? body.cuisine : null,
+      ingredient_names: Array.isArray(body.ingredient_names)
+        ? (body.ingredient_names as unknown[]).filter(
+            (n): n is string => typeof n === 'string',
+          )
+        : undefined,
+    });
+
+    return c.json({
+      data: {
+        ingredients: full.ingredients,
+        steps: full.steps,
+        calories_per_serving: full.calories_per_serving ?? null,
+        protein_grams_per_serving: full.protein_grams_per_serving ?? null,
+        servings: full.servings ?? null,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to hydrate recipe';
     return c.json({ error: message }, 500);
   }
 });
