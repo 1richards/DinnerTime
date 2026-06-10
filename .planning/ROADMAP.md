@@ -84,4 +84,20 @@ Waves:
 - Persistence handles un-hydrated previews: re-hydrate on store rehydrate (or exclude un-hydrated from persistence) — no relaunch with permanently-empty cards.
 - Telemetry: discovery call records sub-stage timing (Gemini ms vs DB ms) and client wraps searchRecipes in withBudget; hydration timing recorded. No regression.
 
-**Plans:** 0 plans
+**Plans:** 4 plans
+
+Plans:
+- [ ] 29-01-PLAN.md — Server fast path: opt-in `light` discovery schema/prompt (D1), parallelize the 4 pre-call DB fetches (D2), /search Gemini-vs-total timing (D8-server). Backward-compatible: light is request-flag-gated so the old app still gets full recipes.
+- [ ] 29-02-PLAN.md — Server hydrate: `POST /recipes/hydrate` reusing the recipe.parseText engine (like applyRemixVariation) + content-address cache (D3).
+- [ ] 29-03-PLAN.md — Client hydration: `useHydratedRecipeContent` hook mirroring useGeneratedRecipeImage (MAX_CONCURRENT=2), suggestionsStore light:true + background-hydrate-all + withBudget + rehydrate safety (D4, D7, D8-client).
+- [ ] 29-04-PLAN.md — UX/safety: gate Save/Cook/Favorite until hydrated (D5, critical), PreviewSheet steps+ingredients loaders (D6), + human-verify checkpoint (3-5s + no-400 + rehydrate).
+
+Waves:
+- Wave 1: 29-01 (server fast path — recipeDiscovery.ts + recipes.ts /search)
+- Wave 2: 29-02 (server hydrate — appends /hydrate to recipes.ts; after 29-01 to avoid same-file conflict)
+- Wave 3: 29-03 (client hook + store; needs the /search light contract + /hydrate endpoint)
+- Wave 4: 29-04 (UX gating + affordances; needs the hydration status signal from 29-03)
+
+**Backward-compat / deploy-ordering risk (LOCKED mitigation):** The server deploys to Fly BEFORE the EAS build ships. The currently-shipped app calls /search expecting full ingredients+steps. Light mode is therefore OPT-IN via `body.light === true` (29-01): the default (no flag) path stays byte-compatible and returns full recipes, so the old app keeps working after the server deploys. The NEW app (29-03) sends `light:true`. Cache key folds `light` so light and full responses never collide.
+
+**Verification gate (human/deploy):** After all 4 plans land, deploy server to Fly + EAS build #26. Confirm via Fly logs that `POST /recipes/search` (light) drops to ~3-5s (the `recipes.search` timing line), that hydration fills content without breaking save (D5 no-400), and that a relaunch re-hydrates persisted previews (D7). The 3-5s confirmation is data-driven + human-gated — handled by the 29-04 checkpoint.
