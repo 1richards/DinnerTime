@@ -270,11 +270,21 @@ function PreviewRecipeCard({
   // useSyncExternalStore identity check, causing an infinite render loop.
   const pantryItems = usePantryStore((s) => s.items);
   const pantryNames = pantryItems.map((i) => i.name);
-  // NOTE (D5): reads 0 until the preview hydrates — `recipe.ingredients` is
-  // empty for a fresh light preview and the store patches it in as hydration
-  // lands (Plan 29-03), so this badge self-corrects. reduce() over [] is 0.
-  const pantryMatchCount = recipe.ingredients.reduce(
-    (n, ing) => (isIngredientInPantry(ing.name, pantryNames) ? n + 1 : n),
+  // WR-04: a fresh light preview has EMPTY `recipe.ingredients` until
+  // background hydration lands, so reducing over it returns 0 — and on a
+  // pantryOnly surface the pantry match IS the value proposition, so showing
+  // no badge for several seconds is misleading. The light row already carries
+  // bare `ingredient_names`, so compute the badge from THOSE when the full
+  // ingredients aren't hydrated yet. Falls back to the structured ingredients
+  // once hydration patches them in (identical result, name-based either way).
+  const previewNames =
+    (recipe as { ingredient_names?: string[] | null }).ingredient_names ?? null;
+  const matchNames =
+    recipe.ingredients.length > 0
+      ? recipe.ingredients.map((ing) => ing.name)
+      : previewNames ?? [];
+  const pantryMatchCount = matchNames.reduce(
+    (n, name) => (isIngredientInPantry(name, pantryNames) ? n + 1 : n),
     0,
   );
 
