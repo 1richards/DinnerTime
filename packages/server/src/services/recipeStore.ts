@@ -35,19 +35,20 @@ export interface RecipeRow {
 }
 
 /**
- * Lightweight explicit column set for the recipe LIST query (O1).
+ * Explicit column set for the recipe LIST query (O1 telemetry path).
  *
- * Deliberately OMITS the two large JSONB columns the list UI never renders:
- *   - `steps`           (full recipe instructions — only the detail screen needs them)
- *   - `step_image_urls` (lazily-generated prep photos — detail-only)
- *
- * KEEPS `ingredients`: useGeneratedRecipeImage fingerprints on it for any
- * remaining cold-gen path, and the detail screen falls back to it before the
- * 28-03 client re-hydration fetch lands. Recipe DETAIL still loads the FULL
- * row via getRecipeById (which keeps its untyped `.select()`).
+ * NOTE (CR-01 revert): `steps` and `step_image_urls` were briefly excluded
+ * here as a payload optimization, but `recipe.steps` is read straight off the
+ * in-memory list array by MANY flows that never re-hydrate the full detail row
+ * — Cook Mode entered from the Recipe Box, cookingStore, cook.tsx, edit.tsx,
+ * Cook Later in kitchen.tsx, and RecipeCard. Dropping the columns crashed all
+ * of them. The dominant load cost is image generation (handled separately by
+ * O2/O3), not this payload, so the columns are restored here. The list query
+ * returns full rows again; the explicit select is kept only for the timing /
+ * telemetry instrumentation around it.
  */
 export const RECIPE_LIST_COLUMNS =
-  'id, profile_id, title, description, ingredients, prep_time_minutes, cook_time_minutes, total_time_minutes, servings, source_type, source_url, image_url, is_favorite, labels, calories_per_serving, protein_grams_per_serving, fat_grams_per_serving, difficulty, practiced_skills, skill_note, created_at, updated_at';
+  'id, profile_id, title, description, ingredients, steps, step_image_urls, prep_time_minutes, cook_time_minutes, total_time_minutes, servings, source_type, source_url, image_url, is_favorite, labels, calories_per_serving, protein_grams_per_serving, fat_grams_per_serving, difficulty, practiced_skills, skill_note, created_at, updated_at';
 
 /**
  * Hard cap on the list query (O1). Generous on purpose: bounds the worst-case
@@ -158,8 +159,9 @@ export async function getRecipes(
   profileId: string,
   opts: GetRecipesOptions = {}
 ): Promise<{ rows: RecipeRow[]; queryMs: number; rowCount: number }> {
-  // O1 — explicit lightweight column set (no steps / step_image_urls) so the
-  // list payload never ships the large detail-only JSONB.
+  // O1 — explicit column set (steps / step_image_urls restored per CR-01 so
+  // off-list consumers like Cook Mode never see undefined steps). The explicit
+  // select stays for the db_query_ms / payload_bytes telemetry around it.
   let query = supabase
     .from('recipes')
     .select(RECIPE_LIST_COLUMNS)

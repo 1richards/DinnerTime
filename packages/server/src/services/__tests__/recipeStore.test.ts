@@ -76,15 +76,16 @@ describe('getRecipes with options', () => {
     expect(typeof result.queryMs).toBe('number');
   });
 
-  it('selects a lightweight explicit column set excluding steps + step_image_urls but keeping ingredients', () => {
-    // O1 — the list query MUST drop the heavy JSONB columns and KEEP ingredients
-    // (image-gen fingerprint + detail fallback both depend on it).
+  it('selects an explicit column set that includes steps + step_image_urls (CR-01 revert)', () => {
+    // CR-01 — the trim that dropped these columns crashed every off-list
+    // consumer of recipe.steps (Cook Mode, edit, Cook Later). The list query
+    // returns full rows again; the explicit select is kept for telemetry only.
     expect(RECIPE_LIST_COLUMNS).toContain('id');
     expect(RECIPE_LIST_COLUMNS).toContain('title');
     expect(RECIPE_LIST_COLUMNS).toContain('image_url');
     expect(RECIPE_LIST_COLUMNS).toContain('ingredients');
-    expect(RECIPE_LIST_COLUMNS).not.toContain('steps');
-    expect(RECIPE_LIST_COLUMNS).not.toContain('step_image_urls');
+    expect(RECIPE_LIST_COLUMNS).toContain('steps');
+    expect(RECIPE_LIST_COLUMNS).toContain('step_image_urls');
   });
 
   it('applies a hard LIMIT to bound worst-case payload', async () => {
