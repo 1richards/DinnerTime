@@ -418,9 +418,17 @@ export function prefetchHydration(
   const key = cacheKeyFor(preview);
   const existing = cache.get(key);
   if (existing) {
-    // Resolved or already-attempted (failed) — no-op, return what we have.
+    // Resolved content or an in-flight fetch — reuse it (coalesce).
     if (existing.inflight) return existing.inflight;
-    return Promise.resolve(existing.content);
+    if (existing.content) return Promise.resolve(existing.content);
+    // WR-03: a previously-FAILED entry (`attempted && !content`) must NOT be
+    // treated as terminal here. prefetchHydration is the user-initiated path
+    // (the Save/Cook gate awaits it) AND the store's background batch; if a
+    // transient blip cached a null, returning it would soft-lock the card with
+    // a permanent "Still preparing" until app relaunch. Drop the poisoned
+    // entry and fall through to re-attempt — mirrors the image hook's
+    // next-session retry, but recovers in-session on a real user tap.
+    cache.delete(key);
   }
   const startedAt = Date.now();
   const inflight = fetchHydratedThrottled(preview);

@@ -201,4 +201,30 @@ describe('useHydratedRecipeContent module', () => {
       expect(Object.keys(parsed)).toHaveLength(0);
     }
   });
+
+  it('(e) WR-03: a previously-failed entry is RETRYABLE — a later prefetch re-fetches and can succeed', async () => {
+    // First attempt fails (transient blip) → status 'failed'.
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: () => Promise.resolve({}),
+    });
+    const first = await prefetchHydration(preview('Flaky'));
+    expect(first).toBeNull();
+    expect(hydrationStatusFor(preview('Flaky'))).toBe('failed');
+
+    // The save-gate's await-fallback re-invokes prefetchHydration for the SAME
+    // preview. Pre-WR-03 this returned the cached null forever (permanent
+    // "Still preparing" soft-lock). Now it must drop the poisoned entry and
+    // re-attempt — and recover when the blip clears.
+    mockFetch.mockResolvedValueOnce(
+      okHydrate([{ name: 'onion' }], ['Cook it']),
+    );
+    const second = await prefetchHydration(preview('Flaky'));
+
+    expect(second).not.toBeNull();
+    expect(second!.steps).toEqual(['Cook it']);
+    expect(hydrationStatusFor(preview('Flaky'))).toBe('resolved');
+    // Two real fetches — the failure did NOT poison the key.
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
 });
