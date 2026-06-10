@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0.2
 milestone_name: — Performance & Caching
 current_plan: 1
-status: executing
-stopped_at: Completed 29-03-PLAN.md
-last_updated: "2026-06-10T05:21:42.366Z"
+status: verifying
+stopped_at: Completed 29-04-PLAN.md
+last_updated: "2026-06-10T05:29:50.303Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
   percent: 97
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 Phase: 29 (Something New lightweight-first generation) — EXECUTING
 Plan: 4 of 4
 Current Plan: 1
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-10
 
 Progress: [██████████] 97%
@@ -187,6 +187,7 @@ Progress: [██████████] 97%
 | Phase 29 P01 | 7min | 2 tasks | 6 files |
 | Phase 29 P02 | 5min | 2 tasks | 5 files |
 | Phase 29 P03 | 6min | 2 tasks | 5 files |
+| Phase 29 P04 | 9min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -619,6 +620,7 @@ Recent decisions affecting current work:
 - [Phase 29]: Hydration cache: sha256(title|total_time|sorted ingredient_names), 30min TTL, inflight-coalesced (mirrors discoveryCache)
 - [Phase 29]: prefetchHydration returns the inflight promise (vs void image prefetch) so the store awaits+patches searchResults[i] per index
 - [Phase 29]: D7 self-heal: onRehydrateStorage re-triggers hydration (next tick) for persisted previews with empty ingredients/steps so no relaunch leaves a permanently-empty card
+- [Phase 29]: [29-04] D5 save-gate uses ingredients+steps non-empty as the authoritative 'safe to save' signal (matches POST /recipes), with await-prefetchHydration fallback; previewFrom unified into the hook module
 
 ### Pending Todos
 
@@ -708,7 +710,7 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-06-10T05:21:33.445Z
-Stopped at: Completed 29-03-PLAN.md
+Last session: 2026-06-10T05:29:42.958Z
+Stopped at: Completed 29-04-PLAN.md
 Resume file: None
 | 2026-04-28 | fast | More options pill padding | done |
