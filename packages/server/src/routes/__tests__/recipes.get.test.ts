@@ -40,8 +40,8 @@ function makeApp() {
 describe('GET /recipes with query params', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // getRecipes now returns the timing-bearing { rows, queryMs, rowCount } shape.
-    mockGetRecipes.mockResolvedValue({ rows: [], queryMs: 5, rowCount: 0 });
+    // getRecipes returns the timing-bearing { rows, queryMs, rowCount, truncated } shape.
+    mockGetRecipes.mockResolvedValue({ rows: [], queryMs: 5, rowCount: 0, truncated: false });
   });
 
   it('passes no options when no query params', async () => {
@@ -92,6 +92,7 @@ describe('GET /recipes with query params', () => {
       rows: [{ id: 'r1', title: 'Soup' }],
       queryMs: 7,
       rowCount: 1,
+      truncated: false,
     });
 
     const app = makeApp();
@@ -99,7 +100,7 @@ describe('GET /recipes with query params', () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ data: [{ id: 'r1', title: 'Soup' }] });
+    expect(body).toEqual({ data: [{ id: 'r1', title: 'Soup' }], truncated: false });
 
     const logged = logSpy.mock.calls.map((args) => String(args[0]));
     expect(logged.some((line) => line.includes('recipes.list'))).toBe(true);
@@ -110,5 +111,27 @@ describe('GET /recipes with query params', () => {
     expect(typeof parsed.payload_bytes).toBe('number');
 
     logSpy.mockRestore();
+  });
+
+  it('emits a recipes.list.truncated warning and returns truncated:true when capped (WR-02)', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockGetRecipes.mockResolvedValue({
+      rows: [{ id: 'r1', title: 'Soup' }],
+      queryMs: 9,
+      rowCount: 200,
+      truncated: true,
+    });
+
+    const app = makeApp();
+    const res = await app.request('/recipes');
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.truncated).toBe(true);
+
+    const warned = warnSpy.mock.calls.map((args) => String(args[0]));
+    expect(warned.some((line) => line.includes('recipes.list.truncated'))).toBe(true);
+
+    warnSpy.mockRestore();
   });
 });

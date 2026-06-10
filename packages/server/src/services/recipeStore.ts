@@ -158,7 +158,7 @@ export async function getRecipes(
   supabase: SupabaseClient,
   profileId: string,
   opts: GetRecipesOptions = {}
-): Promise<{ rows: RecipeRow[]; queryMs: number; rowCount: number }> {
+): Promise<{ rows: RecipeRow[]; queryMs: number; rowCount: number; truncated: boolean }> {
   // O1 — explicit column set (steps / step_image_urls restored per CR-01 so
   // off-list consumers like Cook Mode never see undefined steps). The explicit
   // select stays for the db_query_ms / payload_bytes telemetry around it.
@@ -188,7 +188,12 @@ export async function getRecipes(
   }
 
   const rows = (data ?? []) as unknown as RecipeRow[];
-  return { rows, queryMs, rowCount: rows.length };
+  // WR-02 — when the row count saturates the hard cap, the user almost
+  // certainly has more recipes than we returned. Those rows silently vanish
+  // from the list AND from client-side (in-memory) search. Surface this so the
+  // route can warn-log it and the client can fall back to server-side search.
+  const truncated = rows.length >= RECIPE_LIST_LIMIT;
+  return { rows, queryMs, rowCount: rows.length, truncated };
 }
 
 /**

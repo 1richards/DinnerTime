@@ -14,6 +14,7 @@ import {
   findRecipeByNormalizedTitle,
   updateRecipe,
   deleteRecipe,
+  RECIPE_LIST_LIMIT,
 } from '../services/recipeStore.js';
 import {
   discoverRecipes,
@@ -72,14 +73,16 @@ recipes.get('/', async (c) => {
   const favorites = c.req.query('favorites');
 
   try {
-    const { rows, queryMs, rowCount } = await getRecipes(supabase, user.id, {
+    const { rows, queryMs, rowCount, truncated } = await getRecipes(supabase, user.id, {
       q,
       favoritesOnly: favorites === 'true',
     });
 
     // Serialize once so we can both (a) report the exact wire payload size and
     // (b) return the already-serialized body without a second stringify pass.
-    const json = JSON.stringify({ data: rows });
+    // WR-02 — `truncated` lets the client show "showing 200 of N" and route
+    // search server-side when the cap is hit instead of silently losing rows.
+    const json = JSON.stringify({ data: rows, truncated });
     const payloadBytes = Buffer.byteLength(json, 'utf8');
 
     // T1 — sub-stage timing line. Mirrors requestLogging.ts's one-JSON-line
@@ -93,10 +96,24 @@ recipes.get('/', async (c) => {
         db_query_ms: queryMs,
         row_count: rowCount,
         payload_bytes: payloadBytes,
+        truncated,
       }),
     );
 
-    // Byte-identical to the old `c.json({ data })` contract.
+    // WR-02 — distinct, greppable warning so silent truncation is observable.
+    // A user at the cap is losing their oldest recipes from both the list and
+    // in-app search; an operator needs to be able to see that happening.
+    if (truncated) {
+      console.warn(
+        JSON.stringify({
+          stage: 'recipes.list.truncated',
+          request_id: c.get('request_id') ?? null,
+          profile_id: user.id,
+          limit: RECIPE_LIST_LIMIT,
+        }),
+      );
+    }
+
     return c.body(json, 200, { 'Content-Type': 'application/json' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to fetch recipes';
