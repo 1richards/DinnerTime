@@ -501,15 +501,36 @@ recipes.post('/hydrate', async (c) => {
     return c.json({ error: 'Invalid JSON body' }, 400);
   }
 
-  const title = typeof body.title === 'string' ? body.title : '';
+  // WR-02: unlike /search and /discover (whose prompt inputs are derived from
+  // server-side DB state), /hydrate takes its ENTIRE prompt payload straight
+  // from the authenticated client body and interpolates it verbatim into the
+  // AI prompt. With no bound, a client can send a multi-megabyte
+  // ingredient_names array or a very long description to inflate per-call
+  // Gemini token cost (each distinct payload misses the content-address cache)
+  // and widen the prompt-injection surface. Clamp every field before it
+  // reaches buildHydrationPrompt. We truncate rather than 400 so a slightly
+  // oversized (but legitimate) preview still hydrates -- mirrors the /search
+  // `count` clamp. No rate-limit middleware exists yet (only the error
+  // formatter in index.ts); these length bounds are the priority this phase.
+  const title = (typeof body.title === 'string' ? body.title : '').slice(0, 200);
   if (title.trim().length === 0) {
     return c.json({ error: 'title is required' }, 400);
   }
+  const description =
+    typeof body.description === 'string' ? body.description.slice(0, 500) : null;
+  const cuisine =
+    typeof body.cuisine === 'string' ? body.cuisine.slice(0, 50) : null;
+  const ingredient_names = Array.isArray(body.ingredient_names)
+    ? (body.ingredient_names as unknown[])
+        .filter((n): n is string => typeof n === 'string')
+        .slice(0, 30)
+        .map((n) => n.slice(0, 100))
+    : undefined;
 
   try {
     const full = await hydrateRecipePreview({
       title,
-      description: typeof body.description === 'string' ? body.description : null,
+      description,
       difficulty: typeof body.difficulty === 'string' ? body.difficulty : null,
       prep_time_minutes:
         typeof body.prep_time_minutes === 'number' ? body.prep_time_minutes : null,
@@ -517,12 +538,8 @@ recipes.post('/hydrate', async (c) => {
         typeof body.cook_time_minutes === 'number' ? body.cook_time_minutes : null,
       total_time_minutes:
         typeof body.total_time_minutes === 'number' ? body.total_time_minutes : null,
-      cuisine: typeof body.cuisine === 'string' ? body.cuisine : null,
-      ingredient_names: Array.isArray(body.ingredient_names)
-        ? (body.ingredient_names as unknown[]).filter(
-            (n): n is string => typeof n === 'string',
-          )
-        : undefined,
+      cuisine,
+      ingredient_names,
     });
 
     return c.json({

@@ -153,6 +153,34 @@ describe('POST /recipes/hydrate (Phase 29 Plan 02)', () => {
     expect(res.status).toBe(400);
   });
 
+  it('WR-02: clamps oversized client input before it reaches the AI prompt', async () => {
+    mockHydrateRecipePreview.mockResolvedValue(fullRecipe);
+
+    const app = makeApp();
+    const res = await app.request('/recipes/hydrate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: 'T'.repeat(1000), // > 200
+        description: 'D'.repeat(5000), // > 500
+        cuisine: 'C'.repeat(500), // > 50
+        // 100 names, each 500 chars -> clamp to 30 names, each <= 100 chars
+        ingredient_names: Array.from({ length: 100 }, () => 'n'.repeat(500)),
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockHydrateRecipePreview).toHaveBeenCalledOnce();
+    const arg = mockHydrateRecipePreview.mock.calls[0][0];
+    expect(arg.title.length).toBe(200);
+    expect(arg.description.length).toBe(500);
+    expect(arg.cuisine.length).toBe(50);
+    expect(arg.ingredient_names.length).toBe(30);
+    for (const n of arg.ingredient_names) {
+      expect(n.length).toBeLessThanOrEqual(100);
+    }
+  });
+
   it('service failure -> 500 with error', async () => {
     mockHydrateRecipePreview.mockRejectedValue(new Error('gemini boom'));
 
