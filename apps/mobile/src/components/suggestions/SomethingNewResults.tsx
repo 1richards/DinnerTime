@@ -431,8 +431,18 @@ function PreviewRecipeCard({
         Alert.alert('Save failed', state.error);
         return;
       }
-      const created = state.recipes.find((r) => !beforeIds.has(r.id));
-      const cookId = created?.id ?? state.recipes[0]?.id;
+      // WR-05: resolve the just-saved recipe by id-diff, then fall back to a
+      // TITLE match — NOT array position. The diff is empty on the dedup
+      // branch (POST /recipes returns the existing row with duplicate:true and
+      // adds no new id), and state.recipes[0] is whatever sits at index 0 of
+      // the library (most-recently-sorted), which can be an UNRELATED recipe.
+      // Mirrors handleSaveAndFavorite's correct title-match fallback.
+      const created =
+        state.recipes.find((r) => !beforeIds.has(r.id)) ??
+        state.recipes.find(
+          (r) => normalize(r.title) === normalize(recipe.title),
+        );
+      const cookId = created?.id;
       if (cookId) router.push(`/recipes/${cookId}/cook`);
     } finally {
       setWorking(null);

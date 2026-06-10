@@ -659,8 +659,17 @@ export default function KitchenScreen() {
       await saveRecipe({ ...safe, source_type: 'ai' });
       const state = useRecipeStore.getState();
       if (state.error) return;
-      const created = state.recipes.find((r) => !beforeIds.has(r.id));
-      const cookId = created?.id ?? state.recipes[0]?.id;
+      // WR-05: resolve by id-diff, then fall back to a TITLE match against the
+      // recipe just saved — NOT array position. The diff is empty on the dedup
+      // branch (POST /recipes returns the existing row, adds no new id), and
+      // state.recipes[0] is index 0 of the library, which can be an UNRELATED
+      // recipe -> Cook Now would launch the wrong recipe's cook screen.
+      const created =
+        state.recipes.find((r) => !beforeIds.has(r.id)) ??
+        state.recipes.find(
+          (r) => normalize(r.title) === normalize(previewRecipe.title),
+        );
+      const cookId = created?.id;
       setPreviewRecipe(null);
       if (cookId) router.push(`/recipes/${cookId}/cook`);
     } finally {
