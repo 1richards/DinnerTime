@@ -112,10 +112,14 @@ describe('POST /recipes/discover', () => {
     // Routes now share a module-scoped discovery cache; reset between tests so
     // an identical-key cached result doesn't suppress the discoverRecipes call.
     __resetDiscoveryCache();
-    mockGetRecipes.mockResolvedValue([
-      { id: 'r1', title: 'Grandma Spaghetti' },
-      { id: 'r2', title: 'Chicken Tikka' },
-    ]);
+    mockGetRecipes.mockResolvedValue({
+      rows: [
+        { id: 'r1', title: 'Grandma Spaghetti' },
+        { id: 'r2', title: 'Chicken Tikka' },
+      ],
+      queryMs: 0,
+      rowCount: 2,
+    });
   });
 
   it('returns { data: ParsedRecipe[] } on success', async () => {

@@ -67,11 +67,32 @@ recipes.get('/', async (c) => {
   const favorites = c.req.query('favorites');
 
   try {
-    const data = await getRecipes(supabase, user.id, {
+    const { rows, queryMs, rowCount } = await getRecipes(supabase, user.id, {
       q,
       favoritesOnly: favorites === 'true',
     });
-    return c.json({ data });
+
+    // Serialize once so we can both (a) report the exact wire payload size and
+    // (b) return the already-serialized body without a second stringify pass.
+    const json = JSON.stringify({ data: rows });
+    const payloadBytes = Buffer.byteLength(json, 'utf8');
+
+    // T1 — sub-stage timing line. Mirrors requestLogging.ts's one-JSON-line
+    // convention and carries request_id for correlation with the total
+    // latency_ms line the middleware already emits.
+    console.log(
+      JSON.stringify({
+        stage: 'recipes.list',
+        request_id: c.get('request_id') ?? null,
+        profile_id: user.id,
+        db_query_ms: queryMs,
+        row_count: rowCount,
+        payload_bytes: payloadBytes,
+      }),
+    );
+
+    // Byte-identical to the old `c.json({ data })` contract.
+    return c.body(json, 200, { 'Content-Type': 'application/json' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to fetch recipes';
     return c.json({ error: message }, 500);

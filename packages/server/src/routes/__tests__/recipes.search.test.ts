@@ -119,7 +119,7 @@ vi.mock('../../middleware/auth.js', () => ({
 vi.mock('../../services/recipeStore.js', () => ({
   updateRecipe: vi.fn(),
   deleteRecipe: vi.fn(),
-  getRecipes: vi.fn(async () => []),
+  getRecipes: vi.fn(async () => ({ rows: [], queryMs: 0, rowCount: 0 })),
   getRecipeById: vi.fn(),
   saveRecipe: vi.fn(),
   findRecipeBySourceUrl: vi.fn(),
