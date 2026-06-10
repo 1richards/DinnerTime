@@ -67,3 +67,21 @@ Waves:
 - Wave 2: 28-02 (server image telemetry + generate-on-save + backfill — after 28-01, shares recipes.ts)
 
 **Verification gate (human/deploy):** After all 3 plans land, deploy server to Fly + EAS build (Phase 27 fixes only reach devices in build #24+; measurements MUST be on a build that includes Phase 27 + 28). Then read the new ai_events / withBudget / `recipes.list` telemetry on a cold Recipe Box load to confirm the 3-5s target. The 3-5s confirmation is data-driven + human-gated — it cannot be asserted by the test suite alone.
+
+### Phase 29: "Something New" lightweight-first generation (29s → 3-5s)
+
+**Goal:** Cut the "Something New" generation wait (the *"…finding great meals from your pantry"* skeleton) from ~29s to 3-5s. PROVEN by live telemetry: `POST /recipes/search` takes 28,942ms — a single Gemini call generating 3 COMPLETE recipes (heavy `ingredients[]` + `steps[]`) before any card shows. Fix: `/search` returns LIGHTWEIGHT previews fast (title, description, times, calories, difficulty, skill — drop heavy ingredients/steps from the required generation), then hydrate full ingredients+steps in the BACKGROUND (mirroring the existing image-fill pattern), so cards appear in 3-5s. Parallelize the 4 serial pre-call DB fetches.
+
+**UI hint:** yes (Something New cards + PreviewSheet loading affordances + Save/Cook gating)
+
+**Requirements:** TBD (perf phase — scope from 29-CONTEXT.md, grounded in a full read-only flow map)
+
+**Success criteria:**
+- `POST /recipes/search` returns lightweight previews (no required heavy ingredients/steps) in ~3-5s; the 4 serial pre-call DB fetches (members/profile/pantry/library) are parallelized.
+- Full ingredients+steps hydrate in the background after previews render, throttled (reuse the MAX_CONCURRENT=2 limiter pattern), patched into searchResults as each lands — via a server hydrate path reusing the recipe.parseText engine (like applyRemixVariation).
+- Save / Cook Now / Save+Favorite are GATED until a recipe is hydrated (POST /recipes 400s without ingredients+steps — the hard dependency).
+- PreviewSheet shows a loading affordance for un-hydrated steps (wire existing `stepsLoading` prop) AND ingredients (new affordance); no empty-state flash.
+- Persistence handles un-hydrated previews: re-hydrate on store rehydrate (or exclude un-hydrated from persistence) — no relaunch with permanently-empty cards.
+- Telemetry: discovery call records sub-stage timing (Gemini ms vs DB ms) and client wraps searchRecipes in withBudget; hydration timing recorded. No regression.
+
+**Plans:** 0 plans
