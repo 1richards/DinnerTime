@@ -247,7 +247,7 @@ export function mapJsonLdToRecipe(
 
 // ---------- AIClient Helpers ----------
 
-async function callAIParseRecipeText(
+export async function callAIParseRecipeText(
   task: 'recipe.parseUrl' | 'recipe.parseText',
   userPrompt: string
 ): Promise<Record<string, unknown>> {
@@ -276,7 +276,7 @@ async function callAIParseRecipePhoto(
 /**
  * Convert tool output to ParsedRecipe with proper defaults.
  */
-function toolOutputToRecipe(
+export function toolOutputToRecipe(
   input: Record<string, unknown>,
   sourceType: 'url' | 'photo' | 'manual' | 'ai',
   sourceUrl: string | null = null
