@@ -134,6 +134,9 @@ describe('useHydratedRecipeContent module', () => {
     const p1 = prefetchHydration(preview('Stew'));
     const p2 = prefetchHydration(preview('Stew'));
 
+    // fetchHydrated awaits getAuthToken() (a microtask) before calling fetch,
+    // so let those microtasks settle before resolving the captured fetch.
+    await new Promise((r) => setTimeout(r, 0));
     resolveFetch(okHydrate([{ name: 'beef' }], ['Sear']));
     await Promise.all([p1, p2]);
 
@@ -165,17 +168,18 @@ describe('useHydratedRecipeContent module', () => {
       prefetchHydration(preview('D', ['d'])),
     ];
 
-    // Let the limiter admit the first batch.
-    await Promise.resolve();
-    await Promise.resolve();
+    // Let the limiter admit the first batch. Each admitted fetch awaits
+    // getAuthToken() (a real microtask) before active++ runs, so give the
+    // event loop a macrotask tick to settle.
+    await new Promise((r) => setTimeout(r, 0));
 
     expect(active).toBe(MAX_CONCURRENT);
 
-    // Drain.
+    // Drain — releasing one slot admits the next waiter (which again awaits
+    // getAuthToken before incrementing active).
     while (releasers.length) {
       releasers.shift()!();
-      await Promise.resolve();
-      await Promise.resolve();
+      await new Promise((r) => setTimeout(r, 0));
     }
     await Promise.all(promises);
 
