@@ -30,7 +30,8 @@ import { useToast } from '../../../components/ui/Toast';
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { recipes, fetchRecipes, deleteRecipe } = useRecipeStore();
+  const { recipes, fetchRecipes, deleteRecipe, hydrateRecipeDetail } =
+    useRecipeStore();
   const recipe = recipes.find((r) => r.id === id);
 
   const [servings, setServings] = useState<number>(recipe?.servings ?? 1);
@@ -44,6 +45,18 @@ export default function RecipeDetailScreen() {
       fetchRecipes();
     }
   }, [recipe, fetchRecipes]);
+
+  // Phase 28 (O1 client guard): the list payload is trimmed (28-01 drops
+  // steps/step_image_urls), so re-hydrate full detail on open. MUST be its
+  // OWN effect keyed ONLY on [id, hydrateRecipeDetail] — adding it to the
+  // [recipe, ...] effect infinite-loops, because mergeRecipeLocal replaces
+  // state.recipes via .map() and `recipe = recipes.find(...)` then returns a
+  // new object reference, re-firing the effect forever. id is stable for the
+  // screen's lifetime and hydrateRecipeDetail is a stable Zustand action, so
+  // this fires exactly once per open.
+  useEffect(() => {
+    if (id) void hydrateRecipeDetail(id);
+  }, [id, hydrateRecipeDetail]);
 
   useEffect(() => {
     if (recipe?.servings != null) {
@@ -329,7 +342,11 @@ export default function RecipeDetailScreen() {
         {/* Steps card */}
         <View style={styles.card}>
           <Text style={styles.sectionHeading}>Steps</Text>
-          {recipe.steps.map((step, idx) => (
+          {/* Null-guard: 28-01 trims `steps` from the LIST select, so
+              PostgREST returns it as undefined (NOT []) until hydrateRecipeDetail
+              lands. The TS type declares steps:string[] so the compiler won't
+              catch this — the ?? [] is mandatory. */}
+          {(recipe.steps ?? []).map((step, idx) => (
             <View key={idx} style={styles.stepRow}>
               <View style={styles.stepNumber}>
                 <Text style={styles.stepNumberText}>{idx + 1}</Text>
@@ -407,7 +424,7 @@ export default function RecipeDetailScreen() {
           title: recipe.title,
           description: recipe.description,
           ingredients: recipe.ingredients,
-          steps: recipe.steps,
+          steps: recipe.steps ?? [],
           total_time_minutes: recipe.total_time_minutes,
         }}
         onClose={() => setRemixOpen(false)}

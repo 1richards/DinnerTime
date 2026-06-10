@@ -31,6 +31,11 @@ interface RecipeState {
       when the server has already persisted the change — e.g. the background
       step-image generation endpoint returns URLs it already saved. */
   mergeRecipeLocal: (id: string, patch: Partial<Recipe>) => void;
+  /** Phase 28 (O1 client guard): re-fetch the FULL recipe (steps/ingredients)
+      via GET /recipes/:id and merge it locally. The list payload is trimmed
+      (28-01 drops steps/step_image_urls), so the detail screen calls this on
+      open to re-hydrate. Best-effort: silent no-op offline / on error. */
+  hydrateRecipeDetail: (id: string) => Promise<void>;
   deleteRecipe: (id: string) => Promise<void>;
   toggleFavorite: (id: string) => Promise<void>;
   setSearchQuery: (q: string) => void;
@@ -334,6 +339,27 @@ export const useRecipeStore = create<RecipeState>()(
     set((state) => ({
       recipes: state.recipes.map((r) => (r.id === id ? { ...r, ...patch } : r)),
     }));
+  },
+
+  hydrateRecipeDetail: async (id: string) => {
+    try {
+      const token = await getAuthToken();
+      const res = await fetch(`${getApiBaseUrl()}/api/v1/recipes/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) return; // best-effort; trimmed list data still shows
+      const body = await res.json();
+      const full = body?.data as Recipe | undefined;
+      // GET /recipes/:id uses getRecipeById (full select) — unaffected by the
+      // 28-01 list trim, so this merges back the full steps/ingredients.
+      if (full?.id) get().mergeRecipeLocal(full.id, full);
+    } catch {
+      // best-effort, no error state (offline / transient)
+    }
   },
 
   deleteRecipe: async (id: string) => {
