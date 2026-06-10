@@ -21,7 +21,28 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
+import { logAiEvent, sanitizePayload } from '../ai/telemetry';
 import type { ParsedIngredient } from '../types/recipe';
+
+/**
+ * Phase 28 (T3): emit per-image time-to-visible (hook-mount → resolved) so
+ * we get real client-side p50/p95 for recipe-image rendering, split by
+ * cache-hit vs cold-gen. `ms` + `success` are the only payload keys (both
+ * whitelisted); NO titles/ingredients (PII guard).
+ */
+function emitImageEvent(
+  kind: 'cache_hit' | 'cold_gen',
+  startedAt: number,
+  success: boolean,
+): void {
+  logAiEvent({
+    name: 'recipe.image.visible',
+    session_id: 'recipe-box', // coarse session bucket; no PII
+    task_name: `recipe.image.${kind}`,
+    model: 'gemini-2.5-flash-image',
+    payload: sanitizePayload({ ms: Date.now() - startedAt, success }),
+  });
+}
 
 function getApiBaseUrl(): string {
   return process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -261,6 +282,8 @@ export function useGeneratedRecipeImage(
     }
 
     let cancelled = false;
+    // Phase 28 (T3): mount→visible clock for per-image time-to-visible.
+    const mountedAt = Date.now();
 
     const evaluate = () => {
       if (cancelled) return;
@@ -268,6 +291,7 @@ export function useGeneratedRecipeImage(
       const hit = cache.get(key);
 
       if (hit?.url) {
+        emitImageEvent('cache_hit', mountedAt, true);
         setResult({ url: hit.url, status: 'resolved' });
         return;
       }
@@ -278,6 +302,7 @@ export function useGeneratedRecipeImage(
       if (hit?.inflight) {
         setResult({ url: null, status: 'loading' });
         hit.inflight.then((u) => {
+          emitImageEvent('cold_gen', mountedAt, u != null);
           if (cancelled) return;
           if (u) setResult({ url: u, status: 'resolved' });
           else setResult({ url: null, status: 'failed' });
@@ -297,6 +322,9 @@ export function useGeneratedRecipeImage(
       inflight.then((u) => {
         cache.set(key, { url: u, inflight: null, attempted: true });
         if (u !== null) persistToStorage();
+        // mount→resolve ms encompasses queue wait + Gemini gen — single event
+        // per resolution, no double-count.
+        emitImageEvent('cold_gen', mountedAt, u != null);
         if (cancelled) return;
         if (u) setResult({ url: u, status: 'resolved' });
         else setResult({ url: null, status: 'failed' });
