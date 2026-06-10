@@ -23,9 +23,14 @@ import {
   discoveryCacheKey,
   getOrComputeDiscovery,
 } from '../services/discoveryCache.js';
-import { generateRecipeImage } from '../services/recipeImageGen.js';
+import {
+  generateRecipeImage,
+  generateRecipeImageWithMeta,
+  RECIPE_IMAGE_MODEL,
+} from '../services/recipeImageGen.js';
 import { SEED_RECIPES, templateKey } from '../data/seedRecipes.js';
 import { supabaseAdmin } from '../config/supabase.js';
+import { recordAiCall } from '../ai/aiTelemetry.js';
 import {
   hasCjkContamination,
   sanitizeRecipeTextFields,
@@ -624,17 +629,30 @@ recipes.post('/generate-image', async (c) => {
   // documented `{ url: null }` fallback (mobile keeps its placeholder) instead
   // of a generic 500 that the hook treats as a hard failure.
   let url: string | null = null;
+  let cacheHit = false;
+  let genMs = 0;
   try {
-    url = await generateRecipeImage({
+    ({ url, cacheHit, genMs } = await generateRecipeImageWithMeta({
       title: body.title,
       description:
         typeof body.description === 'string' ? body.description : null,
       ingredients: cleanedIngredients,
-    });
+    }));
   } catch (e) {
     console.warn('[generate-image] generation failed', e);
     url = null;
   }
+  // T2 (Phase 28): record cache-hit vs cold-gen + Gemini ms to ai_events so the
+  // deploy-measure step can quantify the per-image cost. Fire-and-forget —
+  // recordAiCall swallows its own errors and never blocks the response.
+  void recordAiCall({
+    userId: c.get('user')?.id,
+    sessionId: c.get('request_id'),
+    task: cacheHit ? 'recipe.generateImage.hit' : 'recipe.generateImage.miss',
+    model: RECIPE_IMAGE_MODEL,
+    latencyMs: genMs,
+    success: url !== null,
+  });
   // Decision 1 (Image P0): persist the resolved hero URL so a saved recipe
   // never re-requests generation on a later cold start / new device /
   // AsyncStorage clear. supabaseAdmin bypasses RLS, so the

@@ -27,6 +27,10 @@ const BUCKET = 'recipe-images';
 // was retired when the model graduated; calls to it now 404.
 const MODEL = 'gemini-2.5-flash-image';
 
+// Exported so route-level telemetry (recordAiCall) can label which model
+// produced the image without re-deriving the constant.
+export const RECIPE_IMAGE_MODEL = MODEL;
+
 export interface IngredientHint {
   name: string;
   quantity?: number | null;
@@ -332,6 +336,30 @@ async function uploadAndPublicUrl(
 export async function generateRecipeImage(
   input: string | GenerateRecipeImageInput,
 ): Promise<string | null> {
+  return (await generateRecipeImageWithMeta(input)).url;
+}
+
+/**
+ * Result of {@link generateRecipeImageWithMeta}. Exposes whether the URL came
+ * from the content-addressed Storage cache (`cacheHit`) and the wall-clock ms
+ * spent resolving it (`genMs`) so callers can record cost/latency telemetry
+ * (T2 — Phase 28). A cache hit's `genMs` is just the Storage existence probe;
+ * a miss's `genMs` includes the Gemini round-trip + upload.
+ */
+export interface RecipeImageResult {
+  url: string | null;
+  cacheHit: boolean;
+  genMs: number;
+}
+
+/**
+ * Same generation/caching behavior as {@link generateRecipeImage} but returns
+ * cache-hit + latency metadata for telemetry. The plain string variant above
+ * delegates here so every caller shares one code path.
+ */
+export async function generateRecipeImageWithMeta(
+  input: string | GenerateRecipeImageInput,
+): Promise<RecipeImageResult> {
   const normalized: GenerateRecipeImageInput =
     typeof input === 'string' ? { title: input } : input;
   if (
@@ -339,17 +367,23 @@ export async function generateRecipeImage(
     typeof normalized.title !== 'string' ||
     normalized.title.trim().length === 0
   ) {
-    return null;
+    return { url: null, cacheHit: false, genMs: 0 };
   }
 
   await ensureBucket();
   const key = cacheKey(normalized);
 
+  const t0 = Date.now();
   const cached = await cachedUrlIfExists(key);
-  if (cached) return cached;
+  if (cached) {
+    return { url: cached, cacheHit: true, genMs: Date.now() - t0 };
+  }
 
   const bytes = await generateBytes(normalized);
-  if (!bytes) return null;
+  if (!bytes) {
+    return { url: null, cacheHit: false, genMs: Date.now() - t0 };
+  }
 
-  return uploadAndPublicUrl(key, bytes);
+  const url = await uploadAndPublicUrl(key, bytes);
+  return { url, cacheHit: false, genMs: Date.now() - t0 };
 }

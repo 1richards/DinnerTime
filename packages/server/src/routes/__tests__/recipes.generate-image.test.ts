@@ -20,7 +20,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const {
-  mockGenerateRecipeImage,
+  mockGenerateRecipeImageWithMeta,
+  mockRecordAiCall,
   mockAuthMiddleware,
   fromMock,
   updateMock,
@@ -43,7 +44,8 @@ const {
   };
 
   return {
-    mockGenerateRecipeImage: vi.fn(),
+    mockGenerateRecipeImageWithMeta: vi.fn(),
+    mockRecordAiCall: vi.fn(async () => {}),
     mockAuthMiddleware: vi.fn(async (c: any, next: any) => {
       c.set('user', { id: 'user-1' });
       c.set('supabase', {});
@@ -67,7 +69,13 @@ vi.mock('../../config/supabase.js', () => ({
 }));
 
 vi.mock('../../services/recipeImageGen.js', () => ({
-  generateRecipeImage: mockGenerateRecipeImage,
+  generateRecipeImage: vi.fn(),
+  generateRecipeImageWithMeta: mockGenerateRecipeImageWithMeta,
+  RECIPE_IMAGE_MODEL: 'gemini-2.5-flash-image',
+}));
+
+vi.mock('../../ai/aiTelemetry.js', () => ({
+  recordAiCall: mockRecordAiCall,
 }));
 
 // Unused-by-these-tests service deps still imported by the route module.
@@ -116,7 +124,12 @@ describe('POST /recipes/generate-image (Phase 27 — Image P0 write-back)', () =
   beforeEach(() => {
     vi.clearAllMocks();
     resetSupabaseSpies();
-    mockGenerateRecipeImage.mockResolvedValue(RESOLVED_URL);
+    mockGenerateRecipeImageWithMeta.mockResolvedValue({
+      url: RESOLVED_URL,
+      cacheHit: false,
+      genMs: 1234,
+    });
+    mockRecordAiCall.mockResolvedValue(undefined);
   });
 
   it('with recipeId + resolved url: UPDATEs recipes.image_url scoped to the authed user', async () => {
@@ -136,6 +149,34 @@ describe('POST /recipes/generate-image (Phase 27 — Image P0 write-back)', () =
     expect(eqProfileMock).toHaveBeenCalledWith('profile_id', 'user-1');
   });
 
+  it('T2: records cache-miss telemetry to ai_events with latency + model', async () => {
+    await postGenerateImage({ title: 'Pesto Orzo', recipeId: 'recipe-123' });
+
+    expect(mockRecordAiCall).toHaveBeenCalledTimes(1);
+    const arg = mockRecordAiCall.mock.calls[0][0];
+    expect(arg.task).toContain('recipe.generateImage');
+    expect(arg.task).toBe('recipe.generateImage.miss');
+    expect(arg.model).toBe('gemini-2.5-flash-image');
+    expect(typeof arg.latencyMs).toBe('number');
+    expect(arg.success).toBe(true);
+    expect(arg.userId).toBe('user-1');
+  });
+
+  it('T2: records cache-HIT telemetry task when the image came from cache', async () => {
+    mockGenerateRecipeImageWithMeta.mockResolvedValue({
+      url: RESOLVED_URL,
+      cacheHit: true,
+      genMs: 12,
+    });
+
+    await postGenerateImage({ title: 'Pesto Orzo' });
+
+    expect(mockRecordAiCall).toHaveBeenCalledTimes(1);
+    expect(mockRecordAiCall.mock.calls[0][0].task).toBe(
+      'recipe.generateImage.hit',
+    );
+  });
+
   it('without recipeId: returns { url } and performs NO db write', async () => {
     const res = await postGenerateImage({ title: 'Pesto Orzo' });
 
@@ -147,7 +188,11 @@ describe('POST /recipes/generate-image (Phase 27 — Image P0 write-back)', () =
   });
 
   it('null url with recipeId present: NO db write (does not clobber existing image)', async () => {
-    mockGenerateRecipeImage.mockResolvedValue(null);
+    mockGenerateRecipeImageWithMeta.mockResolvedValue({
+      url: null,
+      cacheHit: false,
+      genMs: 50,
+    });
 
     const res = await postGenerateImage({
       title: 'Pesto Orzo',
@@ -181,7 +226,7 @@ describe('POST /recipes/generate-image (Phase 27 — Image P0 write-back)', () =
     const res = await postGenerateImage({ recipeId: 'recipe-123' });
 
     expect(res.status).toBe(400);
-    expect(mockGenerateRecipeImage).not.toHaveBeenCalled();
+    expect(mockGenerateRecipeImageWithMeta).not.toHaveBeenCalled();
     expect(updateMock).not.toHaveBeenCalled();
   });
 
@@ -213,7 +258,9 @@ describe('POST /recipes/generate-image (Phase 27 — Image P0 write-back)', () =
   });
 
   it('ME-02: generation throwing returns { url: null } (200, not 500), no db write', async () => {
-    mockGenerateRecipeImage.mockRejectedValueOnce(new Error('model blocked'));
+    mockGenerateRecipeImageWithMeta.mockRejectedValueOnce(
+      new Error('model blocked'),
+    );
 
     const res = await postGenerateImage({
       title: 'Pesto Orzo',
