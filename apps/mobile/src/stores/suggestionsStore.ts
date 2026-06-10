@@ -5,8 +5,48 @@ import { supabase } from '../lib/supabase';
 import type { DinnerSuggestion } from '../types/suggestions';
 import type { ParsedRecipe } from '../types/recipe';
 import { dedupPrepend } from './dedupPrepend';
+import { withBudget, SUGGESTIONS_SEARCH_MS } from '../lib/perfBudgets';
+import {
+  prefetchHydration,
+  type HydratePreview,
+} from '../hooks/useHydratedRecipeContent';
 
 const MAX_RECENT = 5;
+
+/**
+ * Phase 29-03 (D4): map a (possibly light) searchResult ParsedRecipe to the
+ * HydratePreview input the hydration hook POSTs to /recipes/hydrate. Light
+ * previews carry no full `ingredients[]` — names live on an attached
+ * `ingredient_names` field (set by the 29-01 light /search), so prefer that;
+ * fall back to mapping any structured ingredients for non-light rows.
+ */
+function previewFrom(r: ParsedRecipe): HydratePreview {
+  const names =
+    (r as { ingredient_names?: string[] | null }).ingredient_names ??
+    (r.ingredients?.length
+      ? r.ingredients.map((i) => i.name).filter(Boolean)
+      : null);
+  return {
+    title: r.title,
+    description: r.description,
+    difficulty: r.difficulty ?? null,
+    prep_time_minutes: r.prep_time_minutes,
+    cook_time_minutes: r.cook_time_minutes,
+    total_time_minutes: r.total_time_minutes,
+    cuisine: (r as { cuisine?: string | null }).cuisine ?? null,
+    ingredient_names: names,
+  };
+}
+
+/** A preview still needs hydration if either ingredients OR steps are empty. */
+function isUnhydrated(r: ParsedRecipe): boolean {
+  return (
+    !r.ingredients ||
+    r.ingredients.length === 0 ||
+    !r.steps ||
+    r.steps.length === 0
+  );
+}
 
 export interface SearchOptions {
   pantryOnly: boolean;
@@ -33,6 +73,14 @@ interface SuggestionsState {
   searchRecipes: (query: string, options: SearchOptions) => Promise<void>;
   appendSearchResults: (query: string, options: SearchOptions) => Promise<void>;
   clearHistory: () => void;
+  /**
+   * D7 persistence safety: re-trigger background hydration for any persisted
+   * searchResults preview that came back from AsyncStorage with empty
+   * ingredients/steps, so a relaunched preview never stays permanently empty.
+   * Called from the persist `onRehydrateStorage` callback (next tick) and
+   * safe to call manually.
+   */
+  rehydrateUnhydrated: () => Promise<void>;
 }
 
 const getApiBaseUrl = (): string => {
@@ -46,6 +94,44 @@ const getAuthToken = async (): Promise<string> => {
   }
   return data.session.access_token;
 };
+
+/**
+ * Phase 29-03 (D4): background-hydrate the supplied previews (throttled by the
+ * hook's MAX_CONCURRENT=2 FIFO limiter) and patch each into searchResults as
+ * its content lands. Matches by stable identity = title (Something New titles
+ * are unique). Returns the in-flight promise so callers (and tests) can await
+ * the whole batch; fire-and-forget at the call sites.
+ */
+function hydrateAll(
+  previews: ParsedRecipe[],
+  set: (
+    fn: (s: SuggestionsState) => Partial<SuggestionsState>,
+  ) => void,
+): Promise<void> {
+  return Promise.all(
+    previews.map(async (r) => {
+      const content = await prefetchHydration(previewFrom(r));
+      if (!content) return; // failed/empty — leave the light preview as-is
+      set((s) => ({
+        searchResults: s.searchResults.map((x) =>
+          x.title === r.title
+            ? {
+                ...x,
+                ingredients: content.ingredients,
+                steps: content.steps,
+                calories_per_serving:
+                  content.calories_per_serving ?? x.calories_per_serving,
+                protein_grams_per_serving:
+                  content.protein_grams_per_serving ??
+                  x.protein_grams_per_serving,
+                servings: content.servings ?? x.servings,
+              }
+            : x,
+        ),
+      }));
+    }),
+  ).then(() => undefined);
+}
 
 export const useSuggestionsStore = create<SuggestionsState>()(
   persist(
@@ -128,16 +214,26 @@ export const useSuggestionsStore = create<SuggestionsState>()(
         });
         try {
           const token = await getAuthToken();
-          const response = await fetch(
-            `${getApiBaseUrl()}/api/v1/recipes/search`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ query, pantryOnly: options.pantryOnly }),
-            }
+          // D8: measure the full light /search round-trip against the 3-5s
+          // target band. light:true → server returns lightweight previews
+          // (no full ingredients/steps); the background hydration below fills
+          // them in.
+          const response = await withBudget(
+            'suggestions.search',
+            SUGGESTIONS_SEARCH_MS,
+            () =>
+              fetch(`${getApiBaseUrl()}/api/v1/recipes/search`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  query,
+                  pantryOnly: options.pantryOnly,
+                  light: true,
+                }),
+              }),
           );
 
           if (!response.ok) {
@@ -150,12 +246,17 @@ export const useSuggestionsStore = create<SuggestionsState>()(
           }
 
           const { data } = await response.json();
+          const previews = (data ?? []) as ParsedRecipe[];
           set((s) => ({
-            searchResults: (data ?? []) as ParsedRecipe[],
+            searchResults: previews,
             recentQueries: dedupPrepend(query, s.recentQueries, MAX_RECENT),
             isLoading: false,
             error: null,
           }));
+          // D4: background-hydrate every preview (throttled), patching
+          // searchResults[i] with ingredients/steps as each lands. Fire-and-
+          // forget — the grid renders from the light previews immediately.
+          void hydrateAll(previews, set);
         } catch (err) {
           set({
             error: err instanceof Error ? err.message : 'Search failed',
@@ -197,6 +298,7 @@ export const useSuggestionsStore = create<SuggestionsState>()(
                 pantryOnly: options.pantryOnly,
                 count: 2,
                 excludeTitles,
+                light: true,
               }),
             }
           );
@@ -213,14 +315,14 @@ export const useSuggestionsStore = create<SuggestionsState>()(
           }
 
           const { data } = await response.json();
+          const appended = (data ?? []) as ParsedRecipe[];
           set((s) => ({
-            searchResults: [
-              ...s.searchResults,
-              ...((data ?? []) as ParsedRecipe[]),
-            ],
+            searchResults: [...s.searchResults, ...appended],
             isAppending: false,
             error: null,
           }));
+          // D4: hydrate only the newly appended previews.
+          void hydrateAll(appended, set);
         } catch (err) {
           set({
             error:
@@ -238,6 +340,16 @@ export const useSuggestionsStore = create<SuggestionsState>()(
           isAppending: false,
         });
       },
+
+      // D7 persistence safety: re-trigger hydration for any persisted preview
+      // whose ingredients OR steps are empty, then patch it back into the grid
+      // so a relaunched preview is never permanently empty (which would break
+      // Save/Cook per D5).
+      rehydrateUnhydrated: async () => {
+        const stale = get().searchResults.filter(isUnhydrated);
+        if (stale.length === 0) return;
+        await hydrateAll(stale, set);
+      },
     }),
     {
       name: 'dinnertime-suggestions',
@@ -253,6 +365,18 @@ export const useSuggestionsStore = create<SuggestionsState>()(
         pantryOnly: state.pantryOnly,
       }),
       version: 1,
+      // D7: after the persisted state is restored, kick off hydration for any
+      // preview that came back empty (un-hydrated). Deferred to the next tick
+      // so the store + the hydration hook module are fully initialized before
+      // we call rehydrateUnhydrated (which reads get()).
+      onRehydrateStorage: () => (state) => {
+        if (!state?.searchResults?.length) return;
+        const hasUnhydrated = state.searchResults.some(isUnhydrated);
+        if (!hasUnhydrated) return;
+        setTimeout(() => {
+          void useSuggestionsStore.getState().rehydrateUnhydrated();
+        }, 0);
+      },
     }
   )
 );
