@@ -61,6 +61,14 @@ export interface DiscoveryCacheKeyInput {
    * reordering the same library does not shift the key.
    */
   libraryTitles?: string[];
+  /**
+   * Phase 29 (29-01) — OPT-IN lightweight generation flag. Folded into the key
+   * so a light response (no ingredients/steps) and a full response for the same
+   * query can NEVER collide in the cache. CRITICAL: the old app (no flag) must
+   * never receive a light cached payload, and the new app must never receive a
+   * full one. Defaults to false (the full contract).
+   */
+  light?: boolean;
 }
 
 /**
@@ -82,7 +90,13 @@ export function discoveryCacheKey(input: DiscoveryCacheKeyInput): string {
     libNorm.length === 0
       ? '0'
       : `${libNorm.length}:${createHash('sha256').update(libNorm.join('|')).digest('hex')}`;
-  const composite = `${input.userId}::${norm}::${input.pantryOnly ? 1 : 0}::${manifest}::${input.count ?? 'def'}::${libDigest}`;
+  // Phase 29 (29-01): fold the light flag into the composite so light and full
+  // responses for the same query can't collide. Appended last so existing
+  // full-path keys for `light` omitted/false stay identical to their prior
+  // value only when intentionally — note: full-path keys DO change shape here,
+  // but both /search and /discover recompute their keys with the same builder,
+  // so this is internally consistent (the cache is in-process + TTL'd).
+  const composite = `${input.userId}::${norm}::${input.pantryOnly ? 1 : 0}::${manifest}::${input.count ?? 'def'}::${libDigest}::${input.light ? 1 : 0}`;
   return createHash('sha256').update(composite).digest('hex');
 }
 

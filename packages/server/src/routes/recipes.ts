@@ -201,6 +201,7 @@ recipes.post('/search', async (c) => {
     pantryOnly?: boolean;
     count?: number;
     excludeTitles?: string[];
+    light?: boolean;
   };
   try {
     body = await c.req.json();
@@ -214,6 +215,11 @@ recipes.post('/search', async (c) => {
     return c.json({ error: 'Query is required' }, 400);
   }
 
+  // Phase 29 (D1) — OPT-IN lightweight generation. CRITICAL: the old app sends
+  // no `light` flag and must keep getting full recipes (ingredients+steps);
+  // only `light === true` switches to the fast preview path.
+  const light = body.light === true;
+
   // Optional load-more controls. count is clamped to a sane 1–6 window so a
   // malformed client can't request a huge (slow/expensive) batch.
   const count =
@@ -224,23 +230,55 @@ recipes.post('/search', async (c) => {
     ? body.excludeTitles.filter((t): t is string => typeof t === 'string')
     : undefined;
 
+  // D8-server: handler-level wall clock for the sub-stage timing log.
+  const tHandler0 = Date.now();
+
   try {
+    // D2: parallelize the independent pre-call DB fetches. members, profile,
+    // and library are always needed; pantry is fetched in the SAME parallel
+    // batch only when pantryOnly===true. Each result's `.error` is checked
+    // after the batch resolves and rethrows the SAME message as the prior
+    // serial code (backward-compatible error surface).
     // NOTE: mirrors /discover preference assembly -- keep in sync.
-    const { data: members, error: membersError } = await supabase
+    const membersPromise = supabase
       .from('household_members')
       .select()
       .eq('profile_id', user.id);
 
-    if (membersError) {
-      throw new Error(`Failed to fetch household members: ${membersError.message}`);
-    }
-
-    const { data: profile, error: profileError } = await supabase
+    const profilePromise = supabase
       .from('profiles')
       .select('cuisine_preferences, skill_level')
       .eq('id', user.id)
       .single();
 
+    const libraryPromise = getRecipes(supabase, user.id);
+
+    // Pantry manifest branch (D-04 + Pitfall 3). Only fetch when
+    // pantryOnly:true -- avoids an unnecessary DB round-trip on the default
+    // path. Ordered by confidence desc, capped at 50.
+    const pantryPromise =
+      body.pantryOnly === true
+        ? supabase
+            .from('pantry_items')
+            .select('name, confidence, status')
+            .eq('profile_id', user.id)
+            .order('confidence', { ascending: false })
+            .limit(50)
+        : null;
+
+    const [membersRes, profileRes, library, pantryRes] = await Promise.all([
+      membersPromise,
+      profilePromise,
+      libraryPromise,
+      pantryPromise,
+    ]);
+
+    const { data: members, error: membersError } = membersRes;
+    if (membersError) {
+      throw new Error(`Failed to fetch household members: ${membersError.message}`);
+    }
+
+    const { data: profile, error: profileError } = profileRes;
     if (profileError) {
       throw new Error(`Failed to fetch profile: ${profileError.message}`);
     }
@@ -265,18 +303,11 @@ recipes.post('/search', async (c) => {
         (profile as { cuisine_preferences?: string[] | null })?.cuisine_preferences ?? [],
     };
 
-    // Pantry manifest branch (D-04 + Pitfall 3).
-    // Only fetch when pantryOnly:true -- avoids an unnecessary DB round-trip
-    // on the default path. Ordered by confidence desc, capped at 50.
+    // Pantry manifest branch (D-04 + Pitfall 3). pantryRes is the parallel
+    // fetch result (null when pantryOnly !== true).
     let pantryManifest: string[] | undefined;
-    if (body.pantryOnly === true) {
-      const { data: pantry, error: pantryError } = await supabase
-        .from('pantry_items')
-        .select('name, confidence, status')
-        .eq('profile_id', user.id)
-        .order('confidence', { ascending: false })
-        .limit(50);
-
+    if (pantryRes !== null) {
+      const { data: pantry, error: pantryError } = pantryRes;
       if (pantryError) {
         throw new Error(`Failed to fetch pantry: ${pantryError.message}`);
       }
@@ -294,9 +325,11 @@ recipes.post('/search', async (c) => {
         .map((p: { name: string }) => p.name);
     }
 
-    // Existing library titles feed the AVOID list (same pattern as /discover)
-    const library = await getRecipes(supabase, user.id);
-    const existingTitles = library.rows.map((r) => r.title);
+    // Existing library titles feed the AVOID list (same pattern as /discover).
+    // `library` was resolved in the Promise.all batch above. Annotate the row
+    // type explicitly — Promise.all widens the union so `r` would otherwise be
+    // implicitly `any`.
+    const existingTitles = library.rows.map((r: { title: string }) => r.title);
 
     // Load-more requests (a forced count AND on-screen titles to avoid) are
     // meant to be novel each time, so they bypass the base response cache.
@@ -313,7 +346,12 @@ recipes.post('/search', async (c) => {
       // ME-03: fold the library into the key so saving a recipe (which feeds
       // the AVOID list) invalidates the cache and can't re-surface stale.
       libraryTitles: existingTitles,
+      // Phase 29: keep light + full responses from colliding in the cache.
+      light,
     });
+    // D8-server: time ONLY the compute-or-cache (Gemini) sub-stage so we can
+    // SEE in the Fly logs that light generation drops to ~3-5s.
+    const t0 = Date.now();
     const data = await getOrComputeDiscovery(
       cacheKey,
       () =>
@@ -324,8 +362,21 @@ recipes.post('/search', async (c) => {
           pantryManifest,
           count,
           excludeTitles,
+          light,
         }),
       { cacheable: !isLoadMore },
+    );
+    const gemini_ms = Date.now() - t0;
+
+    // D8-server: structured timing line — Gemini sub-stage vs total handler.
+    console.log(
+      JSON.stringify({
+        evt: 'recipes.search',
+        light,
+        gemini_ms,
+        total_ms: Date.now() - tHandler0,
+        count: Array.isArray(data) ? data.length : 0,
+      }),
     );
 
     return c.json({ data });
