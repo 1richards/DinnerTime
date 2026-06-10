@@ -51,7 +51,7 @@ Waves:
 - Server GET /recipes request log includes sub-stage timing: DB query ms, row count, payload bytes.
 - POST /generate-image records cache-hit/miss + Gemini generation ms to ai_events (via recordAiCall).
 - Client records recipe.fetch round-trip via withBudget (new RECIPE_LOAD_MS) and per-image time-to-visible via the logAiEvent client.
-- getRecipes list query selects an explicit lightweight column set (no full steps/step_image_urls JSONB) and is paginated/limited; recipe detail still loads full data on open.
+- getRecipes list query is capped (LIMIT 200, observable truncation) and GET /recipes logs payload_bytes so a *safe* trim can be decided from data. (NOTE: the steps/step_image_urls column trim was attempted then BACKED OUT in code review — `recipe.steps` is read off the in-memory list array by Cook Mode/edit/Cook Later, so trimming it crashed those flows. Payload trim deferred pending payload_bytes telemetry; detail re-hydration + null-guards retained as defensive.)
 - Recipes never trigger image generation on the Recipe Box critical path: image_url is populated at save time (generate-on-save) and a backfill path exists for legacy null-image_url rows.
 - After deploy, a cold Recipe Box load measurably drops toward 3-5s (verified via the new telemetry), no test regressions.
 
