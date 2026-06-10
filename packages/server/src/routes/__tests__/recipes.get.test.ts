@@ -20,6 +20,8 @@ vi.mock('../../services/recipeStore.js', () => ({
   getRecipeById: vi.fn(),
   saveRecipe: vi.fn(),
   findRecipeBySourceUrl: vi.fn(),
+  findRecipeByNormalizedTitle: vi.fn(),
+  RECIPE_LIST_LIMIT: 200,
 }));
 
 vi.mock('../../services/recipeParser.js', () => ({

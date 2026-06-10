@@ -1244,19 +1244,30 @@ type RecipeIngredientShape = {
  * Scoped to the calling user's recipes (profile_id = c.get('user').id) — image
  * generation is a per-user cost, so we don't sweep all accounts here.
  *
- * Returns { examined, updated, skipped }.
+ * Returns { examined, updated, skipped, remaining }.
+ *
+ * WR-03: Bounded to BACKFILL_BATCH rows per call so a user with many legacy
+ * null-image rows cannot produce a single multi-minute request that outlives
+ * the proxy/Fly timeout while burning sequential Gemini calls. `remaining`
+ * tells the caller whether more null-image rows exist so it can re-invoke
+ * until drained. Still authed, idempotent, and ownership-scoped.
  */
+const BACKFILL_BATCH = 25;
+
 recipes.post('/backfill-images', async (c) => {
   const supabase = c.get('supabase');
   const user = c.get('user');
 
-  // Only null-image rows for this user. The .is('image_url', null) filter is
-  // what makes the route idempotent.
+  // Only null-image rows for this user, capped at BACKFILL_BATCH. The
+  // .is('image_url', null) filter is what makes the route idempotent; the
+  // .limit() is what makes a single request bounded (WR-03).
   const { data: rows, error } = await supabase
     .from('recipes')
     .select('id, title, description, ingredients, image_url')
     .eq('profile_id', user.id)
-    .is('image_url', null);
+    .is('image_url', null)
+    .order('created_at', { ascending: true })
+    .limit(BACKFILL_BATCH);
 
   if (error) {
     return c.json({ error: error.message }, 500);
@@ -1301,7 +1312,30 @@ recipes.post('/backfill-images', async (c) => {
     }
   }
 
-  return c.json({ examined, updated, skipped });
+  // WR-03 — report whether more null-image rows remain so the caller can
+  // re-invoke until drained. A head/count query is cheap relative to the
+  // image-generation loop above. Counts only rows still null AFTER this batch
+  // (rows we just updated no longer match the filter). Skipped rows that stay
+  // null are correctly counted as remaining, so the caller won't spin forever
+  // only if it stops on no-progress; we still report them honestly here.
+  const { count: remaining, error: countErr } = await supabase
+    .from('recipes')
+    .select('id', { count: 'exact', head: true })
+    .eq('profile_id', user.id)
+    .is('image_url', null);
+
+  if (countErr) {
+    // Don't fail the whole call just because the tail count failed — the batch
+    // work already succeeded. Fall back to a batch-saturation heuristic.
+    return c.json({
+      examined,
+      updated,
+      skipped,
+      remaining: examined >= BACKFILL_BATCH ? 'unknown' : 0,
+    });
+  }
+
+  return c.json({ examined, updated, skipped, remaining: remaining ?? 0 });
 });
 
 export default recipes;

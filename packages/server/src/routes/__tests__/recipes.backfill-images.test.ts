@@ -16,6 +16,8 @@ const {
   mockGenerateRecipeImageWithMeta,
   mockRecordAiCall,
   selectIsMock,
+  selectLimitMock,
+  countIsMock,
   updateMock,
   updateEqIdMock,
   updateEqProfileMock,
@@ -29,10 +31,27 @@ const {
     { id: 'r-2', title: 'Row Two', description: 'd2', ingredients: [], image_url: null },
   ];
 
-  // SELECT chain: from('recipes').select(cols).eq('profile_id', id).is('image_url', null)
-  const selectIsMock = vi.fn(async () => ({ data: ROWS, error: null }));
-  const selectEqMock = vi.fn(() => ({ is: selectIsMock }));
-  const selectMock = vi.fn(() => ({ eq: selectEqMock }));
+  // WR-03 — the route now runs TWO select chains against from('recipes'):
+  //
+  //   1. BATCH:  select(cols).eq('profile_id').is('image_url', null)
+  //                .order('created_at', ...).limit(BATCH)   → resolves to rows
+  //   2. COUNT:  select('id', {count:'exact', head:true})
+  //                .eq('profile_id').is('image_url', null)  → resolves to { count }
+  //
+  // A head/count select passes a second arg to .select(); the batch select does
+  // not. We branch on that to return the right chain.
+  const selectLimitMock = vi.fn(async () => ({ data: ROWS, error: null }));
+  const selectOrderMock = vi.fn(() => ({ limit: selectLimitMock }));
+  const batchIsMock = vi.fn(() => ({ order: selectOrderMock }));
+  const batchEqMock = vi.fn(() => ({ is: batchIsMock }));
+
+  // COUNT chain terminates at .is(...) (head:true), resolving to { count }.
+  const countIsMock = vi.fn(async () => ({ count: 1, error: null }));
+  const countEqMock = vi.fn(() => ({ is: countIsMock }));
+
+  const selectMock = vi.fn((_cols: string, opts?: { head?: boolean }) =>
+    opts?.head ? { eq: countEqMock } : { eq: batchEqMock }
+  );
 
   // UPDATE chain: from('recipes').update({image_url}).eq('id').eq('profile_id')
   const updateEqProfileMock = vi.fn(async () => ({ data: null, error: null }));
@@ -46,9 +65,14 @@ const {
   }));
 
   const resetSpies = () => {
-    selectIsMock.mockClear();
-    selectIsMock.mockResolvedValue({ data: ROWS, error: null });
-    selectEqMock.mockClear();
+    selectLimitMock.mockClear();
+    selectLimitMock.mockResolvedValue({ data: ROWS, error: null });
+    selectOrderMock.mockClear();
+    batchIsMock.mockClear();
+    batchEqMock.mockClear();
+    countIsMock.mockClear();
+    countIsMock.mockResolvedValue({ count: 1, error: null });
+    countEqMock.mockClear();
     selectMock.mockClear();
     updateEqProfileMock.mockClear();
     updateEqProfileMock.mockResolvedValue({ data: null, error: null });
@@ -60,7 +84,9 @@ const {
   return {
     mockGenerateRecipeImageWithMeta: vi.fn(),
     mockRecordAiCall: vi.fn(async () => {}),
-    selectIsMock,
+    selectIsMock: batchIsMock,
+    selectLimitMock,
+    countIsMock,
     updateMock,
     updateEqIdMock,
     updateEqProfileMock,
@@ -145,15 +171,16 @@ describe('POST /recipes/backfill-images (Phase 28 O3)', () => {
 
   it('selects only null-image rows scoped to the authed user', async () => {
     await postBackfill();
-    // .is('image_url', null) is the idempotency filter.
+    // .is('image_url', null) is the idempotency filter (batch chain).
     expect(selectIsMock).toHaveBeenCalledWith('image_url', null);
   });
 
-  it('returns { examined, updated, skipped } and persists only the row that generated', async () => {
+  it('returns { examined, updated, skipped, remaining } and persists only the row that generated', async () => {
     const res = await postBackfill();
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ examined: 2, updated: 1, skipped: 1 });
+    // remaining comes from the post-batch count query (mocked count: 1).
+    expect(await res.json()).toEqual({ examined: 2, updated: 1, skipped: 1, remaining: 1 });
 
     // Row 1 persisted; row 2 (null url) NOT.
     expect(updateMock).toHaveBeenCalledTimes(1);
@@ -162,18 +189,25 @@ describe('POST /recipes/backfill-images (Phase 28 O3)', () => {
     expect(updateEqProfileMock).toHaveBeenCalledWith('profile_id', 'user-1');
   });
 
+  it('WR-03: caps the batch select with a limit', async () => {
+    await postBackfill();
+    // The batch select is bounded so one request can't run unbounded.
+    expect(selectLimitMock).toHaveBeenCalled();
+  });
+
   it('idempotent: zero candidate rows → examined 0, no generation', async () => {
-    selectIsMock.mockResolvedValue({ data: [], error: null });
+    selectLimitMock.mockResolvedValue({ data: [], error: null });
+    countIsMock.mockResolvedValue({ count: 0, error: null });
 
     const res = await postBackfill();
 
-    expect(await res.json()).toEqual({ examined: 0, updated: 0, skipped: 0 });
+    expect(await res.json()).toEqual({ examined: 0, updated: 0, skipped: 0, remaining: 0 });
     expect(mockGenerateRecipeImageWithMeta).not.toHaveBeenCalled();
     expect(updateMock).not.toHaveBeenCalled();
   });
 
   it('select error → 500', async () => {
-    selectIsMock.mockResolvedValue({ data: null, error: { message: 'boom' } });
+    selectLimitMock.mockResolvedValue({ data: null, error: { message: 'boom' } });
 
     const res = await postBackfill();
 
