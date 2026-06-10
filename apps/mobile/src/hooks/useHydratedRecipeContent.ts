@@ -178,7 +178,13 @@ function fingerprintNames(names: string[] | null | undefined): string {
     .join('|');
 }
 
-function cacheKeyFor(preview: HydratePreview): string {
+/**
+ * Stable content-address identity for a preview = `title#fingerprint(names)`.
+ * Exported so the store can patch the SAME searchResults row the hook hydrated
+ * (two previews sharing a title but with different ingredient_names resolve to
+ * DIFFERENT content and must not cross-assign — WR-01).
+ */
+export function cacheKeyFor(preview: HydratePreview): string {
   const fp = fingerprintNames(preview.ingredient_names);
   return fp ? `${norm(preview.title)}#${fp}` : norm(preview.title);
 }

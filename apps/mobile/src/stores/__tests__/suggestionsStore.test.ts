@@ -29,6 +29,31 @@ vi.mock('../../hooks/useHydratedRecipeContent', () => ({
   // it before prefetchHydration — a passthrough identity keeps the mocked
   // prefetch receiving the recipe, which is all this suite asserts on.
   previewFrom: (r: unknown) => r,
+  // WR-01: the store patches searchResults by the composite content-address
+  // key (title + fingerprint(ingredient_names)), not by bare title. Provide a
+  // faithful key impl so the cross-assign regression test exercises the real
+  // matching logic.
+  cacheKeyFor: (p: {
+    title: string;
+    ingredient_names?: string[] | null;
+    ingredients?: Array<{ name?: string | null }> | null;
+  }) => {
+    const names =
+      p.ingredient_names ??
+      (p.ingredients?.length
+        ? p.ingredients.map((i) => i.name).filter(Boolean)
+        : null);
+    const norm = (t: string) => t.trim().toLowerCase().replace(/\s+/g, ' ');
+    const fp =
+      names && names.length
+        ? names
+            .map((n) => (n ?? '').trim().toLowerCase())
+            .filter((n) => n.length > 0)
+            .sort()
+            .join('|')
+        : '';
+    return fp ? `${norm(p.title)}#${fp}` : norm(p.title);
+  },
   MAX_CONCURRENT: 2,
 }));
 
@@ -427,6 +452,61 @@ describe('suggestionsStore', () => {
       expect(mockPrefetchHydration).toHaveBeenCalled();
       const state = useSuggestionsStore.getState();
       expect(state.searchResults[0].steps).toEqual(['Cook it']);
+    });
+
+    it('WR-01: two same-title previews with different ingredient_names get their OWN hydrated content (no cross-assign)', async () => {
+      // Two on-screen previews share a title but have DIFFERENT ingredient
+      // lists → they hydrate to DIFFERENT content. A title-only patch would
+      // write whichever result lands onto BOTH rows; the composite-key patch
+      // must keep each preview's content bound to its own row.
+      const previewA = {
+        ...lightPreview,
+        title: 'Garden Soup',
+        ingredient_names: ['onion', 'carrot'],
+      };
+      const previewB = {
+        ...lightPreview,
+        title: 'Garden Soup',
+        ingredient_names: ['tomato', 'basil'],
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [previewA, previewB] }),
+      });
+      // Resolve hydration based on which preview's names came in, so the
+      // mock returns DISTINCT content per composite key.
+      mockPrefetchHydration.mockImplementation(
+        (p: { ingredient_names?: string[] | null }) => {
+          if (p.ingredient_names?.includes('carrot')) {
+            return Promise.resolve({
+              ingredients: [
+                { name: 'carrot', quantity: 2, unit: null, notes: null },
+              ],
+              steps: ['Roast carrots'],
+            });
+          }
+          return Promise.resolve({
+            ingredients: [
+              { name: 'tomato', quantity: 3, unit: null, notes: null },
+            ],
+            steps: ['Blend tomatoes'],
+          });
+        },
+      );
+
+      await useSuggestionsStore
+        .getState()
+        .searchRecipes('soup', { pantryOnly: false });
+      await new Promise((r) => setTimeout(r, 0));
+
+      const state = useSuggestionsStore.getState();
+      expect(state.searchResults).toHaveLength(2);
+      // Row A (carrot) keeps its own steps; row B (tomato) keeps its own —
+      // a regression (title-only patch) would make both identical.
+      expect(state.searchResults[0].steps).toEqual(['Roast carrots']);
+      expect(state.searchResults[1].steps).toEqual(['Blend tomatoes']);
+      expect(state.searchResults[0].ingredients[0].name).toBe('carrot');
+      expect(state.searchResults[1].ingredients[0].name).toBe('tomato');
     });
   });
 });

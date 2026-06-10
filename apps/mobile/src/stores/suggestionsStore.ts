@@ -6,7 +6,11 @@ import type { DinnerSuggestion } from '../types/suggestions';
 import type { ParsedRecipe } from '../types/recipe';
 import { dedupPrepend } from './dedupPrepend';
 import { withBudget, SUGGESTIONS_SEARCH_MS } from '../lib/perfBudgets';
-import { prefetchHydration, previewFrom } from '../hooks/useHydratedRecipeContent';
+import {
+  prefetchHydration,
+  previewFrom,
+  cacheKeyFor,
+} from '../hooks/useHydratedRecipeContent';
 
 const MAX_RECENT = 5;
 
@@ -70,9 +74,19 @@ const getAuthToken = async (): Promise<string> => {
 /**
  * Phase 29-03 (D4): background-hydrate the supplied previews (throttled by the
  * hook's MAX_CONCURRENT=2 FIFO limiter) and patch each into searchResults as
- * its content lands. Matches by stable identity = title (Something New titles
- * are unique). Returns the in-flight promise so callers (and tests) can await
- * the whole batch; fire-and-forget at the call sites.
+ * its content lands.
+ *
+ * WR-01: match the patch target by the SAME composite content-address key the
+ * hydration cache uses (`cacheKeyFor` = title + fingerprint(ingredient_names)),
+ * NOT by bare title. Two on-screen previews that share a title but carry
+ * different `ingredient_names` hydrate to DIFFERENT content; a title-only patch
+ * would cross-assign card A's ingredients onto card B (user saves B, gets A).
+ * Matching on the composite key keeps each preview's hydrated content bound to
+ * its own row. Previews with no `ingredient_names` fall back to a title-only
+ * key (same as the hook), which is stable for unique Something New titles.
+ *
+ * Returns the in-flight promise so callers (and tests) can await the whole
+ * batch; fire-and-forget at the call sites.
  */
 function hydrateAll(
   previews: ParsedRecipe[],
@@ -82,11 +96,12 @@ function hydrateAll(
 ): Promise<void> {
   return Promise.all(
     previews.map(async (r) => {
+      const targetKey = cacheKeyFor(previewFrom(r));
       const content = await prefetchHydration(previewFrom(r));
       if (!content) return; // failed/empty — leave the light preview as-is
       set((s) => ({
         searchResults: s.searchResults.map((x) =>
-          x.title === r.title
+          cacheKeyFor(previewFrom(x)) === targetKey
             ? {
                 ...x,
                 ingredients: content.ingredients,
@@ -287,7 +302,22 @@ export const useSuggestionsStore = create<SuggestionsState>()(
           }
 
           const { data } = await response.json();
-          const appended = (data ?? []) as ParsedRecipe[];
+          const appendedRaw = (data ?? []) as ParsedRecipe[];
+          // WR-01: the server `excludeTitles` is only a SOFT prompt constraint
+          // the AI can violate, so a duplicate composite key (same title +
+          // ingredient_names) can slip through. Hard-dedup against what's
+          // already on screen by the same content-address key hydrateAll
+          // patches on — two rows with the same key must never coexist, or the
+          // background patch would write the same content onto both.
+          const existingKeys = new Set(
+            get().searchResults.map((r) => cacheKeyFor(previewFrom(r))),
+          );
+          const appended = appendedRaw.filter((r) => {
+            const k = cacheKeyFor(previewFrom(r));
+            if (existingKeys.has(k)) return false;
+            existingKeys.add(k);
+            return true;
+          });
           set((s) => ({
             searchResults: [...s.searchResults, ...appended],
             isAppending: false,
