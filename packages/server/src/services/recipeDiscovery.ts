@@ -91,6 +91,18 @@ export interface DiscoverRecipesOptions {
    * yet) so the next batch is genuinely new, not a repeat of visible cards.
    */
   excludeTitles?: string[];
+  /**
+   * Phase 29 (D1) — OPT-IN lightweight generation. When true, the generation
+   * schema/prompt DROPS the heavy `ingredients[]` (full objects) and `steps[]`
+   * from the REQUIRED set (the ~29s cost driver) and instead requests a cheap
+   * `ingredient_names: string[]` (bare names, for the pantry-match badge). The
+   * full ingredients + steps are hydrated in the background afterward.
+   *
+   * CRITICAL: this is OPT-IN. The default (undefined/false) path stays
+   * BYTE-IDENTICAL to today so the currently-shipped app — which expects full
+   * recipes — keeps working when the server deploys ahead of the EAS build.
+   */
+  light?: boolean;
 }
 
 // ---------- Tool Definition ----------
@@ -100,6 +112,7 @@ interface SuggestRecipesOutput {
     Partial<ParsedRecipe> & {
       ingredients?: ParsedIngredient[];
       steps?: string[];
+      ingredient_names?: string[];
       difficulty?: 'easy' | 'medium' | 'hard';
       practiced_skills?: string[];
       skill_note?: string;
@@ -107,96 +120,173 @@ interface SuggestRecipesOutput {
   >;
 }
 
-const suggestRecipesSchema: JsonSchema = {
-  type: 'object',
-  properties: {
-    recipes: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          title: { type: 'string', description: 'Recipe title' },
-          description: {
-            type: 'string',
-            description: 'Short 1-2 sentence description',
-          },
-          ingredients: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                name: { type: 'string' },
-                quantity: { type: 'number' },
-                unit: { type: 'string' },
-                notes: { type: 'string' },
-              },
-              required: ['name'],
-            },
-          },
-          steps: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Ordered cooking steps',
-          },
-          prep_time_minutes: { type: 'number' },
-          cook_time_minutes: { type: 'number' },
-          total_time_minutes: { type: 'number' },
-          servings: { type: 'number' },
-          difficulty: {
-            type: 'string',
-            enum: ['easy', 'medium', 'hard'],
-            description:
-              "Tier based on technique count + active cook time + ingredient count. easy=≤30min, basic technique. medium=30-60min OR one new technique. hard=>60min OR multiple advanced techniques (braise, lamination, fermentation).",
-          },
-          practiced_skills: {
-            type: 'array',
-            items: {
-              type: 'string',
-              enum: [
-                'knife skills',
-                'pan sauces',
-                'braising',
-                'stir-frying',
-                'plant-forward',
-                'pasta from scratch',
-                'global flavors',
-                'baking & breads',
-              ],
-            },
-            minItems: 1,
-            maxItems: 3,
-            description:
-              "1-3 skills this recipe genuinely exercises. Pick from the EXACT 8-key list — do not invent new keys.",
-          },
-          skill_note: {
-            type: 'string',
-            description:
-              "One short line (≤120 chars) explaining the technique payoff, e.g. 'Practices fond → reduction → mounted butter'. Optional — omit when there's no specific technique to call out.",
-          },
-          calories_per_serving: {
-            type: 'number',
-            description:
-              'Estimated kcal per serving. Best-effort from ingredient list and quantities — omit if uncertain.',
-          },
-          protein_grams_per_serving: {
-            type: 'number',
-            description:
-              'Estimated grams of protein per serving (whole or 1-decimal). Omit if uncertain.',
-          },
-        },
-        required: ['title', 'ingredients', 'steps', 'difficulty', 'practiced_skills'],
-      },
-    },
+// Shared scalar/cheap properties present in BOTH the full and light schemas.
+// Extracted so the two variants can't drift on the fields the cards render.
+const COMMON_RECIPE_PROPERTIES: Record<string, JsonSchema> = {
+  title: { type: 'string', description: 'Recipe title' },
+  description: {
+    type: 'string',
+    description: 'Short 1-2 sentence description',
   },
-  required: ['recipes'],
+  prep_time_minutes: { type: 'number' },
+  cook_time_minutes: { type: 'number' },
+  total_time_minutes: { type: 'number' },
+  servings: { type: 'number' },
+  difficulty: {
+    type: 'string',
+    enum: ['easy', 'medium', 'hard'],
+    description:
+      "Tier based on technique count + active cook time + ingredient count. easy=≤30min, basic technique. medium=30-60min OR one new technique. hard=>60min OR multiple advanced techniques (braise, lamination, fermentation).",
+  },
+  practiced_skills: {
+    type: 'array',
+    items: {
+      type: 'string',
+      enum: [
+        'knife skills',
+        'pan sauces',
+        'braising',
+        'stir-frying',
+        'plant-forward',
+        'pasta from scratch',
+        'global flavors',
+        'baking & breads',
+      ],
+    },
+    minItems: 1,
+    maxItems: 3,
+    description:
+      "1-3 skills this recipe genuinely exercises. Pick from the EXACT 8-key list — do not invent new keys.",
+  },
+  skill_note: {
+    type: 'string',
+    description:
+      "One short line (≤120 chars) explaining the technique payoff, e.g. 'Practices fond → reduction → mounted butter'. Optional — omit when there's no specific technique to call out.",
+  },
+  calories_per_serving: {
+    type: 'number',
+    description:
+      'Estimated kcal per serving. Best-effort from ingredient list and quantities — omit if uncertain.',
+  },
+  protein_grams_per_serving: {
+    type: 'number',
+    description:
+      'Estimated grams of protein per serving (whole or 1-decimal). Omit if uncertain.',
+  },
 };
 
-export const suggestRecipesTool: StructuredTool<SuggestRecipesOutput> = {
-  name: 'suggest_recipes',
-  description:
-    'Suggest dinner recipes tailored to the household preferences. Return a list of full recipes with ingredients and steps.',
-  schema: suggestRecipesSchema,
+// Heavy properties — full ingredient objects + ordered steps. These are the
+// ~29s cost driver and are present ONLY in the full schema.
+const HEAVY_INGREDIENTS_PROPERTY: JsonSchema = {
+  type: 'array',
+  items: {
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      quantity: { type: 'number' },
+      unit: { type: 'string' },
+      notes: { type: 'string' },
+    },
+    required: ['name'],
+  },
 };
+
+const HEAVY_STEPS_PROPERTY: JsonSchema = {
+  type: 'array',
+  items: { type: 'string' },
+  description: 'Ordered cooking steps',
+};
+
+// Light replacement for the heavy ingredients list: bare names only, NOT
+// required. Cheap to generate and enough for the pantry-match badge (D1a).
+const LIGHT_INGREDIENT_NAMES_PROPERTY: JsonSchema = {
+  type: 'array',
+  items: { type: 'string' },
+  description:
+    'Bare ingredient names only — no quantities/units. Used for the pantry-match badge.',
+};
+
+/**
+ * Build the `suggest_recipes` tool schema. Exported for testing.
+ *
+ * - `light === false` (DEFAULT): BYTE-IDENTICAL to the pre-Phase-29 schema —
+ *   heavy `ingredients[]` + `steps[]` properties present and REQUIRED.
+ * - `light === true`: drops the heavy `ingredients`/`steps` properties, drops
+ *   them from `required`, and adds a cheap `ingredient_names: string[]`
+ *   (NOT required). Keeps title/difficulty/practiced_skills required.
+ */
+export function buildSuggestRecipesSchema(light: boolean): JsonSchema {
+  if (light) {
+    return {
+      type: 'object',
+      properties: {
+        recipes: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              ...COMMON_RECIPE_PROPERTIES,
+              ingredient_names: LIGHT_INGREDIENT_NAMES_PROPERTY,
+            },
+            required: ['title', 'difficulty', 'practiced_skills'],
+          },
+        },
+      },
+      required: ['recipes'],
+    };
+  }
+
+  return {
+    type: 'object',
+    properties: {
+      recipes: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            title: COMMON_RECIPE_PROPERTIES.title,
+            description: COMMON_RECIPE_PROPERTIES.description,
+            ingredients: HEAVY_INGREDIENTS_PROPERTY,
+            steps: HEAVY_STEPS_PROPERTY,
+            prep_time_minutes: COMMON_RECIPE_PROPERTIES.prep_time_minutes,
+            cook_time_minutes: COMMON_RECIPE_PROPERTIES.cook_time_minutes,
+            total_time_minutes: COMMON_RECIPE_PROPERTIES.total_time_minutes,
+            servings: COMMON_RECIPE_PROPERTIES.servings,
+            difficulty: COMMON_RECIPE_PROPERTIES.difficulty,
+            practiced_skills: COMMON_RECIPE_PROPERTIES.practiced_skills,
+            skill_note: COMMON_RECIPE_PROPERTIES.skill_note,
+            calories_per_serving: COMMON_RECIPE_PROPERTIES.calories_per_serving,
+            protein_grams_per_serving:
+              COMMON_RECIPE_PROPERTIES.protein_grams_per_serving,
+          },
+          required: ['title', 'ingredients', 'steps', 'difficulty', 'practiced_skills'],
+        },
+      },
+    },
+    required: ['recipes'],
+  };
+}
+
+const suggestRecipesSchema: JsonSchema = buildSuggestRecipesSchema(false);
+
+/**
+ * Build the `suggest_recipes` tool. In light mode the description signals the
+ * model that previews (no ingredients/steps) are expected.
+ */
+function buildSuggestRecipesTool(
+  light: boolean,
+): StructuredTool<SuggestRecipesOutput> {
+  return {
+    name: 'suggest_recipes',
+    description: light
+      ? 'Suggest dinner recipe PREVIEWS (no ingredients/steps) tailored to the household preferences. Return title, description, times, servings, difficulty, skills, nutrition, and a bare ingredient_names list.'
+      : 'Suggest dinner recipes tailored to the household preferences. Return a list of full recipes with ingredients and steps.',
+    schema: buildSuggestRecipesSchema(light),
+  };
+}
+
+export const suggestRecipesTool: StructuredTool<SuggestRecipesOutput> =
+  buildSuggestRecipesTool(false);
 
 // ---------- Prompt Assembly ----------
 
@@ -216,7 +306,15 @@ export function buildDiscoveryPrompt(
    * explicit hard count line is added. Undefined = legacy behavior (the
    * /discover D-07 path passes nothing and stays byte-identical).
    */
-  count?: number
+  count?: number,
+  /**
+   * Phase 29 (D1) — OPT-IN lightweight mode. When true, the full-detail
+   * "Return full recipes with structured ingredients ... and ordered steps"
+   * instruction is SKIPPED and replaced with a short "previews only" line that
+   * asks for a bare `ingredient_names` list instead. Default (false) is
+   * byte-identical to today.
+   */
+  light = false
 ): string {
   const allergies = preferences.allergies ?? [];
   const restrictions = preferences.dietary_restrictions ?? [];
@@ -317,9 +415,18 @@ export function buildDiscoveryPrompt(
   );
 
   lines.push('');
-  lines.push(
-    'Return full recipes with structured ingredients (name, quantity, unit, notes) and ordered steps. Convert fractions to decimals for quantities. Each recipe MUST have servings >= 4 — DinnerTime is built for households, scale ingredient quantities accordingly.'
-  );
+  if (light) {
+    // Phase 29 (D1): lightweight previews. Skip the heavy full-recipe
+    // instruction entirely — the model returns scalar card fields + a bare
+    // ingredient_names list; full ingredients/steps hydrate in the background.
+    lines.push(
+      'Return LIGHTWEIGHT previews — title, description, times, servings, difficulty, skills, nutrition, and a bare `ingredient_names` list (names only, no quantities or units). Do NOT generate quantities, units, or steps. Each recipe MUST have servings >= 4 — DinnerTime is built for households.'
+    );
+  } else {
+    lines.push(
+      'Return full recipes with structured ingredients (name, quantity, unit, notes) and ordered steps. Convert fractions to decimals for quantities. Each recipe MUST have servings >= 4 — DinnerTime is built for households, scale ingredient quantities accordingly.'
+    );
+  }
 
   return lines.join('\n');
 }
@@ -341,11 +448,13 @@ export async function discoverRecipes(
     ...(opts.existingTitles ?? []),
     ...(opts.excludeTitles ?? []),
   ];
+  const light = opts.light === true;
   const system = buildDiscoveryPrompt(
     opts.preferences,
     avoidTitles,
     opts.pantryManifest,
-    opts.count
+    opts.count,
+    light
   );
   // Give the AI room to honor the per-cuisine guarantee in the system
   // prompt. 2-recipe headroom over the cuisine count lets the AI mix in
@@ -374,7 +483,10 @@ export async function discoverRecipes(
   const { recipes } = await ai.generateStructured({
     system,
     user: userPrompt,
-    tool: suggestRecipesTool,
+    // Phase 29 (D1): in light mode the tool schema drops the heavy
+    // ingredients/steps from required and swaps in a cheap ingredient_names
+    // list. Default path uses the byte-identical full tool.
+    tool: light ? buildSuggestRecipesTool(true) : suggestRecipesTool,
     // 8192 (was 4096) — adding nutrition fields per recipe × 6 recipes
     // can push response past 4096, same gemini-no-functionCall pattern
     // we hit on mealPlanner. Generous headroom.
@@ -400,14 +512,34 @@ export async function discoverRecipes(
         ? rawSkillNote.slice(0, 200)
         : null;
 
+    // Phase 29 (D1): in light mode the model returns bare `ingredient_names`
+    // (no quantities/units) and NO steps. Map names into the ParsedRecipe
+    // ingredient shape so the existing card + save flow holds; steps stay [].
+    // In full mode, keep the existing heavy `ingredients`/`steps` behavior
+    // EXACTLY (byte-identical default path).
+    const rawNames = (r as { ingredient_names?: unknown }).ingredient_names;
+    const sourceIngredients: ParsedIngredient[] = light
+      ? (Array.isArray(rawNames) ? rawNames : [])
+          .filter(
+            (n: unknown) => typeof n === 'string' || typeof n === 'number',
+          )
+          .map((n: unknown) => ({
+            name: String(n),
+            quantity: null,
+            unit: null,
+            notes: null,
+          }))
+      : ((r.ingredients as ParsedIngredient[]) ?? []);
+    const sourceSteps: string[] = light ? [] : ((r.steps as string[]) ?? []);
+
     // Defend against Gemini-preview degeneration leaking CJK filler tokens
     // (调整/碎/块/条) into English recipe text — scrub before returning so
     // garbage is never persisted. See services/recipeTextSanitizer.ts.
     const { value: cleaned, changed } = sanitizeRecipeTextFields({
       title: (r.title as string) || 'Untitled Recipe',
       description: (r.description as string | null | undefined) ?? null,
-      ingredients: (r.ingredients as ParsedIngredient[]) ?? [],
-      steps: (r.steps as string[]) ?? [],
+      ingredients: sourceIngredients,
+      steps: sourceSteps,
     });
     if (changed) {
       console.warn(
