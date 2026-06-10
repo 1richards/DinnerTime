@@ -363,6 +363,7 @@ export function PreviewSheet({
   modifyLabel = 'Update existing recipe',
   modifiedLabel = 'Recipe updated',
   stepsLoading = false,
+  ingredientsLoading = false,
   onApplyToDay,
   recipeId,
   isFavorite,
@@ -416,6 +417,12 @@ export function PreviewSheet({
       the Plan tab while it fetches the AI-expanded recipe in the
       background, so users don't see "No steps listed." flash. */
   stepsLoading?: boolean;
+  /** Phase 29 (D6): when true, the Ingredients section renders a
+      "Gathering ingredients…" placeholder + spinner instead of the bald
+      "No ingredients listed." empty-state. Used by the Something New
+      PreviewSheet while a light preview's content hydrates in the
+      background, mirroring `stepsLoading`. */
+  ingredientsLoading?: boolean;
   /** Plan-flow handoff. When set, the inner RemixSheet renders its
       variation cards in apply-to-day mode — picking a variation saves
       to library AND fires this callback (parent wires to applySwap).
@@ -690,7 +697,16 @@ export function PreviewSheet({
             <ServingSizeStepper servings={servings} onChange={setServings} />
           </View>
           {recipe.ingredients.length === 0 ? (
-            <Text style={styles.sheetEmpty}>No ingredients listed.</Text>
+            ingredientsLoading ? (
+              // D6: mirror the Steps loader — a hydrating Something New preview
+              // shows a spinner, never the bald "No ingredients listed." flash.
+              <View style={styles.sheetStepsLoading}>
+                <ActivityIndicator size="small" color={colors.brand} />
+                <Text style={styles.sheetEmpty}>Gathering ingredients…</Text>
+              </View>
+            ) : (
+              <Text style={styles.sheetEmpty}>No ingredients listed.</Text>
+            )
           ) : (
             <ScaledIngredientList
               ingredients={recipe.ingredients}
