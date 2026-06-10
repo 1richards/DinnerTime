@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0.2
 milestone_name: — Performance & Caching
 current_plan: 1
-status: executing
-stopped_at: Completed 28-03-PLAN.md
-last_updated: "2026-06-10T03:39:15.757Z"
+status: verifying
+stopped_at: Completed 28-02-PLAN.md
+last_updated: "2026-06-10T03:46:19.038Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 97
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 Phase: 28 (Recipe-load telemetry + performance) — EXECUTING
 Plan: 3 of 3
 Current Plan: 1
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-10
 
 Progress: [██████████] 97%
@@ -183,6 +183,7 @@ Progress: [██████████] 97%
 | Phase 27 P05 | 3min | 2 tasks | 2 files |
 | Phase 28 P01 | 3min | 2 tasks | 6 files |
 | Phase 28 P03 | 4min | 3 tasks | 5 files |
+| Phase 28 P02 | 5min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -605,6 +606,9 @@ Recent decisions affecting current work:
 - [Phase 28]: RECIPE_LOAD_MS=3500 (3.5s target ceiling); fetchRecipes round-trip incl. auth pre-flight timed via withBudget('recipe.fetch')
 - [Phase 28]: Per-image time-to-visible via logAiEvent('recipe.image.visible'), {ms,success} only (PII guard), split cache_hit vs cold_gen
 - [Phase 28]: hydrateRecipeDetail re-hydrates full steps on detail open in its own [id,...] effect; steps null-guarded (PostgREST returns undefined not [] for trimmed column)
+- [Phase 28]: generateRecipeImage delegates to generateRecipeImageWithMeta ({url,cacheHit,genMs}) — one path, back-compat preserved
+- [Phase 28]: generate-on-save fires only when saved row has no image_url; dedup early-return never generates
+- [Phase 28]: backfill-images is per-user via .is('image_url',null) idempotency filter; never auto-run on boot
 
 ### Pending Todos
 
@@ -694,7 +698,7 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-06-10T03:39:07.895Z
-Stopped at: Completed 28-03-PLAN.md
+Last session: 2026-06-10T03:46:08.531Z
+Stopped at: Completed 28-02-PLAN.md
 Resume file: None
 | 2026-04-28 | fast | More options pill padding | done |
