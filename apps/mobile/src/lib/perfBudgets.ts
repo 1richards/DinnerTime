@@ -37,6 +37,18 @@ export const IMAGE_MAX_MB = 5;
 export const RECIPE_LOAD_MS = 3500;
 
 /**
+ * Phase 29 (D8): "Something New" lightweight /search round-trip budget
+ * (auth pre-flight + POST /recipes/search with `light: true`). 5s = the upper
+ * bound of the 3-5s target band the lightweight-first redesign aims for (down
+ * from the ~29s heavy generation). Wrap the full searchRecipes round-trip in
+ * `withBudget('suggestions.search', SUGGESTIONS_SEARCH_MS, ...)` so the auth
+ * pre-flight (a possible token-refresh cost) is measured alongside the network
+ * call. Background hydration timing is tracked separately per-preview via
+ * logAiEvent('recipe.hydrate.visible').
+ */
+export const SUGGESTIONS_SEARCH_MS = 5000;
+
+/**
  * Time an async operation against a named budget. Returns the fn's resolved
  * value unchanged so callers can wrap a call site without restructuring:
  *

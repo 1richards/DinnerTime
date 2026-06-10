@@ -16,6 +16,27 @@ vi.mock('../../lib/supabase', () => ({
   supabase: mockSupabase,
 }));
 
+// Phase 29-03: mock the hydration hook module so the store test controls
+// background hydration deterministically (no real /hydrate fetch, no limiter
+// timing). prefetchHydration resolves to whatever the test queues.
+const mockPrefetchHydration = vi.hoisted(() => vi.fn());
+const mockHydrationStatusFor = vi.hoisted(() => vi.fn(() => 'idle'));
+vi.mock('../../hooks/useHydratedRecipeContent', () => ({
+  prefetchHydration: mockPrefetchHydration,
+  hydrationStatusFor: mockHydrationStatusFor,
+  MAX_CONCURRENT: 2,
+}));
+
+// Phase 29-03: spy on withBudget to assert the /search round-trip is measured,
+// while still executing fn() so the store behavior is unchanged.
+const mockWithBudget = vi.hoisted(() =>
+  vi.fn((_name: string, _ms: number, fn: () => Promise<unknown>) => fn()),
+);
+vi.mock('../../lib/perfBudgets', async (orig) => {
+  const actual = (await orig()) as Record<string, unknown>;
+  return { ...actual, withBudget: mockWithBudget };
+});
+
 // Mock global fetch
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
@@ -270,6 +291,137 @@ describe('suggestionsStore', () => {
       expect(state.searchResults).toEqual([]);
       expect(state.recentQueries).toEqual([]);
       expect(state.lastQuery).toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 29-03 (D4 + D7 + D8-client): lightweight-first + background hydration.
+  //
+  //   - searchRecipes/appendSearchResults send `light: true`
+  //   - /search round-trip wrapped in withBudget('suggestions.search', ...)
+  //   - each light preview is background-hydrated; searchResults[i] patched
+  //     with ingredients/steps as each lands
+  //   - D7: persisted un-hydrated previews re-trigger hydration on rehydrate
+  // -------------------------------------------------------------------------
+  describe('Phase 29-03: light mode + background hydration', () => {
+    const lightPreview = {
+      title: 'Light Soup',
+      description: 'fast',
+      ingredients: [], // empty in light mode (names live in ingredient_names)
+      steps: [], // empty in light mode — hydration fills these
+      prep_time_minutes: 5,
+      cook_time_minutes: 10,
+      total_time_minutes: 15,
+      servings: 2,
+      source_url: null,
+      source_type: 'ai',
+      image_url: null,
+      ingredient_names: ['onion', 'broth'],
+    };
+
+    beforeEach(() => {
+      mockPrefetchHydration.mockReset();
+      mockHydrationStatusFor.mockReset();
+      mockWithBudget.mockClear();
+      // Default: hydration never resolves (tests that care queue their own).
+      mockPrefetchHydration.mockResolvedValue(null);
+    });
+
+    it('searchRecipes sends light:true in the body', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      await useSuggestionsStore
+        .getState()
+        .searchRecipes('soup', { pantryOnly: false });
+
+      const callArg = mockFetch.mock.calls[0]?.[1] as { body: string };
+      expect(JSON.parse(callArg.body)).toMatchObject({ light: true });
+    });
+
+    it('appendSearchResults sends light:true in the body', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      await useSuggestionsStore
+        .getState()
+        .appendSearchResults('soup', { pantryOnly: true });
+
+      const callArg = mockFetch.mock.calls[0]?.[1] as { body: string };
+      expect(JSON.parse(callArg.body)).toMatchObject({ light: true });
+    });
+
+    it('wraps the /search round-trip in withBudget(suggestions.search)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      await useSuggestionsStore
+        .getState()
+        .searchRecipes('soup', { pantryOnly: false });
+
+      expect(mockWithBudget).toHaveBeenCalledWith(
+        'suggestions.search',
+        expect.any(Number),
+        expect.any(Function),
+      );
+    });
+
+    it('background-hydrates each preview and patches searchResults[i] with ingredients/steps', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [lightPreview] }),
+      });
+      // Hydration resolves with full content.
+      mockPrefetchHydration.mockResolvedValueOnce({
+        ingredients: [
+          { name: 'onion', quantity: 1, unit: null, notes: null },
+          { name: 'broth', quantity: 2, unit: 'cup', notes: null },
+        ],
+        steps: ['Chop onion', 'Simmer in broth'],
+        calories_per_serving: 200,
+        protein_grams_per_serving: 8,
+        servings: 2,
+      });
+
+      await useSuggestionsStore
+        .getState()
+        .searchRecipes('soup', { pantryOnly: false });
+
+      // Let the background hydration patch settle.
+      await new Promise((r) => setTimeout(r, 0));
+
+      const state = useSuggestionsStore.getState();
+      expect(state.searchResults).toHaveLength(1);
+      expect(state.searchResults[0].steps).toEqual([
+        'Chop onion',
+        'Simmer in broth',
+      ]);
+      expect(state.searchResults[0].ingredients).toHaveLength(2);
+      expect(mockPrefetchHydration).toHaveBeenCalled();
+    });
+
+    it('D7: rehydrateUnhydrated re-triggers hydration for persisted empty-steps previews', async () => {
+      // Simulate a persisted preview with empty steps (un-hydrated).
+      useSuggestionsStore.setState({
+        searchResults: [lightPreview] as unknown as never,
+      });
+      mockPrefetchHydration.mockResolvedValueOnce({
+        ingredients: [{ name: 'onion', quantity: 1, unit: null, notes: null }],
+        steps: ['Cook it'],
+      });
+
+      await useSuggestionsStore.getState().rehydrateUnhydrated();
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(mockPrefetchHydration).toHaveBeenCalled();
+      const state = useSuggestionsStore.getState();
+      expect(state.searchResults[0].steps).toEqual(['Cook it']);
     });
   });
 });
