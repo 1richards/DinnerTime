@@ -1211,4 +1211,80 @@ type RecipeIngredientShape = {
   notes?: string | null;
 };
 
+/**
+ * POST /backfill-images (O3 — Phase 28) — manual, idempotent legacy backfill.
+ *
+ * O2 populates image_url at SAVE time so new recipes never cold-generate on
+ * the Recipe Box list. This is the one-time complement for EXISTING rows whose
+ * image_url is still null (saved before O2). Patrick triggers it for his own
+ * library; it is NEVER auto-run on boot.
+ *
+ * Idempotent: `.is('image_url', null)` selects only candidate rows, so
+ * already-populated rows are never touched and a re-run after a full sweep
+ * selects ZERO rows. Even a forced re-gen would be a cheap content-addressed
+ * Storage cache hit, so re-running never re-bills Gemini for the same dish.
+ *
+ * Scoped to the calling user's recipes (profile_id = c.get('user').id) — image
+ * generation is a per-user cost, so we don't sweep all accounts here.
+ *
+ * Returns { examined, updated, skipped }.
+ */
+recipes.post('/backfill-images', async (c) => {
+  const supabase = c.get('supabase');
+  const user = c.get('user');
+
+  // Only null-image rows for this user. The .is('image_url', null) filter is
+  // what makes the route idempotent.
+  const { data: rows, error } = await supabase
+    .from('recipes')
+    .select('id, title, description, ingredients, image_url')
+    .eq('profile_id', user.id)
+    .is('image_url', null);
+
+  if (error) {
+    return c.json({ error: error.message }, 500);
+  }
+
+  type Row = {
+    id: string;
+    title: string;
+    description: string | null;
+    ingredients: unknown;
+  };
+
+  let examined = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  for (const row of (rows ?? []) as unknown as Row[]) {
+    examined++;
+    try {
+      const { url } = await generateRecipeImageWithMeta({
+        title: row.title,
+        description: row.description,
+        ingredients: Array.isArray(row.ingredients) ? row.ingredients : null,
+      });
+      if (!url) {
+        skipped++;
+        continue;
+      }
+      const { error: upErr } = await supabase
+        .from('recipes')
+        .update({ image_url: url })
+        .eq('id', row.id)
+        .eq('profile_id', user.id);
+      if (upErr) {
+        skipped++;
+        continue;
+      }
+      updated++;
+    } catch (e) {
+      console.warn('[backfill-images] row failed', row.id, e);
+      skipped++;
+    }
+  }
+
+  return c.json({ examined, updated, skipped });
+});
+
 export default recipes;
