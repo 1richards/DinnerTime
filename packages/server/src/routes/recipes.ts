@@ -454,6 +454,55 @@ recipes.post('/', async (c) => {
     }
 
     const data = await saveRecipe(supabase, user.id, body);
+
+    // O2 (Phase 28): generate-on-save. The dominant recipe-load cost is the
+    // Recipe Box list cold-generating hero images on the critical path. By
+    // populating image_url at SAVE time the row is never null by the time the
+    // list loads, so the image hook's skip:true branch fires and ZERO
+    // generate-image requests happen on a cold open.
+    //
+    // Fire-and-forget AFTER the response is built so the 201 is NOT delayed by
+    // the Gemini round-trip (CONTEXT: "prefer not blocking the save UX;
+    // fire-and-forget + write-back is acceptable since 27-01 already
+    // persists"). Only act when the saved row has no image yet. The dedup
+    // early-return above keeps its existing image and never reaches here.
+    if (data && !data.image_url) {
+      const userId = user.id;
+      const reqId = c.get('request_id');
+      void Promise.resolve().then(async () => {
+        try {
+          const { url, cacheHit, genMs } = await generateRecipeImageWithMeta({
+            title: data.title,
+            description: data.description,
+            ingredients: Array.isArray(data.ingredients)
+              ? data.ingredients
+              : null,
+          });
+          if (url) {
+            // supabaseAdmin bypasses RLS; .eq('profile_id') is the ownership
+            // guard (mirrors 27-01's write-back).
+            await supabaseAdmin
+              .from('recipes')
+              .update({ image_url: url })
+              .eq('id', data.id)
+              .eq('profile_id', userId);
+          }
+          void recordAiCall({
+            userId,
+            sessionId: reqId,
+            task: cacheHit
+              ? 'recipe.generateImage.onSave.hit'
+              : 'recipe.generateImage.onSave.miss',
+            model: RECIPE_IMAGE_MODEL,
+            latencyMs: genMs,
+            success: url !== null,
+          });
+        } catch (e) {
+          console.warn('[saveRecipe] generate-on-save failed', e);
+        }
+      });
+    }
+
     return c.json({ data }, 201);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to save recipe';
