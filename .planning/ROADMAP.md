@@ -55,10 +55,10 @@ Waves:
 - Recipes never trigger image generation on the Recipe Box critical path: image_url is populated at save time (generate-on-save) and a backfill path exists for legacy null-image_url rows.
 - After deploy, a cold Recipe Box load measurably drops toward 3-5s (verified via the new telemetry), no test regressions.
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 28-01-PLAN.md — Server T1+O1: GET /recipes sub-stage timing log + getRecipes lightweight column set + LIMIT (steps/step_image_urls trimmed, ingredients kept)
+- [x] 28-01-PLAN.md — Server T1+O1: GET /recipes sub-stage timing log + getRecipes lightweight column set + LIMIT (steps/step_image_urls trimmed, ingredients kept)
 - [ ] 28-02-PLAN.md — Server T2+O2+O3: /generate-image recordAiCall timing + generate-on-save fire-and-forget + manual idempotent /backfill-images route
 - [ ] 28-03-PLAN.md — Client T3+O1-guard: RECIPE_LOAD_MS withBudget on fetchRecipes + per-image logAiEvent + detail re-hydration of full steps on open
 

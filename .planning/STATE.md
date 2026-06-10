@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0.2
 milestone_name: — Performance & Caching
-current_plan: Not started
-status: verifying
-stopped_at: "Completed 27-05-PLAN.md (prompt caching: Anthropic cache_control + Gemini threshold guard)"
-last_updated: "2026-06-09T05:06:00.600Z"
-last_activity: 2026-06-09
+current_plan: 1
+status: executing
+stopped_at: Completed 28-01-PLAN.md
+last_updated: "2026-06-10T03:34:09.625Z"
+last_activity: 2026-06-10
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 8
+  completed_plans: 6
   percent: 97
 ---
 
@@ -22,15 +22,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Open the fridge, take a photo, get dinner ideas -- zero mental effort from "what do we have?" to "what should we cook?"
-**Current focus:** Phase 27 — Performance & caching fixes
+**Current focus:** Phase 28 — Recipe-load telemetry + performance
 
 ## Current Position
 
-Phase: 27
-Plan: 5 of 5
-Current Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-06-09
+Phase: 28 (Recipe-load telemetry + performance) — EXECUTING
+Plan: 2 of 3
+Current Plan: 1
+Status: Ready to execute
+Last activity: 2026-06-10
 
 Progress: [██████████] 97%
 
@@ -181,6 +181,7 @@ Progress: [██████████] 97%
 | Phase 27 P04 | 6min | 3 tasks | 3 files |
 | Phase 27 P03 | 4min | 2 tasks | 5 files |
 | Phase 27 P05 | 3min | 2 tasks | 2 files |
+| Phase 28 P01 | 3min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -598,6 +599,8 @@ Recent decisions affecting current work:
 - [Phase 27]: 27-03: Hand-rolled insertion-ordered Map LRU (12-min TTL, 200-entry cap) + Map<key,Promise> coalescing mirroring recipeImageGen.ts sha256 pattern — no new dependency
 - [Phase 27]: Anthropic prompt caching: system as text-block + tool schema marked with cache_control: ephemeral; user prompt uncached
 - [Phase 27]: Gemini context-cache (cachedContent) omitted via documented threshold guard; prefix may not clear min-token floor, revisit on live token counts
+- [Phase 28]: [28-01]: List query uses RECIPE_LIST_COLUMNS (drops steps/step_image_urls JSONB, keeps ingredients) + LIMIT 200 (load-all capped, not paging); getRecipeById detail select untouched
+- [Phase 28]: [28-01]: getRecipes returns { rows, queryMs, rowCount }; GET /recipes emits structured recipes.list log (db_query_ms, row_count, payload_bytes) with request_id correlation
 
 ### Pending Todos
 
@@ -687,7 +690,7 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-06-09T04:46:58.341Z
-Stopped at: Completed 27-05-PLAN.md (prompt caching: Anthropic cache_control + Gemini threshold guard)
+Last session: 2026-06-10T03:34:01.179Z
+Stopped at: Completed 28-01-PLAN.md
 Resume file: None
 | 2026-04-28 | fast | More options pill padding | done |
