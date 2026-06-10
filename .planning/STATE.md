@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0.2
 milestone_name: — Performance & Caching
-current_plan: Not started
-status: verifying
-stopped_at: Completed 28-02-PLAN.md
-last_updated: "2026-06-10T04:01:03.991Z"
+current_plan: 1
+status: executing
+stopped_at: Completed 29-01-PLAN.md
+last_updated: "2026-06-10T05:05:32.497Z"
 last_activity: 2026-06-10
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 12
+  completed_plans: 9
   percent: 97
 ---
 
@@ -22,14 +22,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-07)
 
 **Core value:** Open the fridge, take a photo, get dinner ideas -- zero mental effort from "what do we have?" to "what should we cook?"
-**Current focus:** Phase 28 — Recipe-load telemetry + performance
+**Current focus:** Phase 29 — Something New lightweight-first generation
 
 ## Current Position
 
-Phase: 28
-Plan: 3 of 3
-Current Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 29 (Something New lightweight-first generation) — EXECUTING
+Plan: 2 of 4
+Current Plan: 1
+Status: Ready to execute
 Last activity: 2026-06-10
 
 Progress: [██████████] 97%
@@ -184,6 +184,7 @@ Progress: [██████████] 97%
 | Phase 28 P01 | 3min | 2 tasks | 6 files |
 | Phase 28 P03 | 4min | 3 tasks | 5 files |
 | Phase 28 P02 | 5min | 3 tasks | 5 files |
+| Phase 29 P01 | 7min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -609,6 +610,9 @@ Recent decisions affecting current work:
 - [Phase 28]: generateRecipeImage delegates to generateRecipeImageWithMeta ({url,cacheHit,genMs}) — one path, back-compat preserved
 - [Phase 28]: generate-on-save fires only when saved row has no image_url; dedup early-return never generates
 - [Phase 28]: backfill-images is per-user via .is('image_url',null) idempotency filter; never auto-run on boot
+- [Phase 29]: Light discovery is OPT-IN (body.light===true); default path byte-identical so the shipped app is unaffected when the server deploys ahead of the EAS build
+- [Phase 29]: Light schema keeps a cheap ingredient_names string list (D1a) so the pantry-match badge survives without full ingredient objects/steps
+- [Phase 29]: light folded into discoveryCacheKey so a light payload can never be served to the old full-contract app and vice versa
 
 ### Pending Todos
 
@@ -698,7 +702,7 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-06-10T03:46:08.531Z
-Stopped at: Completed 28-02-PLAN.md
+Last session: 2026-06-10T05:05:24.158Z
+Stopped at: Completed 29-01-PLAN.md
 Resume file: None
 | 2026-04-28 | fast | More options pill padding | done |
