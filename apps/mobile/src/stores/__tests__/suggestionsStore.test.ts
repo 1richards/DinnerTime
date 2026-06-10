@@ -24,6 +24,11 @@ const mockHydrationStatusFor = vi.hoisted(() => vi.fn(() => 'idle'));
 vi.mock('../../hooks/useHydratedRecipeContent', () => ({
   prefetchHydration: mockPrefetchHydration,
   hydrationStatusFor: mockHydrationStatusFor,
+  // Phase 29-04: previewFrom now lives in the hook module (single source of
+  // truth shared with the save surfaces). The store maps each result through
+  // it before prefetchHydration — a passthrough identity keeps the mocked
+  // prefetch receiving the recipe, which is all this suite asserts on.
+  previewFrom: (r: unknown) => r,
   MAX_CONCURRENT: 2,
 }));
 

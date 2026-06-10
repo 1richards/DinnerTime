@@ -26,7 +26,7 @@ import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 import { logAiEvent, sanitizePayload } from '../ai/telemetry';
-import type { ParsedIngredient } from '../types/recipe';
+import type { ParsedIngredient, ParsedRecipe } from '../types/recipe';
 
 /**
  * Phase 29 (D8-client): emit per-preview time-to-hydrate (fetch start →
@@ -67,6 +67,37 @@ export interface HydratePreview {
   total_time_minutes?: number | null;
   cuisine?: string | null;
   ingredient_names?: string[] | null;
+}
+
+/**
+ * Phase 29 (D4/D5): map a (possibly light) searchResult ParsedRecipe to the
+ * HydratePreview input the hydration hook / `prefetchHydration` POSTs to
+ * `/recipes/hydrate`. Light previews carry no full `ingredients[]` — names live
+ * on an attached `ingredient_names` field (set by the 29-01 light /search), so
+ * prefer that; fall back to mapping any structured ingredients for non-light
+ * rows.
+ *
+ * Exported as the SINGLE source of truth so every save surface (suggestionsStore
+ * background hydration, SomethingNewResults card handlers, kitchen.tsx
+ * PreviewSheet handlers) maps a recipe identically — the await-hydration gate in
+ * Plan 29-04 depends on the same cache key resolving across all of them.
+ */
+export function previewFrom(r: ParsedRecipe): HydratePreview {
+  const names =
+    (r as { ingredient_names?: string[] | null }).ingredient_names ??
+    (r.ingredients?.length
+      ? r.ingredients.map((i) => i.name).filter(Boolean)
+      : null);
+  return {
+    title: r.title,
+    description: r.description,
+    difficulty: r.difficulty ?? null,
+    prep_time_minutes: r.prep_time_minutes,
+    cook_time_minutes: r.cook_time_minutes,
+    total_time_minutes: r.total_time_minutes,
+    cuisine: (r as { cuisine?: string | null }).cuisine ?? null,
+    ingredient_names: names,
+  };
 }
 
 /** The resolved content patched onto a light preview. */

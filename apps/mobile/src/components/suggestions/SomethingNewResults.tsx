@@ -42,6 +42,10 @@ import { useSuggestionsStore } from '../../stores/suggestionsStore';
 import { useRecipeStore } from '../../stores/recipeStore';
 import { usePantryStore } from '../../stores/pantryStore';
 import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
+import {
+  prefetchHydration,
+  previewFrom,
+} from '../../hooks/useHydratedRecipeContent';
 import { isIngredientInPantry } from '../recipes/ingredientHelpers';
 import { colors } from '../../design/tokens';
 import type { ParsedRecipe, Recipe } from '../../types/recipe';
@@ -266,10 +270,55 @@ function PreviewRecipeCard({
   // useSyncExternalStore identity check, causing an infinite render loop.
   const pantryItems = usePantryStore((s) => s.items);
   const pantryNames = pantryItems.map((i) => i.name);
+  // NOTE (D5): reads 0 until the preview hydrates — `recipe.ingredients` is
+  // empty for a fresh light preview and the store patches it in as hydration
+  // lands (Plan 29-03), so this badge self-corrects. reduce() over [] is 0.
   const pantryMatchCount = recipe.ingredients.reduce(
     (n, ing) => (isIngredientInPantry(ing.name, pantryNames) ? n + 1 : n),
     0,
   );
+
+  // D5 (CRITICAL): a fresh light preview has EMPTY ingredients/steps until
+  // background hydration lands. `POST /recipes` HARD-400s without both. The
+  // store patches ingredients+steps onto `recipe` as hydration resolves, so
+  // non-empty arrays are the authoritative "safe to save" signal.
+  const hydrated =
+    recipe.ingredients.length > 0 && recipe.steps.length > 0;
+
+  /**
+   * D5 gate shared by every save/cook/favorite path. Returns a recipe object
+   * guaranteed to carry non-empty ingredients+steps (so the POST can't 400),
+   * or null if hydration is still in flight and didn't resolve (caller bails
+   * with a "Still preparing" alert). When already hydrated this is a no-op
+   * pass-through.
+   */
+  const ensureHydrated = async (): Promise<ParsedRecipe | null> => {
+    if (hydrated) return recipe;
+    // Await the in-flight (or kick a fresh) hydration for THIS preview.
+    const content = await prefetchHydration(previewFrom(recipe));
+    if (
+      !content ||
+      !content.ingredients?.length ||
+      !content.steps?.length
+    ) {
+      Alert.alert(
+        'Still preparing',
+        'This recipe is still loading — try again in a moment.',
+      );
+      return null;
+    }
+    return {
+      ...recipe,
+      ingredients: content.ingredients,
+      steps: content.steps,
+      calories_per_serving:
+        content.calories_per_serving ?? recipe.calories_per_serving,
+      protein_grams_per_serving:
+        content.protein_grams_per_serving ??
+        recipe.protein_grams_per_serving,
+      servings: content.servings ?? recipe.servings,
+    };
+  };
 
   const saveRecipe = useRecipeStore((s) => s.saveRecipe);
   const toggleFavorite = useRecipeStore((s) => s.toggleFavorite);
@@ -300,10 +349,13 @@ function PreviewRecipeCard({
   const handleSave = async () => {
     setWorking('save');
     try {
+      // D5: never POST an un-hydrated recipe (empty ingredients/steps → 400).
+      const safe = await ensureHydrated();
+      if (!safe) return;
       // heroUri bakes in the resolved Gemini generatedUri (or a pre-existing
       // recipe.image_url); persisting it here keeps the library card's hero
       // visually identical to the Something New card the user just tapped.
-      await saveRecipe({ ...recipe, image_url: heroUri, source_type: 'ai' });
+      await saveRecipe({ ...safe, image_url: heroUri, source_type: 'ai' });
       const err = useRecipeStore.getState().error;
       if (err) {
         Alert.alert('Save failed', err);
@@ -329,11 +381,14 @@ function PreviewRecipeCard({
   const handleSaveAndFavorite = async () => {
     setWorking('favorite');
     try {
+      // D5: gate on hydration before the save POST.
+      const safe = await ensureHydrated();
+      if (!safe) return;
       const beforeIds = new Set(
         useRecipeStore.getState().recipes.map((r) => r.id),
       );
       const saved = await saveRecipe({
-        ...recipe,
+        ...safe,
         image_url: heroUri,
         source_type: 'ai',
       });
@@ -364,10 +419,13 @@ function PreviewRecipeCard({
   const handleCookNow = async () => {
     setWorking('cook');
     try {
+      // D5: gate on hydration before the save POST.
+      const safe = await ensureHydrated();
+      if (!safe) return;
       const beforeIds = new Set(
         useRecipeStore.getState().recipes.map((r) => r.id),
       );
-      await saveRecipe({ ...recipe, image_url: heroUri, source_type: 'ai' });
+      await saveRecipe({ ...safe, image_url: heroUri, source_type: 'ai' });
       const state = useRecipeStore.getState();
       if (state.error) {
         Alert.alert('Save failed', state.error);
@@ -402,6 +460,7 @@ function PreviewRecipeCard({
           saved,
           favorited: favoritedThisRecipe,
           working,
+          hydrating: !hydrated,
         }}
         pantryMatchCount={pantryMatchCount}
         hideServings

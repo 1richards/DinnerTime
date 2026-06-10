@@ -30,6 +30,14 @@ export interface PreviewActions {
   favorited?: boolean;
   /** Which action is currently in-flight (shows a spinner on that icon). */
   working?: 'save' | 'cook' | 'favorite' | null;
+  /**
+   * Phase 29 (D5): the preview's full content (ingredients + steps) is still
+   * hydrating in the background. The save/cook/favorite handlers AWAIT the
+   * in-flight hydration before firing (so they can never POST empty content →
+   * 400), but the card surfaces a subtle dimmed affordance while that's true.
+   * The card stays tappable to open the PreviewSheet.
+   */
+  hydrating?: boolean;
 }
 
 interface RecipeCardProps {
@@ -173,7 +181,15 @@ function RecipeCardBase({
               (e.g. Something New results). Each button stops propagation so
               tapping the icon doesn't also trigger the card's onPress. */}
           {preview && previewActions && (
-            <View style={styles.actionCluster}>
+            <View
+              style={[
+                styles.actionCluster,
+                // D5: dim the save/cook/favorite cluster while content hydrates.
+                // Subtle — the handlers await hydration so taps still succeed
+                // (they just wait), this only signals "still preparing".
+                previewActions.hydrating && { opacity: 0.5 },
+              ]}
+            >
               {previewActions.onCookNow && (
                 <Pressable
                   onPress={(e) => {

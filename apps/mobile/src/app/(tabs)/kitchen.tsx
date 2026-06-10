@@ -30,6 +30,10 @@ import { PreviewSheet } from '../recipes/discover';
 import { LabelsEditor } from '../../components/recipes/LabelsEditor';
 import { getRecipeImage } from '../../constants/foodImages';
 import { useGeneratedRecipeImage } from '../../hooks/useGeneratedRecipeImage';
+import {
+  prefetchHydration,
+  previewFrom,
+} from '../../hooks/useHydratedRecipeContent';
 import { useRecipeStepImages } from '../../hooks/useRecipeStepImages';
 import {
   RecipeFilterSheet,
@@ -352,6 +356,18 @@ export default function KitchenScreen() {
     },
   );
 
+  // D6 self-heal: when the sheet opens for an un-hydrated preview (e.g. a stale
+  // persisted snapshot whose background hydration wasn't re-kicked), start
+  // hydrating so the ingredient/step loaders resolve while the sheet is up.
+  // prefetchHydration is no-op-cached, so this is cheap if already in flight.
+  useEffect(() => {
+    if (!previewRecipe) return;
+    const unhydrated =
+      previewRecipe.ingredients.length === 0 ||
+      previewRecipe.steps.length === 0;
+    if (unhydrated) void prefetchHydration(previewFrom(previewRecipe));
+  }, [previewRecipe]);
+
   const hasResults = searchResults.length > 0;
   // Bug fix (bookmark-modal-differs-per-user): the legacy SuggestionList
   // fallback opened SuggestionPreviewModal — a degraded modal whose ONLY
@@ -561,16 +577,53 @@ export default function KitchenScreen() {
   );
 
   // ---------- Phase 17 preview handlers ----------
+
+  // D5 (CRITICAL): a Something New preview can be un-hydrated (empty
+  // ingredients/steps) when the user taps a save/cook/favorite/plan action.
+  // `POST /recipes` and `addToPlan` need full content — an un-hydrated save
+  // 400s. Await the in-flight hydration (the store patches `previewRecipe` as
+  // it lands; this also covers a stale persisted snapshot whose hydration
+  // wasn't re-kicked) and return a content-complete recipe, or null + alert if
+  // it can't resolve. A no-op pass-through when already hydrated.
+  const ensurePreviewHydrated = async (): Promise<ParsedRecipe | null> => {
+    if (!previewRecipe) return null;
+    const isHydrated =
+      previewRecipe.ingredients.length > 0 && previewRecipe.steps.length > 0;
+    if (isHydrated) return previewRecipe;
+    const content = await prefetchHydration(previewFrom(previewRecipe));
+    if (!content || !content.ingredients?.length || !content.steps?.length) {
+      Alert.alert(
+        'Still preparing',
+        'This recipe is still loading — try again in a moment.',
+      );
+      return null;
+    }
+    return {
+      ...previewRecipe,
+      ingredients: content.ingredients,
+      steps: content.steps,
+      calories_per_serving:
+        content.calories_per_serving ?? previewRecipe.calories_per_serving,
+      protein_grams_per_serving:
+        content.protein_grams_per_serving ??
+        previewRecipe.protein_grams_per_serving,
+      servings: content.servings ?? previewRecipe.servings,
+    };
+  };
+
   const handlePreviewSave = async () => {
     if (!previewRecipe) return;
     setSavingPreview(true);
     try {
+      // D5: gate on hydration before the save POST.
+      const safe = await ensurePreviewHydrated();
+      if (!safe) return;
       // Pitfall 9 preservation: stamp source_type: 'ai' on the saved recipe,
       // same as apps/mobile/src/app/recipes/discover.tsx handleSave().
       const beforeIds = new Set(
         useRecipeStore.getState().recipes.map((r) => r.id),
       );
-      await saveRecipe({ ...previewRecipe, source_type: 'ai' });
+      await saveRecipe({ ...safe, source_type: 'ai' });
       const state = useRecipeStore.getState();
       if (state.error) {
         // Bail without redirecting; the user stays on the Something New
@@ -597,10 +650,13 @@ export default function KitchenScreen() {
     if (!previewRecipe) return;
     setCookingPreview(true);
     try {
+      // D5: gate on hydration before the save POST.
+      const safe = await ensurePreviewHydrated();
+      if (!safe) return;
       const beforeIds = new Set(
         useRecipeStore.getState().recipes.map((r) => r.id),
       );
-      await saveRecipe({ ...previewRecipe, source_type: 'ai' });
+      await saveRecipe({ ...safe, source_type: 'ai' });
       const state = useRecipeStore.getState();
       if (state.error) return;
       const created = state.recipes.find((r) => !beforeIds.has(r.id));
@@ -765,17 +821,22 @@ export default function KitchenScreen() {
             }}
             onSave={handlePreviewSave}
             saving={savingPreview}
+            // D6: show ingredient/step loaders while a light preview hydrates.
+            // The store patches previewRecipe.ingredients/steps as content lands
+            // (Plan 29-03), so these flip false the moment hydration resolves.
+            stepsLoading={previewRecipe.steps.length === 0}
+            ingredientsLoading={previewRecipe.ingredients.length === 0}
             onCookNow={handlePreviewCookNow}
             cooking={cookingPreview}
             onCookLater={async (iso) => {
               if (!previewRecipe) return;
               setCookingLaterPreview(true);
               try {
-                await useMealPlanStore.getState().addToPlan(
-                  iso,
-                  previewRecipe,
-                  null,
-                );
+                // D5: addToPlan persists the recipe — gate on hydration so an
+                // un-hydrated preview can't land empty content in the plan.
+                const safe = await ensurePreviewHydrated();
+                if (!safe) return;
+                await useMealPlanStore.getState().addToPlan(iso, safe, null);
                 setPreviewRecipe(null);
                 setPreviewFavorited(false);
               } finally {
@@ -786,6 +847,9 @@ export default function KitchenScreen() {
             adHocFavorited={previewFavorited}
             onAdHocFavorite={async () => {
               if (!previewRecipe) return;
+              // D5: gate on hydration before the save POST.
+              const safe = await ensurePreviewHydrated();
+              if (!safe) return;
               const beforeIds = new Set(
                 useRecipeStore.getState().recipes.map((r) => r.id),
               );
@@ -794,7 +858,7 @@ export default function KitchenScreen() {
               const saved = await useRecipeStore
                 .getState()
                 .saveRecipe({
-                  ...previewRecipe,
+                  ...safe,
                   image_url: heroUri,
                   source_type: 'ai',
                 });

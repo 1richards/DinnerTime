@@ -6,37 +6,9 @@ import type { DinnerSuggestion } from '../types/suggestions';
 import type { ParsedRecipe } from '../types/recipe';
 import { dedupPrepend } from './dedupPrepend';
 import { withBudget, SUGGESTIONS_SEARCH_MS } from '../lib/perfBudgets';
-import {
-  prefetchHydration,
-  type HydratePreview,
-} from '../hooks/useHydratedRecipeContent';
+import { prefetchHydration, previewFrom } from '../hooks/useHydratedRecipeContent';
 
 const MAX_RECENT = 5;
-
-/**
- * Phase 29-03 (D4): map a (possibly light) searchResult ParsedRecipe to the
- * HydratePreview input the hydration hook POSTs to /recipes/hydrate. Light
- * previews carry no full `ingredients[]` — names live on an attached
- * `ingredient_names` field (set by the 29-01 light /search), so prefer that;
- * fall back to mapping any structured ingredients for non-light rows.
- */
-function previewFrom(r: ParsedRecipe): HydratePreview {
-  const names =
-    (r as { ingredient_names?: string[] | null }).ingredient_names ??
-    (r.ingredients?.length
-      ? r.ingredients.map((i) => i.name).filter(Boolean)
-      : null);
-  return {
-    title: r.title,
-    description: r.description,
-    difficulty: r.difficulty ?? null,
-    prep_time_minutes: r.prep_time_minutes,
-    cook_time_minutes: r.cook_time_minutes,
-    total_time_minutes: r.total_time_minutes,
-    cuisine: (r as { cuisine?: string | null }).cuisine ?? null,
-    ingredient_names: names,
-  };
-}
 
 /** A preview still needs hydration if either ingredients OR steps are empty. */
 function isUnhydrated(r: ParsedRecipe): boolean {
