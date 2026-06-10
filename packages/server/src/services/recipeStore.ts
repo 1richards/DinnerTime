@@ -34,6 +34,29 @@ export interface RecipeRow {
   updated_at: string;
 }
 
+/**
+ * Lightweight explicit column set for the recipe LIST query (O1).
+ *
+ * Deliberately OMITS the two large JSONB columns the list UI never renders:
+ *   - `steps`           (full recipe instructions — only the detail screen needs them)
+ *   - `step_image_urls` (lazily-generated prep photos — detail-only)
+ *
+ * KEEPS `ingredients`: useGeneratedRecipeImage fingerprints on it for any
+ * remaining cold-gen path, and the detail screen falls back to it before the
+ * 28-03 client re-hydration fetch lands. Recipe DETAIL still loads the FULL
+ * row via getRecipeById (which keeps its untyped `.select()`).
+ */
+export const RECIPE_LIST_COLUMNS =
+  'id, profile_id, title, description, ingredients, prep_time_minutes, cook_time_minutes, total_time_minutes, servings, source_type, source_url, image_url, is_favorite, labels, calories_per_serving, protein_grams_per_serving, fat_grams_per_serving, difficulty, practiced_skills, skill_note, created_at, updated_at';
+
+/**
+ * Hard cap on the list query (O1). Generous on purpose: bounds the worst-case
+ * payload without breaking client-side search / offline cache, which both run
+ * over the FULL in-memory recipes array. Typical libraries are < 100 rows.
+ * This is "load-all (capped)", NOT incremental client paging.
+ */
+export const RECIPE_LIST_LIMIT = 200;
+
 // ---------- Public API ----------
 
 /**
@@ -134,8 +157,13 @@ export async function getRecipes(
   supabase: SupabaseClient,
   profileId: string,
   opts: GetRecipesOptions = {}
-): Promise<RecipeRow[]> {
-  let query = supabase.from('recipes').select().eq('profile_id', profileId);
+): Promise<{ rows: RecipeRow[]; queryMs: number; rowCount: number }> {
+  // O1 — explicit lightweight column set (no steps / step_image_urls) so the
+  // list payload never ships the large detail-only JSONB.
+  let query = supabase
+    .from('recipes')
+    .select(RECIPE_LIST_COLUMNS)
+    .eq('profile_id', profileId);
 
   if (opts.q && opts.q.trim().length > 0) {
     const escaped = escapeIlikePattern(opts.q);
@@ -146,13 +174,19 @@ export async function getRecipes(
     query = query.eq('is_favorite', true);
   }
 
-  const { data, error } = await query.order('created_at', { ascending: false });
+  // T1 — time just the DB round-trip so the route can log db_query_ms.
+  const t0 = Date.now();
+  const { data, error } = await query
+    .order('created_at', { ascending: false })
+    .limit(RECIPE_LIST_LIMIT);
+  const queryMs = Date.now() - t0;
 
   if (error) {
     throw new Error(`Failed to fetch recipes: ${error.message}`);
   }
 
-  return (data ?? []) as RecipeRow[];
+  const rows = (data ?? []) as unknown as RecipeRow[];
+  return { rows, queryMs, rowCount: rows.length };
 }
 
 /**

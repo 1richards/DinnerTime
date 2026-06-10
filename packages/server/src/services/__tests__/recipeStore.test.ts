@@ -3,6 +3,8 @@ import {
   getRecipes,
   updateRecipe,
   deleteRecipe,
+  RECIPE_LIST_COLUMNS,
+  RECIPE_LIST_LIMIT,
 } from '../recipeStore.js';
 
 // ---------- Chainable Supabase mock helpers ----------
@@ -64,11 +66,35 @@ describe('getRecipes with options', () => {
     const result = await getRecipes(supabase, 'user-1');
 
     expect(supabase.from).toHaveBeenCalledWith('recipes');
-    expect(chain.select).toHaveBeenCalled();
+    expect(chain.select).toHaveBeenCalledWith(RECIPE_LIST_COLUMNS);
     expect(chain.eq).toHaveBeenCalledWith('profile_id', 'user-1');
     expect(chain.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(chain.limit).toHaveBeenCalledWith(RECIPE_LIST_LIMIT);
     expect(chain.ilike).not.toHaveBeenCalled();
-    expect(result).toEqual(rows);
+    expect(result.rows).toEqual(rows);
+    expect(result.rowCount).toBe(rows.length);
+    expect(typeof result.queryMs).toBe('number');
+  });
+
+  it('selects a lightweight explicit column set excluding steps + step_image_urls but keeping ingredients', () => {
+    // O1 — the list query MUST drop the heavy JSONB columns and KEEP ingredients
+    // (image-gen fingerprint + detail fallback both depend on it).
+    expect(RECIPE_LIST_COLUMNS).toContain('id');
+    expect(RECIPE_LIST_COLUMNS).toContain('title');
+    expect(RECIPE_LIST_COLUMNS).toContain('image_url');
+    expect(RECIPE_LIST_COLUMNS).toContain('ingredients');
+    expect(RECIPE_LIST_COLUMNS).not.toContain('steps');
+    expect(RECIPE_LIST_COLUMNS).not.toContain('step_image_urls');
+  });
+
+  it('applies a hard LIMIT to bound worst-case payload', async () => {
+    const chain = makeChain({ data: [], error: null });
+    const supabase = makeSupabase(chain);
+
+    await getRecipes(supabase, 'user-1');
+
+    expect(RECIPE_LIST_LIMIT).toBe(200);
+    expect(chain.limit).toHaveBeenCalledWith(200);
   });
 
   it('applies ilike on title when q is provided', async () => {

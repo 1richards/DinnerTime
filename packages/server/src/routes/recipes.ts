@@ -253,7 +253,7 @@ recipes.post('/search', async (c) => {
 
     // Existing library titles feed the AVOID list (same pattern as /discover)
     const library = await getRecipes(supabase, user.id);
-    const existingTitles = library.map((r) => r.title);
+    const existingTitles = library.rows.map((r) => r.title);
 
     // Load-more requests (a forced count AND on-screen titles to avoid) are
     // meant to be novel each time, so they bypass the base response cache.
@@ -353,7 +353,7 @@ recipes.post('/discover', async (c) => {
 
     // Existing library titles feed the AVOID list to prevent duplicates
     const library = await getRecipes(supabase, user.id);
-    const existingTitles = library.map((r) => r.title);
+    const existingTitles = library.rows.map((r) => r.title);
 
     // The zero-input library discovery is the canonical cacheable load.
     // ME-03: fold the library into the key so saving a recipe (which feeds the
