@@ -4,14 +4,14 @@ milestone: v1.0.2
 milestone_name: — Performance & Caching
 current_plan: 1
 status: executing
-stopped_at: Completed 28-01-PLAN.md
-last_updated: "2026-06-10T03:34:09.625Z"
+stopped_at: Completed 28-03-PLAN.md
+last_updated: "2026-06-10T03:39:15.757Z"
 last_activity: 2026-06-10
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 97
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-07)
 ## Current Position
 
 Phase: 28 (Recipe-load telemetry + performance) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Current Plan: 1
 Status: Ready to execute
 Last activity: 2026-06-10
@@ -182,6 +182,7 @@ Progress: [██████████] 97%
 | Phase 27 P03 | 4min | 2 tasks | 5 files |
 | Phase 27 P05 | 3min | 2 tasks | 2 files |
 | Phase 28 P01 | 3min | 2 tasks | 6 files |
+| Phase 28 P03 | 4min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -601,6 +602,9 @@ Recent decisions affecting current work:
 - [Phase 27]: Gemini context-cache (cachedContent) omitted via documented threshold guard; prefix may not clear min-token floor, revisit on live token counts
 - [Phase 28]: [28-01]: List query uses RECIPE_LIST_COLUMNS (drops steps/step_image_urls JSONB, keeps ingredients) + LIMIT 200 (load-all capped, not paging); getRecipeById detail select untouched
 - [Phase 28]: [28-01]: getRecipes returns { rows, queryMs, rowCount }; GET /recipes emits structured recipes.list log (db_query_ms, row_count, payload_bytes) with request_id correlation
+- [Phase 28]: RECIPE_LOAD_MS=3500 (3.5s target ceiling); fetchRecipes round-trip incl. auth pre-flight timed via withBudget('recipe.fetch')
+- [Phase 28]: Per-image time-to-visible via logAiEvent('recipe.image.visible'), {ms,success} only (PII guard), split cache_hit vs cold_gen
+- [Phase 28]: hydrateRecipeDetail re-hydrates full steps on detail open in its own [id,...] effect; steps null-guarded (PostgREST returns undefined not [] for trimmed column)
 
 ### Pending Todos
 
@@ -690,7 +694,7 @@ Landed on `main` between 2026-04-13 and 2026-04-14 as ad-hoc UAT-driven work. Lo
 
 ## Session Continuity
 
-Last session: 2026-06-10T03:34:01.179Z
-Stopped at: Completed 28-01-PLAN.md
+Last session: 2026-06-10T03:39:07.895Z
+Stopped at: Completed 28-03-PLAN.md
 Resume file: None
 | 2026-04-28 | fast | More options pill padding | done |
