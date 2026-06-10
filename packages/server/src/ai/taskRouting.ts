@@ -27,14 +27,23 @@ export const TASK_ROUTES: Record<AITask, Route> = {
   'vision.pantryScan': { provider: 'anthropic', model: ANTHROPIC_MODELS.sonnet },
   'recipe.parsePhoto': { provider: 'anthropic', model: ANTHROPIC_MODELS.sonnet },
   'recipe.parseUrl': { provider: 'google', model: GEMINI_MODELS.flash },
-  'recipe.parseText': { provider: 'google', model: GEMINI_MODELS.flash },
+  // flash-lite: empirically ~3-4x faster than flash on structured recipe gen
+  // (live test 2026-06-10: flash 9.2s vs flash-lite 2.6s for the same rich
+  // 4-recipe schema). parseText powers /recipes/hydrate (background full-recipe
+  // fill) where flash was ~10-14s/recipe; flash-lite drops it to ~3-4s.
+  'recipe.parseText': { provider: 'google', model: GEMINI_MODELS.flashLite },
   'suggestions.dinner': { provider: 'google', model: GEMINI_MODELS.flash },
   // Note: gemini-3.1-pro-preview is paid-tier only on Google AI Studio.
   // Using flash here keeps mealPlanner on the free tier; benchmarks suggest
   // Flash 3 handles weekly meal-plan constraint reasoning well.
   // Swap back to GEMINI_MODELS.pro if plan quality regresses.
   'mealPlanner.week': { provider: 'google', model: GEMINI_MODELS.flash },
-  'recipe.discovery': { provider: 'google', model: GEMINI_MODELS.flash },
+  // flash-lite: the "Something New" hot path. Live telemetry showed flash at
+  // ~23.5s for a light 4-preview /search; the bottleneck is per-call model
+  // latency, NOT output size or thinking config (both ruled out by live test
+  // 2026-06-10). flash-lite does the same generation 3-4x faster. Swap back to
+  // flash if suggestion quality regresses (recipeTextSanitizer still guards CJK).
+  'recipe.discovery': { provider: 'google', model: GEMINI_MODELS.flashLite },
   'progression.ambition': { provider: 'google', model: GEMINI_MODELS.flash },
   'progression.variations': { provider: 'google', model: GEMINI_MODELS.flash },
   'shoppingList.variations': { provider: 'google', model: GEMINI_MODELS.flash },
