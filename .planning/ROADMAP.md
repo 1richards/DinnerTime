@@ -84,12 +84,12 @@ Waves:
 - Persistence handles un-hydrated previews: re-hydrate on store rehydrate (or exclude un-hydrated from persistence) — no relaunch with permanently-empty cards.
 - Telemetry: discovery call records sub-stage timing (Gemini ms vs DB ms) and client wraps searchRecipes in withBudget; hydration timing recorded. No regression.
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [x] 29-01-PLAN.md — Server fast path: opt-in `light` discovery schema/prompt (D1), parallelize the 4 pre-call DB fetches (D2), /search Gemini-vs-total timing (D8-server). Backward-compatible: light is request-flag-gated so the old app still gets full recipes.
 - [x] 29-02-PLAN.md — Server hydrate: `POST /recipes/hydrate` reusing the recipe.parseText engine (like applyRemixVariation) + content-address cache (D3).
-- [ ] 29-03-PLAN.md — Client hydration: `useHydratedRecipeContent` hook mirroring useGeneratedRecipeImage (MAX_CONCURRENT=2), suggestionsStore light:true + background-hydrate-all + withBudget + rehydrate safety (D4, D7, D8-client).
+- [x] 29-03-PLAN.md — Client hydration: `useHydratedRecipeContent` hook mirroring useGeneratedRecipeImage (MAX_CONCURRENT=2), suggestionsStore light:true + background-hydrate-all + withBudget + rehydrate safety (D4, D7, D8-client).
 - [ ] 29-04-PLAN.md — UX/safety: gate Save/Cook/Favorite until hydrated (D5, critical), PreviewSheet steps+ingredients loaders (D6), + human-verify checkpoint (3-5s + no-400 + rehydrate).
 
 Waves:
