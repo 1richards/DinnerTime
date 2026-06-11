@@ -9,7 +9,7 @@ import { useRecipeStore } from '../../stores/recipeStore';
 import { colors } from '../../design/tokens';
 import { resolveCardClasses, type RecipeCardMode } from './recipeCardStyles';
 import { RemixSheet } from './RemixSheet';
-import { ImageShimmer } from './ImageShimmer';
+import { ImageLoadingOverlay } from './ImageLoadingOverlay';
 
 /**
  * Preview-mode quick-action overlays. When `preview` is true AND any handler
@@ -162,12 +162,12 @@ function RecipeCardBase({
     recipe.title,
   );
 
-  // AI shimmer while the generated hero isn't ready yet — only for recipes
-  // WITHOUT a persisted image_url (saved recipes render their photo instantly).
-  // 'deferred' = viewport-gated, not started; 'loading' = generating. Once the
-  // url resolves (or generation fails) we stop shimmering and show whatever
-  // getRecipeImage returns (the AI photo or the keyword fallback).
-  const showImageShimmer =
+  // Loading spinner while the generated hero isn't ready yet — only for
+  // recipes WITHOUT a persisted image_url (saved recipes render their photo
+  // instantly). 'deferred' = viewport-gated, not started; 'loading' =
+  // generating. Once the url resolves (or generation fails) we hide the
+  // spinner and show whatever getRecipeImage returns (AI photo or fallback).
+  const showImageLoading =
     !recipe.image_url &&
     !generatedUri &&
     (imageStatus === 'deferred' || imageStatus === 'loading');
@@ -214,12 +214,12 @@ function RecipeCardBase({
               { backgroundColor: 'rgba(15,10,5,0.18)' },
             ]}
           />
-          {/* AI shimmer overlay — covers the image area while the generated
-              hero is deferred (viewport-gated) or still generating. Sits above
-              the keyword-fallback Image + gradient so the card reads as
-              "AI image loading" rather than showing a loosely-matched stock
+          {/* Loading spinner overlay — covers the image area while the
+              generated hero is deferred (viewport-gated) or still generating.
+              Sits above the keyword-fallback Image + gradient so the card reads
+              as "image loading" rather than showing a loosely-matched stock
               photo. Removed the moment a url resolves (or image_url exists). */}
-          {showImageShimmer && <ImageShimmer />}
+          {showImageLoading && <ImageLoadingOverlay />}
           {/* Preview-mode quick actions — Save, Remix, Cook now. Rendered
               over the hero when the card represents an unsaved ParsedRecipe
               (e.g. Something New results). Each button stops propagation so
