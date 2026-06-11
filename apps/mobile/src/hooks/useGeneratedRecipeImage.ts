@@ -71,30 +71,56 @@ const cache = new Map<string, Entry>();
 // concurrent Gemini calls that saturate the server and starve the
 // fetchRecipes call that the list depends on.
 //
-// When the queue is full, new requests wait for a slot. Queue order is
-// FIFO so visible cards (rendered first) tend to resolve before
-// off-screen ones. Resolved/cached results bypass the limiter entirely.
+// When the queue is full, new requests wait for a slot. The wait queue is a
+// MIN-PRIORITY queue keyed on the caller's `priority` number (lower = higher
+// priority = served first; stable for ties via an insertion sequence). On
+// Something New each card passes its list index as priority, so when a slot
+// frees the TOP-most waiting card always generates next — the hero finishes
+// before lower cards regardless of which fired first. Resolved/cached results
+// bypass the limiter entirely.
 
 const MAX_CONCURRENT = 2;
+const DEFAULT_PRIORITY = Number.MAX_SAFE_INTEGER;
 let _inFlight = 0;
-const _waitQueue: Array<() => void> = [];
 
-function acquireSlot(): Promise<void> {
+interface Waiter {
+  resolve: () => void;
+  priority: number;
+  // Monotonic insertion order — tiebreaker so equal priorities stay FIFO
+  // (stable). Without it, two index-0 cards (e.g. two surfaces) could swap.
+  seq: number;
+}
+const _waitQueue: Waiter[] = [];
+let _waitSeq = 0;
+
+function acquireSlot(priority: number = DEFAULT_PRIORITY): Promise<void> {
   if (_inFlight < MAX_CONCURRENT) {
     _inFlight++;
     return Promise.resolve();
   }
   return new Promise<void>((resolve) => {
-    _waitQueue.push(resolve);
+    _waitQueue.push({ resolve, priority, seq: _waitSeq++ });
   });
 }
 
 function releaseSlot(): void {
-  const next = _waitQueue.shift();
-  if (next) {
-    // Hand the slot to the next waiter directly — don't decrement then
+  if (_waitQueue.length > 0) {
+    // Select the waiter with the LOWEST priority number (top-most card),
+    // breaking ties by insertion order. Linear scan is fine — the queue is
+    // bounded by the number of concurrently-mounted uncached cards.
+    let bestIdx = 0;
+    for (let i = 1; i < _waitQueue.length; i++) {
+      const w = _waitQueue[i]!;
+      const best = _waitQueue[bestIdx]!;
+      if (w.priority < best.priority ||
+        (w.priority === best.priority && w.seq < best.seq)) {
+        bestIdx = i;
+      }
+    }
+    const [next] = _waitQueue.splice(bestIdx, 1);
+    // Hand the slot to the chosen waiter directly — don't decrement then
     // re-increment, keeps the in-flight count stable.
-    next();
+    next!.resolve();
   } else {
     _inFlight--;
   }
@@ -102,8 +128,9 @@ function releaseSlot(): void {
 
 async function fetchGeneratedUrlThrottled(
   req: ImageRequest,
+  priority: number = DEFAULT_PRIORITY,
 ): Promise<string | null> {
-  await acquireSlot();
+  await acquireSlot(priority);
   try {
     return await fetchGeneratedUrl(req);
   } finally {
@@ -267,13 +294,29 @@ interface HookOptions {
    * re-generates.
    */
   enabled?: boolean;
+  /**
+   * Top-first ordering hint for the concurrency limiter. Lower number = higher
+   * priority = served first when a slot frees. Something New passes each card's
+   * list index here so the TOP card always generates before lower ones, even
+   * though all visible cards fire their effect at roughly the same time.
+   * Defaults to the lowest priority (Number.MAX_SAFE_INTEGER) so unprioritized
+   * callers keep their previous best-effort FIFO-ish behavior.
+   */
+  priority?: number;
 }
 
 export function useGeneratedRecipeImage(
   title: string | null | undefined,
   options: HookOptions = {},
 ): GeneratedImageResult {
-  const { skip, description, ingredients, recipeId, enabled = true } = options;
+  const {
+    skip,
+    description,
+    ingredients,
+    recipeId,
+    enabled = true,
+    priority,
+  } = options;
 
   // Derive initial state from the in-memory cache synchronously (even if
   // module-level hydration hasn't completed — we still read whatever is in
@@ -347,12 +390,15 @@ export function useGeneratedRecipeImage(
 
       // No entry — kick off fetch (throttled to MAX_CONCURRENT in-flight)
       setResult({ url: null, status: 'loading' });
-      const inflight = fetchGeneratedUrlThrottled({
-        title,
-        description: description ?? null,
-        ingredients: ingredients ?? null,
-        recipeId: recipeId ?? null,
-      });
+      const inflight = fetchGeneratedUrlThrottled(
+        {
+          title,
+          description: description ?? null,
+          ingredients: ingredients ?? null,
+          recipeId: recipeId ?? null,
+        },
+        priority ?? DEFAULT_PRIORITY,
+      );
       cache.set(key, { url: null, inflight, attempted: false });
       inflight.then((u) => {
         cache.set(key, { url: u, inflight: null, attempted: true });
@@ -383,7 +429,7 @@ export function useGeneratedRecipeImage(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, skip, ingredientFp, description, enabled]);
+  }, [title, skip, ingredientFp, description, enabled, priority]);
 
   return result;
 }
@@ -402,17 +448,20 @@ export function prefetchGeneratedRecipeImage(
   title: string | null | undefined,
   options: HookOptions = {},
 ): void {
-  const { skip, description, ingredients, recipeId } = options;
+  const { skip, description, ingredients, recipeId, priority } = options;
   if (!title || skip) return;
   const key = cacheKeyFor(title, ingredients);
   // Already in cache (resolved, in-flight, or attempted+failed) — no-op.
   if (cache.has(key)) return;
-  const inflight = fetchGeneratedUrlThrottled({
-    title,
-    description: description ?? null,
-    ingredients: ingredients ?? null,
-    recipeId: recipeId ?? null,
-  });
+  const inflight = fetchGeneratedUrlThrottled(
+    {
+      title,
+      description: description ?? null,
+      ingredients: ingredients ?? null,
+      recipeId: recipeId ?? null,
+    },
+    priority ?? DEFAULT_PRIORITY,
+  );
   cache.set(key, { url: null, inflight, attempted: false });
   inflight.then((u) => {
     cache.set(key, { url: u, inflight: null, attempted: true });

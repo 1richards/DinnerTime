@@ -317,6 +317,10 @@ function PreviewRecipeCard({
     description: recipe.description,
     ingredients: recipe.ingredients,
     enabled: imageEnabled,
+    // Top-first ordering — pass the card's list index so the TOP card's hero
+    // generates before lower cards. Shares the same cache key as the inner
+    // RecipeCard hook, so whichever fires first registers this priority.
+    priority: idx,
   });
   const heroUri = recipe.image_url ?? generatedUri ?? null;
 
@@ -532,6 +536,7 @@ function PreviewRecipeCard({
         mode="grid"
         preview
         imageEnabled={imageEnabled}
+        imagePriority={idx}
         previewActions={{
           onSave: handleSave,
           onSaveAndFavorite: handleSaveAndFavorite,

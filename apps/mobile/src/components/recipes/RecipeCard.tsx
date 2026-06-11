@@ -98,6 +98,14 @@ interface RecipeCardProps {
    * image_url — those render the photo immediately, no shimmer.
    */
   imageEnabled?: boolean;
+  /**
+   * Top-first ordering hint forwarded to useGeneratedRecipeImage's concurrency
+   * limiter (lower = generated first). Something New passes each card's list
+   * index so the TOP card's hero always resolves before lower cards. Omit on
+   * surfaces where order doesn't matter (Recipe Box) — defaults to lowest
+   * priority inside the hook.
+   */
+  imagePriority?: number;
 }
 
 function RecipeCardBase({
@@ -114,6 +122,7 @@ function RecipeCardBase({
   pantryMatchCount,
   hideServings,
   imageEnabled = true,
+  imagePriority,
 }: RecipeCardProps) {
   const toggleFavorite = useRecipeStore((s) => s.toggleFavorite);
   const [remixOpen, setRemixOpen] = useState(false);
@@ -141,6 +150,10 @@ function RecipeCardBase({
       // pass false so they don't fire Gemini until visible. No-op for saved
       // recipes (skip:true short-circuits before the gate matters).
       enabled: imageEnabled,
+      // Top-first ordering — the limiter serves the lowest priority number
+      // first when a slot frees, so the hero (index 0) resolves before lower
+      // cards even when several fire at once.
+      priority: imagePriority,
     },
   );
   const imageUri = getRecipeImage(
@@ -548,7 +561,10 @@ export const RecipeCard = React.memo(
     // Lazy-load gate must be compared, otherwise flipping a card from
     // viewport-gated → enabled (scroll into view) would be skipped by the
     // memo and the Gemini fetch / shimmer-removal would never trigger.
-    prev.imageEnabled === next.imageEnabled,
+    prev.imageEnabled === next.imageEnabled &&
+    // Priority feeds the fetch-order queue; compare so a position change
+    // (rare — lists are stable) re-evaluates the ordering hint.
+    prev.imagePriority === next.imagePriority,
 );
 
 export type { RecipeCardMode };
