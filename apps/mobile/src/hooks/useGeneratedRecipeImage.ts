@@ -79,7 +79,12 @@ const cache = new Map<string, Entry>();
 // before lower cards regardless of which fired first. Resolved/cached results
 // bypass the limiter entirely.
 
-const MAX_CONCURRENT = 2;
+// Serial (1) so the highest-priority (top-most) card's image resolves BEFORE
+// the next card's even starts — guarantees visible top-down fill order. With
+// 2+ concurrent, the top two run in parallel and finish in race order (the
+// 2nd photo could beat the 1st). Bump this only if strict order is traded away
+// for raw throughput.
+const MAX_CONCURRENT = 1;
 const DEFAULT_PRIORITY = Number.MAX_SAFE_INTEGER;
 let _inFlight = 0;
 
@@ -92,22 +97,16 @@ interface Waiter {
 }
 const _waitQueue: Waiter[] = [];
 let _waitSeq = 0;
+let _flushScheduled = false;
 
-function acquireSlot(priority: number = DEFAULT_PRIORITY): Promise<void> {
-  if (_inFlight < MAX_CONCURRENT) {
-    _inFlight++;
-    return Promise.resolve();
-  }
-  return new Promise<void>((resolve) => {
-    _waitQueue.push({ resolve, priority, seq: _waitSeq++ });
-  });
-}
-
-function releaseSlot(): void {
-  if (_waitQueue.length > 0) {
-    // Select the waiter with the LOWEST priority number (top-most card),
-    // breaking ties by insertion order. Linear scan is fine — the queue is
-    // bounded by the number of concurrently-mounted uncached cards.
+// Drain the queue in PRIORITY order up to MAX_CONCURRENT. Runs on a microtask
+// so every acquireSlot() call made in the same tick (all the cards mounting at
+// once) is collected BEFORE we pick a winner — otherwise the first caller to
+// hit a free slot would start regardless of priority (the original bug: top-2
+// started in mount/effect order, not list order).
+function flushQueue(): void {
+  _flushScheduled = false;
+  while (_inFlight < MAX_CONCURRENT && _waitQueue.length > 0) {
     let bestIdx = 0;
     for (let i = 1; i < _waitQueue.length; i++) {
       const w = _waitQueue[i]!;
@@ -118,12 +117,29 @@ function releaseSlot(): void {
       }
     }
     const [next] = _waitQueue.splice(bestIdx, 1);
-    // Hand the slot to the chosen waiter directly — don't decrement then
-    // re-increment, keeps the in-flight count stable.
+    _inFlight++;
     next!.resolve();
-  } else {
-    _inFlight--;
   }
+}
+
+function scheduleFlush(): void {
+  if (_flushScheduled) return;
+  _flushScheduled = true;
+  queueMicrotask(flushQueue);
+}
+
+// ALWAYS enqueue (never grant a free slot synchronously) so the priority
+// scheduler — not call order — decides who starts.
+function acquireSlot(priority: number = DEFAULT_PRIORITY): Promise<void> {
+  return new Promise<void>((resolve) => {
+    _waitQueue.push({ resolve, priority, seq: _waitSeq++ });
+    scheduleFlush();
+  });
+}
+
+function releaseSlot(): void {
+  _inFlight--;
+  scheduleFlush();
 }
 
 async function fetchGeneratedUrlThrottled(

@@ -8,8 +8,9 @@
  * Strategy: drive the queue exclusively through prefetchGeneratedRecipeImage
  * (which goes through the same fetchGeneratedUrlThrottled limiter as the hook).
  * We mock the network fetch with a controllable promise per request and assert
- * the ORDER in which requests actually leave the queue (reach fetch) after the
- * first two saturate the 2 concurrent slots.
+ * the ORDER in which requests actually leave the queue (reach fetch). With
+ * MAX_CONCURRENT=1 and microtask-coalesced scheduling, that order is strict
+ * priority (lowest number first), independent of call/insertion order.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -67,33 +68,40 @@ global.fetch = vi.fn(async (_url: unknown, init?: { body?: string }) => {
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe('useGeneratedRecipeImage priority queue', () => {
-  it('dequeues the lowest-priority waiter first when a slot frees', async () => {
-    // Fire 5 prefetches. MAX_CONCURRENT=2, so two enter fetch immediately and
-    // three wait. We deliberately enqueue them OUT of priority order to prove
-    // the queue reorders by priority, not insertion order.
-    prefetchGeneratedRecipeImage('A', { priority: 0 }); // slot 1 (immediate)
-    prefetchGeneratedRecipeImage('B', { priority: 9 }); // slot 2 (immediate)
-    prefetchGeneratedRecipeImage('C', { priority: 5 }); // queued
-    prefetchGeneratedRecipeImage('D', { priority: 1 }); // queued (highest pri)
-    prefetchGeneratedRecipeImage('E', { priority: 3 }); // queued
+  it('starts requests in strict priority order, serially (top image first)', async () => {
+    // Fire 5 prefetches in the SAME tick, OUT of priority order. MAX_CONCURRENT
+    // is 1 and every request is enqueued (no synchronous free-slot grant), so
+    // the microtask scheduler collects all 5 first and then starts the LOWEST
+    // priority. This proves call order does NOT win — the top card (priority 0)
+    // generates first, and each next-lowest only starts once the prior resolves.
+    prefetchGeneratedRecipeImage('A', { priority: 0 });
+    prefetchGeneratedRecipeImage('B', { priority: 9 });
+    prefetchGeneratedRecipeImage('C', { priority: 5 });
+    prefetchGeneratedRecipeImage('D', { priority: 1 });
+    prefetchGeneratedRecipeImage('E', { priority: 3 });
 
     await flush();
-    // First two saturate the slots in insertion order.
-    expect(fetchOrder).toEqual(['A', 'B']);
+    // Only the highest-priority (A=0) has started — serial, so nothing else yet.
+    expect(fetchOrder).toEqual(['A']);
 
-    // Free one slot — the queued waiter with the LOWEST priority (D=1) goes.
+    // A resolves → next-lowest priority among the rest is D=1.
     resolvers['A']!(makeResponse());
     await flush();
-    expect(fetchOrder).toEqual(['A', 'B', 'D']);
+    expect(fetchOrder).toEqual(['A', 'D']);
 
-    // Free another — next lowest among remaining (E=3) before C=5.
-    resolvers['B']!(makeResponse());
-    await flush();
-    expect(fetchOrder).toEqual(['A', 'B', 'D', 'E']);
-
-    // Last remaining waiter (C=5).
+    // D resolves → E=3 next.
     resolvers['D']!(makeResponse());
     await flush();
-    expect(fetchOrder).toEqual(['A', 'B', 'D', 'E', 'C']);
+    expect(fetchOrder).toEqual(['A', 'D', 'E']);
+
+    // E resolves → C=5 next (B=9 still last despite enqueuing 2nd).
+    resolvers['E']!(makeResponse());
+    await flush();
+    expect(fetchOrder).toEqual(['A', 'D', 'E', 'C']);
+
+    // C resolves → B=9 last.
+    resolvers['C']!(makeResponse());
+    await flush();
+    expect(fetchOrder).toEqual(['A', 'D', 'E', 'C', 'B']);
   });
 });
