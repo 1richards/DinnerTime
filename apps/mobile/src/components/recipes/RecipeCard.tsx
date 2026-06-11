@@ -9,6 +9,7 @@ import { useRecipeStore } from '../../stores/recipeStore';
 import { colors } from '../../design/tokens';
 import { resolveCardClasses, type RecipeCardMode } from './recipeCardStyles';
 import { RemixSheet } from './RemixSheet';
+import { ImageShimmer } from './ImageShimmer';
 
 /**
  * Preview-mode quick-action overlays. When `preview` is true AND any handler
@@ -88,6 +89,15 @@ interface RecipeCardProps {
    * surfaces (Library) keep the default and still show servings.
    */
   hideServings?: boolean;
+  /**
+   * Viewport gate for the generated hero image (Something New lazy-load
+   * polish). Default true. When false, the underlying useGeneratedRecipeImage
+   * hook stays 'deferred' (no Gemini fetch) and the card renders an AI shimmer
+   * over the image area instead. Recipe Box / saved surfaces leave this
+   * default so they're unaffected. Ignored when the recipe already has an
+   * image_url — those render the photo immediately, no shimmer.
+   */
+  imageEnabled?: boolean;
 }
 
 function RecipeCardBase({
@@ -103,6 +113,7 @@ function RecipeCardBase({
   // accepted-but-ignored prop.
   pantryMatchCount,
   hideServings,
+  imageEnabled = true,
 }: RecipeCardProps) {
   const toggleFavorite = useRecipeStore((s) => s.toggleFavorite);
   const [remixOpen, setRemixOpen] = useState(false);
@@ -116,7 +127,7 @@ function RecipeCardBase({
   // useGeneratedRecipeImage so Recipe Box converges on the same Gemini photo
   // Something New shows. Hook is a no-op for cache hits / when image_url is
   // already set, so this is free for the common path.
-  const { url: generatedUri } = useGeneratedRecipeImage(
+  const { url: generatedUri, status: imageStatus } = useGeneratedRecipeImage(
     recipe.image_url ? null : recipe.title,
     {
       skip: !!recipe.image_url,
@@ -126,6 +137,10 @@ function RecipeCardBase({
       // server (Plan 27-01) persists the generated URL to recipes.image_url.
       // Unsaved "Something New" previews carry no id → undefined → no write.
       recipeId: recipe.id ?? undefined,
+      // Lazy-load gate: top-2 + scrolled-into-view cards pass true; the rest
+      // pass false so they don't fire Gemini until visible. No-op for saved
+      // recipes (skip:true short-circuits before the gate matters).
+      enabled: imageEnabled,
     },
   );
   const imageUri = getRecipeImage(
@@ -133,6 +148,16 @@ function RecipeCardBase({
     recipe.image_url ?? generatedUri,
     recipe.title,
   );
+
+  // AI shimmer while the generated hero isn't ready yet — only for recipes
+  // WITHOUT a persisted image_url (saved recipes render their photo instantly).
+  // 'deferred' = viewport-gated, not started; 'loading' = generating. Once the
+  // url resolves (or generation fails) we stop shimmering and show whatever
+  // getRecipeImage returns (the AI photo or the keyword fallback).
+  const showImageShimmer =
+    !recipe.image_url &&
+    !generatedUri &&
+    (imageStatus === 'deferred' || imageStatus === 'loading');
 
   return (
     <>
@@ -176,6 +201,12 @@ function RecipeCardBase({
               { backgroundColor: 'rgba(15,10,5,0.18)' },
             ]}
           />
+          {/* AI shimmer overlay — covers the image area while the generated
+              hero is deferred (viewport-gated) or still generating. Sits above
+              the keyword-fallback Image + gradient so the card reads as
+              "AI image loading" rather than showing a loosely-matched stock
+              photo. Removed the moment a url resolves (or image_url exists). */}
+          {showImageShimmer && <ImageShimmer />}
           {/* Preview-mode quick actions — Save, Remix, Cook now. Rendered
               over the hero when the card represents an unsaved ParsedRecipe
               (e.g. Something New results). Each button stops propagation so
@@ -513,7 +544,11 @@ export const RecipeCard = React.memo(
       next.recipe.protein_grams_per_serving &&
     prev.recipe.labels === next.recipe.labels &&
     prev.mode === next.mode &&
-    prev.pantryMatchCount === next.pantryMatchCount,
+    prev.pantryMatchCount === next.pantryMatchCount &&
+    // Lazy-load gate must be compared, otherwise flipping a card from
+    // viewport-gated → enabled (scroll into view) would be skipped by the
+    // memo and the Gemini fetch / shimmer-removal would never trigger.
+    prev.imageEnabled === next.imageEnabled,
 );
 
 export type { RecipeCardMode };
