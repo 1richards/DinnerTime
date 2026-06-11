@@ -12,11 +12,23 @@
  * Fire-and-forget and non-blocking: the hero renders instantly regardless.
  * Generation is deduped per recipe id across the session (module-level set)
  * so re-mounts and the React strict double-invoke don't double-spend.
+ *
+ * Returns `{ urls, loading }`: `loading` is true ONLY while a background
+ * generation POST is in flight for a recipe that had no persisted step images
+ * — so the detail/preview UI can show a "Generating step photos…" indicator.
+ * It's false when images already exist (instant) or after generation settles.
  */
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useRecipeStore } from '../stores/recipeStore';
 import type { Recipe } from '../types/recipe';
+
+export interface RecipeStepImagesResult {
+  urls: string[];
+  /** True while a background generation request is in flight (no persisted
+      images yet). Drives the "Generating step photos…" indicator. */
+  loading: boolean;
+}
 
 function getApiBaseUrl(): string {
   return process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -35,9 +47,12 @@ async function getAuthToken(): Promise<string | null> {
 // Prevents duplicate POSTs from re-mounts / repeated opens.
 const requested = new Set<string>();
 
-export function useRecipeStepImages(recipe: Recipe | undefined): string[] {
+export function useRecipeStepImages(
+  recipe: Recipe | undefined,
+): RecipeStepImagesResult {
   const stored = recipe?.step_image_urls ?? [];
   const [urls, setUrls] = useState<string[]>(stored);
+  const [loading, setLoading] = useState(false);
   const mergeRecipeLocal = useRecipeStore((s) => s.mergeRecipeLocal);
 
   const id = recipe?.id;
@@ -50,6 +65,7 @@ export function useRecipeStepImages(recipe: Recipe | undefined): string[] {
     // Already have persisted images — use them, nothing to generate.
     if (stored.length > 0) {
       setUrls(stored);
+      setLoading(false);
       return;
     }
 
@@ -59,11 +75,15 @@ export function useRecipeStepImages(recipe: Recipe | undefined): string[] {
     requested.add(id);
 
     let cancelled = false;
+    // Surface the background-generation indicator the moment we kick off the
+    // POST (recipe content already rendered — this is non-blocking).
+    setLoading(true);
     (async () => {
       try {
         const token = await getAuthToken();
         if (!token) {
           requested.delete(id); // allow a retry once authed
+          if (!cancelled) setLoading(false);
           return;
         }
         const res = await fetch(
@@ -78,6 +98,7 @@ export function useRecipeStepImages(recipe: Recipe | undefined): string[] {
         );
         if (!res.ok) {
           requested.delete(id); // transient failure — let a later open retry
+          if (!cancelled) setLoading(false);
           return;
         }
         const body = (await res.json()) as { step_image_urls?: string[] };
@@ -88,13 +109,18 @@ export function useRecipeStepImages(recipe: Recipe | undefined): string[] {
           // Model produced nothing this time — drop the guard so opening the
           // recipe again can try once more.
           requested.delete(id);
+          if (!cancelled) setLoading(false);
           return;
         }
-        if (!cancelled) setUrls(next);
+        if (!cancelled) {
+          setUrls(next);
+          setLoading(false);
+        }
         // Persist into local store so navigating away + back is instant.
         mergeRecipeLocal(id, { step_image_urls: next });
       } catch {
         requested.delete(id);
+        if (!cancelled) setLoading(false);
       }
     })();
 
@@ -104,5 +130,5 @@ export function useRecipeStepImages(recipe: Recipe | undefined): string[] {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, storedKey]);
 
-  return urls;
+  return { urls, loading };
 }

@@ -18,6 +18,10 @@ interface HeroCarouselProps {
   style?: ViewStyle;
   /** Overlay (title + meta) rendered on the FIRST slide only. */
   heroOverlay?: React.ReactNode;
+  /** When true, null slides render a centered spinner over the beige
+      skeleton — used for a "pending" step photo still generating in the
+      background. The hero (index 0) is never treated as pending. */
+  loadingPendingSlides?: boolean;
 }
 
 /**
@@ -34,6 +38,7 @@ export function HeroCarousel({
   borderRadius = 0,
   style,
   heroOverlay,
+  loadingPendingSlides = false,
 }: HeroCarouselProps) {
   const [width, setWidth] = useState(0);
   const [active, setActive] = useState(0);
@@ -72,7 +77,15 @@ export function HeroCarousel({
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={onScrollEnd}
           renderItem={({ item, index }) => (
-            <HeroImage uri={item} height={height} borderRadius={borderRadius} style={{ width }}>
+            <HeroImage
+              uri={item}
+              height={height}
+              borderRadius={borderRadius}
+              style={{ width }}
+              // Non-hero null slides are pending step photos generating in the
+              // background — show a spinner so the slot reads as "loading".
+              loadingWhenEmpty={loadingPendingSlides && index !== 0}
+            >
               {index === 0 ? heroOverlay : null}
             </HeroImage>
           )}

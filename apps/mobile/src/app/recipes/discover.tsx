@@ -370,6 +370,7 @@ export function PreviewSheet({
   onAdHocFavorite,
   adHocFavorited,
   stepImageUrls,
+  stepImagesLoading = false,
 }: {
   recipe: DiscoveredRecipe;
   /** Null renders a beige skeleton — no keyword-stock fallback exists anymore. */
@@ -378,6 +379,11 @@ export function PreviewSheet({
       the hero becomes a paged image slider: hero first, then step shots.
       Also flows into the shared PDF as a "Preparation" gallery. */
   stepImageUrls?: string[];
+  /** True while preparation-step photos are being generated in the background
+      (the recipe was just opened and had none). Surfaces a non-blocking
+      "Generating step photos…" indicator near the Steps section so users know
+      images are still coming. */
+  stepImagesLoading?: boolean;
   onClose: () => void;
   onSave: () => Promise<void>;
   saving: boolean;
@@ -451,7 +457,16 @@ export function PreviewSheet({
 
   // Hero + optional preparation-step photos form a paged slider. Width is
   // measured from the hero container so each page fills the sheet width.
-  const heroImages: Array<string | null> = [heroUri, ...(stepImageUrls ?? [])];
+  // Hero first, then any generated step photos. While step photos are still
+  // generating (and none have arrived yet), append a single null "pending"
+  // slide so the slider shows a spinner slot — a clear cue that more photos
+  // are coming without blocking the hero.
+  const stepImages = stepImageUrls ?? [];
+  const heroImages: Array<string | null> = [
+    heroUri,
+    ...stepImages,
+    ...(stepImagesLoading && stepImages.length === 0 ? [null] : []),
+  ];
   const [heroWidth, setHeroWidth] = useState(0);
   const [heroPage, setHeroPage] = useState(0);
   const onHeroScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -541,8 +556,19 @@ export function PreviewSheet({
                     />
                   ) : (
                     <View
-                      style={[styles.sheetHero, { width: heroWidth, backgroundColor: '#F1EAE0' }]}
-                    />
+                      style={[
+                        styles.sheetHero,
+                        {
+                          width: heroWidth,
+                          backgroundColor: '#F1EAE0',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        },
+                      ]}
+                    >
+                      {/* Pending step-photo slot — spinner while it generates. */}
+                      <ActivityIndicator size="small" color="#9A8C7A" />
+                    </View>
                   )
                 }
               />
@@ -746,7 +772,20 @@ export function PreviewSheet({
         </View>
 
         <View style={styles.sheetCard}>
-          <Text style={styles.sheetSectionHeading}>Steps</Text>
+          <View style={styles.sheetStepsHeader}>
+            <Text style={styles.sheetSectionHeading}>Steps</Text>
+            {/* Background step-photo generation indicator. Non-blocking — the
+                steps render immediately; this just signals that preparation
+                photos are still arriving in the hero slider above. */}
+            {stepImagesLoading ? (
+              <View style={styles.sheetStepImagesLoading}>
+                <ActivityIndicator size="small" color={colors.brand} />
+                <Text style={styles.sheetStepImagesLoadingText}>
+                  Generating step photos…
+                </Text>
+              </View>
+            ) : null}
+          </View>
           {recipe.steps.length === 0 ? (
             stepsLoading ? (
               <View style={styles.sheetStepsLoading}>
@@ -1182,6 +1221,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  // Header row letting the "Generating step photos…" indicator sit inline to
+  // the right of the Steps heading.
+  sheetStepsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  sheetStepImagesLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+  },
+  sheetStepImagesLoadingText: {
+    fontSize: 12,
+    color: '#A89178',
+    fontStyle: 'italic',
+    flexShrink: 1,
   },
   sheetIngredient: {
     flexDirection: 'row',

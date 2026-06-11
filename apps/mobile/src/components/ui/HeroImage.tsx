@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, type ViewStyle } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, type ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 
 interface HeroImageProps {
@@ -14,6 +14,10 @@ interface HeroImageProps {
   gradientDirection?: 'top' | 'bottom';
   /** Border radius applied to the container. Defaults to 0. */
   borderRadius?: number;
+  /** When true AND uri is null, render a centered spinner over the beige
+      skeleton — used for a "pending" step-photo slide that's still
+      generating in the background. */
+  loadingWhenEmpty?: boolean;
 }
 
 /**
@@ -30,6 +34,7 @@ export function HeroImage({
   style,
   gradientDirection = 'bottom',
   borderRadius = 0,
+  loadingWhenEmpty = false,
 }: HeroImageProps) {
   const isBottom = gradientDirection === 'bottom';
 
@@ -50,9 +55,13 @@ export function HeroImage({
         <View
           style={[
             StyleSheet.absoluteFillObject,
-            { backgroundColor: '#F1EAE0' },
+            styles.emptySlide,
           ]}
-        />
+        >
+          {loadingWhenEmpty ? (
+            <ActivityIndicator size="small" color="#9A8C7A" />
+          ) : null}
+        </View>
       )}
 
       {/* Three-step stacked overlay simulates a soft gradient without
@@ -84,6 +93,11 @@ const styles = StyleSheet.create({
   container: {
     position: 'relative',
     backgroundColor: '#2A221A',
+  },
+  emptySlide: {
+    backgroundColor: '#F1EAE0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   // Outer (lightest) fade — widest band, gentlest tint. Anchors the
   // gradient so the transition into the unshaded photo is gradual.

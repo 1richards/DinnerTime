@@ -83,8 +83,11 @@ export default function RecipeDetailScreen() {
   );
   // Preparation-step photos — returned instantly if already generated,
   // otherwise lazily generated in the background (non-blocking). The hero
-  // always leads; step shots follow in the slider as they arrive.
-  const stepImageUrls = useRecipeStepImages(recipe);
+  // always leads; step shots follow in the slider as they arrive. `loading`
+  // drives the on-screen "Generating step photos…" indicator so users know
+  // images are still coming while the recipe content is fully usable.
+  const { urls: stepImageUrls, loading: stepImagesLoading } =
+    useRecipeStepImages(recipe);
 
   if (!recipe) {
     return (
@@ -105,7 +108,14 @@ export default function RecipeDetailScreen() {
     recipe.image_url ?? generatedHeroUri,
     recipe.title,
   );
-  const heroImages: Array<string | null> = [heroUri, ...stepImageUrls];
+  // While step photos are still generating (and none arrived yet), append a
+  // single null "pending" slide so the hero slider shows a spinner slot — a
+  // visible cue that more photos are coming, without blocking the hero.
+  const heroImages: Array<string | null> = [
+    heroUri,
+    ...stepImageUrls,
+    ...(stepImagesLoading && stepImageUrls.length === 0 ? [null] : []),
+  ];
 
   const totalTime =
     recipe.total_time_minutes ??
@@ -165,6 +175,7 @@ export default function RecipeDetailScreen() {
           <HeroCarousel
             images={heroImages}
             height={280}
+            loadingPendingSlides={stepImagesLoading}
             heroOverlay={
               <>
                 {/* Title + meta on image */}
@@ -341,7 +352,20 @@ export default function RecipeDetailScreen() {
 
         {/* Steps card */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeading}>Steps</Text>
+          <View style={styles.stepsHeader}>
+            <Text style={styles.sectionHeading}>Steps</Text>
+            {/* Background step-photo generation indicator — non-blocking, the
+                steps below are fully usable while photos arrive in the hero
+                slider above. */}
+            {stepImagesLoading ? (
+              <View style={styles.stepImagesLoading}>
+                <ActivityIndicator size="small" color={colors.brand} />
+                <Text style={styles.stepImagesLoadingText}>
+                  Generating step photos…
+                </Text>
+              </View>
+            ) : null}
+          </View>
           {/* Null-guard: 28-01 trims `steps` from the LIST select, so
               PostgREST returns it as undefined (NOT []) until hydrateRecipeDetail
               lands. The TS type declares steps:string[] so the compiler won't
@@ -582,6 +606,26 @@ const styles = StyleSheet.create({
     color: '#1A140F',
     marginBottom: 12,
     letterSpacing: -0.2,
+  },
+  stepsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  stepImagesLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+    // Offset the sectionHeading's own marginBottom so the row stays aligned.
+    marginBottom: 12,
+  },
+  stepImagesLoadingText: {
+    fontSize: 12,
+    color: '#A89178',
+    fontStyle: 'italic',
+    flexShrink: 1,
   },
   stepRow: {
     flexDirection: 'row',
