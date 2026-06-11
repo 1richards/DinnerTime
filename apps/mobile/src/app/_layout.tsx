@@ -17,6 +17,8 @@ import { ReAuthModal } from '../auth/ReAuthModal';
 import { setReAuthHandler } from '../auth/sessionRefresh';
 import { colors } from '../design/tokens';
 import { initSentry, setSentryUser } from '../lib/sentry';
+import { wireSupabaseAuth as wireAiTelemetryAuth } from '../ai/telemetry';
+import { supabase } from '../lib/supabase';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { isDeepLinkAllowed } from '../lib/deepLinkAllowlist';
 // Importing networkStore here ensures its module-side-effect NetInfo
@@ -129,6 +131,18 @@ export default function RootLayout() {
       setSentryUser(s.user?.id ?? null);
     });
     return unsub;
+  }, []);
+
+  // Wire the AI-telemetry batcher's supabase-backed token getter at app root
+  // so queued ai_events (per-image / hydration timing) ship with a real bearer
+  // token. Without this the batcher falls back to the SENTINEL 'test-token' and
+  // every POST /telemetry/ai is rejected 401 (the cooking telemetry is wired
+  // separately in cook.tsx; this is the missing AI-telemetry equivalent).
+  useEffect(() => {
+    wireAiTelemetryAuth(async () => {
+      const { data } = await supabase.auth.getSession();
+      return data.session?.access_token ?? null;
+    });
   }, []);
 
   // Phase 23-07 (NFR-24): deep-link allowlist gate. Every incoming URL —
