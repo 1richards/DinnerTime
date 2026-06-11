@@ -18,16 +18,17 @@
  * is_favorite); preview mode suppresses the favorite + remix action cluster.
  */
 
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
   Pressable,
-  ScrollView,
+  FlatList,
   StyleSheet,
   RefreshControl,
   Alert,
   ActivityIndicator,
+  type ViewToken,
 } from 'react-native';
 import { router } from 'expo-router';
 
@@ -71,6 +72,52 @@ export function SomethingNewResults({ onRequestPreview }: SomethingNewResultsPro
     // Regenerate with the same query args that produced the current list.
     void searchRecipes(lastQuery ?? '', { pantryOnly });
   };
+
+  // ---------- Lazy image loading (viewport gate) ----------
+  // Only the first 2 cards generate their hero immediately on mount; the rest
+  // generate when scrolled into view. We track a STICKY set of indices that
+  // have been visible — once an index enters this set it stays, so scrolling a
+  // card away and back never re-defers (and the hook's cache never regenerates).
+  // State (not just a ref) so toggling `imageEnabled` re-renders the affected
+  // PreviewRecipeCard; the RecipeCard memo compares imageEnabled.
+  const [visibleIdx, setVisibleIdx] = useState<Set<number>>(() => new Set());
+  // Mirror in a ref so the onViewableItemsChanged callback can read the current
+  // set without being recreated (RN warns if the callback identity changes).
+  const visibleRef = useRef<Set<number>>(visibleIdx);
+
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      let changed = false;
+      const next = new Set(visibleRef.current);
+      for (const token of viewableItems) {
+        if (token.index != null && !next.has(token.index)) {
+          next.add(token.index);
+          changed = true;
+        }
+      }
+      if (changed) {
+        visibleRef.current = next;
+        setVisibleIdx(next);
+      }
+    },
+  ).current;
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 30,
+  }).current;
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: ParsedRecipe; index: number }) => (
+      <PreviewRecipeCard
+        recipe={item}
+        idx={index}
+        // Top-2 always eager; the rest only once they've been visible (sticky).
+        imageEnabled={index < 2 || visibleIdx.has(index)}
+        onPress={() => onRequestPreview(item)}
+      />
+    ),
+    [visibleIdx, onRequestPreview],
+  );
 
   if (isLoading) {
     return (
@@ -120,11 +167,82 @@ export function SomethingNewResults({ onRequestPreview }: SomethingNewResultsPro
     );
   }
 
+  // Toolbar — rendered as the FlatList header so it scrolls with the grid
+  // (unchanged from the previous ScrollView layout).
+  const ListHeader = (
+    <View style={styles.resultsToolbar}>
+      <Text style={styles.resultsCount}>
+        {searchResults.length} {searchResults.length === 1 ? 'idea' : 'ideas'}
+        {pantryOnly ? ' from your pantry' : lastQuery ? ` for “${lastQuery}”` : ''}
+      </Text>
+      <View style={styles.toolbarActions}>
+        <Pressable
+          onPress={refresh}
+          hitSlop={8}
+          accessibilityLabel="Regenerate ideas"
+          style={({ pressed }) => [
+            styles.iconBtn,
+            pressed && styles.iconBtnPressed,
+          ]}
+        >
+          <SymbolIcon
+            name="arrow.clockwise"
+            size={20}
+            weight="semibold"
+            tintColor={colors.brand}
+          />
+        </Pressable>
+        <Pressable
+          onPress={() => clearHistory()}
+          hitSlop={8}
+          accessibilityLabel="Clear ideas"
+          style={({ pressed }) => [
+            styles.iconBtn,
+            pressed && styles.iconBtnPressed,
+          ]}
+        >
+          <SymbolIcon
+            name="xmark"
+            size={20}
+            weight="semibold"
+            tintColor={colors.textSecondary}
+          />
+        </Pressable>
+      </View>
+    </View>
+  );
+
+  const ListFooter =
+    searchResults.length > 0 ? (
+      <View style={styles.loadMoreWrap}>
+        <Button
+          title={isAppending ? 'Finding more…' : 'Show me more ideas'}
+          loading={isAppending}
+          disabled={isAppending}
+          onPress={() => {
+            // Fall back to pantry-only when we have no query context.
+            const trimmed = (lastQuery ?? '').trim();
+            const effectivePantryOnly = pantryOnly || trimmed.length === 0;
+            void appendSearchResults(lastQuery ?? '', {
+              pantryOnly: effectivePantryOnly,
+            });
+          }}
+        />
+      </View>
+    ) : null;
+
   return (
-    <ScrollView
+    <FlatList
       style={{ flex: 1 }}
       contentContainerStyle={styles.grid}
+      data={searchResults}
+      keyExtractor={(recipe, idx) => `${recipe.title}-${idx}`}
+      renderItem={renderItem}
+      ListHeaderComponent={ListHeader}
+      ListFooterComponent={ListFooter}
       showsVerticalScrollIndicator={false}
+      onViewableItemsChanged={onViewableItemsChanged}
+      viewabilityConfig={viewabilityConfig}
       refreshControl={
         <RefreshControl
           refreshing={isLoading}
@@ -132,76 +250,7 @@ export function SomethingNewResults({ onRequestPreview }: SomethingNewResultsPro
           tintColor={colors.brand}
         />
       }
-    >
-      {/* Results toolbar — visible refresh + clear controls */}
-      <View style={styles.resultsToolbar}>
-        <Text style={styles.resultsCount}>
-          {searchResults.length} {searchResults.length === 1 ? 'idea' : 'ideas'}
-          {pantryOnly ? ' from your pantry' : lastQuery ? ` for “${lastQuery}”` : ''}
-        </Text>
-        <View style={styles.toolbarActions}>
-          <Pressable
-            onPress={refresh}
-            hitSlop={8}
-            accessibilityLabel="Regenerate ideas"
-            style={({ pressed }) => [
-              styles.iconBtn,
-              pressed && styles.iconBtnPressed,
-            ]}
-          >
-            <SymbolIcon
-              name="arrow.clockwise"
-              size={20}
-              weight="semibold"
-              tintColor={colors.brand}
-            />
-          </Pressable>
-          <Pressable
-            onPress={() => clearHistory()}
-            hitSlop={8}
-            accessibilityLabel="Clear ideas"
-            style={({ pressed }) => [
-              styles.iconBtn,
-              pressed && styles.iconBtnPressed,
-            ]}
-          >
-            <SymbolIcon
-              name="xmark"
-              size={20}
-              weight="semibold"
-              tintColor={colors.textSecondary}
-            />
-          </Pressable>
-        </View>
-      </View>
-
-      {searchResults.map((recipe, idx) => (
-        <PreviewRecipeCard
-          key={`${recipe.title}-${idx}`}
-          recipe={recipe}
-          idx={idx}
-          onPress={() => onRequestPreview(recipe)}
-        />
-      ))}
-
-      {searchResults.length > 0 && (
-        <View style={styles.loadMoreWrap}>
-          <Button
-            title={isAppending ? 'Finding more…' : 'Show me more ideas'}
-            loading={isAppending}
-            disabled={isAppending}
-            onPress={() => {
-              // Fall back to pantry-only when we have no query context.
-              const trimmed = (lastQuery ?? '').trim();
-              const effectivePantryOnly = pantryOnly || trimmed.length === 0;
-              void appendSearchResults(lastQuery ?? '', {
-                pantryOnly: effectivePantryOnly,
-              });
-            }}
-          />
-        </View>
-      )}
-    </ScrollView>
+    />
   );
 }
 
@@ -249,15 +298,25 @@ function PreviewRecipeCard({
   recipe,
   idx,
   onPress,
+  imageEnabled = true,
 }: {
   recipe: ParsedRecipe;
   idx: number;
   onPress: () => void;
+  /**
+   * Viewport gate from the parent FlatList — top-2 + scrolled-into-view cards
+   * pass true. This hook instance computes `heroUri` for the save/cook image
+   * payload, so it must share the same gate as the RecipeCard's hook (same
+   * cache key) — otherwise this one would eagerly fire Gemini for off-screen
+   * cards and defeat the lazy-load.
+   */
+  imageEnabled?: boolean;
 }) {
   const { url: generatedUri } = useGeneratedRecipeImage(recipe.title, {
     skip: !!recipe.image_url,
     description: recipe.description,
     ingredients: recipe.ingredients,
+    enabled: imageEnabled,
   });
   const heroUri = recipe.image_url ?? generatedUri ?? null;
 
@@ -472,6 +531,7 @@ function PreviewRecipeCard({
         recipe={synthetic}
         mode="grid"
         preview
+        imageEnabled={imageEnabled}
         previewActions={{
           onSave: handleSave,
           onSaveAndFavorite: handleSaveAndFavorite,
