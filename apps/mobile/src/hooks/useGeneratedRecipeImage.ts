@@ -231,7 +231,11 @@ function persistToStorage(): void {
 
 // ---------- Hook ----------
 
-export type GeneratedImageStatus = 'loading' | 'resolved' | 'failed';
+export type GeneratedImageStatus =
+  | 'deferred'
+  | 'loading'
+  | 'resolved'
+  | 'failed';
 
 export interface GeneratedImageResult {
   url: string | null;
@@ -248,13 +252,28 @@ interface HookOptions {
    * previews — they stay AsyncStorage-only.
    */
   recipeId?: string | null;
+  /**
+   * Viewport gate (Something New lazy-load polish). Default true. When false,
+   * the hook does NOT acquire a concurrency slot or fire /generate-image — it
+   * reports status 'deferred' so the card can render a shimmer placeholder
+   * instead of a blank/fallback image.
+   *
+   * Crucially, this gate is "sticky" with respect to work that has already
+   * started: if a cache entry already exists for the key (in-flight, resolved,
+   * or attempted+failed), the hook surfaces that real state regardless of
+   * `enabled` — flipping enabled back to false after generation started never
+   * cancels or re-defers it. This relies on the module-level cache to record
+   * "already attempted", so scrolling a card off-screen and back never
+   * re-generates.
+   */
+  enabled?: boolean;
 }
 
 export function useGeneratedRecipeImage(
   title: string | null | undefined,
   options: HookOptions = {},
 ): GeneratedImageResult {
-  const { skip, description, ingredients, recipeId } = options;
+  const { skip, description, ingredients, recipeId, enabled = true } = options;
 
   // Derive initial state from the in-memory cache synchronously (even if
   // module-level hydration hasn't completed — we still read whatever is in
@@ -265,9 +284,14 @@ export function useGeneratedRecipeImage(
 
   const [result, setResult] = useState<GeneratedImageResult>(() => {
     if (!title || skip) return { url: null, status: 'resolved' };
+    // A pre-existing cache entry wins over the viewport gate: work already
+    // started/resolved for this key, so surface its real state (never re-defer).
     if (initialEntry?.url) return { url: initialEntry.url, status: 'resolved' };
     if (initialEntry?.attempted && !initialEntry.url)
       return { url: null, status: 'failed' };
+    if (initialEntry?.inflight) return { url: null, status: 'loading' };
+    // No work yet AND viewport-gated → deferred (card shows shimmer, no fetch).
+    if (!enabled) return { url: null, status: 'deferred' };
     return { url: null, status: 'loading' };
   });
 
@@ -310,6 +334,17 @@ export function useGeneratedRecipeImage(
         return;
       }
 
+      // No cache entry yet. If this card is viewport-gated (not enabled), stay
+      // deferred — do NOT acquire a concurrency slot or fire /generate-image.
+      // When the card scrolls into view, `enabled` flips true, the effect
+      // re-runs, and we fall through to the fetch branch below. Because the
+      // first started fetch writes a cache entry, scrolling away/back can never
+      // re-trigger generation (the hit?.inflight / hit?.attempted branches win).
+      if (!enabled) {
+        setResult({ url: null, status: 'deferred' });
+        return;
+      }
+
       // No entry — kick off fetch (throttled to MAX_CONCURRENT in-flight)
       setResult({ url: null, status: 'loading' });
       const inflight = fetchGeneratedUrlThrottled({
@@ -348,7 +383,7 @@ export function useGeneratedRecipeImage(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, skip, ingredientFp, description]);
+  }, [title, skip, ingredientFp, description, enabled]);
 
   return result;
 }
