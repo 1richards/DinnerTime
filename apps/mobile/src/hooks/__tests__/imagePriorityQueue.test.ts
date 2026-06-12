@@ -68,12 +68,12 @@ global.fetch = vi.fn(async (_url: unknown, init?: { body?: string }) => {
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe('useGeneratedRecipeImage priority queue', () => {
-  it('starts requests in strict priority order, serially (top image first)', async () => {
-    // Fire 5 prefetches in the SAME tick, OUT of priority order. MAX_CONCURRENT
-    // is 1 and every request is enqueued (no synchronous free-slot grant), so
-    // the microtask scheduler collects all 5 first and then starts the LOWEST
-    // priority. This proves call order does NOT win — the top card (priority 0)
-    // generates first, and each next-lowest only starts once the prior resolves.
+  it('leads with the top image alone, then fills the rest 2-wide in priority order', async () => {
+    // Fire 5 prefetches in the SAME tick, OUT of priority order. Every request
+    // enqueues (no synchronous free-slot grant), so the microtask scheduler
+    // collects all 5, then starts the LOWEST priority. LEAD=1 means only the
+    // top card (priority 0) runs until it resolves; then STEADY=2 opens up. This
+    // proves (a) call order never wins and (b) the hero is guaranteed first.
     prefetchGeneratedRecipeImage('A', { priority: 0 });
     prefetchGeneratedRecipeImage('B', { priority: 9 });
     prefetchGeneratedRecipeImage('C', { priority: 5 });
@@ -81,26 +81,22 @@ describe('useGeneratedRecipeImage priority queue', () => {
     prefetchGeneratedRecipeImage('E', { priority: 3 });
 
     await flush();
-    // Only the highest-priority (A=0) has started — serial, so nothing else yet.
+    // LEAD phase: only the highest-priority (A=0) has started — hero alone.
     expect(fetchOrder).toEqual(['A']);
 
-    // A resolves → next-lowest priority among the rest is D=1.
+    // A resolves → burst opens to STEADY=2: the two lowest remaining start
+    // together (D=1 then E=3), still strictly by priority.
     resolvers['A']!(makeResponse());
-    await flush();
-    expect(fetchOrder).toEqual(['A', 'D']);
-
-    // D resolves → E=3 next.
-    resolvers['D']!(makeResponse());
     await flush();
     expect(fetchOrder).toEqual(['A', 'D', 'E']);
 
-    // E resolves → C=5 next (B=9 still last despite enqueuing 2nd).
-    resolvers['E']!(makeResponse());
+    // D resolves → next-lowest (C=5) fills the freed slot.
+    resolvers['D']!(makeResponse());
     await flush();
     expect(fetchOrder).toEqual(['A', 'D', 'E', 'C']);
 
-    // C resolves → B=9 last.
-    resolvers['C']!(makeResponse());
+    // E resolves → last waiter (B=9), despite it enqueuing 2nd.
+    resolvers['E']!(makeResponse());
     await flush();
     expect(fetchOrder).toEqual(['A', 'D', 'E', 'C', 'B']);
   });

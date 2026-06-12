@@ -79,14 +79,19 @@ const cache = new Map<string, Entry>();
 // before lower cards regardless of which fired first. Resolved/cached results
 // bypass the limiter entirely.
 
-// Serial (1) so the highest-priority (top-most) card's image resolves BEFORE
-// the next card's even starts — guarantees visible top-down fill order. With
-// 2+ concurrent, the top two run in parallel and finish in race order (the
-// 2nd photo could beat the 1st). Bump this only if strict order is traded away
-// for raw throughput.
-const MAX_CONCURRENT = 1;
+// Lead-then-steady concurrency. The FIRST image of each burst runs ALONE
+// (LEAD=1) so the top-most card's photo is guaranteed to land before any other
+// starts (fixes "2nd photo appeared before the 1st"). Once it resolves, the
+// rest fill in STEADY=2 at a time for speed. Measured: pure serial made 8
+// images take ~50s (each ~7s, zero overlap); pure 2-wide was ~28s but let the
+// 2nd beat the 1st. Lead-then-steady is hero-first AND ~32s — near 2-wide.
+const LEAD_CONCURRENT = 1;
+const STEADY_CONCURRENT = 2;
 const DEFAULT_PRIORITY = Number.MAX_SAFE_INTEGER;
 let _inFlight = 0;
+// Completions since the limiter was last fully idle. 0 ⇒ we're at the start of
+// a burst, so only the lead (top) image runs; >0 ⇒ open up to STEADY.
+let _completedSinceIdle = 0;
 
 interface Waiter {
   resolve: () => void;
@@ -104,9 +109,13 @@ let _flushScheduled = false;
 // once) is collected BEFORE we pick a winner — otherwise the first caller to
 // hit a free slot would start regardless of priority (the original bug: top-2
 // started in mount/effect order, not list order).
+function currentMax(): number {
+  return _completedSinceIdle === 0 ? LEAD_CONCURRENT : STEADY_CONCURRENT;
+}
+
 function flushQueue(): void {
   _flushScheduled = false;
-  while (_inFlight < MAX_CONCURRENT && _waitQueue.length > 0) {
+  while (_inFlight < currentMax() && _waitQueue.length > 0) {
     let bestIdx = 0;
     for (let i = 1; i < _waitQueue.length; i++) {
       const w = _waitQueue[i]!;
@@ -139,6 +148,12 @@ function acquireSlot(priority: number = DEFAULT_PRIORITY): Promise<void> {
 
 function releaseSlot(): void {
   _inFlight--;
+  _completedSinceIdle++;
+  // Fully idle (nothing running, nothing queued) ⇒ the next request begins a
+  // fresh burst and should lead alone again.
+  if (_inFlight === 0 && _waitQueue.length === 0) {
+    _completedSinceIdle = 0;
+  }
   scheduleFlush();
 }
 
